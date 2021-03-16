@@ -17,7 +17,7 @@ namespace BufferUploads
     {
         XlZeroMemory(_bytesUploaded);
         XlZeroMemory(_bytesCreated);
-        XlZeroMemory(_bytesUploadedDuringCreation);
+        XlZeroMemory(_stagingBytesUsed);
         XlZeroMemory(_countCreations);
         XlZeroMemory(_countDeviceCreations);
         XlZeroMemory(_countUploaded);
@@ -40,7 +40,7 @@ namespace BufferUploads
     {
         std::copy(cloneFrom._bytesUploaded, &cloneFrom._bytesUploaded[dimof(cloneFrom._bytesUploaded)], _bytesUploaded);
         std::copy(cloneFrom._bytesCreated, &cloneFrom._bytesCreated[dimof(cloneFrom._bytesCreated)], _bytesCreated);
-        std::copy(cloneFrom._bytesUploadedDuringCreation, &cloneFrom._bytesUploadedDuringCreation[dimof(cloneFrom._bytesUploadedDuringCreation)], _bytesUploadedDuringCreation);
+        std::copy(cloneFrom._stagingBytesUsed, &cloneFrom._stagingBytesUsed[dimof(cloneFrom._stagingBytesUsed)], _stagingBytesUsed);
         _bytesUploadTotal = cloneFrom._bytesUploadTotal;
         std::copy(cloneFrom._countCreations, &cloneFrom._countCreations[dimof(cloneFrom._countCreations)], _countCreations);
         std::copy(cloneFrom._countDeviceCreations, &cloneFrom._countDeviceCreations[dimof(cloneFrom._countDeviceCreations)], _countDeviceCreations);

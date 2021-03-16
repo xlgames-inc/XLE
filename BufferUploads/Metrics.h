@@ -38,11 +38,14 @@ namespace BufferUploads
     {
         unsigned _bytesUploaded[(unsigned)UploadDataType::Max];
         unsigned _bytesCreated[(unsigned)UploadDataType::Max];
-        unsigned _bytesUploadedDuringCreation[(unsigned)UploadDataType::Max];
         unsigned _bytesUploadTotal;
+
+        unsigned _stagingBytesUsed[(unsigned)UploadDataType::Max];
+
         unsigned _countCreations[(unsigned)UploadDataType::Max];
         unsigned _countDeviceCreations[(unsigned)UploadDataType::Max];
         unsigned _countUploaded[(unsigned)UploadDataType::Max];
+
         unsigned _contextOperations, _nonContextOperations, _deviceCreateOperations;
         AssemblyLineMetrics _assemblyLineMetrics;
         AssemblyLineRetirement _retirements[16];

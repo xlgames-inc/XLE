@@ -13,7 +13,6 @@
 #include "../RenderCore/ResourceUtils.h"
 #include "../RenderCore/Metal/Resource.h"
 #include "../OSServices/Log.h"
-// #include "../OSServices/WinAPI/System_WinAPI.h"
 #include "../OSServices/TimeUtils.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../ConsoleRig/AttachablePtr.h"
@@ -552,16 +551,6 @@ namespace BufferUploads
         PartialResource part = partInit;
         ResourceDesc desc = descInit;
 
-        bool allowUploadByInitialisation = true;
-        for (unsigned a=0; a<desc._textureDesc._arrayCount && allowUploadByInitialisation; ++a) {
-            for (unsigned m=0; m<desc._textureDesc._mipCount; ++m) {
-                if (!initialisationData.GetData(SubResourceId{m,a})) {
-                    allowUploadByInitialisation = false;
-                    break;
-                }
-            }
-        }
-
         unsigned requestedStagingLODOffset = 0;
         if (desc._type == ResourceDesc::Type::Texture) {
             unsigned maxLodOffset = IntegerLog2(std::min(desc._textureDesc._width, desc._textureDesc._height))-2;
@@ -569,12 +558,12 @@ namespace BufferUploads
         }
     
         auto finalResourceConstruction = _resourceSource.Create(
-            desc, allowUploadByInitialisation?&initialisationData:nullptr, ResourceSource::CreationOptions::AllowDeviceCreation);
+            desc, &initialisationData, ResourceSource::CreationOptions::AllowDeviceCreation);
         if (!finalResourceConstruction._locator._resource) {
             return {};
         }
     
-        if (!allowUploadByInitialisation || !(finalResourceConstruction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful)) {
+        if (!(finalResourceConstruction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful)) {
             unsigned lodOffset = requestedStagingLODOffset;
             unsigned actualisedStagingLODOffset = requestedStagingLODOffset;
             ResourceDesc stagingBufferDesc = ApplyLODOffset(AsStagingDesc(desc), lodOffset);
@@ -586,23 +575,9 @@ namespace BufferUploads
             }
     
             PlatformInterface::UnderlyingDeviceContext deviceContext(threadContext);
-            // for (unsigned l=part._lodLevelMin; l<=part._lodLevelMax; ++l) {
-            //     for (unsigned e=part._arrayIndexMin; e<=part._arrayIndexMax; ++e) {
-            //         auto size = initialisationData->GetDataSize(SubR(l, e));
-            //         const void* data = initialisationData->GetData(SubR(l, e));
-            //         if (data) {
-            //             deviceContext.PushToStagingResource(
-            //                 *stagingConstruction._identifier->GetUnderlying(), 
-            //                 ApplyLODOffset(desc, actualisedStagingLODOffset), 0,
-            //                 data, size, 
-            //                 initialisationData->GetPitches(SubR(l, e)),
-            //                 l - actualisedStagingLODOffset, e);
-            //         }
-            //     }
-            // }
             deviceContext.PushToStagingTexture(
                 *stagingConstruction._locator._resource,
-                ApplyLODOffset(desc, actualisedStagingLODOffset), Box2D(),
+                stagingBufferDesc, Box2D(),
                 [&part, &initialisationData, actualisedStagingLODOffset](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
                 {
                     RenderCore::SubResourceInitData result = {};
@@ -618,7 +593,7 @@ namespace BufferUploads
                 });
     
             deviceContext.UpdateFinalResourceFromStaging(
-                *stagingConstruction._locator._resource, 
+                *finalResourceConstruction._locator._resource, 
                 *stagingConstruction._locator._resource, desc, 
                 part._lodLevelMin, part._lodLevelMax, actualisedStagingLODOffset);
         }
@@ -688,7 +663,8 @@ namespace BufferUploads
         _statusLock = 0;
         // _creationQueued = _stagingQueued = false;
         _referenceCount = 0;
-        _requestedStagingLODOffset = _actualisedStagingLODOffset = ~unsigned(0x0);
+        _requestedStagingLODOffset = 0;
+        _actualisedStagingLODOffset = ~unsigned(0x0);
         _retirementCommandList = ~unsigned(0x0);
         _creationOptions = 0;
         // _creationFrameID = 0;
@@ -703,7 +679,8 @@ namespace BufferUploads
         _statusLock = 0;
         // _creationQueued = _stagingQueued = false;
         _referenceCount = 0;
-        _requestedStagingLODOffset = _actualisedStagingLODOffset = ~unsigned(0x0);
+        _requestedStagingLODOffset = 0;
+        _actualisedStagingLODOffset = ~unsigned(0x0);
         _retirementCommandList = ~unsigned(0x0);
         _creationOptions = 0;
         // _creationFrameID = 0;
@@ -735,6 +712,17 @@ namespace BufferUploads
             _heapIndex = moveFrom._heapIndex;
         #endif
         // _creationFrameID = moveFrom._creationFrameID;
+
+        moveFrom._idTopPart = 0;
+        moveFrom._statusLock = 0;
+        moveFrom._referenceCount = 0;
+        moveFrom._requestedStagingLODOffset = 0;
+        moveFrom._actualisedStagingLODOffset = ~unsigned(0x0);
+        moveFrom._retirementCommandList = ~unsigned(0x0);
+        moveFrom._creationOptions = 0;
+        #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
+            moveFrom._heapIndex = ~unsigned(0x0);
+        #endif
     }
 
     auto AssemblyLine::Transaction::operator=(Transaction&& moveFrom) never_throws -> Transaction&
@@ -763,6 +751,17 @@ namespace BufferUploads
             _heapIndex = moveFrom._heapIndex;
         #endif
         // _creationFrameID = moveFrom._creationFrameID;
+
+        moveFrom._idTopPart = 0;
+        moveFrom._statusLock = 0;
+        moveFrom._referenceCount = 0;
+        moveFrom._requestedStagingLODOffset = 0;
+        moveFrom._actualisedStagingLODOffset = ~unsigned(0x0);
+        moveFrom._retirementCommandList = ~unsigned(0x0);
+        moveFrom._creationOptions = 0;
+        #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
+            moveFrom._heapIndex = ~unsigned(0x0);
+        #endif
 
         auto lockRelease = _statusLock.exchange(false);
         assert(lockRelease==1); (void)lockRelease;
@@ -1381,85 +1380,108 @@ namespace BufferUploads
     bool AssemblyLine::Process(const CreateFromDataPacketStep& resourceCreateStep, ThreadContext& context, const CommandListBudget& budgetUnderConstruction)
     {
         auto& metricsUnderConstruction = context.GetMetricsUnderConstruction();
-        if ((metricsUnderConstruction._contextOperations+metricsUnderConstruction._nonContextOperations+1) < budgetUnderConstruction._limit_Operations) {
-            auto* transaction = GetTransaction(resourceCreateStep._id);
-            assert(transaction && !transaction->_finalResource._resource);
+        if ((metricsUnderConstruction._contextOperations+metricsUnderConstruction._nonContextOperations+1) >= budgetUnderConstruction._limit_Operations)
+            return false;
 
-            unsigned uploadRequestSize = 0;
-            const unsigned objectSize = RenderCore::ByteCount(transaction->_desc);
-            auto uploadDataType = (unsigned)AsUploadDataType(transaction->_desc);
-            if (resourceCreateStep._initialisationData) {
-                uploadRequestSize = objectSize;
-            }
+        auto* transaction = GetTransaction(resourceCreateStep._id);
+        assert(transaction && !transaction->_finalResource._resource);
+
+        unsigned uploadRequestSize = 0;
+        const unsigned objectSize = RenderCore::ByteCount(transaction->_desc);
+        auto uploadDataType = (unsigned)AsUploadDataType(transaction->_desc);
+        if (resourceCreateStep._initialisationData) {
+            uploadRequestSize = objectSize;
+        }
+        
+        if (!(transaction->_referenceCount & 0xff000000)) {
+                //  If there are no client references, we can consider this cancelled...
+            ReleaseTransaction(transaction, context, true);
+            _currentQueuedBytes[uploadDataType] -= uploadRequestSize;
+            return true;
+        }
+
+        if ((metricsUnderConstruction._bytesUploadTotal+uploadRequestSize) > budgetUnderConstruction._limit_BytesUploaded && metricsUnderConstruction._bytesUploadTotal !=0)
+            return false;
+
+        auto finalConstruction = _resourceSource.Create(
+            transaction->_desc, resourceCreateStep._initialisationData.get(), 
+            ((metricsUnderConstruction._deviceCreateOperations+1) <= budgetUnderConstruction._limit_DeviceCreates)?ResourceSource::CreationOptions::AllowDeviceCreation:0);
+
+        if (!(finalConstruction._flags & ResourceSource::ResourceConstruction::Flags::DelayForBatching)) {
+            if (finalConstruction._locator._resource) {
+                if (resourceCreateStep._initialisationData && !(finalConstruction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful)) {
+
+                    unsigned lodOffset = transaction->_requestedStagingLODOffset;
+                    unsigned actualisedStagingLODOffset = transaction->_requestedStagingLODOffset;
+                    ResourceDesc stagingBufferDesc = ApplyLODOffset(AsStagingDesc(transaction->_desc), lodOffset);
+                    auto stagingConstruction = _resourceSource.Create(
+                        stagingBufferDesc, resourceCreateStep._initialisationData.get(), ResourceSource::CreationOptions::AllowDeviceCreation);
+                    assert(stagingConstruction._locator._resource);
+                    if (!stagingConstruction._locator._resource) {
+                        return false;                   // failed to allocate the resource. Return false and We'll try again later...
+                    }
             
-            if (!(transaction->_referenceCount & 0xff000000)) {
-                    //  If there are no client references, we can consider this cancelled...
-                ReleaseTransaction(transaction, context, true);
-                if (uploadRequestSize) {
-                    _currentQueuedBytes[uploadDataType] -= uploadRequestSize;
+                    PlatformInterface::UnderlyingDeviceContext deviceContext(context.GetDeviceContext());
+                    deviceContext.PushToStagingTexture(
+                        *stagingConstruction._locator._resource,
+                        stagingBufferDesc, Box2D(),
+                        [part{resourceCreateStep._part}, initialisationData{resourceCreateStep._initialisationData.get()}, actualisedStagingLODOffset](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
+                        {
+                            RenderCore::SubResourceInitData result = {};
+                            if (sr._mip<part._lodLevelMin || sr._mip>part._lodLevelMax) return result;
+                            if (sr._arrayLayer<part._arrayIndexMin || sr._arrayLayer>part._arrayIndexMax) return result;
+
+                            auto dataMip = sr._mip + actualisedStagingLODOffset;
+                            auto size = initialisationData->GetDataSize(SubResourceId{dataMip, sr._arrayLayer});
+                            const void* data = initialisationData->GetData(SubResourceId{dataMip, sr._arrayLayer});
+                            result._data = MakeIteratorRange(data, PtrAdd(data, size));
+                            result._pitches = initialisationData->GetPitches(SubResourceId{dataMip, sr._arrayLayer});
+                            return result;
+                        });
+            
+                    deviceContext.UpdateFinalResourceFromStaging(
+                        *finalConstruction._locator._resource, 
+                        *stagingConstruction._locator._resource, transaction->_desc, 
+                        resourceCreateStep._part._lodLevelMin, resourceCreateStep._part._lodLevelMax, actualisedStagingLODOffset);
+                        
+                    ++metricsUnderConstruction._contextOperations;
+                    metricsUnderConstruction._stagingBytesUsed[uploadDataType] += uploadRequestSize;
                 }
+
+                metricsUnderConstruction._bytesUploaded[uploadDataType] += uploadRequestSize;
+                metricsUnderConstruction._bytesUploadTotal += uploadRequestSize;
+                _currentQueuedBytes[uploadDataType] -= uploadRequestSize;
+                metricsUnderConstruction._bytesCreated[uploadDataType] += objectSize;
+                metricsUnderConstruction._countCreations[uploadDataType] += 1;
+                ++metricsUnderConstruction._nonContextOperations;
+                if (finalConstruction._flags & ResourceSource::ResourceConstruction::Flags::DeviceConstructionInvoked) {
+                    ++metricsUnderConstruction._countDeviceCreations[uploadDataType];
+                    ++metricsUnderConstruction._deviceCreateOperations;
+                }
+
+                transaction->_finalResource = std::move(finalConstruction._locator);
+                transaction->_promise.set_value(transaction->_finalResource);
+
+                ReleaseTransaction(transaction, context);
                 return true;
             }
+        } else {
 
-            if (((metricsUnderConstruction._bytesUploadTotal+uploadRequestSize) <= budgetUnderConstruction._limit_BytesUploaded || !metricsUnderConstruction._bytesUploadTotal)) {
-                bool completed = false;
-                auto construction = _resourceSource.Create(
-                    transaction->_desc, resourceCreateStep._initialisationData.get(), 
-                    ((metricsUnderConstruction._deviceCreateOperations+1) <= budgetUnderConstruction._limit_DeviceCreates)?ResourceSource::CreationOptions::AllowDeviceCreation:0);
+                //
+                //      In the batched path, we pop now, and perform all of the batched operations as once when we resolve the 
+                //      command list. But don't release the transaction -- that will happen after the batching operation is 
+                //      performed.
+                //
 
-                if (!(construction._flags & ResourceSource::ResourceConstruction::Flags::DelayForBatching)) {
-                    transaction->_finalResource = std::move(construction._locator);
-                    if (transaction->_finalResource._resource) {
-                        if (resourceCreateStep._initialisationData && !(construction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful)) {
-
-                            if (transaction->_desc._type == ResourceDesc::Type::Texture) {
-                                context.GetDeviceContext().PushToTexture(
-                                    *transaction->_finalResource._resource, transaction->_desc,
-                                    Box2D(),
-                                    PlatformInterface::AsResourceInitializer(*resourceCreateStep._initialisationData));
-                            } else {
-                                context.GetDeviceContext().PushToBuffer(
-                                    *transaction->_finalResource._resource, transaction->_desc, 0,
-                                    resourceCreateStep._initialisationData->GetData(), resourceCreateStep._initialisationData->GetDataSize());
-                            }
-                            ++metricsUnderConstruction._contextOperations;
-                        }
-
-                        if (uploadRequestSize) {
-                            _currentQueuedBytes[uploadDataType] -= uploadRequestSize;
-                        }
-                        ReleaseTransaction(transaction, context);
-                        completed = true;
-                    }
-                } else {
-
-                        //
-                        //      In the batched path, we pop now, and perform all of the batched operations as once when we resolve the 
-                        //      command list. But don't release the transaction -- that will happen after the batching operation is 
-                        //      performed.
-                        //
-
-                    completed = true;
 #if BU_BATCHING
-                    _batchPreparation_Main._batchedSteps.push_back(resourceCreateStep);
-                    _batchPreparation_Main._batchedAllocationSize += MarkerHeap<uint16_t>::AlignSize(objectSize);
+            _batchPreparation_Main._batchedSteps.push_back(resourceCreateStep);
+            _batchPreparation_Main._batchedAllocationSize += MarkerHeap<uint16_t>::AlignSize(objectSize);
+#else  
+            assert(0);
 #endif
-                }
-
-                if (completed) {
-                    metricsUnderConstruction._bytesCreated[uploadDataType] += objectSize;
-                    metricsUnderConstruction._countCreations[uploadDataType] += 1;
-                    metricsUnderConstruction._bytesUploadedDuringCreation[uploadDataType] += uploadRequestSize;
-                    metricsUnderConstruction._bytesUploadTotal += uploadRequestSize;
-                    ++metricsUnderConstruction._nonContextOperations;
-                    if (construction._flags & ResourceSource::ResourceConstruction::Flags::DeviceConstructionInvoked) {
-                        ++metricsUnderConstruction._countDeviceCreations[uploadDataType];
-                        ++metricsUnderConstruction._deviceCreateOperations;
-                    }
-                    return true;
-                }
-            }
+            return true;
         }
+
         return false;
     }
 
@@ -1475,6 +1497,11 @@ namespace BufferUploads
         auto* transaction = GetTransaction(prepareStagingStep._id);
         assert(transaction);
 
+        if (!(transaction->_referenceCount & 0xff000000)) {
+            ReleaseTransaction(transaction, context, true);
+            return true;
+        }
+
         try {
             const auto& desc = prepareStagingStep._desc;
             unsigned lodOffset = transaction->_requestedStagingLODOffset;
@@ -1489,9 +1516,6 @@ namespace BufferUploads
                 // Note that we are updating these metrics before calling
                 // IAsyncDataSource::PrepareData. That can potentially throw, in which case we
                 // will release the staging resource we allocated, without using it
-                metricsUnderConstruction._bytesCreated[(unsigned)AsUploadDataType(stagingDesc)] += RenderCore::ByteCount(stagingDesc);
-                metricsUnderConstruction._countCreations[(unsigned)AsUploadDataType(stagingDesc)] += 1;
-                metricsUnderConstruction._countDeviceCreations[(unsigned)AsUploadDataType(stagingDesc)] += (stagingConstruction._flags&ResourceSource::ResourceConstruction::Flags::DeviceConstructionInvoked)?1:0;
                 ++metricsUnderConstruction._nonContextOperations;
             }
 
@@ -1526,7 +1550,9 @@ namespace BufferUploads
             transaction->_desc = desc;
             transaction->_actualisedStagingLODOffset = lodOffset;
             transaction->_stagingResource = std::move(stagingConstruction._locator);
-            _currentQueuedBytes[(unsigned)AsUploadDataType(desc)] += RenderCore::ByteCount(stagingDesc);
+            auto byteCount = RenderCore::ByteCount(stagingDesc);
+            _currentQueuedBytes[(unsigned)AsUploadDataType(desc)] += byteCount;
+            metricsUnderConstruction._stagingBytesUsed[(unsigned)AsUploadDataType(desc)] += byteCount;
 
             // inc reference count for the lambda that waits on the future
             ++transaction->_referenceCount;
@@ -1636,13 +1662,18 @@ namespace BufferUploads
                 return false;                   // failed to allocate the resource. Return false and We'll try again later...
 
             transaction->_finalResource = finalConstruction._locator;
+
+            metricsUnderConstruction._bytesCreated[(unsigned)AsUploadDataType(transaction->_desc)] += RenderCore::ByteCount(transaction->_desc);
+            metricsUnderConstruction._countCreations[(unsigned)AsUploadDataType(transaction->_desc)] += 1;
+            metricsUnderConstruction._countDeviceCreations[(unsigned)AsUploadDataType(transaction->_desc)] += (finalConstruction._flags&ResourceSource::ResourceConstruction::Flags::DeviceConstructionInvoked)?1:0;
         }
 
         // todo -- do the actual data copy step here
         assert(0);
         unsigned bytesUploaded = 0;
         unsigned uploadCount = 0;
-
+        
+        assert(uploadRequestSize == bytesUploaded);
         auto dataType = AsUploadDataType(transaction->_desc);
         metricsUnderConstruction._bytesUploaded[(unsigned)dataType] += bytesUploaded;
         metricsUnderConstruction._countUploaded[(unsigned)dataType] += uploadCount;
