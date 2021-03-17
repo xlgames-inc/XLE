@@ -4,6 +4,7 @@
 
 #include "ResourceSource.h"
 #include "../RenderCore/ResourceUtils.h"
+#include "../RenderCore/ResourceDesc.h"
 #include "../OSServices/Log.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/StringUtils.h"
@@ -17,7 +18,10 @@
 
 namespace BufferUploads
 {
-    namespace WriteMode { enum Enum { UpdateSubresource, Map }; }
+    namespace CPUAccess = RenderCore::CPUAccess;
+	namespace GPUAccess = RenderCore::GPUAccess;
+	namespace BindFlag = RenderCore::BindFlag;
+	namespace AllocationRules = RenderCore::AllocationRules;
 
     // ~~~~~~~~~~~~ // ~~~~~~<   >~~~~~~ // ~~~~~~~~~~~~ //
 
@@ -610,7 +614,7 @@ namespace BufferUploads
 
                     // Copy the resource into our copy buffer, and set the count down
                 if (PlatformInterface::UseMapBasedDefrag && !PlatformInterface::CanDoNooverwriteMapInBackground) {
-                    context.GetDeviceContext().ResourceCopy(
+                    context.GetResourceUploadHelper().ResourceCopy(
                         *_temporaryCopyBuffer, *bestHeap->_heapResource);
                     _temporaryCopyBufferCountDown = 10;
                 }
@@ -862,7 +866,7 @@ namespace BufferUploads
                 context.GetCommitStepUnderConstruction().Add(
                     CommitStep::DeferredDefragCopy(GetHeap()->_heapResource, sourceResource, _steps));
             } else {
-                context.GetDeviceContext().ResourceCopy_DefragSteps(GetHeap()->_heapResource, sourceResource, _steps);
+                context.GetResourceUploadHelper().ResourceCopy_DefragSteps(GetHeap()->_heapResource, sourceResource, _steps);
             }
             _doneResourceCopy = true;
         }
@@ -946,8 +950,7 @@ namespace BufferUploads
 
     bool BatchedResources::ActiveDefrag::IsCompleted(IManager::EventListID processedEventList, ThreadContext& context)
     {
-        return  GetHeap()->_heapResource && _doneResourceCopy && (processedEventList >= _eventId) 
-            &&  (context.CommandList_GetCompletedByGPU() >= _initialCommandListID);
+        return  GetHeap()->_heapResource && _doneResourceCopy && (processedEventList >= _eventId);
     }
 
     auto BatchedResources::ActiveDefrag::ReleaseHeap() -> std::unique_ptr<HeapedResource>&&
@@ -1045,11 +1048,6 @@ namespace BufferUploads
                 assert(!(UsePooling(desc) && UseBatching(desc)));
             }
         #endif
-    }
-
-    bool ResourceSource::MarkBarrier(unsigned barrierID)
-    {
-        return true;
     }
 
     void ResourceSource::Tick(ThreadContext& threadContext, IManager::EventListID processedEventList)

@@ -22,8 +22,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
 
     list(APPEND Src
         DX11/PlatformInterfaceDX11.cpp
-        OpenGL/PlatformInterfaceOpenGL.cpp
-        Vulkan/PlatformInterfaceVulkan.cpp)
+        OpenGL/PlatformInterfaceOpenGL.cpp)
 
     add_library(BufferUploads-${metal_name} STATIC ${Src} ${Headers})
     xle_configure_library(BufferUploads-${metal_name})

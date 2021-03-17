@@ -100,8 +100,7 @@ namespace RenderCore
         {
             Pooled              = 1<<0,     ///< If a compatible resource has been recently released, reuse it
             Batched             = 1<<1,     ///< Batch together similar uploads, so they become a single low level operation per frame
-            Staging             = 1<<2,     ///< Staging memory only (ie, don't send to GPU)
-            NonVolatile         = 1<<3      ///< Allow the underlying API to manage memory so that it will survive device resets (ie, create a managed resource in D3D9)
+            Staging             = 1<<2      ///< Staging memory only (ie, don't send to GPU)
         };
         typedef unsigned BitField;
     }

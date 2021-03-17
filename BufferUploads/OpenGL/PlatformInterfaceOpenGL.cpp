@@ -393,7 +393,7 @@
             return desc;
         }
 
-        void UnderlyingDeviceContext::PushToResource(
+        void ResourceUploadHelper::PushToResource(
                                             const Underlying::Resource& resource, const ResourceDesc& bufferDesc, unsigned resourceOffsetValue,
                                             const void* data, size_t dataSize,
                                             std::pair<unsigned,unsigned> rowAndSlicePitch,
@@ -488,7 +488,7 @@
             }
         }
 
-        void UnderlyingDeviceContext::PushToStagingResource(
+        void ResourceUploadHelper::PushToStagingResource(
                                             const Underlying::Resource& resource, const ResourceDesc& desc, unsigned resourceOffsetValue,
                                             const void* data, size_t dataSize, std::pair<unsigned,unsigned> rowAndSlicePitch,
                                             const Box2D& box, unsigned lodLevel, unsigned arrayIndex)
@@ -496,53 +496,53 @@
             assert(0);  // unimplemented currently
         }
 
-        void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(
+        void ResourceUploadHelper::UpdateFinalResourceFromStaging(
                                             const Underlying::Resource& finalResource, const Underlying::Resource& staging, 
                                             const ResourceDesc& destinationDesc, unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset)
         {
             assert(0);  // unimplemented currently
         }
 
-        void UnderlyingDeviceContext::ResourceCopy_DefragSteps(const Underlying::Resource& destination, const Underlying::Resource& source, const std::vector<DefragStep>& steps)
+        void ResourceUploadHelper::ResourceCopy_DefragSteps(const Underlying::Resource& destination, const Underlying::Resource& source, const std::vector<DefragStep>& steps)
         {
             assert(0);  // unimplemented currently
         }
 
-        void UnderlyingDeviceContext::ResourceCopy(const Underlying::Resource& destination, const Underlying::Resource& source)
+        void ResourceUploadHelper::ResourceCopy(const Underlying::Resource& destination, const Underlying::Resource& source)
         {
             assert(0);  // unimplemented currently
         }
 
-        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::Map(const Underlying::Resource& resource, MapType::Enum mapType, unsigned lodLevel, unsigned arrayIndex)
-        {
-            assert(0);  // unimplemented currently
-            return MappedBuffer();
-        }
-
-        UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::MapPartial(const Underlying::Resource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned lodLevel, unsigned arrayIndex)
+        ResourceUploadHelper::MappedBuffer ResourceUploadHelper::Map(const Underlying::Resource& resource, MapType::Enum mapType, unsigned lodLevel, unsigned arrayIndex)
         {
             assert(0);  // unimplemented currently
             return MappedBuffer();
         }
 
-        std::shared_ptr<CommandList> UnderlyingDeviceContext::ResolveCommandList()
+        ResourceUploadHelper::MappedBuffer ResourceUploadHelper::MapPartial(const Underlying::Resource& resource, MapType::Enum mapType, unsigned offset, unsigned size, unsigned lodLevel, unsigned arrayIndex)
+        {
+            assert(0);  // unimplemented currently
+            return MappedBuffer();
+        }
+
+        std::shared_ptr<CommandList> ResourceUploadHelper::ResolveCommandList()
         {
             // assert(0);  // unimplemented currently
             return std::shared_ptr<CommandList>();
         }
 
-        void                        UnderlyingDeviceContext::BeginCommandList()
+        void                        ResourceUploadHelper::BeginCommandList()
         {
             _devContext->BeginCommandList();
         }
 
-        UnderlyingDeviceContext::UnderlyingDeviceContext(RenderCore::IDevice* device, DeviceContext* context)
+        ResourceUploadHelper::ResourceUploadHelper(RenderCore::IDevice* device, DeviceContext* context)
         : _device(device)
         , _devContext(context ? intrusive_ptr<DeviceContext>(context) : DeviceContext::GetImmediateContext(device))
         {
         }
 
-        void UnderlyingDeviceContext::Unmap(const Underlying::Resource&, unsigned) 
+        void ResourceUploadHelper::Unmap(const Underlying::Resource&, unsigned) 
         {
             assert(0);
         }

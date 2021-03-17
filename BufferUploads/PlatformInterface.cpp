@@ -6,7 +6,10 @@
 
 #include "PlatformInterface.h"
 #include "../RenderCore/Format.h"
-#include "../RenderCore/Metal/ObjectFactory.h"
+#include "../RenderCore/Metal/Metal.h"
+#include "../RenderCore/Metal/Resource.h"
+#include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/IThreadContext.h"
 #include "../OSServices/Log.h"
 #include "../Utility/StringFormat.h"
 #include <assert.h>
@@ -15,14 +18,123 @@
     #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 #endif
 
-// #pragma warning(disable:4127)
-#pragma warning(disable:4505)       // unreferenced local function has been removed
-
 namespace BufferUploads { namespace PlatformInterface
 {
 	using namespace RenderCore;
 
-    UnderlyingDeviceContext::ResourceInitializer AsResourceInitializer(IDataPacket& pkt)
+    unsigned ResourceUploadHelper::WriteToTextureViaMap(
+        const ResourceLocator& resource, const ResourceDesc& desc,
+        const Box2D& box, 
+        const IDevice::ResourceInitializer& data)
+    {
+        assert(resource.IsWholeResource());
+        auto* metalResource = resource.GetContainingResource().get();
+
+        // In Vulkan, the only way we have to send data to a resource is by using
+        // a memory map and CPU assisted copy. 
+        assert(desc._type == ResourceDesc::Type::Texture);
+        if (box == Box2D()) {
+            auto* vulkanResource = (Metal::Resource*)metalResource->QueryInterface(typeid(Metal::Resource).hash_code());
+            assert(vulkanResource);
+            return Metal::Internal::CopyViaMemoryMap(*_renderCoreContext->GetDevice(), *vulkanResource, data);
+        }
+
+        auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
+
+        // When we have a box, we support writing to only a single subresource
+        // We will iterate through the subresources an mip a single one
+        auto dev = _renderCoreContext->GetDevice();
+        auto copiedBytes = 0u;
+        for (unsigned mip=0; mip<std::max(1u, unsigned(desc._textureDesc._mipCount)); ++mip)
+            for (unsigned arrayLayer=0; arrayLayer<std::max(1u, unsigned(desc._textureDesc._arrayCount)); ++arrayLayer) {
+                auto srd = data({mip, arrayLayer});
+                if (!srd._data.size()) continue;
+
+                Metal::ResourceMap map(metalContext, *metalResource, Metal::ResourceMap::Mode::WriteDiscardPrevious, SubResourceId{mip, arrayLayer});
+                copiedBytes += CopyMipLevel(
+                    map.GetData().begin(), map.GetData().size(), map.GetPitches(), 
+                    desc._textureDesc,
+                    box, srd);
+            }
+
+        return copiedBytes;
+    }
+
+    void ResourceUploadHelper::UpdateFinalResourceFromStaging(
+        const ResourceLocator& finalResource, const ResourceLocator& stagingResource, 
+        const ResourceDesc& destinationDesc, 
+        const StagingToFinalMapping& stagingToFinalMapping)
+    {
+        assert(finalResource.IsWholeResource());
+        assert(stagingResource.IsWholeResource());
+
+        assert(destinationDesc._type == ResourceDesc::Type::Texture);
+        auto dstLodLevelMax = std::min(stagingToFinalMapping._dstLodLevelMax, (unsigned)destinationDesc._textureDesc._mipCount-1);
+        auto dstArrayLayerMax = std::min(stagingToFinalMapping._dstArrayLayerMax, (unsigned)destinationDesc._textureDesc._arrayCount-1);
+        auto allLods = stagingToFinalMapping._dstLodLevelMin == 0 && dstLodLevelMax == ((unsigned)destinationDesc._textureDesc._mipCount-1);
+        auto allArrayLayers = stagingToFinalMapping._dstArrayLayerMin == 0 && dstArrayLayerMax == ((unsigned)destinationDesc._textureDesc._arrayCount-1);
+        if (destinationDesc._textureDesc._arrayCount == 0) {
+            dstArrayLayerMax = 0;
+            allArrayLayers = true;
+        }
+        auto entire2DPlane = stagingToFinalMapping._stagingXYOffset[0] == 0 && stagingToFinalMapping._stagingXYOffset[1] == 0;
+
+        // During the transfer, the images must be in either TransferSrcOptimal, TransferDstOptimal or General.
+        auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
+        Metal::Internal::CaptureForBind(metalContext, *finalResource.GetContainingResource(), BindFlag::TransferDst);
+        Metal::Internal::CaptureForBind(metalContext, *stagingResource.GetContainingResource(), BindFlag::TransferSrc);
+        auto blitEncoder = metalContext.BeginBlitEncoder();
+
+        if (allLods && allArrayLayers && entire2DPlane) {
+            blitEncoder.Copy(*finalResource.GetContainingResource().get(), *stagingResource.GetContainingResource().get());
+        } else {
+            auto& dstBox = stagingToFinalMapping._dstBox;
+            for (unsigned a=stagingToFinalMapping._dstArrayLayerMin; a<=dstArrayLayerMax; ++a) {
+                for (unsigned mip=stagingToFinalMapping._dstLodLevelMin; mip<=dstLodLevelMax; ++mip) {
+                    blitEncoder.Copy(
+                        Metal::BlitEncoder::CopyPartial_Dest{
+                            finalResource.GetContainingResource().get(), 
+                            SubResourceId{mip, a}, {(unsigned)dstBox._left, (unsigned)dstBox._top, 0}},
+                        Metal::BlitEncoder::CopyPartial_Src{
+                            stagingResource.GetContainingResource().get(), 
+                            SubResourceId{mip-stagingToFinalMapping._stagingLODOffset, a-stagingToFinalMapping._stagingArrayOffset},
+                            {(unsigned)dstBox._left - stagingToFinalMapping._stagingXYOffset[0], (unsigned)dstBox._top - stagingToFinalMapping._stagingXYOffset[1], 0u},
+                            {(unsigned)dstBox._right - stagingToFinalMapping._stagingXYOffset[0], (unsigned)dstBox._bottom - stagingToFinalMapping._stagingXYOffset[1], 1u}});
+                }
+            }
+        }
+    }
+
+    unsigned ResourceUploadHelper::WriteToBufferViaMap(
+        const ResourceLocator& resource, const ResourceDesc& desc, unsigned offset,
+        IteratorRange<const void*> data)
+    {
+        assert(resource.IsWholeResource());
+        auto* metalResource = resource.GetContainingResource().get();
+
+        // note -- this is a direct, immediate map... There must be no contention while we map.
+        assert(desc._type == ResourceDesc::Type::LinearBuffer);
+        auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
+        Metal::ResourceMap map(metalContext, *metalResource, Metal::ResourceMap::Mode::WriteDiscardPrevious, SubResourceId{0,0}, offset);
+        auto copyAmount = std::min(map.GetData().size(), data.size());
+        if (copyAmount > 0)
+            XlCopyMemory(map.GetData().begin(), data.begin(), copyAmount);
+        return (unsigned)copyAmount;
+    }
+
+    void ResourceUploadHelper::ResourceCopy_DefragSteps(
+        const UnderlyingResourcePtr& destination, const UnderlyingResourcePtr& source, 
+        const std::vector<DefragStep>& steps)
+    {
+        assert(0);
+    }
+
+    void ResourceUploadHelper::ResourceCopy(UnderlyingResource& destination, UnderlyingResource& source)
+    {
+        assert(0);
+    }
+
+    RenderCore::IDevice::ResourceInitializer AsResourceInitializer(IDataPacket& pkt)
     {
         return [&pkt](SubResourceId sr) -> RenderCore::SubResourceInitData
             {
@@ -35,150 +147,8 @@ namespace BufferUploads { namespace PlatformInterface
             };
     }
 
-        //////////////////////////////////////////////////////////////////////////////////////////////
-
-    UnderlyingDeviceContext::~UnderlyingDeviceContext() {}
-
-
-        //////////////////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-    #if GFXAPI_TARGET == GFXAPI_DX11
-        intrusive_ptr<ID3D::Query> Query_CreateEvent(Metal::ObjectFactory& factory);
-        bool    Query_IsEventTriggered(ID3D::DeviceContext* context, ID3D::Query* query);
-        void    Query_End(ID3D::DeviceContext* context, ID3D::Query* query);
-    #endif
-
-    static const GPUEventStack::EventID EventID_Temporary    = ~GPUEventStack::EventID(0x1);
-    static const GPUEventStack::EventID EventID_Unallocated  = ~GPUEventStack::EventID(0x0);
-
-    void  GPUEventStack::TriggerEvent(RenderCore::Metal::DeviceContext* context, EventID event)
-    {
-#if GFXAPI_TARGET == GFXAPI_DX11
-            //
-            //      Look for a query in the query stack that isn't being used...
-            //      this will become our.
-            //      Must be done in the render thread! (event queries only work on immediate context)
-            //
-        for (std::vector<Query>::iterator i=_queries.begin(); i!=_queries.end(); ++i) {
-            const EventID previousValue = Interlocked::CompareExchange(&i->_assignedID, EventID_Temporary, EventID_Unallocated);
-            if (previousValue == EventID_Unallocated) {
-                QueryID thisQueryID = Interlocked::Increment(&_nextQueryID);
-
-                    //
-                    //      Trigger the event... But make sure we do it in the correct order... use the 
-                    //      _nextIDToSchedule variable to make sure it happens correctly, even when multiple 
-                    //      threads are scheduling events at the same time!
-                    //
-                    //      But -- note that this ordering only really works correctly if 
-                    //
-                QueryID nextToSchedule = thisQueryID+1;
-                for (;;) {
-                    const QueryID scheduleResult = Interlocked::CompareExchange(&_nextQueryIDToSchedule, nextToSchedule, thisQueryID);
-                    if (scheduleResult == thisQueryID) {
-                        if (!i->_query) { i->_query = Query_CreateEvent(*_objFactory); }
-                        if (i->_query) { Query_End(context->GetUnderlying(), i->_query.get()); }
-                        break;
-                    }
-                    Threading::Pause();
-                }
-                i->_eventID = event;
-                i->_assignedID = thisQueryID;
-                return;
-            }
-        }
-        LogWarning << "Ran out of free query objects in GPUEventStack";
-        _lastCompletedID = std::max(_lastCompletedID, event);       // consider it immediately completed
-#endif
-    }
-
-    void        GPUEventStack::Update(RenderCore::Metal::DeviceContext* context)
-    {
-#if GFXAPI_TARGET == GFXAPI_DX11
-            //
-            //      Look for completed queries, and update our current ID as they complete (also return the 
-            //      query to the pool)
-            //      Must be done in the render thread! (event queries only work on immediate context)
-            //
-        for (std::vector<Query>::iterator i=_queries.begin(); i!=_queries.end(); ++i) {
-            if (i->_assignedID >= 0) {
-                if (!i->_query || Query_IsEventTriggered(context->GetUnderlying(), i->_query.get())) {
-                    _lastCompletedID = std::max(_lastCompletedID, i->_eventID);
-                    Interlocked::Exchange(&i->_assignedID, EventID_Unallocated);
-                }
-            }
-        }
-#endif
-    }
-
-    void        GPUEventStack::OnLostDevice()
-    {
-#if GFXAPI_TARGET != GFXAPI_OPENGLES
-            // On device lost, we must consider all queries triggered, and then un-allocate them
-        for (std::vector<Query>::iterator i=_queries.begin(); i!=_queries.end(); ++i) {
-            i->_query.reset();
-            if (i->_assignedID >= 0) {
-                _lastCompletedID = std::max(_lastCompletedID, i->_eventID);
-                Interlocked::Exchange(&i->_assignedID, EventID_Unallocated);
-            }
-        }
-#endif
-    }
-
-    void        GPUEventStack::OnDeviceReset()
-    {
-            // On device lost, we must consider all queries triggered, and then un-allocate them
-        for (std::vector<Query>::iterator i=_queries.begin(); i!=_queries.end(); ++i) {
-            *i = Query();
-        }
-    }
-
-    GPUEventStack::GPUEventStack(RenderCore::IDevice& device) : _objFactory(&Metal::GetObjectFactory(device))
-    {
-            //
-            //      What we really want is an "event" query that holds an integer value (like the events on the 
-            //      PS3 hardware). This would allow us to track the GPU progress without needing multiple event
-            //      objects.
-            //
-            //      But D3D only has the boolean events; so we need to use a separate event object for each marker
-            //      we want to record...
-            //
-        const unsigned queryStackDepth = 32;
-        _queries.resize(queryStackDepth);
-        _nextQueryIDToSchedule = _nextQueryID = 1;
-        _lastCompletedID = 0;
-    }
-
-    GPUEventStack::~GPUEventStack()
-    {
-    }
-
-    GPUEventStack::Query::Query()
-    {
-#if GFXAPI_TARGET != GFXAPI_OPENGLES
-        _query = nullptr;
-#endif
-        _assignedID = EventID_Unallocated;
-    }
-
-    GPUEventStack::Query::~Query()
-    {}      // just a place for so the intrusive_ptr destructor code doesn't get compiled into multiple source files
-
-#else
-
-	void        GPUEventStack::TriggerEvent(RenderCore::Metal::DeviceContext* context, EventID event) {}
-	void        GPUEventStack::Update(RenderCore::Metal::DeviceContext* context) {}
-	auto		GPUEventStack::GetLastCompletedEvent() const -> EventID { return 0; }
-
-	void        GPUEventStack::OnLostDevice() {}
-	void        GPUEventStack::OnDeviceReset() {}
-
-	GPUEventStack::GPUEventStack(RenderCore::IDevice& device) {}
-	GPUEventStack::~GPUEventStack() {}
-
-#endif
-
-    ////////////////////////////////////////////////////////////////////////////////
+    ResourceUploadHelper::ResourceUploadHelper(IThreadContext& renderCoreContext) : _renderCoreContext(&renderCoreContext) {}
+    ResourceUploadHelper::~ResourceUploadHelper() {}
 
     static const char* AsString(TextureDesc::Dimensionality dimensionality)
     {
@@ -214,9 +184,96 @@ namespace BufferUploads { namespace PlatformInterface
         return std::string(buffer);
     }
 
-//    #if !defined(XL_RELEASE)
-//        #define INTRUSIVE_D3D_PROFILING
-//    #endif
+    static ResourceDesc AsStagingDesc(const ResourceDesc& desc)
+    {
+        ResourceDesc result = desc;
+        result._cpuAccess = CPUAccess::Write|CPUAccess::Read;
+        result._gpuAccess = 0;
+        result._bindFlags = BindFlag::TransferSrc;
+        result._allocationRules |= AllocationRules::Staging;
+        return result;
+    }
+
+    static ResourceDesc ApplyLODOffset(const ResourceDesc& desc, unsigned lodOffset)
+    {
+            //  Remove the top few LODs from the desc...
+        ResourceDesc result = desc;
+        if (result._type == ResourceDesc::Type::Texture) {
+            result._textureDesc = RenderCore::CalculateMipMapDesc(desc._textureDesc, lodOffset);
+        }
+        return result;
+    }
+    
+    static bool IsFull2DPlane(const ResourceDesc& resDesc, const RenderCore::Box2D& box)
+    {
+        assert(resDesc._type == ResourceDesc::Type::Texture);
+        if (box == Box2D{}) return true;
+        return 
+            box._left == 0 && box._top == 0
+            && box._right == resDesc._textureDesc._width
+            && box._left == resDesc._textureDesc._height;
+    }
+
+    static bool IsAllLodLevels(const ResourceDesc& resDesc, unsigned lodLevelMin, unsigned lodLevelMax)
+    {
+        assert(resDesc._type == ResourceDesc::Type::Texture);
+        assert(lodLevelMin != lodLevelMax);
+        auto max = std::min(lodLevelMax, (unsigned)resDesc._textureDesc._mipCount-1);
+        return (lodLevelMin == 0 && max == resDesc._textureDesc._mipCount-1);
+    }
+
+    static bool IsAllArrayLayers(const ResourceDesc& resDesc, unsigned arrayLayerMin, unsigned arrayLayerMax)
+    {
+        assert(resDesc._type == ResourceDesc::Type::Texture);
+        assert(arrayLayerMin != arrayLayerMax);
+        if (resDesc._textureDesc._arrayCount == 0) return true;
+
+        auto max = std::min(arrayLayerMax, (unsigned)resDesc._textureDesc._arrayCount-1);
+        return (arrayLayerMin == 0 && max == resDesc._textureDesc._arrayCount-1);
+    }
+
+    std::pair<ResourceDesc, PlatformInterface::StagingToFinalMapping> CalculatePartialStagingDesc(
+        const ResourceDesc& dstDesc,
+        const PartialResource& part)
+    {
+        assert(dstDesc._type == ResourceDesc::Type::Texture);
+        ResourceDesc stagingDesc = AsStagingDesc(dstDesc);
+        PlatformInterface::StagingToFinalMapping mapping;
+        mapping._dstBox = part._box;
+        if (IsFull2DPlane(dstDesc, mapping._dstBox)) {
+            // When writing to the full 2d plane, we can selectively update only some lod levels
+            if (!IsAllLodLevels(dstDesc, part._lodLevelMin, part._lodLevelMax)) {
+                mapping._stagingLODOffset = part._lodLevelMin;
+                mapping._dstLodLevelMin = part._lodLevelMin;
+                mapping._dstLodLevelMax = std::min(part._lodLevelMax, (unsigned)dstDesc._textureDesc._mipCount-1);
+                stagingDesc = ApplyLODOffset(stagingDesc, mapping._stagingLODOffset);
+            }
+        } else {
+            // We need this restriction because otherwise (assuming the mip chain goes to 1x1) we
+            // would have to recalculate all mips
+            if (!IsAllLodLevels(dstDesc, part._lodLevelMin, part._lodLevelMax))
+                Throw(std::runtime_error("When updating texture data for only part of the 2d plane, you must update all lod levels"));
+
+            // Shrink the size of the staging texture to just the parts we want
+            assert(mapping._dstBox._right > mapping._dstBox._left);
+            assert(mapping._dstBox._bottom > mapping._dstBox._top);
+            mapping._stagingXYOffset = { (unsigned)mapping._dstBox._left, (unsigned)mapping._dstBox._top };
+            stagingDesc._textureDesc._width = mapping._dstBox._right - mapping._dstBox._left;
+            stagingDesc._textureDesc._height = mapping._dstBox._bottom - mapping._dstBox._top;
+        }
+
+        if (!IsAllArrayLayers(dstDesc, part._arrayIndexMin, part._arrayIndexMax)) {
+            assert(part._arrayIndexMax > part._arrayIndexMin);
+            mapping._stagingArrayOffset = part._arrayIndexMin;
+            mapping._dstArrayLayerMin = part._arrayIndexMin;
+            mapping._dstArrayLayerMax = std::min(part._arrayIndexMax, (unsigned)dstDesc._textureDesc._arrayCount-1);
+            stagingDesc._textureDesc._arrayCount = mapping._dstArrayLayerMax + 1 - mapping._dstArrayLayerMin;
+            if (stagingDesc._textureDesc._arrayCount == 1)
+                stagingDesc._textureDesc._arrayCount = 0;
+        }
+
+        return std::make_pair(stagingDesc, mapping);
+    }
 
     #if defined(INTRUSIVE_D3D_PROFILING)
         class ResourceTracker : public IUnknown

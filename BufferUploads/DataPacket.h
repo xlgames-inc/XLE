@@ -4,53 +4,16 @@
 
 #pragma once
 
+#include "IBufferUploads.h"
 #include "../RenderCore/Types.h"
 #include "../RenderCore/ResourceDesc.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"                 // for StringSection
 #include <functional>
 #include <regex>
-#include <future>
 
 namespace BufferUploads
 {
-    using TexturePitches = RenderCore::TexturePitches;
-    using SubResourceId = RenderCore::SubResourceId;
-    using ResourceDesc = RenderCore::ResourceDesc;
-
-    class IDataPacket
-    {
-    public:
-        virtual void*           GetData         (SubResourceId subRes = {}) = 0;
-        virtual size_t          GetDataSize     (SubResourceId subRes = {}) const = 0;
-        virtual TexturePitches  GetPitches      (SubResourceId subRes = {}) const = 0;
-        virtual ~IDataPacket();
-    };
-
-    class IAsyncDataSource
-    {
-    public:
-        virtual std::future<ResourceDesc> GetDesc () = 0;
-
-        struct SubResource
-        {
-            SubResourceId _id;
-            IteratorRange<void*> _destination;
-            TexturePitches _pitches;
-        };
-
-        virtual std::future<void> PrepareData(IteratorRange<const SubResource*> subResources) = 0;
-    };
-
-        /////////////////////////////////////////////////
-
-    std::shared_ptr<IDataPacket> CreateBasicPacket(
-        IteratorRange<const void*> data = {}, 
-        TexturePitches pitches = TexturePitches());
-
-    std::shared_ptr<IDataPacket> CreateEmptyPacket(
-        const ResourceDesc& desc);
-
     //////////////////////////////////////////////
         // Legacy texture loaders //
     //////////////////////////////////////////////

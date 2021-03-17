@@ -30,7 +30,7 @@
         static bool IsDXTCompressed(Format format) { return GetCompressionType(format) == FormatCompressionType::BlockCompression; }
         static ID3D::Resource*        ResPtr(UnderlyingResource& resource) { return Metal::AsID3DResource(resource); }
 
-        unsigned UnderlyingDeviceContext::WriteToTextureViaUpdateSubresource(
+        unsigned ResourceUploadHelper::WriteToTextureViaUpdateSubresource(
             UnderlyingResource& resource, const ResourceDesc& desc,
             const Box2D& box, 
             const ResourceInitializer& data)
@@ -137,7 +137,7 @@
             return copiedBytes;
         }
 
-        unsigned UnderlyingDeviceContext::WriteToBufferViaMap(
+        unsigned ResourceUploadHelper::WriteToBufferViaMap(
             UnderlyingResource& resource, const ResourceDesc& desc, unsigned offset,
             const void* data, size_t dataSize)
         {
@@ -188,7 +188,7 @@
             return copiedBytes;
         }
 
-        unsigned UnderlyingDeviceContext::WriteToTextureViaMap(
+        unsigned ResourceUploadHelper::WriteToTextureViaMap(
             UnderlyingResource& resource, const ResourceDesc&desc,
             const Box2D& box,
             const ResourceInitializer& data)
@@ -220,7 +220,7 @@
             return copiedBytes;
         }
 
-        void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(
+        void ResourceUploadHelper::UpdateFinalResourceFromStaging(
             UnderlyingResource& finalResource, UnderlyingResource& staging, 
             const ResourceDesc& destinationDesc, 
             unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset,
@@ -373,7 +373,7 @@
             _pitches = pitches;
         }
 
-        void UnderlyingDeviceContext::ResourceCopy_DefragSteps(const UnderlyingResourcePtr& destination, const UnderlyingResourcePtr& source, const std::vector<DefragStep>& steps)
+        void ResourceUploadHelper::ResourceCopy_DefragSteps(const UnderlyingResourcePtr& destination, const UnderlyingResourcePtr& source, const std::vector<DefragStep>& steps)
         {
             auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext); 
             if (!constant_expression<UseMapBasedDefrag>::result()) {
@@ -401,30 +401,30 @@
             }
         }
 
-        void UnderlyingDeviceContext::ResourceCopy(UnderlyingResource& destination, UnderlyingResource& source)
+        void ResourceUploadHelper::ResourceCopy(UnderlyingResource& destination, UnderlyingResource& source)
         {
 			auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
             RenderCore::Metal::Copy(*metalContext, Metal::AsResource(destination), Metal::AsResource(source));
         }
 
-        intrusive_ptr<RenderCore::Metal::CommandList> UnderlyingDeviceContext::ResolveCommandList()
+        intrusive_ptr<RenderCore::Metal::CommandList> ResourceUploadHelper::ResolveCommandList()
         {
 			auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
             return metalContext->ResolveCommandList();
         }
 
-        void                        UnderlyingDeviceContext::BeginCommandList()
+        void                        ResourceUploadHelper::BeginCommandList()
         {
 			auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
 			metalContext->BeginCommandList();
         }
 
-		std::shared_ptr<RenderCore::IDevice> UnderlyingDeviceContext::GetObjectFactory()
+		std::shared_ptr<RenderCore::IDevice> ResourceUploadHelper::GetObjectFactory()
 		{
 			return _renderCoreContext->GetDevice();
 		}
 
-        UnderlyingDeviceContext::UnderlyingDeviceContext(RenderCore::IThreadContext& renderCoreContext) 
+        ResourceUploadHelper::ResourceUploadHelper(RenderCore::IThreadContext& renderCoreContext) 
         : _renderCoreContext(&renderCoreContext)
         {
             _useUpdateSubresourceWorkaround = false;
@@ -460,7 +460,7 @@
 
         RawDataPacket_ReadBack(
             const ResourceLocator& locator, 
-            PlatformInterface::UnderlyingDeviceContext& context);
+            PlatformInterface::ResourceUploadHelper& context);
         ~RawDataPacket_ReadBack();
 
     protected:
@@ -506,7 +506,7 @@
 
     RawDataPacket_ReadBack::RawDataPacket_ReadBack(
 		const ResourceLocator& locator, 
-		PlatformInterface::UnderlyingDeviceContext& context)
+		PlatformInterface::ResourceUploadHelper& context)
     : _dataOffset(0)
     {
         assert(!locator.IsEmpty());
@@ -558,7 +558,7 @@
     {
     }
 
-    intrusive_ptr<DataPacket> UnderlyingDeviceContext::Readback(const ResourceLocator& locator)
+    intrusive_ptr<DataPacket> ResourceUploadHelper::Readback(const ResourceLocator& locator)
     {
         return make_intrusive<RawDataPacket_ReadBack>(std::ref(locator), std::ref(*this));
     }
@@ -614,6 +614,131 @@
             HRESULT hresult = resource->SetPrivateDataInterface(guid, attachableObject);
             assert(SUCCEEDED(hresult)); (void)hresult;
         }
+
+
+#if 0
+    #if GFXAPI_TARGET == GFXAPI_DX11
+        intrusive_ptr<ID3D::Query> Query_CreateEvent(Metal::ObjectFactory& factory);
+        bool    Query_IsEventTriggered(ID3D::DeviceContext* context, ID3D::Query* query);
+        void    Query_End(ID3D::DeviceContext* context, ID3D::Query* query);
+    #endif
+
+    static const GPUEventStack::EventID EventID_Temporary    = ~GPUEventStack::EventID(0x1);
+    static const GPUEventStack::EventID EventID_Unallocated  = ~GPUEventStack::EventID(0x0);
+
+    void  GPUEventStack::TriggerEvent(RenderCore::Metal::DeviceContext* context, EventID event)
+    {
+#if GFXAPI_TARGET == GFXAPI_DX11
+            //
+            //      Look for a query in the query stack that isn't being used...
+            //      this will become our.
+            //      Must be done in the render thread! (event queries only work on immediate context)
+            //
+        for (std::vector<Query>::iterator i=_queries.begin(); i!=_queries.end(); ++i) {
+            const EventID previousValue = Interlocked::CompareExchange(&i->_assignedID, EventID_Temporary, EventID_Unallocated);
+            if (previousValue == EventID_Unallocated) {
+                QueryID thisQueryID = Interlocked::Increment(&_nextQueryID);
+
+                    //
+                    //      Trigger the event... But make sure we do it in the correct order... use the 
+                    //      _nextIDToSchedule variable to make sure it happens correctly, even when multiple 
+                    //      threads are scheduling events at the same time!
+                    //
+                    //      But -- note that this ordering only really works correctly if 
+                    //
+                QueryID nextToSchedule = thisQueryID+1;
+                for (;;) {
+                    const QueryID scheduleResult = Interlocked::CompareExchange(&_nextQueryIDToSchedule, nextToSchedule, thisQueryID);
+                    if (scheduleResult == thisQueryID) {
+                        if (!i->_query) { i->_query = Query_CreateEvent(*_objFactory); }
+                        if (i->_query) { Query_End(context->GetUnderlying(), i->_query.get()); }
+                        break;
+                    }
+                    Threading::Pause();
+                }
+                i->_eventID = event;
+                i->_assignedID = thisQueryID;
+                return;
+            }
+        }
+        LogWarning << "Ran out of free query objects in GPUEventStack";
+        _lastCompletedID = std::max(_lastCompletedID, event);       // consider it immediately completed
+#endif
+    }
+
+    void        GPUEventStack::Update(RenderCore::Metal::DeviceContext* context)
+    {
+#if GFXAPI_TARGET == GFXAPI_DX11
+            //
+            //      Look for completed queries, and update our current ID as they complete (also return the 
+            //      query to the pool)
+            //      Must be done in the render thread! (event queries only work on immediate context)
+            //
+        for (std::vector<Query>::iterator i=_queries.begin(); i!=_queries.end(); ++i) {
+            if (i->_assignedID >= 0) {
+                if (!i->_query || Query_IsEventTriggered(context->GetUnderlying(), i->_query.get())) {
+                    _lastCompletedID = std::max(_lastCompletedID, i->_eventID);
+                    Interlocked::Exchange(&i->_assignedID, EventID_Unallocated);
+                }
+            }
+        }
+#endif
+    }
+
+    void        GPUEventStack::OnLostDevice()
+    {
+#if GFXAPI_TARGET != GFXAPI_OPENGLES
+            // On device lost, we must consider all queries triggered, and then un-allocate them
+        for (std::vector<Query>::iterator i=_queries.begin(); i!=_queries.end(); ++i) {
+            i->_query.reset();
+            if (i->_assignedID >= 0) {
+                _lastCompletedID = std::max(_lastCompletedID, i->_eventID);
+                Interlocked::Exchange(&i->_assignedID, EventID_Unallocated);
+            }
+        }
+#endif
+    }
+
+    void        GPUEventStack::OnDeviceReset()
+    {
+            // On device lost, we must consider all queries triggered, and then un-allocate them
+        for (std::vector<Query>::iterator i=_queries.begin(); i!=_queries.end(); ++i) {
+            *i = Query();
+        }
+    }
+
+    GPUEventStack::GPUEventStack(RenderCore::IDevice& device) : _objFactory(&Metal::GetObjectFactory(device))
+    {
+            //
+            //      What we really want is an "event" query that holds an integer value (like the events on the 
+            //      PS3 hardware). This would allow us to track the GPU progress without needing multiple event
+            //      objects.
+            //
+            //      But D3D only has the boolean events; so we need to use a separate event object for each marker
+            //      we want to record...
+            //
+        const unsigned queryStackDepth = 32;
+        _queries.resize(queryStackDepth);
+        _nextQueryIDToSchedule = _nextQueryID = 1;
+        _lastCompletedID = 0;
+    }
+
+    GPUEventStack::~GPUEventStack()
+    {
+    }
+
+    GPUEventStack::Query::Query()
+    {
+#if GFXAPI_TARGET != GFXAPI_OPENGLES
+        _query = nullptr;
+#endif
+        _assignedID = EventID_Unallocated;
+    }
+
+    GPUEventStack::Query::~Query()
+    {}      // just a place for so the intrusive_ptr destructor code doesn't get compiled into multiple source files
+
+#endif
 
     }}
 

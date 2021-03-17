@@ -79,7 +79,7 @@ namespace UnitTests
 
             auto start = std::chrono::steady_clock::now();
             for (;;) {
-                bu->Update(*metalHelper->_device->GetImmediateContext(), false);
+                bu->Update(*metalHelper->_device->GetImmediateContext());
                 auto status = transaction._future.wait_for(100ms);
                 if (status == std::future_status::ready)
                     break;
@@ -88,7 +88,7 @@ namespace UnitTests
                     FAIL("Too much time has passed waiting for buffer uploads transaction to complete");
             }
 
-            bu->Update(*metalHelper->_device->GetImmediateContext(), false);
+            bu->Update(*metalHelper->_device->GetImmediateContext());
 
             REQUIRE(bu->IsCompleted(transaction._transactionID));
             auto finalResource = transaction._future.get().AsIndependentResource();
@@ -111,7 +111,7 @@ namespace UnitTests
 
             auto start = std::chrono::steady_clock::now();
             for (;;) {
-                bu->Update(*metalHelper->_device->GetImmediateContext(), false);
+                bu->Update(*metalHelper->_device->GetImmediateContext());
                 auto status = transaction._future.wait_for(100ms);
                 if (status == std::future_status::ready)
                     break;
@@ -120,7 +120,7 @@ namespace UnitTests
                     FAIL("Too much time has passed waiting for buffer uploads transaction to complete");
             }
 
-            bu->Update(*metalHelper->_device->GetImmediateContext(), false);
+            bu->Update(*metalHelper->_device->GetImmediateContext());
 
             REQUIRE(bu->IsCompleted(transaction._transactionID));
             auto finalResource = transaction._future.get().AsIndependentResource();

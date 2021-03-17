@@ -5,6 +5,7 @@
 #pragma once
 
 #include "IBufferUploads.h"
+#include "../Utility/Threading/LockFree.h"
 #include <utility>
 #include <thread>
 
@@ -40,7 +41,7 @@ namespace BufferUploads
         PoolSystemMetrics       CalculatePoolMetrics() const override;
         size_t                  ByteCount(const ResourceDesc& desc) const override;
 
-        void                    Update(RenderCore::IThreadContext&, bool preserveRenderState) override;
+        void                    Update(RenderCore::IThreadContext&) override;
         void                    FramePriority_Barrier() override;
 
         EventListID             EventList_GetLatestID() override;
@@ -57,9 +58,10 @@ namespace BufferUploads
         std::unique_ptr<std::thread> _backgroundThread;
         std::unique_ptr<ThreadContext> _backgroundContext;
         std::unique_ptr<ThreadContext> _foregroundContext;
-        std::unique_ptr<PlatformInterface::GPUEventStack> _gpuEventStack;
 
         volatile bool _shutdownBackgroundThread;
+
+        LockFreeFixedSizeQueue<unsigned, 4> _pendingFramePriority_CommandLists;
 
         uint32_t DoBackgroundThread();
 

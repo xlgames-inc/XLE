@@ -19,15 +19,13 @@
 
 namespace BufferUploads
 {
-	namespace CPUAccess = RenderCore::CPUAccess;
-	namespace GPUAccess = RenderCore::GPUAccess;
-	namespace BindFlag = RenderCore::BindFlag;
-	namespace AllocationRules = RenderCore::AllocationRules;
 	using LinearBufferDesc = RenderCore::LinearBufferDesc;
 	using TextureSamples = RenderCore::TextureSamples;
 	using TextureDesc = RenderCore::TextureDesc;
     using ResourceDesc = RenderCore::ResourceDesc;
     using IResource = RenderCore::IResource;
+    using TexturePitches = RenderCore::TexturePitches;
+    using SubResourceId = RenderCore::SubResourceId;
 
         /////////////////////////////////////////////////
 
@@ -186,10 +184,7 @@ namespace BufferUploads
 
             /// <summary>Called every frame to update uploads</summary>
             /// Performs once-per-frame tasks. Normally called by the render device once per frame.
-            /// <param name="preserveRenderState">Set to true to preserve the render state in the 
-            ///     immediate context. When set to false, sometimes the render state will be reset
-            ///     to the default (See DirectX documentation for ExecuteCommandList)</param>
-        virtual void                    Update  (RenderCore::IThreadContext& immediateContext, bool preserveRenderState) = 0;
+        virtual void                    Update  (RenderCore::IThreadContext& immediateContext) = 0;
             /// @}
 
             /// \name Utilities, profiling & debugging
@@ -221,6 +216,39 @@ namespace BufferUploads
 
         virtual ~IManager();
     };
+
+    class IDataPacket
+    {
+    public:
+        virtual void*           GetData         (SubResourceId subRes = {}) = 0;
+        virtual size_t          GetDataSize     (SubResourceId subRes = {}) const = 0;
+        virtual TexturePitches  GetPitches      (SubResourceId subRes = {}) const = 0;
+        virtual ~IDataPacket();
+    };
+
+    class IAsyncDataSource
+    {
+    public:
+        virtual std::future<ResourceDesc> GetDesc () = 0;
+
+        struct SubResource
+        {
+            SubResourceId _id;
+            IteratorRange<void*> _destination;
+            TexturePitches _pitches;
+        };
+
+        virtual std::future<void> PrepareData(IteratorRange<const SubResource*> subResources) = 0;
+    };
+
+        /////////////////////////////////////////////////
+
+    buffer_upload_dll_export std::shared_ptr<IDataPacket> CreateBasicPacket(
+        IteratorRange<const void*> data = {}, 
+        TexturePitches pitches = TexturePitches());
+
+    buffer_upload_dll_export std::shared_ptr<IDataPacket> CreateEmptyPacket(
+        const ResourceDesc& desc);
 
     buffer_upload_dll_export std::unique_ptr<IManager>      CreateManager(RenderCore::IDevice& renderDevice);
 

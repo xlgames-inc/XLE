@@ -190,7 +190,7 @@ namespace BufferUploads
             std::unique_ptr<HeapedResource>   _newHeap;
             std::vector<DefragStep>         _steps;
 
-            PlatformInterface::GPUEventStack::EventID _initialCommandListID;
+            CommandListID _initialCommandListID;
 
             static bool SortByPosition(const PendingOperation& lhs, const PendingOperation& rhs);
         };
@@ -247,8 +247,6 @@ namespace BufferUploads
         void                    Tick(ThreadContext& context, IManager::EventListID processedEventList);
 
         BatchedResources::ResultFlags::BitField     IsBatchedResource(const ResourceLocator& locator, const ResourceDesc& desc);
-
-        bool                    MarkBarrier(unsigned barrierID);
 
         void                    OnLostDevice();
 

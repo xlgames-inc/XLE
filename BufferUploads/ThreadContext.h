@@ -28,6 +28,7 @@ namespace BufferUploads
         {
         public:
             ResourceLocator _destination;
+            ResourceDesc _resourceDesc;
             std::vector<uint8_t> _temporaryBuffer;
         };
 
@@ -61,29 +62,10 @@ namespace BufferUploads
         CommitStep& operator=(const CommitStep&);
     };
 
-        //////   C O M M A N D   L I S T   //////
-
-    class CommandList
-    {
-    public:
-        using ID = uint32_t;
-
-		std::shared_ptr<RenderCore::Metal::CommandList>        _deviceCommandList;
-        mutable CommandListMetrics      _metrics;
-        CommitStep                      _commitStep;
-        ID                              _id;
-
-        CommandList();
-        CommandList(CommandList&& moveFrom);
-        CommandList& operator=(CommandList&& moveFrom);
-        ~CommandList();
-    private:
-        CommandList(const CommandList&);
-        CommandList& operator=(const CommandList&);
-    };
-
         //////   T H R E A D   C O N T E X T   //////
 
+    using CommandListID = uint32_t;
+    
     class Event_ResourceReposition
     {
     public:
@@ -103,10 +85,7 @@ namespace BufferUploads
     public:
         void                    BeginCommandList();
         void                    ResolveCommandList();
-        void                    CommitToImmediate(
-            RenderCore::IThreadContext& commitTo,
-            PlatformInterface::GPUEventStack& gpuEventStack,
-            bool preserveRenderState);
+        void                    CommitToImmediate(RenderCore::IThreadContext& commitTo, LockFreeFixedSizeQueue<unsigned, 4>* framePriorityQueue = nullptr);
 
         CommandListMetrics      PopMetrics();
 
@@ -119,43 +98,45 @@ namespace BufferUploads
         IManager::EventListID   EventList_GetPublishedID() const;
         IManager::EventListID   EventList_GetProcessedID() const;
 
-        CommandList::ID         CommandList_GetUnderConstruction() const        { return _commandListIDUnderConstruction; }
-        CommandList::ID         CommandList_GetCompletedByGPU() const           { return _commandListIDCompletedByGPU; }
-        CommandList::ID         CommandList_GetCommittedToImmediate() const     { return _commandListIDCommittedToImmediate; }
+        CommandListID           CommandList_GetUnderConstruction() const        { return _commandListIDUnderConstruction; }
+        CommandListID           CommandList_GetCommittedToImmediate() const     { return _commandListIDCommittedToImmediate; }
 
-        PlatformInterface::UnderlyingDeviceContext& GetDeviceContext()          { return _deviceContext; }
         CommandListMetrics&     GetMetricsUnderConstruction()                   { return _commandListUnderConstruction; }
         CommitStep&             GetCommitStepUnderConstruction()                { return _commitStepUnderConstruction; }
 
         unsigned                CommitCount_Current()                           { return _commitCountCurrent; }
         unsigned&               CommitCount_LastResolve()                       { return _commitCountLastResolve; }
 
-        // XlHandle                GetWakeupEvent()                                { return _wakeupEvent; }
-        void                    FramePriority_Barrier(unsigned queueSetId);
+        PlatformInterface::ResourceUploadHelper& GetResourceUploadHelper() { return _resourceUploadHelper; }
+        const std::shared_ptr<RenderCore::IThreadContext>& GetRenderCoreThreadContext() { return _underlyingContext; }
 
         void                    OnLostDevice();
-
-        LockFreeFixedSizeQueue<unsigned, 4> _pendingFramePriority_CommandLists;
 
         ThreadContext(std::shared_ptr<RenderCore::IThreadContext> underlyingContext);
         ~ThreadContext();
     private:
         std::shared_ptr<RenderCore::IThreadContext> _underlyingContext;
+        PlatformInterface::ResourceUploadHelper _resourceUploadHelper;
         CommandListMetrics _commandListUnderConstruction;
         CommitStep _commitStepUnderConstruction;
+        class CommandList
+        {
+        public:
+            std::shared_ptr<RenderCore::Metal::CommandList> _deviceCommandList;
+            mutable CommandListMetrics _metrics;
+            CommitStep _commitStep;
+            CommandListID _id;
+        };
         LockFreeFixedSizeQueue<CommandList, 32> _queuedCommandLists;
         #if defined(XL_BUFFER_UPLOAD_RECORD_THREAD_CONTEXT_METRICS)
             LockFreeFixedSizeQueue<CommandListMetrics, 32> _recentRetirements;
         #endif
-        PlatformInterface::UnderlyingDeviceContext _deviceContext;
+        bool _isImmediateContext;
 
         TimeMarker  _lastResolve;
         unsigned    _commitCountCurrent, _commitCountLastResolve;
-        bool        _requiresResolves;
 
-        // XlHandle    _wakeupEvent;
-
-        CommandList::ID _commandListIDUnderConstruction, _commandListIDCompletedByGPU, _commandListIDCommittedToImmediate;
+        CommandListID _commandListIDUnderConstruction, _commandListIDCommittedToImmediate;
 
         class EventList
         {

@@ -8,9 +8,10 @@
 
 #include "IBufferUploads.h"
 #include "DataPacket.h"     // (actually just for TexturePitches)
-#include "../RenderCore/IDevice_Forward.h"
+#include "../RenderCore/IDevice.h"
 #include "../Utility/IntrusivePtr.h"
 #include "../RenderCore/Metal/Forward.h"
+#include <utility>
 
 namespace Utility { class DefragStep; }
 
@@ -20,9 +21,6 @@ namespace BufferUploads { namespace PlatformInterface
 
 	using UnderlyingResource = RenderCore::IResource;
 	using UnderlyingResourcePtr = RenderCore::IResourcePtr;
-
-	// UnderlyingResourcePtr CreateResource(RenderCore::IDevice& device, const ResourceDesc& desc, IDataPacket* initialisationData = nullptr);
-    // ResourceDesc      ExtractDesc(RenderCore::IResource& resource);
 
     struct BufferMetrics : public RenderCore::ResourceDesc
     {
@@ -44,6 +42,8 @@ namespace BufferUploads { namespace PlatformInterface
 
         /////////////////////////////////////////////////////////////////////
 
+    RenderCore::IDevice::ResourceInitializer AsResourceInitializer(IDataPacket& pkt);
+    
     struct StagingToFinalMapping
     {
         RenderCore::Box2D _dstBox;
@@ -55,7 +55,9 @@ namespace BufferUploads { namespace PlatformInterface
         VectorPattern<unsigned, 2> _stagingXYOffset = {0,0};
     };
 
-    class UnderlyingDeviceContext
+    std::pair<ResourceDesc, StagingToFinalMapping> CalculatePartialStagingDesc(const ResourceDesc& dstDesc, const PartialResource& part);
+
+    class ResourceUploadHelper
     {
     public:
             ////////   P U S H   T O   R E S O U R C E   ////////
@@ -63,12 +65,10 @@ namespace BufferUploads { namespace PlatformInterface
             const ResourceLocator& resource, const ResourceDesc& desc, unsigned offset,
             IteratorRange<const void*> data);
         
-        using ResourceInitializer = std::function<RenderCore::SubResourceInitData(RenderCore::SubResourceId)>;
-        
         unsigned WriteToTextureViaMap(
             const ResourceLocator& resource, const ResourceDesc& desc,
             const RenderCore::Box2D& box, 
-            const ResourceInitializer& data);
+            const RenderCore::IDevice::ResourceInitializer& data);
 
         void UpdateFinalResourceFromStaging(
             const ResourceLocator& finalResource, const ResourceLocator& staging,
@@ -79,13 +79,9 @@ namespace BufferUploads { namespace PlatformInterface
         void ResourceCopy_DefragSteps(const UnderlyingResourcePtr& destination, const UnderlyingResourcePtr& source, const std::vector<Utility::DefragStep>& steps);
         void ResourceCopy(UnderlyingResource& destination, UnderlyingResource& source);
 
-            ////////   C O M M A N D   L I S T S   ////////
-        std::shared_ptr<RenderCore::Metal::CommandList> ResolveCommandList();
-        void                                            BeginCommandList();
-
             ////////   C O N S T R U C T I O N   ////////
-        UnderlyingDeviceContext(RenderCore::IThreadContext& renderCoreContext);
-        ~UnderlyingDeviceContext();
+        ResourceUploadHelper(RenderCore::IThreadContext& renderCoreContext);
+        ~ResourceUploadHelper();
 
         RenderCore::IThreadContext& GetUnderlying() { return *_renderCoreContext; }
 
@@ -97,60 +93,6 @@ namespace BufferUploads { namespace PlatformInterface
     private:
         RenderCore::IThreadContext*         _renderCoreContext;
     };
-
-    UnderlyingDeviceContext::ResourceInitializer AsResourceInitializer(IDataPacket& pkt);
-
-        /////////////////////////////////////////////////////////////////////
-#if 0
-    class GPUEventStack
-    {
-    public:
-        typedef unsigned    EventID;
-
-        void        TriggerEvent(RenderCore::Metal::DeviceContext* context, EventID event);
-        void        Update(RenderCore::Metal::DeviceContext* context);
-        EventID     GetLastCompletedEvent() const       { return _lastCompletedID; }
-
-        void        OnLostDevice();
-        void        OnDeviceReset();
-
-        GPUEventStack(RenderCore::IDevice& device);
-        ~GPUEventStack();
-    private:
-        typedef Interlocked::Value    QueryID;
-        struct Query
-        {
-            UnderlyingQuery _query;
-            EventID _eventID;
-            QueryID _assignedID;
-            Query();
-            ~Query();
-        };
-        std::vector<Query> _queries;
-        QueryID _nextQueryID;
-        QueryID _nextQueryIDToSchedule;
-
-        EventID _lastCompletedID;
-
-        RenderCore::Metal::ObjectFactory* _objFactory;
-    };
-#else
-	class GPUEventStack
-	{
-	public:
-		typedef unsigned    EventID;
-
-		void        TriggerEvent(RenderCore::Metal::DeviceContext* context, EventID event);
-		void        Update(RenderCore::Metal::DeviceContext* context);
-		EventID     GetLastCompletedEvent() const;
-
-		void        OnLostDevice();
-		void        OnDeviceReset();
-
-		GPUEventStack(RenderCore::IDevice& device);
-		~GPUEventStack();
-	};
-#endif
 
         ///////////////////////////////////////////////////////////////////
 

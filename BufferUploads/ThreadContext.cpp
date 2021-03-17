@@ -13,28 +13,11 @@
 
 namespace BufferUploads
 {
-    CommandList::CommandList()  {}
-    CommandList::~CommandList() {}
-
-    CommandList::CommandList(CommandList&& moveFrom)
-    : _deviceCommandList(std::move(moveFrom._deviceCommandList))
-    , _metrics(std::move(moveFrom._metrics))
-    , _commitStep(std::move(moveFrom._commitStep))
-    , _id(moveFrom._id)
-    {}
-
-    CommandList& CommandList::operator=(CommandList&& moveFrom)
-    {
-        _deviceCommandList = std::move(moveFrom._deviceCommandList);
-        _metrics = std::move(moveFrom._metrics);
-        _commitStep = std::move(moveFrom._commitStep);
-        _id = moveFrom._id;
-        return *this;
-    }
-
     void ThreadContext::BeginCommandList()
     {
-        _deviceContext.BeginCommandList();
+        auto& metalContext = *RenderCore::Metal::DeviceContext::Get(*_underlyingContext);
+        if (!metalContext.HasActiveCommandList())
+            metalContext.BeginCommandList();
     }
 
     void ThreadContext::ResolveCommandList()
@@ -46,8 +29,8 @@ namespace BufferUploads
         newCommandList._metrics._processingEnd = currentTime;
         newCommandList._id = _commandListIDUnderConstruction;
 
-        if (_requiresResolves) {
-            newCommandList._deviceCommandList = _deviceContext.ResolveCommandList();
+        if (!_isImmediateContext) {
+            newCommandList._deviceCommandList = RenderCore::Metal::DeviceContext::Get(*_underlyingContext)->ResolveCommandList();
             newCommandList._commitStep.swap(_commitStepUnderConstruction);
             _queuedCommandLists.push_overflow(std::move(newCommandList));
         } else {
@@ -72,11 +55,11 @@ namespace BufferUploads
 
     void ThreadContext::CommitToImmediate(
         RenderCore::IThreadContext& commitTo,
-        PlatformInterface::GPUEventStack& gpuEventStack,
-        bool preserveRenderState)
+        LockFreeFixedSizeQueue<unsigned, 4>* framePriorityQueue)
     {
+        const bool preserveRenderState = false;
         auto immContext = RenderCore::Metal::DeviceContext::Get(commitTo);
-        if (_requiresResolves) {
+        if (!_isImmediateContext) {
             TimeMarker stallStart = OSServices::GetPerformanceCounter();
             bool gotStart = false;
             for (;;) {
@@ -87,7 +70,7 @@ namespace BufferUploads
                     //      until there are no lists, and nothing pending.
                     //
 
-                const bool currentlyUncommitedFramePriorityCommandLists = _pendingFramePriority_CommandLists.size()!=0;
+                const bool currentlyUncommitedFramePriorityCommandLists = framePriorityQueue && framePriorityQueue->size()!=0;
 
                 CommandList* commandList = 0;
                 while (_queuedCommandLists.try_front(commandList)) {
@@ -101,48 +84,32 @@ namespace BufferUploads
                     if (commandList->_deviceCommandList)
                         immContext->ExecuteCommandList(*commandList->_deviceCommandList.get(), preserveRenderState);
                     commandList->_commitStep.CommitToImmediate_PostCommandList(commitTo);
-                    _commandListIDCommittedToImmediate   = std::max(_commandListIDCommittedToImmediate, commandList->_id);
-                    gpuEventStack.TriggerEvent(immContext.get(), commandList->_id);
+                    _commandListIDCommittedToImmediate = std::max(_commandListIDCommittedToImmediate, commandList->_id);
                 
                     commandList->_metrics._frameId                  = commitTo.GetStateDesc()._frameId;
                     commandList->_metrics._commitTime               = OSServices::GetPerformanceCounter();
                     commandList->_metrics._framePriorityStallTime   = stallEnd - stallStart;    // this should give us very small numbers, when we're not actually stalling for frame priority commits
                     #if defined(XL_BUFFER_UPLOAD_RECORD_THREAD_CONTEXT_METRICS)
-                        while (!_recentRetirements.push(commandList->_metrics)) {
+                        while (!_recentRetirements.push(commandList->_metrics))
                             _recentRetirements.pop();   // note -- this might violate the single-popping-thread rule!
-                        }
                     #endif
                     _queuedCommandLists.pop();
 
                     stallStart = OSServices::GetPerformanceCounter();                
                 }
                     
-                if (!currentlyUncommitedFramePriorityCommandLists) {
+                if (!currentlyUncommitedFramePriorityCommandLists)
                     break;
-                }
 
                 Threading::YieldTimeSlice();
-                gpuEventStack.Update(immContext.get());
-                _commandListIDCompletedByGPU = gpuEventStack.GetLastCompletedEvent();   // update the GPU progress, incase we get stuck here for awhile
             }
 
             if (gotStart) {
                 commitTo.GetAnnotator().Event("BufferUploads", RenderCore::IAnnotator::EventTypes::MarkerEnd);
             }
-        } else {
-            if (_commandListIDCommittedToImmediate) {
-                gpuEventStack.TriggerEvent(immContext.get(), _commandListIDCommittedToImmediate);
-            }
-            while (_pendingFramePriority_CommandLists.size()!=0) {
-                Threading::YieldTimeSlice();
-                gpuEventStack.Update(immContext.get());
-                _commandListIDCompletedByGPU = gpuEventStack.GetLastCompletedEvent();
-            }
         }
 
         ++_commitCountCurrent;
-        gpuEventStack.Update(immContext.get());
-        _commandListIDCompletedByGPU = gpuEventStack.GetLastCompletedEvent();
     }
 
     CommandListMetrics ThreadContext::PopMetrics()
@@ -175,7 +142,7 @@ namespace BufferUploads
 
     void                    ThreadContext::EventList_Get(IManager::EventListID id, Event_ResourceReposition*& begin, Event_ResourceReposition*& end)
     {
-        begin = end = NULL;
+        begin = end = nullptr;
         if (!id) return;
         for (unsigned c=0; c<dimof(_eventBuffers); ++c) {
             if (_eventBuffers[c]._id == id) {
@@ -192,9 +159,6 @@ namespace BufferUploads
                 return;
             }
         }
-        //      DavidJ --   sometimes we're getting here; it appears we just have empty
-        //                  event lists sometimes
-        // assert(0);
     }
 
     void                    ThreadContext::EventList_Release(IManager::EventListID id, bool silent)
@@ -216,7 +180,6 @@ namespace BufferUploads
                 return;
             }
         }
-        // assert(0);
     }
 
     IManager::EventListID   ThreadContext::EventList_Push(const Event_ResourceReposition& evnt)
@@ -240,19 +203,7 @@ namespace BufferUploads
     {
         _currentEventListPublishedId = toEvent;
     }
-
-    void ThreadContext::FramePriority_Barrier(unsigned queueSetId)
-    {
-            //      Since we're only double buffering, we can't continue until the  
-            //      we finish with the previous priority steps...
-        // unsigned commandListId = CommandList_GetUnderConstruction();
-        /*while (!_pendingFramePriority_CommandLists.push(queueSetId)) {
-            XlSetEvent(_wakeupEvent);
-            Threading::YieldTimeSlice(); 
-        }
-        XlSetEvent(_wakeupEvent);*/
-    }
-    
+   
     void ThreadContext::OnLostDevice()
     {
         for (unsigned c=0; c<dimof(_eventBuffers); ++c) {
@@ -266,33 +217,20 @@ namespace BufferUploads
     }
 
     ThreadContext::ThreadContext(std::shared_ptr<RenderCore::IThreadContext> underlyingContext) 
-    : _deviceContext(*underlyingContext), _requiresResolves(PlatformInterface::ContextBasedMultithreading) // context != PlatformInterface::GetImmediateContext())
+    : _resourceUploadHelper(*underlyingContext)
     , _currentEventListId(0), _eventListWritingIndex(0), _currentEventListProcessedId(0)
     , _currentEventListPublishedId(0)
     {
         _underlyingContext = std::move(underlyingContext);
         _lastResolve = 0;
         _commitCountCurrent = _commitCountLastResolve = 0;
-        // XlZeroMemory(_eventBuffers);
-
-        if (_underlyingContext->IsImmediate()) {
-            _requiresResolves = false;  // immediate context requires no resolves
-        }
-
-        // for (unsigned c=0; c<dimof(_eventBuffers); ++c) {
-        //     _eventBuffers[c]._id = ~IManager::EventListID(0x0);
-        // }
-
+        _isImmediateContext = _underlyingContext->IsImmediate();
         _commandListIDUnderConstruction = 1;
-        _commandListIDCompletedByGPU = 0;
         _commandListIDCommittedToImmediate = 0;
-
-        // _wakeupEvent = XlCreateEvent(false);
     }
 
     ThreadContext::~ThreadContext()
     {
-        // XlCloseSyncObject(_wakeupEvent);
     }
 
         //////////////////////////////////////////////////////////////////////////////////////////////
@@ -317,30 +255,24 @@ namespace BufferUploads
 
     void CommitStep::CommitToImmediate_PreCommandList(RenderCore::IThreadContext& immContext)
     {
+        // D3D11 has some issues with mapping and writing to linear buffers from a background thread
+        // we get around this by defering some write operations to the main thread, at the point
+        // where we commit the command list to the device
         if (!_deferredCopies.empty()) {
-			assert(0);	// this functionality not implemented for Vulkan compatibility
-			#if 0
-				PlatformInterface::UnderlyingDeviceContext immediateContext(immContext);
-				for (auto i=_deferredCopies.begin(); i!=_deferredCopies.end(); ++i) {
-					const bool useMapPath = true;
-					if (useMapPath) {
-						auto mappedBuffer = immediateContext.Map(*i->_destination->GetUnderlying(), PlatformInterface::UnderlyingDeviceContext::MapType::NoOverwrite);
-						XlCopyMemoryAlign16(PtrAdd(mappedBuffer.GetData(), i->_destination->Offset()), i->_temporaryBuffer->GetData(), i->_size);
-					} else {
-						immediateContext.PushToResource(
-							*i->_destination->GetUnderlying(), ResourceDesc(), i->_destination->Offset(), i->_temporaryBuffer->GetData(), i->_size, TexturePitches(), Box2D(), 0, 0);
-					}
-				}
-			#endif
+            PlatformInterface::ResourceUploadHelper immediateContext(immContext);
+            for (const auto&copy:_deferredCopies)
+                immediateContext.WriteToBufferViaMap(copy._destination, copy._resourceDesc, 0, MakeIteratorRange(copy._temporaryBuffer));
+            _deferredCopies.clear();
         }
     }
 
     void CommitStep::CommitToImmediate_PostCommandList(RenderCore::IThreadContext& immContext)
     {
         if (!_deferredDefragCopies.empty()) {
-            PlatformInterface::UnderlyingDeviceContext immediateContext(immContext);
+            PlatformInterface::ResourceUploadHelper immediateContext(immContext);
             for (auto i=_deferredDefragCopies.begin(); i!=_deferredDefragCopies.end(); ++i)
                 immediateContext.ResourceCopy_DefragSteps(i->_destination, i->_source, i->_steps);
+            _deferredDefragCopies.clear();
         }
     }
 
