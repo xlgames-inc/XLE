@@ -34,3 +34,6 @@
 [submodule "Foreign/stb"]
 	path = Foreign/stb
 	url = git@github.com:nothings/stb
+[submodule "Foreign/DirectXTex"]
+	path = Foreign/DirectXTex
+	url = git@github.com:microsoft/DirectXTex
