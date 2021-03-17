@@ -8,7 +8,7 @@
 
 #include "IBufferUploads.h"
 
-#include "PlatformInterface.h"
+#include "ResourceUploadHelper.h"
 #include "Metrics.h"
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/Metal/DeviceContext.h"		// for command list ptr

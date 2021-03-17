@@ -23,6 +23,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         TechniqueUtils.cpp
         # Services.cpp
         ModelCache.cpp
+        TextureLoaders.cpp
         )
     set(Headers
         BasicDelegates.h
@@ -55,5 +56,6 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
     xle_configure_library(RenderCoreTechniques-${metal_name})
     target_compile_definitions(RenderCoreTechniques-${metal_name} PUBLIC ${metal_macro})
     target_link_libraries(RenderCoreTechniques-${metal_name} PUBLIC RenderCoreAssets RenderCore_${metal_name} RenderCore Utility ForeignMisc)
+    target_link_libraries(RenderCoreTechniques-${metal_name} PRIVATE DirectXTex)
 
 endforeach()

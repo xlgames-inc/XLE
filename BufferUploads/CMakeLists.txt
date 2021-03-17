@@ -6,17 +6,16 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         BufferUploads_Manager.cpp
         DataPacket.cpp
         MemoryManagement.cpp
-        PlatformInterface.cpp
+        ResourceUploadHelper.cpp
         ResourceSource.cpp
         ThreadContext.cpp)
     set(Headers 
         BufferUploads_Manager.h
-        DataPacket.h
         Documentation.h
         IBufferUploads.h
         MemoryManagement.h
         Metrics.h
-        PlatformInterface.h
+        ResourceUploadHelper.h
         ResourceSource.h
         ThreadContext.h)
 

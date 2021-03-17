@@ -3,12 +3,21 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../Metal/MetalTestHelper.h"
+#include "../../EmbeddedRes.h"
+#include "../../UnitTestHelper.h"
 #include "../../../BufferUploads/IBufferUploads.h"
-#include "../../../BufferUploads/DataPacket.h"
 #include "../../../BufferUploads/MemoryManagement.h"
+#include "../../../RenderCore/Techniques/TextureLoaders.h"
 #include "../../../RenderCore/ResourceDesc.h"
 #include "../../../RenderCore/Format.h"
 #include "../../../RenderCore/IDevice.h"
+#include "../../../RenderCore/IThreadContext.h"
+#include "../../../RenderCore/Metal/DeviceContext.h"
+#include "../../../RenderCore/Metal/Resource.h"
+#include "../../../ConsoleRig/GlobalServices.h"
+#include "../../../ConsoleRig/AttachablePtr.h"
+#include "../../../Assets/IFileSystem.h"
+#include "../../../Assets/MountingTree.h"
 #include "../../../Utility/HeapUtils.h"
 #include "thousandeyes/futures/then.h"
 #include "thousandeyes/futures/DefaultExecutor.h"
@@ -132,6 +141,86 @@ namespace UnitTests
         }
     }
 
+    TEST_CASE( "BufferUploads-DDSFileLoading", "[rendercore_techniques]" )
+    {
+        using namespace RenderCore;
+        auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
+		auto mnt0 = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", UnitTests::CreateEmbeddedResFileSystem());
+
+        auto metalHelper = MakeTestHelper();
+        auto bu = BufferUploads::CreateManager(*metalHelper->_device);
+
+        auto executor = std::make_shared<thousandeyes::futures::DefaultExecutor>(std::chrono::milliseconds(2));
+        thousandeyes::futures::Default<thousandeyes::futures::Executor>::Setter execSetter(executor);
+
+        auto ddsLoader = Techniques::GetDDSTextureLoader();
+        auto wicLoader = Techniques::GetWICTextureLoader();
+        const char* texturesToTry[] {
+            "xleres/DefaultResources/glosslut.dds",
+            "xleres/DefaultResources/waternoise.png"
+        };
+
+        for (unsigned c=0; c<dimof(texturesToTry); ++c) {
+            INFO("Loading: " + std::string{texturesToTry[c]});
+            std::shared_ptr<BufferUploads::IAsyncDataSource> asyncSource;
+            if (XlEndsWithI(MakeStringSection(texturesToTry[c]), MakeStringSection(".dds"))) {
+                asyncSource = ddsLoader(texturesToTry[c], 0);
+            } else {
+                asyncSource = wicLoader(texturesToTry[c], Techniques::TextureLoaderFlags::GenerateMipmaps);
+            }
+
+            auto transaction = bu->Transaction_Begin(asyncSource, BindFlag::ShaderResource | BindFlag::TransferSrc);
+            REQUIRE(transaction._transactionID != 0);
+            REQUIRE(transaction._future.valid());
+
+            auto start = std::chrono::steady_clock::now();
+            for (;;) {
+                bu->Update(*metalHelper->_device->GetImmediateContext());
+                auto status = transaction._future.wait_for(100ms);
+                if (status == std::future_status::ready)
+                    break;
+
+                if ((std::chrono::steady_clock::now() - start) > 5s)
+                    FAIL("Too much time has passed waiting for buffer uploads transaction to complete");
+            }
+
+            while (!bu->IsCompleted(transaction._transactionID))
+                bu->Update(*metalHelper->_device->GetImmediateContext());
+            
+            REQUIRE(bu->IsCompleted(transaction._transactionID));
+            auto finalResource = transaction._future.get().AsIndependentResource();
+            REQUIRE(finalResource != nullptr);
+            auto finalResourceDesc = finalResource->GetDesc();
+            REQUIRE(finalResourceDesc._type == ResourceDesc::Type::Texture);
+
+            // Copy to a destaging buffer and then read the data
+            auto destagingDesc = finalResourceDesc;
+            destagingDesc._bindFlags = BindFlag::TransferDst;
+            destagingDesc._cpuAccess = CPUAccess::Read;
+            destagingDesc._gpuAccess = 0;
+            auto destaging = metalHelper->_device->CreateResource(destagingDesc);
+            {
+                auto blitEncoder = Metal::DeviceContext::Get(*metalHelper->_device->GetImmediateContext())->BeginBlitEncoder();
+                blitEncoder.Copy(*destaging, *finalResource);
+            }
+            metalHelper->_device->GetImmediateContext()->CommitCommands(CommitCommandsFlags::WaitForCompletion);
+            Metal::ResourceMap map(
+                *Metal::DeviceContext::Get(*metalHelper->_device->GetImmediateContext()),
+                *destaging, Metal::ResourceMap::Mode::Read,
+                SubResourceId{0,0});
+            auto data = map.GetData();
+            std::stringstream str;
+            for (unsigned c=0; c<64; ++c)
+                str << std::hex << (unsigned)((uint8_t*)data.begin())[c] << " ";
+            INFO(str.str());
+            REQUIRE(((unsigned*)data.begin())[0] != 0);     // let's just entire the first few bytes are not all zeroes
+            REQUIRE(((unsigned*)data.begin())[1] != 0);
+            REQUIRE(((unsigned*)data.begin())[2] != 0);
+            REQUIRE(((unsigned*)data.begin())[3] != 0);
+        }
+
+        ::Assets::MainFileSystem::GetMountingTree()->Unmount(mnt0);
+    }
 
     TEST_CASE( "BufferUploads-Heap", "[rendercore_techniques]" )
     {
@@ -252,7 +341,5 @@ namespace UnitTests
             }
         }
     }
-
-
 }
 

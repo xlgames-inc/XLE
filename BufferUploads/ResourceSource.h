@@ -9,7 +9,7 @@
 #include "IBufferUploads.h"
 
 #include "MemoryManagement.h"
-#include "PlatformInterface.h"
+#include "ResourceUploadHelper.h"
 #include "ThreadContext.h"
 #include "../RenderCore/IDevice_Forward.h"
 #include "../Utility/Threading/Mutex.h"

@@ -26,6 +26,7 @@ namespace BufferUploads
     using IResource = RenderCore::IResource;
     using TexturePitches = RenderCore::TexturePitches;
     using SubResourceId = RenderCore::SubResourceId;
+    namespace BindFlag = RenderCore::BindFlag;
 
         /////////////////////////////////////////////////
 
@@ -137,7 +138,7 @@ namespace BufferUploads
             /// Begin a new transaction, either by creating a new resource, or by attaching
             /// to an existing resource.
         virtual TransactionMarker   Transaction_Begin    (const ResourceDesc& desc, const std::shared_ptr<IDataPacket>& data, TransactionOptions::BitField flags=0) = 0;
-        virtual TransactionMarker   Transaction_Begin    (const std::shared_ptr<IAsyncDataSource>& data, TransactionOptions::BitField flags=0) = 0;
+        virtual TransactionMarker   Transaction_Begin    (const std::shared_ptr<IAsyncDataSource>& data, BindFlag::BitField bindFlags = BindFlag::ShaderResource, TransactionOptions::BitField flags=0) = 0;
         virtual TransactionMarker   Transaction_Begin    (const ResourceLocator& locator, TransactionOptions::BitField flags=0) = 0;
 
         virtual void            Transaction_Cancel      (TransactionID id) = 0;

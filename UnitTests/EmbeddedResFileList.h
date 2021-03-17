@@ -229,4 +229,5 @@ X(Objects/Terrain/TerrainGenerator.h, __LINE__)
 X(Objects/Terrain/TerrainIntersection.sh, __LINE__)
 
 X(DefaultResources/waternoise.png, __LINE__)
+X(DefaultResources/glosslut.dds, __LINE__)
 X(BasicMaterial.hlsl, __LINE__)

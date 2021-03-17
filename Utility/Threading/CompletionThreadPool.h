@@ -49,7 +49,7 @@ namespace Utility
     {
     public:
         template<class Fn, class... Args>
-            void Enqueue(Fn&& fn, Args&&... args);
+            void Enqueue(Fn&& fn, Args... args);
 
 		void EnqueueBasic(std::function<void()>&& task);
 
@@ -74,7 +74,7 @@ namespace Utility
     };
 
     template<class Fn, class... Args>
-        void CompletionThreadPool::Enqueue(Fn&& fn, Args&&... args)
+        void CompletionThreadPool::Enqueue(Fn&& fn, Args... args)
         {
 			// note -- we seem to get a forced invocation of the copy constructor
 			// for std::function<void> here, for an input lambda (even if that lamdba
@@ -89,7 +89,7 @@ namespace Utility
     {
     public:
         template<class Fn, class... Args>
-            void Enqueue(Fn&& fn, Args&&... args);
+            void Enqueue(Fn&& fn, Args... args);
 
 		void EnqueueBasic(std::function<void()>&& task);
 
@@ -107,16 +107,16 @@ namespace Utility
 
         Threading::Conditional _pendingTaskVariable;
         Threading::Mutex _pendingTaskLock;
-        typedef std::function<void()> PendingTask;
+        using PendingTask = std::function<void()>;
         std::queue<PendingTask> _pendingTasks;
 
         volatile bool _workerQuit;
     };
 
     template<class Fn, class... Args>
-        void ThreadPool::Enqueue(Fn&& fn, Args&&... args)
+        void ThreadPool::Enqueue(Fn&& fn, Args... args)
         {
-			EnqueueBasic(std::bind(std::forward<Fn>(fn), std::forward<Args>(args)...));
+			EnqueueBasic(std::bind(std::move(fn), std::forward<Args>(args)...));
         }
 }
 

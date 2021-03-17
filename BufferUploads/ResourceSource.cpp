@@ -1113,7 +1113,7 @@ namespace BufferUploads
 
     std::shared_ptr<IResource> ResourceLocator::AsIndependentResource() const
     {
-        return (!_managedByPool && IsWholeResource()) ? nullptr : _resource;
+        return (!_managedByPool && IsWholeResource()) ? _resource : nullptr;
     }
 
     RenderCore::VertexBufferView ResourceLocator::AsVertexBufferView() const

@@ -4,9 +4,8 @@
 
 #include "BufferUploads_Manager.h"
 #include "Metrics.h"
-#include "PlatformInterface.h"
+#include "ResourceUploadHelper.h"
 #include "ResourceSource.h"
-#include "DataPacket.h"
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/ResourceUtils.h"
@@ -94,7 +93,7 @@ namespace BufferUploads
         // void                UpdateData(TransactionID id, IDataPacket& rawData, const PartialResource& part);
         
         TransactionMarker       Transaction_Begin(const ResourceDesc& desc, const std::shared_ptr<IDataPacket>& data, TransactionOptions::BitField flags);
-        TransactionMarker       Transaction_Begin(const std::shared_ptr<IAsyncDataSource>& data, TransactionOptions::BitField flags);
+        TransactionMarker       Transaction_Begin(const std::shared_ptr<IAsyncDataSource>& data, BindFlag::BitField bindFlags, TransactionOptions::BitField flags);
         TransactionMarker       Transaction_Begin(const ResourceLocator& locator, TransactionOptions::BitField flags=0);
         void                    Transaction_AddRef(TransactionID id);
         void                    Transaction_Cancel(TransactionID id);
@@ -192,6 +191,7 @@ namespace BufferUploads
             TransactionID _id = ~TransactionID(0);
             ResourceDesc _desc;
             std::shared_ptr<IAsyncDataSource> _packet;
+            BindFlag::BitField _bindFlags = 0;
             PartialResource _part;
         };
 
@@ -200,7 +200,7 @@ namespace BufferUploads
             TransactionID _id = ~TransactionID(0);
             ResourceLocator _stagingResource;
             PlatformInterface::StagingToFinalMapping _stagingToFinalMapping;
-            unsigned _stagingByteCount;
+            unsigned _stagingByteCount = 0;
         };
 
         struct CreateFromDataPacketStep
@@ -261,7 +261,7 @@ namespace BufferUploads
         void    PushStep(QueueSet&, Transaction& transaction, TransferStagingToFinalStep&& step);
         void    PushStep(QueueSet&, Transaction& transaction, CreateFromDataPacketStep&& step);
 
-        void    CompleteWaitForDescFuture(TransactionID transactionID, std::future<ResourceDesc> descFuture, const std::shared_ptr<IAsyncDataSource>& data, PartialResource part);
+        void    CompleteWaitForDescFuture(TransactionID transactionID, std::future<ResourceDesc> descFuture, const std::shared_ptr<IAsyncDataSource>& data, BindFlag::BitField, PartialResource part);
         void    CompleteWaitForDataFuture(TransactionID transactionID, std::future<void> prepareFuture, const ResourceLocator& stagingResource, const PlatformInterface::StagingToFinalMapping& stagingToFinalMapping, unsigned stagingByteCount);
     };
 
@@ -313,7 +313,7 @@ namespace BufferUploads
     }
 
     TransactionMarker AssemblyLine::Transaction_Begin(
-        const std::shared_ptr<IAsyncDataSource>& data, TransactionOptions::BitField flags)
+        const std::shared_ptr<IAsyncDataSource>& data, BindFlag::BitField bindFlags, TransactionOptions::BitField flags)
     {
         TransactionID transactionID = AllocateTransaction(flags);
         Transaction* transaction = GetTransaction(transactionID);
@@ -327,7 +327,7 @@ namespace BufferUploads
         auto status = descFuture.wait_for(0s);
         if (status == std::future_status::ready) {
 
-            CompleteWaitForDescFuture(transactionID, std::move(descFuture), data, PartialResource_All());
+            CompleteWaitForDescFuture(transactionID, std::move(descFuture), data, bindFlags, PartialResource_All());
 
         } else {
             ++transaction->_referenceCount;
@@ -336,12 +336,12 @@ namespace BufferUploads
             assert(!transaction->_waitingFuture.valid());
             transaction->_waitingFuture = thousandeyes::futures::then(
                 std::move(descFuture),
-                [weakThis, transactionID, data](std::future<ResourceDesc> completedFuture) {
+                [weakThis, transactionID, data, bindFlags](std::future<ResourceDesc> completedFuture) {
                     auto t = weakThis.lock();
                     if (!t)
                         Throw(std::runtime_error("Assembly line was destroyed before future completed"));
 
-                    t->CompleteWaitForDescFuture(transactionID, std::move(completedFuture), data, PartialResource_All());
+                    t->CompleteWaitForDescFuture(transactionID, std::move(completedFuture), data, bindFlags, PartialResource_All());
                 });
         }
 
@@ -501,6 +501,8 @@ namespace BufferUploads
             return {};
     
         if (!(finalResourceConstruction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful)) {
+
+            assert(desc._bindFlags & BindFlag::TransferDst);    // need TransferDst to recieve staging data
             
             ResourceDesc stagingDesc;
             PlatformInterface::StagingToFinalMapping stagingToFinalMapping;
@@ -1223,6 +1225,8 @@ namespace BufferUploads
             return false;
 
         if (resourceCreateStep._initialisationData && !(finalConstruction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful)) {
+            assert(transaction->_desc._bindFlags & BindFlag::TransferDst);    // need TransferDst to recieve staging data
+            
             ResourceDesc stagingDesc;
             PlatformInterface::StagingToFinalMapping stagingToFinalMapping;
             std::tie(stagingDesc, stagingToFinalMapping) = PlatformInterface::CalculatePartialStagingDesc(transaction->_desc, resourceCreateStep._part);
@@ -1340,6 +1344,8 @@ namespace BufferUploads
             auto future = prepareStagingStep._packet->PrepareData(MakeIteratorRange(uploadList, &uploadList[mipCount*arrayCount]));
 
             transaction->_desc = desc;
+            transaction->_desc._bindFlags = prepareStagingStep._bindFlags;
+            transaction->_desc._bindFlags |= BindFlag::TransferDst;         // since we're using a staging buffer to prepare, we must allow for transfers
             auto byteCount = RenderCore::ByteCount(stagingDesc);
             _currentQueuedBytes[(unsigned)AsUploadDataType(desc)] += byteCount;
             metricsUnderConstruction._stagingBytesUsed[(unsigned)AsUploadDataType(desc)] += byteCount;
@@ -1374,7 +1380,7 @@ namespace BufferUploads
         return true;
     }
 
-    void    AssemblyLine::CompleteWaitForDescFuture(TransactionID transactionID, std::future<ResourceDesc> descFuture, const std::shared_ptr<IAsyncDataSource>& data, PartialResource part)
+    void    AssemblyLine::CompleteWaitForDescFuture(TransactionID transactionID, std::future<ResourceDesc> descFuture, const std::shared_ptr<IAsyncDataSource>& data, BindFlag::BitField bindFlags, PartialResource part)
     {
         Transaction* transaction = GetTransaction(transactionID);
         assert(transaction);
@@ -1387,7 +1393,7 @@ namespace BufferUploads
             PushStep(
                 GetQueueSet(transaction->_creationOptions),
                 *transaction,
-                PrepareStagingStep { transactionID, desc, data, PartialResource_All() });
+                PrepareStagingStep { transactionID, desc, data, bindFlags, PartialResource_All() });
         } catch (...) {
             transaction->_promise.set_exception(std::current_exception());
         }
@@ -1834,9 +1840,9 @@ namespace BufferUploads
         return _assemblyLine->Transaction_Begin(desc, data, flags);
     }
 
-    TransactionMarker           Manager::Transaction_Begin(const std::shared_ptr<IAsyncDataSource>& data, TransactionOptions::BitField flags)
+    TransactionMarker           Manager::Transaction_Begin(const std::shared_ptr<IAsyncDataSource>& data, BindFlag::BitField bindFlags, TransactionOptions::BitField flags)
     {
-        return _assemblyLine->Transaction_Begin(data, flags);
+        return _assemblyLine->Transaction_Begin(data, bindFlags, flags);
     }
 
     TransactionMarker           Manager::Transaction_Begin(const ResourceLocator& locator, TransactionOptions::BitField flags)
