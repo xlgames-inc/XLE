@@ -313,7 +313,7 @@ namespace Utility
 
             // find the span in which this belongs, and mark the space deallocated
         typename std::vector<Marker>::iterator i = _markers.begin()+(allocateOperation?0:1);
-        for (; (i+1)<_markers.end();i+=2) {
+        for (; i<(_markers.end()-1);i+=2) {
             Marker start = *i;
             Marker end = *(i+1);
             if (internalOffset >= start && internalOffset < end) {
@@ -382,12 +382,11 @@ namespace Utility
     }
 
     template <typename Marker>
-        unsigned    SpanningHeap<Marker>::CalculateAvailableSpace() const
+        unsigned    SpanningHeap<Marker>::CalculateAvailableSpace_AlreadyLocked() const
     {
-        ScopedLock(_lock);
         unsigned result = 0;
         auto i = _markers.begin();
-        for (; (i+1)<_markers.end();i+=2) {
+        for (; i<(_markers.end()-1);i+=2) {
             Marker start = *i;
             Marker end = *(i+1);
             result += end-start;
@@ -396,14 +395,27 @@ namespace Utility
     }
 
     template <typename Marker>
-        unsigned    SpanningHeap<Marker>::CalculateLargestFreeBlock() const
+        unsigned    SpanningHeap<Marker>::CalculateLargestFreeBlock_AlreadyLocked() const
     {
-        ScopedLock(_lock);
         if (!_largestFreeBlockValid) {
             _largestFreeBlock = CalculateLargestFreeBlock_Internal();
             _largestFreeBlockValid = true;
         }
         return MarkerHeap<Marker>::ToExternalSize(_largestFreeBlock);
+    }
+
+    template <typename Marker>
+        unsigned    SpanningHeap<Marker>::CalculateAvailableSpace() const
+    {
+        ScopedLock(_lock);
+        return CalculateAvailableSpace_AlreadyLocked();
+    }
+
+    template <typename Marker>
+        unsigned    SpanningHeap<Marker>::CalculateLargestFreeBlock() const
+    {
+        ScopedLock(_lock);
+        return CalculateLargestFreeBlock_AlreadyLocked();
     }
 
     template <typename Marker>
@@ -520,7 +532,7 @@ namespace Utility
         std::vector<std::pair<Marker, Marker> > allocatedBlocks;
         allocatedBlocks.reserve(_markers.size()/2);
         typename std::vector<Marker>::const_iterator i2 = _markers.begin()+1;
-        for (; (i2+1)<_markers.end();i2+=2) {
+        for (; i2<(_markers.end()-1);i2+=2) {
             Marker start = *i2;
             Marker end   = *(i2+1);
             assert(start < end);
@@ -578,8 +590,10 @@ namespace Utility
             //      All of the spans in the heap have moved about we have to recalculate the
             //      allocated spans from scratch, based on the positions of the new blocks
             //
-        unsigned startingAvailableSize = CalculateAvailableSpace(); (void)startingAvailableSize;
-        unsigned startingLargestBlock = CalculateLargestFreeBlock(); (void)startingLargestBlock;
+        #if defined(_DEBUG)
+            unsigned startingAvailableSize = CalculateAvailableSpace_AlreadyLocked(); (void)startingAvailableSize;
+            unsigned startingLargestBlock = CalculateLargestFreeBlock_AlreadyLocked(); (void)startingLargestBlock;
+        #endif
 
         Marker heapEnd = _markers[_markers.size()-1];
         _markers.erase(_markers.begin(), _markers.end());
@@ -611,10 +625,12 @@ namespace Utility
         _markers.push_back(heapEnd);
         _largestFreeBlockValid = false;
 
-        unsigned newAvailableSpace = CalculateAvailableSpace(); (void)newAvailableSpace;
-        unsigned newLargestBlock = CalculateLargestFreeBlock(); (void)newLargestBlock;
-        assert(newAvailableSpace == startingAvailableSize);
-        assert(newLargestBlock >= startingLargestBlock);        // sometimes the tests will run a defrag that doesn't reduce the largest block
+        #if defined(_DEBUG)
+            unsigned newAvailableSpace = CalculateAvailableSpace_AlreadyLocked(); (void)newAvailableSpace;
+            unsigned newLargestBlock = CalculateLargestFreeBlock_AlreadyLocked(); (void)newLargestBlock;
+            assert(newAvailableSpace == startingAvailableSize);
+            assert(newLargestBlock >= startingLargestBlock);        // sometimes the tests will run a defrag that doesn't reduce the largest block
+        #endif
     }
 
     template <typename Marker>

@@ -31,7 +31,7 @@ namespace BufferUploads
             newBlock._start = internalStart;
             newBlock._end = internalStart+internalSize;
             newBlock._refCount = 1;
-            DEBUG_ONLY(newBlock._name = name);
+            DEBUG_ONLY(if (name) newBlock._name = name);
             _entries.insert(_entries.end(), newBlock);
             return std::make_pair(newBlock._refCount, newBlock._refCount);
         }
@@ -51,7 +51,7 @@ namespace BufferUploads
                 newBlock._start = currentStart;
                 newBlock._end = std::min(internalEnd, Marker((i<_entries.end())?i->_start:INT_MAX));
                 newBlock._refCount = 1;
-                DEBUG_ONLY(newBlock._name = name);
+                DEBUG_ONLY(if (name) newBlock._name = name);
                 assert(newBlock._start < newBlock._end);
                 assert(newBlock._end != 0xbaad);
                 bool end = i >= _entries.end() || internalEnd <= i->_start;
@@ -79,11 +79,10 @@ namespace BufferUploads
                     }
                 } else {
                         // split the block and add a new one in front
-                    // assert(0);
                     Entry newBlock;
                     newBlock._start = i->_start;
                     newBlock._end = internalEnd;
-                    DEBUG_ONLY(newBlock._name = name);
+                    DEBUG_ONLY(if (name) newBlock._name = name);
                     signed newRefCount = newBlock._refCount = i->_refCount+1;
                     i->_start = internalEnd;
                     assert(newBlock._start < newBlock._end && i->_start < i->_end);
@@ -96,7 +95,6 @@ namespace BufferUploads
                 if (internalEnd < i->_end) {
                         //  This is a block that falls entirely within the old block. We need to create a new block, splitting the old one if necessary
                         // we need do split the end part of the old block off too, and then insert 2 blocks
-                    assert(0);
                     Entry newBlock[2];
                     newBlock[0]._start = i->_start;
                     newBlock[0]._end = currentStart;
@@ -104,7 +102,7 @@ namespace BufferUploads
                     DEBUG_ONLY(newBlock[0]._name = i->_name);
                     newBlock[1]._start = currentStart;
                     newBlock[1]._end = internalEnd;
-                    DEBUG_ONLY(newBlock[1]._name = name);
+                    DEBUG_ONLY(if (name) newBlock[1]._name = name);
                     signed newRefCount = newBlock[1]._refCount = i->_refCount+1;
                     i->_start = internalEnd;
                     assert(newBlock[0]._start < newBlock[0]._end && newBlock[1]._start < newBlock[1]._end&& i->_start < i->_end);
@@ -113,7 +111,6 @@ namespace BufferUploads
                     refMin = std::min(refMin, newRefCount); refMax = std::max(refMax, newRefCount);
                     break;
                 } else {
-                    assert(0);
                     Marker iEnd = i->_end;
                     Entry newBlock;
                     newBlock._start = i->_start;
@@ -121,7 +118,7 @@ namespace BufferUploads
                     newBlock._refCount = i->_refCount;
                     DEBUG_ONLY(newBlock._name.swap(i->_name));
                     i->_start = currentStart;
-                    DEBUG_ONLY(i->_name = name);
+                    DEBUG_ONLY(if (name) i->_name = name);
                     signed newRefCount = ++i->_refCount;
                     assert(newBlock._start < newBlock._end && i->_start < i->_end);
                     assert(i->_end != 0xbaad && newBlock._end != 0xbaad);

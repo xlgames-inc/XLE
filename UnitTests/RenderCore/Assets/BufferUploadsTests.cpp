@@ -435,6 +435,9 @@ namespace UnitTests
                     layer.Release(i->_start, i->_size);
                 }
             }
+
+            layer.Validate();
+            REQUIRE(layer.GetEntryCount() == 0);
         }
     }
 }

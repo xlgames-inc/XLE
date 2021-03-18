@@ -219,6 +219,8 @@ namespace Utility
 
         Marker      CalculateLargestFreeBlock_Internal() const;
         bool        BlockAdjust_Internal(unsigned ptr, unsigned size, bool allocateOperation);
+        unsigned    CalculateAvailableSpace_AlreadyLocked() const;
+        unsigned    CalculateLargestFreeBlock_AlreadyLocked() const;
     };
 
     typedef SpanningHeap<uint16> SimpleSpanningHeap;
