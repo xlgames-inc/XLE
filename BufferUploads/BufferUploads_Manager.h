@@ -35,11 +35,10 @@ namespace BufferUploads
         
         ResourceLocator         GetResource(TransactionID id);
         void                    Resource_Validate(const ResourceLocator& locator) override;
-        bool                    IsCompleted(TransactionID id) override;
+        bool                    IsComplete(TransactionID id) override;
 
         CommandListMetrics      PopMetrics() override;
         PoolSystemMetrics       CalculatePoolMetrics() const override;
-        size_t                  ByteCount(const ResourceDesc& desc) const override;
 
         void                    Update(RenderCore::IThreadContext&) override;
         void                    FramePriority_Barrier() override;

@@ -33,6 +33,7 @@ namespace BufferUploads
     class IDataPacket;
     class IAsyncDataSource;
     class ResourceLocator;
+    class TransactionMarker;
 
         /////////////////////////////////////////////////
 
@@ -109,13 +110,6 @@ namespace BufferUploads
         bool _managedByPool = false;
     };
 
-    class TransactionMarker
-    {
-    public:
-        std::future<ResourceLocator> _future;
-        TransactionID _transactionID;
-    };
-
         /////////////////////////////////////////////////
 
     class IManager
@@ -164,7 +158,7 @@ namespace BufferUploads
 
             /// <summary>Checks for completion</summary>
             /// Returns true iff the given transaction has been completed.
-        virtual bool            IsCompleted (TransactionID id) = 0;
+        virtual bool            IsComplete (TransactionID id) = 0;
 
             /// \name Event queue
             /// @{
@@ -199,10 +193,6 @@ namespace BufferUploads
             /// PopMetrics() will remove the next item from the queue. If there
             /// no more items, "_commitTime" will be 0.
         virtual CommandListMetrics      PopMetrics              () = 0;
-            /// <summary>Returns the size of a buffer</summary>
-            /// Calculates the size of a buffer from a description. This can be
-            /// used to estimate the amount of GPU memory that will be used.
-        virtual size_t                  ByteCount               (const ResourceDesc& desc) const = 0;
             /// <summary>Returns metrics about pool memory</summary>
             /// Returns some profiling metrics related to the resource pooling
             /// buffers maintained by the system. Used by the BufferUploadDisplay
@@ -241,6 +231,30 @@ namespace BufferUploads
 
         virtual std::future<void> PrepareData(IteratorRange<const SubResource*> subResources) = 0;
     };
+
+    class TransactionMarker
+    {
+    public:
+        bool IsComplete() const;
+        bool IsValid() const;
+        ResourceLocator StallAndGetResource();
+        template<typename Duration> std::future_status WaitFor(Duration duration);
+
+        TransactionMarker();
+        ~TransactionMarker();
+        TransactionMarker& operator=(TransactionMarker&&) never_throws;
+        TransactionMarker(TransactionMarker&&) never_throws;
+    private:
+        TransactionMarker(std::future<ResourceLocator>&&, TransactionID, IManager*);
+        std::future<ResourceLocator> _future;
+        TransactionID _transactionID;
+        IManager* _manager;
+
+        friend class AssemblyLine;
+        friend class Manager;
+    };
+
+    template<typename Duration> std::future_status TransactionMarker::WaitFor(Duration duration) { return _future.wait_for(duration); }
 
         /////////////////////////////////////////////////
 

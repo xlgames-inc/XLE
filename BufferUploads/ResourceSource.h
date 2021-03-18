@@ -15,6 +15,7 @@
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/Optional.h"
+#include <atomic>
 
 namespace BufferUploads
 {
@@ -24,7 +25,7 @@ namespace BufferUploads
         virtual void AddRef(
             uint64_t resourceMarker, IResource& resource, 
             size_t offset, size_t size) = 0;
-        virtual void ReturnToPool(
+        virtual void Release(
             uint64_t resourceMarker, std::shared_ptr<IResource>&& resource, 
             size_t offset, size_t size) = 0;
         virtual ~IResourcePool() {}
@@ -32,7 +33,7 @@ namespace BufferUploads
 
         /////   R E S O U R C E S   P O O L   /////
 
-    typedef uint64_t DescHash;
+    using DescHash = uint64_t;
 
     template <typename Desc> class ResourcesPool : public IResourcePool, public std::enable_shared_from_this<ResourcesPool<Desc>>
     {
@@ -43,7 +44,7 @@ namespace BufferUploads
             uint64_t resourceMarker, IResource& resource, 
             size_t offset, size_t size) override;
 
-        virtual void ReturnToPool(
+        virtual void Release(
             uint64_t resourceMarker, std::shared_ptr<IResource>&& resource, 
             size_t offset, size_t size) override;
 
@@ -55,10 +56,13 @@ namespace BufferUploads
         ResourcesPool(RenderCore::IDevice& device, unsigned retainFrames = ~unsigned(0x0));
         ~ResourcesPool();
     protected:
+        std::shared_ptr<IResource> MakeReturnToPoolPointer(std::shared_ptr<IResource>&& resource, uint64_t poolMarker);
+        void ReturnToPool(std::shared_ptr<IResource>&& resource, uint64_t resourceMarker);
+
         class PoolOfLikeResources
         {
         public:
-            auto        AllocateResource(unsigned realSize, bool allowDeviceCreation) -> std::shared_ptr<IResource>;
+            auto        AllocateResource(size_t realSize, bool allowDeviceCreation) -> std::shared_ptr<IResource>;
             const Desc& GetDesc() const { return _desc; }
             PoolMetrics CalculateMetrics() const;
             void        Update(unsigned newFrameID);
@@ -74,9 +78,9 @@ namespace BufferUploads
             };
             LockFreeFixedSizeQueue<Entry, 512> _allocableResources;
             Desc                        _desc;
-            mutable unsigned            _peakSize;
-            mutable Interlocked::Value  _recentDeviceCreateCount, _recentPoolCreateCount, _recentReleaseCount;
-            Interlocked::Value          _totalCreateSize, _totalCreateCount, _totalRealSize;
+            mutable size_t              _peakSize;
+            mutable std::atomic<unsigned>  _recentDeviceCreateCount, _recentPoolCreateCount, _recentReleaseCount;
+            std::atomic<size_t>         _totalCreateSize, _totalCreateCount, _totalRealSize;
             unsigned                    _currentFrameID;
             unsigned                    _retainFrames;
 			RenderCore::IDevice*        _underlyingDevice;
@@ -89,7 +93,7 @@ namespace BufferUploads
         typedef std::pair<DescHash, std::shared_ptr<PoolOfLikeResources> > HashTableEntry;
         typedef std::vector<HashTableEntry> HashTable;
         HashTable                       _hashTables[2];
-        volatile Interlocked::Value     _readerCount[2];
+        volatile std::atomic<unsigned>  _readerCount[2];
         unsigned                        _hashTableIndex;
         mutable Threading::Mutex        _writerLock;
         unsigned                        _retainFrames;
@@ -108,13 +112,13 @@ namespace BufferUploads
     class BatchedResources : public IResourcePool, public std::enable_shared_from_this<BatchedResources>
     {
     public:
-        ResourceLocator Allocate(unsigned size, const char name[]);
+        ResourceLocator Allocate(size_t size, const char name[]);
 
         virtual void AddRef(
             uint64_t resourceMarker, IResource& resource, 
             size_t offset, size_t size) override;
 
-        virtual void ReturnToPool(
+        virtual void Release(
             uint64_t resourceMarker, std::shared_ptr<IResource>&& resource, 
             size_t offset, size_t size) override;
 
@@ -169,7 +173,7 @@ namespace BufferUploads
             void                ApplyPendingOperations(HeapedResource& destination);
 
             void                Tick(ThreadContext& context, const std::shared_ptr<IResource>& sourceResource);
-            bool                IsCompleted(IManager::EventListID processedEventList, ThreadContext& context);
+            bool                IsComplete(IManager::EventListID processedEventList, ThreadContext& context);
 
             void                SetSteps(const SimpleSpanningHeap& sourceHeap, const std::vector<DefragStep>& steps);
             void                ReleaseSteps();

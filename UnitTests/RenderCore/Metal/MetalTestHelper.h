@@ -30,6 +30,9 @@ namespace UnitTests
         std::shared_ptr<RenderCore::ICompiledPipelineLayout> _pipelineLayout;
         std::unique_ptr<RenderCore::LegacyRegisterBindingDesc> _defaultLegacyBindings;
 
+        void BeginFrameCapture();
+        void EndFrameCapture();
+
         MetalTestHelper(RenderCore::UnderlyingAPI api);
 		MetalTestHelper(const std::shared_ptr<RenderCore::IDevice>& device);
         ~MetalTestHelper();

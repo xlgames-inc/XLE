@@ -245,10 +245,13 @@ namespace RenderCore { namespace Metal_Vulkan
 			auto newMode = Internal::GetLayoutForBindType(bindType);
 			auto* res = checked_cast<Resource*>(&resource);
 
+			bool pendingInit = (bool)res->_pendingInitialization;
+
 			// try to mix this with the steady state from the resource
 			auto steadyLayout = res->_steadyStateLayout;
 			auto steadyAccessMask = res->_steadyStateAccessMask;
-			if ((steadyLayout == newMode._optimalLayout || steadyLayout == Internal::ImageLayout::General) 
+			if (!pendingInit 
+				&& (steadyLayout == newMode._optimalLayout || steadyLayout == Internal::ImageLayout::General) 
 				&& (res->_steadyStateAccessMask & newMode._accessFlags) == newMode._accessFlags) {
 
 				// The steady state is already compatible with what we want
@@ -284,10 +287,20 @@ namespace RenderCore { namespace Metal_Vulkan
 				{&resource, _capturedLayout, _capturedAccessMask, _capturedStageMask});
 
 			if (!_usingCompatibleSteadyState) {
-				Internal::SetImageLayout(
-					*_context, *res,
-					res->_steadyStateLayout, res->_steadyStateAccessMask, res->_steadyStateAssociatedStageMask,
-					_capturedLayout, _capturedAccessMask, newMode._pipelineStageFlags);
+				if (!pendingInit) {
+					Internal::SetImageLayout(
+						*_context, *res,
+						res->_steadyStateLayout, res->_steadyStateAccessMask, res->_steadyStateAssociatedStageMask,
+						_capturedLayout, _capturedAccessMask, newMode._pipelineStageFlags);
+				} else {
+					// The init operation will normally shift from undefined layout -> steady state
+					// We're just going to skip that and jump directly to our captured layout
+					res->_pendingInitialization = {};
+					Internal::SetImageLayout(
+						*_context, *res,
+						Internal::ImageLayout::Undefined, 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+						_capturedLayout, _capturedAccessMask, newMode._pipelineStageFlags);
+				}
 			}
 		}
 

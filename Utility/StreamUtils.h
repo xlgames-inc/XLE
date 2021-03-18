@@ -26,7 +26,7 @@ namespace Utility
             if (s > 512 * 1024 * 1024)  stream << std::setprecision(2) << std::fixed << s / float(1024 * 1024 * 1024) << " GiB";
             else if (s > 512 * 1024)    stream << std::setprecision(2) << std::fixed << s / float(1024 * 1024) << " MiB";
             else if (s > 512)           stream << std::setprecision(2) << std::fixed << s / float(1024) << " KiB";
-            else                        stream << s << "B";
+            else                        stream << s << " B";
             stream.flags(originalFlags);
             stream.precision(originalPrecision);
             return stream;

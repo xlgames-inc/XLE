@@ -2,7 +2,7 @@
 foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
 
     set(Src 
-        BufferUploads.cpp
+        Metrics.cpp
         BufferUploads_Manager.cpp
         DataPacket.cpp
         MemoryManagement.cpp

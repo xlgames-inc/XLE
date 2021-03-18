@@ -12,10 +12,6 @@
 #include "../Utility/PtrUtils.h"
 #include <algorithm>
 
-#pragma warning(disable:4127) // conditional expression is constant
-#pragma warning(disable:4018) // signed/unsigned mismatch
-#pragma warning(disable:4389) // signed/unsigned mismatch
-
 namespace BufferUploads
 {
     namespace CPUAccess = RenderCore::CPUAccess;
@@ -143,16 +139,16 @@ namespace BufferUploads
 
     #define tdesc template<typename Desc>
 
-    tdesc auto ResourcesPool<Desc>::PoolOfLikeResources::AllocateResource(unsigned realSize, bool allowDeviceCreation) -> std::shared_ptr<IResource>
+    tdesc auto ResourcesPool<Desc>::PoolOfLikeResources::AllocateResource(size_t realSize, bool allowDeviceCreation) -> std::shared_ptr<IResource>
         {
             Entry* front = NULL;
             if (_allocableResources.try_front(front)) {
-                Interlocked::Increment(&_recentPoolCreateCount);
+                ++_recentPoolCreateCount;
                 std::shared_ptr<IResource> result = std::move(front->_underlying);
                 _allocableResources.pop();
                 return result;
             } else if (allowDeviceCreation) {
-                Interlocked::Increment(&_recentDeviceCreateCount);
+                ++_recentDeviceCreateCount;
                 auto result = _underlyingDevice->CreateResource(_desc);
                 if (result) {
                     #if defined(REUSABLE_RESOURCE_DEBUGGING)
@@ -160,9 +156,9 @@ namespace BufferUploads
                             result, GUID_ReusableResourceDestructionHelper, 
                             new ReusableResourceDestructionHelper(_desc));
                     #endif
-                    Interlocked::Add(&_totalRealSize, realSize);
-                    Interlocked::Add(&_totalCreateSize, RenderCore::ByteCount(_desc));
-                    Interlocked::Increment(&_totalCreateCount);
+                    _totalRealSize += realSize;
+                    _totalCreateSize += RenderCore::ByteCount(_desc);
+                    ++_totalCreateCount;
                 }
                 return result;
             }
@@ -200,7 +196,7 @@ namespace BufferUploads
             newEntry._underlying = std::move(resource);
             newEntry._returnFrameID = _currentFrameID;
             _allocableResources.push(newEntry);
-            Interlocked::Increment(&_recentReleaseCount);
+            ++_recentReleaseCount;
         }
 
     tdesc ResourcesPool<Desc>::PoolOfLikeResources::PoolOfLikeResources(
@@ -228,9 +224,9 @@ namespace BufferUploads
         }
         result._peakSize = _peakSize = std::max(_peakSize, result._currentSize);
         result._topMostAge               = 0;
-        result._recentDeviceCreateCount  = Interlocked::Exchange(&_recentDeviceCreateCount, 0);
-        result._recentPoolCreateCount    = Interlocked::Exchange(&_recentPoolCreateCount, 0);
-        result._recentReleaseCount       = Interlocked::Exchange(&_recentReleaseCount, 0);
+        result._recentDeviceCreateCount  = _recentDeviceCreateCount.exchange(0);
+        result._recentPoolCreateCount    = _recentPoolCreateCount.exchange(0);
+        result._recentReleaseCount       = _recentReleaseCount.exchange(0);
         result._totalRealSize            = _totalRealSize;
         result._totalCreateSize          = _totalCreateSize;
         result._totalCreateCount         = _totalCreateCount;
@@ -251,7 +247,7 @@ namespace BufferUploads
             DescHash hashValue = Hash(desc);
             {
                 unsigned hashTableIndex = _hashTableIndex;
-                Interlocked::Increment(&_readerCount[hashTableIndex]);
+                ++_readerCount[hashTableIndex];
                 HashTable& hashTable = _hashTables[hashTableIndex];
                 auto entry = std::lower_bound(hashTable.begin(), hashTable.end(), hashValue, CompareFirst());
                 if (entry != hashTable.end() && entry->first == hashValue) {
@@ -262,12 +258,13 @@ namespace BufferUploads
                         assert(desc._textureDesc._format == entry->second->GetDesc()._textureDesc._format);
                     }
                     auto newResource = entry->second.get()->AllocateResource(realSize, allowDeviceCreation);
-                    Interlocked::Decrement(&_readerCount[hashTableIndex]);
+                    --_readerCount[hashTableIndex];
                     return ResourceLocator{
-                        std::move(newResource), ~size_t(0x0), ~size_t(0x0),
+                        MakeReturnToPoolPointer(std::move(newResource), hashValue),
+                        ~size_t(0x0), ~size_t(0x0),
                         std::enable_shared_from_this<ResourcesPool<Desc>>::weak_from_this(), hashValue};
                 }
-                Interlocked::Decrement(&_readerCount[hashTableIndex]);
+                --_readerCount[hashTableIndex];
             }
 
             if (!allowDeviceCreation)
@@ -307,7 +304,7 @@ namespace BufferUploads
                 while (_readerCount[oldHashTableIndex]) {}
 
                 return ResourceLocator{
-                    std::move(newResource), 
+                    MakeReturnToPoolPointer(std::move(newResource), hashValue),
                     ~size_t(0x0), ~size_t(0x0), std::enable_shared_from_this<ResourcesPool<Desc>>::weak_from_this(), hashValue};
             }
         }
@@ -318,32 +315,51 @@ namespace BufferUploads
         {
             // we don't have to do anything in this case
         }
-    
-    tdesc void        ResourcesPool<Desc>::ReturnToPool(
+
+    tdesc void        ResourcesPool<Desc>::Release(
             uint64_t resourceMarker, std::shared_ptr<IResource>&& resource, 
             size_t offset, size_t size)
+        {}
+
+    tdesc std::shared_ptr<IResource> ResourcesPool<Desc>::MakeReturnToPoolPointer(std::shared_ptr<IResource>&& resource, uint64_t poolMarker)
+    {
+        // We're going to create a second std::shared_ptr<> that points to the same resource,
+        // but it's destruction routine will return it to the pool.
+        // The destruction routine also captures the original shared pointer!
+        auto weakThisI = std::enable_shared_from_this<ResourcesPool<Desc>>::weak_from_this();
+        auto* res = resource.get();
+        return std::shared_ptr<IResource>(
+            res,
+            [originalPtr = std::move(resource), poolMarker, weakThis = std::move(weakThisI)](IResource*) mutable {
+                auto strongThis = weakThis.lock();
+                if (strongThis)
+                    strongThis->ReturnToPool(std::move(originalPtr), poolMarker);
+            });
+    }
+    
+    tdesc void        ResourcesPool<Desc>::ReturnToPool(std::shared_ptr<IResource>&& resource, uint64_t resourceMarker)
         {
             unsigned hashTableIndex = _hashTableIndex;
-            Interlocked::Increment(&_readerCount[hashTableIndex]);
+            ++_readerCount[hashTableIndex];
             HashTable& hashTable = _hashTables[hashTableIndex];
             auto entry = std::lower_bound(hashTable.begin(), hashTable.end(), resourceMarker, CompareFirst());
             if (entry != hashTable.end() && entry->first == resourceMarker) {
                 entry->second->ReturnToPool(std::move(resource));
-                Interlocked::Decrement(&_readerCount[hashTableIndex]);
+                --_readerCount[hashTableIndex];
             } else {
-                Interlocked::Decrement(&_readerCount[hashTableIndex]);
+                --_readerCount[hashTableIndex];
             }
         }
 
     tdesc void        ResourcesPool<Desc>::Update(unsigned newFrameID)
         {
             unsigned hashTableIndex = _hashTableIndex;
-            Interlocked::Increment(&_readerCount[hashTableIndex]);
+            ++_readerCount[hashTableIndex];
             HashTable& hashTable = _hashTables[hashTableIndex];
             for (auto i=hashTable.begin(); i!=hashTable.end(); ++i) {
                 i->second->Update(newFrameID);
             }
-            Interlocked::Decrement(&_readerCount[hashTableIndex]);
+            --_readerCount[hashTableIndex];
         }
 
     tdesc std::vector<PoolMetrics>        ResourcesPool<Desc>::CalculateMetrics() const
@@ -371,7 +387,7 @@ namespace BufferUploads
         /////   B A T C H E D   R E S O U R C E S   /////
 
     ResourceLocator    BatchedResources::Allocate(
-        unsigned size, const char name[])
+        size_t size, const char name[])
     {
         if (size > RenderCore::ByteCount(_prototype)) {
             return {};
@@ -462,7 +478,7 @@ namespace BufferUploads
         }
     }
 
-    void BatchedResources::ReturnToPool(
+    void BatchedResources::Release(
         uint64_t resourceMarker, std::shared_ptr<IResource>&& resource, 
         size_t offset, size_t size)
     {
@@ -670,7 +686,7 @@ namespace BufferUploads
                 } else {
                     const bool useTemporaryCopyBuffer = PlatformInterface::UseMapBasedDefrag && !PlatformInterface::CanDoNooverwriteMapInBackground;
                     existingActiveDefrag->Tick(context, useTemporaryCopyBuffer?_temporaryCopyBuffer:_activeDefragHeap->_heapResource);
-                    if (existingActiveDefrag->IsCompleted(processedEventList, context)) {
+                    if (existingActiveDefrag->IsComplete(processedEventList, context)) {
 
                             //
                             //      Everything should be de-reffed from the original heap.
@@ -789,7 +805,7 @@ namespace BufferUploads
             unsigned start = *i, end = *(i+1);
             result._allocatedSpace   += start-previousStart;
             result._unallocatedSpace += end-start;
-            result._largestFreeBlock  = std::max(result._largestFreeBlock, end-start);
+            result._largestFreeBlock  = std::max(result._largestFreeBlock, size_t(end-start));
             previousStart = end;
         }
 
@@ -948,7 +964,7 @@ namespace BufferUploads
         #endif
     }
 
-    bool BatchedResources::ActiveDefrag::IsCompleted(IManager::EventListID processedEventList, ThreadContext& context)
+    bool BatchedResources::ActiveDefrag::IsComplete(IManager::EventListID processedEventList, ThreadContext& context)
     {
         return  GetHeap()->_heapResource && _doneResourceCopy && (processedEventList >= _eventId);
     }
@@ -1184,7 +1200,7 @@ namespace BufferUploads
     {
         auto pool = _pool.lock();
         if (pool)
-            pool->ReturnToPool(_poolMarker, std::move(_resource), _interiorOffset, _interiorSize);
+            pool->Release(_poolMarker, std::move(_resource), _interiorOffset, _interiorSize);
     }
 
     ResourceLocator::ResourceLocator(ResourceLocator&& moveFrom) never_throws
@@ -1205,7 +1221,7 @@ namespace BufferUploads
         if (_managedByPool) {
             auto pool = _pool.lock();
             if (pool && _resource)
-                pool->ReturnToPool(_poolMarker, std::move(_resource), _interiorOffset, _interiorSize);
+                pool->Release(_poolMarker, std::move(_resource), _interiorOffset, _interiorSize);
         }
 
         _resource = std::move(moveFrom._resource);
@@ -1240,7 +1256,7 @@ namespace BufferUploads
         if (_managedByPool) {
             auto pool = _pool.lock();
             if (pool && _resource)
-                pool->ReturnToPool(_poolMarker, std::move(_resource), _interiorOffset, _interiorSize);
+                pool->Release(_poolMarker, std::move(_resource), _interiorOffset, _interiorSize);
         }
 
         _resource = copyFrom._resource;

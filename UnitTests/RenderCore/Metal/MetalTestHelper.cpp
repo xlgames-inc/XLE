@@ -9,6 +9,7 @@
 #include "../../../RenderCore/Metal/Resource.h"
 #include "../../../RenderCore/IDevice.h"
 #include "../../../RenderCore/IThreadContext.h"
+#include "../../../RenderCore/IAnnotator.h"
 #include "../../../RenderCore/OpenGLES/IDeviceOpenGLES.h"
 #include "../../../RenderCore/Vulkan/IDeviceVulkan.h"
 #include "../../../RenderCore/MinimalShaderSource.h"
@@ -161,6 +162,15 @@ namespace UnitTests
 		_shaderSource.reset();
 		_shaderService.reset();
 		_device.reset();
+	}
+
+	void MetalTestHelper::BeginFrameCapture()
+	{
+		_device->GetImmediateContext()->GetAnnotator().BeginFrameCapture();
+	}
+	void MetalTestHelper::EndFrameCapture()
+	{
+		_device->GetImmediateContext()->GetAnnotator().EndFrameCapture();
 	}
 
 	std::unique_ptr<MetalTestHelper> MakeTestHelper()

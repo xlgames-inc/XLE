@@ -1332,7 +1332,6 @@ namespace RenderCore { namespace ImplVulkan
 		}
 
 		if (_gpuTracker) _gpuTracker->UpdateConsumer();
-		// Maybe we should reset our finished command buffers here?
 		if (_destrQueue) _destrQueue->Flush();
 		_globalPools->_mainDescriptorPool.FlushDestroys();
 		_globalPools->_longTermDescriptorPool.FlushDestroys();
@@ -1365,6 +1364,16 @@ namespace RenderCore { namespace ImplVulkan
 		VkSemaphore signalSema[] = { _interimCommandBufferComplete.get() };
 		QueuePrimaryContext(MakeIteratorRange(signalSema), waitForCompletion ? _utilityFence.get() : VK_NULL_HANDLE);
 		_nextQueueShouldWaitOnInterimBuffer = true;
+
+		// We need to flush the destruction queues at some point for clients that never actually call Present
+		// We have less control over the frequency of CommitCommands, though, so it's going to be less clear
+		// when is the right time to call it
+		if (_gpuTracker) _gpuTracker->UpdateConsumer();
+		if (_destrQueue) _destrQueue->Flush();
+		_globalPools->_mainDescriptorPool.FlushDestroys();
+		_globalPools->_longTermDescriptorPool.FlushDestroys();
+		_renderingCommandPool.FlushDestroys();
+		_tempBufferSpace->FlushDestroys();
 
 		if (waitForCompletion) {
 			VkFence fences[] = { _utilityFence.get() };

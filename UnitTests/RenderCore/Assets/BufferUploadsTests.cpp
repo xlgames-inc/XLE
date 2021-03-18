@@ -7,6 +7,7 @@
 #include "../../UnitTestHelper.h"
 #include "../../../BufferUploads/IBufferUploads.h"
 #include "../../../BufferUploads/MemoryManagement.h"
+#include "../../../BufferUploads/Metrics.h"
 #include "../../../RenderCore/Techniques/TextureLoaders.h"
 #include "../../../RenderCore/ResourceDesc.h"
 #include "../../../RenderCore/Format.h"
@@ -16,6 +17,7 @@
 #include "../../../RenderCore/Metal/Resource.h"
 #include "../../../ConsoleRig/GlobalServices.h"
 #include "../../../ConsoleRig/AttachablePtr.h"
+#include "../../../OSServices/Log.h"
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/MountingTree.h"
 #include "../../../Utility/HeapUtils.h"
@@ -25,6 +27,7 @@
 #include "catch2/catch_approx.hpp"
 #include <chrono>
 #include <future>
+#include <random>
 
 using namespace Catch::literals;
 using namespace std::chrono_literals;
@@ -83,13 +86,12 @@ namespace UnitTests
             
             auto dataPacket = BufferUploads::CreateBasicPacket(MakeIteratorRange(rawData), MakeTexturePitches(desc._textureDesc));
             auto transaction = bu->Transaction_Begin(desc, dataPacket);
-            REQUIRE(transaction._transactionID != 0);
-            REQUIRE(transaction._future.valid());
+            REQUIRE(transaction.IsValid());
 
             auto start = std::chrono::steady_clock::now();
             for (;;) {
                 bu->Update(*metalHelper->_device->GetImmediateContext());
-                auto status = transaction._future.wait_for(100ms);
+                auto status = transaction.WaitFor(100ms);
                 if (status == std::future_status::ready)
                     break;
 
@@ -99,8 +101,8 @@ namespace UnitTests
 
             bu->Update(*metalHelper->_device->GetImmediateContext());
 
-            REQUIRE(bu->IsCompleted(transaction._transactionID));
-            auto finalResource = transaction._future.get().AsIndependentResource();
+            REQUIRE(transaction.IsComplete());
+            auto finalResource = transaction.StallAndGetResource().AsIndependentResource();
             REQUIRE(finalResource != nullptr);
             auto finalResourceDesc = finalResource->GetDesc();
             REQUIRE(finalResourceDesc._type == ResourceDesc::Type::Texture);
@@ -115,13 +117,12 @@ namespace UnitTests
             dataSource->_rawData = rawData;
 
             auto transaction = bu->Transaction_Begin(dataSource);
-            REQUIRE(transaction._transactionID != 0);
-            REQUIRE(transaction._future.valid());
+            REQUIRE(transaction.IsValid());
 
             auto start = std::chrono::steady_clock::now();
             for (;;) {
                 bu->Update(*metalHelper->_device->GetImmediateContext());
-                auto status = transaction._future.wait_for(100ms);
+                auto status = transaction.WaitFor(100ms);
                 if (status == std::future_status::ready)
                     break;
 
@@ -131,8 +132,8 @@ namespace UnitTests
 
             bu->Update(*metalHelper->_device->GetImmediateContext());
 
-            REQUIRE(bu->IsCompleted(transaction._transactionID));
-            auto finalResource = transaction._future.get().AsIndependentResource();
+            REQUIRE(transaction.IsComplete());
+            auto finalResource = transaction.StallAndGetResource().AsIndependentResource();
             REQUIRE(finalResource != nullptr);
             auto finalResourceDesc = finalResource->GetDesc();
             REQUIRE(finalResourceDesc._type == ResourceDesc::Type::Texture);
@@ -141,17 +142,16 @@ namespace UnitTests
         }
     }
 
-    TEST_CASE( "BufferUploads-DDSFileLoading", "[rendercore_techniques]" )
+    TEST_CASE( "BufferUploads-TextureFileLoading", "[rendercore_techniques]" )
     {
         using namespace RenderCore;
         auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
+        auto executor = std::make_shared<thousandeyes::futures::DefaultExecutor>(std::chrono::milliseconds(2));
+        thousandeyes::futures::Default<thousandeyes::futures::Executor>::Setter execSetter(executor);
 		auto mnt0 = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", UnitTests::CreateEmbeddedResFileSystem());
 
         auto metalHelper = MakeTestHelper();
         auto bu = BufferUploads::CreateManager(*metalHelper->_device);
-
-        auto executor = std::make_shared<thousandeyes::futures::DefaultExecutor>(std::chrono::milliseconds(2));
-        thousandeyes::futures::Default<thousandeyes::futures::Executor>::Setter execSetter(executor);
 
         auto ddsLoader = Techniques::GetDDSTextureLoader();
         auto wicLoader = Techniques::GetWICTextureLoader();
@@ -170,13 +170,12 @@ namespace UnitTests
             }
 
             auto transaction = bu->Transaction_Begin(asyncSource, BindFlag::ShaderResource | BindFlag::TransferSrc);
-            REQUIRE(transaction._transactionID != 0);
-            REQUIRE(transaction._future.valid());
+            REQUIRE(transaction.IsValid());
 
             auto start = std::chrono::steady_clock::now();
             for (;;) {
                 bu->Update(*metalHelper->_device->GetImmediateContext());
-                auto status = transaction._future.wait_for(100ms);
+                auto status = transaction.WaitFor(100ms);
                 if (status == std::future_status::ready)
                     break;
 
@@ -184,11 +183,11 @@ namespace UnitTests
                     FAIL("Too much time has passed waiting for buffer uploads transaction to complete");
             }
 
-            while (!bu->IsCompleted(transaction._transactionID))
+            while (!transaction.IsComplete())
                 bu->Update(*metalHelper->_device->GetImmediateContext());
             
-            REQUIRE(bu->IsCompleted(transaction._transactionID));
-            auto finalResource = transaction._future.get().AsIndependentResource();
+            REQUIRE(transaction.IsComplete());
+            auto finalResource = transaction.StallAndGetResource().AsIndependentResource();
             REQUIRE(finalResource != nullptr);
             auto finalResourceDesc = finalResource->GetDesc();
             REQUIRE(finalResourceDesc._type == ResourceDesc::Type::Texture);
@@ -220,6 +219,103 @@ namespace UnitTests
         }
 
         ::Assets::MainFileSystem::GetMountingTree()->Unmount(mnt0);
+    }
+
+    class RandomNoiseGenerator : public BufferUploads::IAsyncDataSource
+    {
+    public:
+        std::future<RenderCore::ResourceDesc> GetDesc () override
+        {
+            std::promise<RenderCore::ResourceDesc> result;
+            result.set_value(_desc);
+            return result.get_future();
+        }
+
+        std::future<void> PrepareData(IteratorRange<const SubResource*> subResources) override
+        {
+            std::vector<SubResource> subResourceDst_;
+            subResourceDst_.insert(subResourceDst_.end(), subResources.begin(), subResources.end());
+            return std::async(
+                std::launch::async,
+                [rngSeed = _rngSeed, subResourceDst{std::move(subResourceDst_)}]() {
+                    std::mt19937 rng(rngSeed);
+                    for (const auto&subRes:subResourceDst)
+                        for (unsigned& dst:subRes._destination.Cast<unsigned*>())
+                            dst = rng();
+                });
+        }
+
+        RenderCore::ResourceDesc _desc;
+        uint32_t _rngSeed;
+
+        RandomNoiseGenerator(unsigned width, unsigned height, uint32_t rngSeed)
+        : _rngSeed(rngSeed)
+        {
+            _desc = RenderCore::CreateDesc(
+                0, 0, 0, RenderCore::TextureDesc::Plain2D(width, height, RenderCore::Format::R8G8B8A8_UNORM),
+                "rng");
+        }
+    };
+
+    TEST_CASE( "BufferUploads-TextureConstructionThrash", "[rendercore_techniques]" )
+    {
+        using namespace RenderCore;
+        auto executor = std::make_shared<thousandeyes::futures::DefaultExecutor>(std::chrono::milliseconds(2));
+        thousandeyes::futures::Default<thousandeyes::futures::Executor>::Setter execSetter(executor);
+        auto metalHelper = MakeTestHelper();
+        auto bu = BufferUploads::CreateManager(*metalHelper->_device);
+
+        std::vector<BufferUploads::TransactionMarker> liveTransactions;
+
+        std::mt19937 rng(std::random_device{}());
+        unsigned loopCounter = 0;
+        unsigned incrementalTransactionCounter = 0;
+
+        metalHelper->BeginFrameCapture();
+
+        auto startTime = std::chrono::steady_clock::now();
+        for (;;) {
+            unsigned texturesToSpawn = (unsigned)std::sqrt(384 - liveTransactions.size());
+            for (unsigned t=0; t<texturesToSpawn; ++t) {
+                auto asyncSource = std::make_shared<RandomNoiseGenerator>(
+                    1 << std::uniform_int_distribution<>(5, 10)(rng),
+                    1 << std::uniform_int_distribution<>(5, 10)(rng),
+                    rng());
+                auto transaction = bu->Transaction_Begin(asyncSource, BindFlag::ShaderResource);
+                REQUIRE(transaction.IsValid());
+                liveTransactions.push_back(std::move(transaction));
+                ++incrementalTransactionCounter;
+            }
+
+            bu->Update(*metalHelper->_device->GetImmediateContext());
+
+            // Note -- some of the transactions may fail (eg, out of the device space). However, they
+            // are stil considered complete and we should be able to continue on
+            auto i = std::remove_if(
+                liveTransactions.begin(), liveTransactions.end(),
+                [u=bu.get()](auto& transaction) {
+                    return transaction.IsComplete();
+                });
+            liveTransactions.erase(i, liveTransactions.end());
+
+            std::this_thread::sleep_for(16ms);
+            metalHelper->_device->GetImmediateContext()->CommitCommands();
+            
+            loopCounter++;
+            if ((loopCounter%60) == 0) {
+
+                Log(Verbose) << bu->PopMetrics() << std::endl;
+                Log(Verbose) << bu->CalculatePoolMetrics() << std::endl;
+                Log(Verbose) << "Live Transactions: " << liveTransactions.size() << std::endl;
+                Log(Verbose) << "Incremental Transactions: " << incrementalTransactionCounter << std::endl;
+
+                // Only every finish immediately after a report
+                if ((std::chrono::steady_clock::now() - startTime) > 20s)
+                    break;
+            }
+        }
+
+        metalHelper->EndFrameCapture();
     }
 
     TEST_CASE( "BufferUploads-Heap", "[rendercore_techniques]" )
