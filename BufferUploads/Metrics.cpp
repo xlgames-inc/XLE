@@ -23,7 +23,7 @@ namespace BufferUploads
 		_resolveTime = _commitTime = 0;
 		_waitTime = _processingStart = _processingEnd = 0;
 		_framePriorityStallTime = 0;
-		_batchedCopyBytes = _batchedCopyCount = 0;
+		_batchedUploadBytes = _batchedUploadCount = 0;
 		_wakeCount = 0;
 		_frameId = 0;
 		_retirementCount = 0;
@@ -53,7 +53,7 @@ namespace BufferUploads
 		_commitTime = cloneFrom._commitTime;
 		_waitTime = cloneFrom._waitTime; _processingStart = cloneFrom._processingStart; _processingEnd = cloneFrom._processingEnd;
 		_framePriorityStallTime = cloneFrom._framePriorityStallTime;
-		_batchedCopyBytes = cloneFrom._batchedCopyBytes; _batchedCopyCount = cloneFrom._batchedCopyCount;
+		_batchedUploadBytes = cloneFrom._batchedUploadBytes; _batchedUploadCount = cloneFrom._batchedUploadCount;
 		_wakeCount = cloneFrom._wakeCount; _frameId = cloneFrom._frameId;
 		return *this;
 	}
@@ -105,6 +105,7 @@ namespace BufferUploads
 		str << " | "; str.width(20); str << metrics._countUploaded[(unsigned)UploadDataType::Index];
 		str << std::endl;
 
+		str << "Batched Bytes Uploaded: " << ByteCount{metrics._batchedUploadBytes} << " in " << metrics._batchedUploadCount << " steps " << std::endl;
 		str << "Total Bytes Uploaded: " << ByteCount{metrics._bytesUploadTotal} << std::endl;
 		str << "Context Operations: " << metrics._contextOperations << std::endl;
 		str << "Dev create operations: " << metrics._deviceCreateOperations << std::endl;

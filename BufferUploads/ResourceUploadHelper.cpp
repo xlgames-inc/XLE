@@ -107,13 +107,19 @@ namespace BufferUploads { namespace PlatformInterface
         const ResourceLocator& resource, const ResourceDesc& desc, unsigned offset,
         IteratorRange<const void*> data)
     {
-        assert(resource.IsWholeResource());
         auto* metalResource = resource.GetContainingResource().get();
+        size_t finalOffset = offset;
+        size_t finalSize = data.size();
+        if (!resource.IsWholeResource()) {
+            auto range = resource.GetRangeInContainingResource();
+            assert((range.second - range.first) >= finalSize);
+            finalOffset += range.first;
+        }
 
         // note -- this is a direct, immediate map... There must be no contention while we map.
         assert(desc._type == ResourceDesc::Type::LinearBuffer);
         auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
-        Metal::ResourceMap map(metalContext, *metalResource, Metal::ResourceMap::Mode::WriteDiscardPrevious, SubResourceId{0,0}, offset);
+        Metal::ResourceMap map(metalContext, *metalResource, Metal::ResourceMap::Mode::WriteDiscardPrevious, SubResourceId{0,0}, finalOffset, finalSize);
         auto copyAmount = std::min(map.GetData().size(), data.size());
         if (copyAmount > 0)
             XlCopyMemory(map.GetData().begin(), data.begin(), copyAmount);
@@ -137,9 +143,7 @@ namespace BufferUploads { namespace PlatformInterface
         return [&pkt](SubResourceId sr) -> RenderCore::SubResourceInitData
             {
                 RenderCore::SubResourceInitData result;
-                const void* data = pkt.GetData(sr);
-                auto size = pkt.GetDataSize(sr);
-				result._data = MakeIteratorRange(data, PtrAdd(data, size));
+				result._data = pkt.GetData(sr);
                 result._pitches = pkt.GetPitches(sr);
                 return result;
             };

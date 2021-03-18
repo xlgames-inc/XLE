@@ -34,8 +34,7 @@ namespace BufferUploads
     class BasicRawDataPacket : public IDataPacket
     {
     public:
-        virtual void* GetData(SubResourceId subRes = {}) override;
-        virtual size_t GetDataSize(SubResourceId subRes = {}) const override;
+        virtual IteratorRange<void*> GetData(SubResourceId subRes = {}) override;
         virtual TexturePitches GetPitches(SubResourceId subRes = {}) const override;
 
         BasicRawDataPacket(size_t size, IteratorRange<const void*> data = {}, TexturePitches pitches = TexturePitches());
@@ -56,9 +55,9 @@ namespace BufferUploads
     {
             // note --  prefer sending aligned data as input! Just makes it
             //          more convenient for copying
+        _data.reset((uint8_t*)XlMemAlign(_dataSize, 16));
         if (!data.empty()) {
-            assert(data.size() == size);
-            _data.reset((uint8_t*)XlMemAlign(data.size(), 16));
+            assert(data.size() == _dataSize);
             if ((size_t(data.begin()) & 0xf)==0x0 && (_dataSize & 0xf)==0x0) {
                 XlCopyMemoryAlign16(_data.get(), data.begin(), _dataSize);
             } else {
@@ -70,18 +69,12 @@ namespace BufferUploads
     BasicRawDataPacket::~BasicRawDataPacket()
     {}
 
-    void* BasicRawDataPacket::GetData(SubResourceId subRes)
+    IteratorRange<void*> BasicRawDataPacket::GetData(SubResourceId subRes)
     {
         assert(subRes._mip == 0 && subRes._arrayLayer == 0);
-        return _data.get(); 
+        return MakeIteratorRange(_data.get(), PtrAdd(_data.get(), _dataSize)); 
     }
     
-    size_t BasicRawDataPacket::GetDataSize(SubResourceId subRes) const
-    {
-        assert(subRes._mip == 0 && subRes._arrayLayer == 0);
-        return _dataSize; 
-    }
-
     TexturePitches BasicRawDataPacket::GetPitches(SubResourceId subRes) const
     {
         assert(subRes._mip == 0 && subRes._arrayLayer == 0);
@@ -114,6 +107,11 @@ namespace BufferUploads
         return nullptr;
     }
 
+    std::shared_ptr<IDataPacket> CreateEmptyLinearBufferPacket(size_t size)
+    {
+        return std::make_shared<BasicRawDataPacket>(size, IteratorRange<const void*>{}, TexturePitches{(unsigned)size, (unsigned)size});
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
             //      S T R E A M I N G   P A C K E T
 
@@ -122,9 +120,8 @@ namespace BufferUploads
     class FileDataSource : public IDataPacket, public std::enable_shared_from_this<FileDataSource>
     {
     public:
-        virtual void*           GetData         (SubResourceId subRes);
-        virtual size_t          GetDataSize     (SubResourceId subRes) const;
-        virtual TexturePitches  GetPitches      (SubResourceId subRes) const;
+        virtual IteratorRange<void*>    GetData         (SubResourceId subRes) override;
+        virtual TexturePitches          GetPitches      (SubResourceId subRes) const override;
 
         virtual std::shared_ptr<Marker>     BeginBackgroundLoad();
 
@@ -152,13 +149,12 @@ namespace BufferUploads
             LPOVERLAPPED lpOverlapped);
     };
 
-    void* FileDataSource::GetData(SubResourceId subRes)
+    IteratorRange<void*> FileDataSource::GetData(SubResourceId subRes)
     {
-        // assert(subRes == 0);
-        return _pkt.get();
+        assert(subRes._mip == 0 && subRes._arrayLayer == 0);
+        return MakeIteratorRange(_pkt.get(), PtrAdd(_pkt.get(), _dataSize));
     }
 
-    size_t FileDataSource::GetDataSize(SubResourceId subRes) const           { /*assert(subRes == 0);*/ return _dataSize; }
     TexturePitches FileDataSource::GetPitches(SubResourceId subRes) const    { /*assert(subRes == 0);*/ return _pitches; }
 
     void CALLBACK FileDataSource::CompletionRoutine(

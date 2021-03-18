@@ -49,7 +49,6 @@ namespace BufferUploads
             size_t offset, size_t size) override;
 
         std::vector<PoolMetrics>    CalculateMetrics() const;
-		RenderCore::IDevice*        GetUnderlyingDevice() { return _underlyingDevice; }
         void                        OnLostDevice();
         void                        Update(unsigned newFrameID);
 
@@ -136,7 +135,7 @@ namespace BufferUploads
         void                    TickDefrag(ThreadContext& deviceContext, IManager::EventListID processedEventList);
         void                    OnLostDevice();
 
-        BatchedResources(const ResourceDesc& prototype, std::shared_ptr<ResourcesPool<ResourceDesc>> sourcePool);
+        BatchedResources(RenderCore::IDevice& device, const ResourceDesc& prototype);
         ~BatchedResources();
     private:
         class HeapedResource
@@ -201,7 +200,7 @@ namespace BufferUploads
 
         std::vector<std::unique_ptr<HeapedResource>> _heaps;
         ResourceDesc _prototype;
-        std::shared_ptr<ResourcesPool<ResourceDesc>> _sourcePool;
+        RenderCore::IDevice* _device;
         mutable Threading::ReadWriteMutex _lock;
 
             //  Active defrag stuff...
@@ -211,6 +210,9 @@ namespace BufferUploads
 
         std::shared_ptr<IResource> _temporaryCopyBuffer;
         unsigned _temporaryCopyBufferCountDown;
+
+        mutable std::atomic<unsigned>   _recentDeviceCreateCount;
+        std::atomic<size_t>             _totalCreateCount;
 
         BatchedResources(const BatchedResources&);
         BatchedResources& operator=(const BatchedResources&);
@@ -251,6 +253,7 @@ namespace BufferUploads
         void                    Tick(ThreadContext& context, IManager::EventListID processedEventList);
 
         BatchedResources::ResultFlags::BitField     IsBatchedResource(const ResourceLocator& locator, const ResourceDesc& desc);
+        bool                    CanBeBatched(const ResourceDesc& desc);
 
         void                    OnLostDevice();
 

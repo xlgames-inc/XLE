@@ -55,8 +55,8 @@ namespace BufferUploads
         TimeMarker _resolveTime, _commitTime;
         TimeMarker _waitTime, _processingStart, _processingEnd;
         TimeMarker _framePriorityStallTime;
-        size_t _batchedCopyBytes;
-        unsigned _batchedCopyCount;
+        size_t _batchedUploadBytes;
+        unsigned _batchedUploadCount;
         unsigned _wakeCount, _frameId;
 
         CommandListMetrics();
@@ -96,6 +96,8 @@ namespace BufferUploads
     struct BatchingSystemMetrics
     {
         std::vector<BatchedHeapMetrics> _heaps;
+        unsigned _recentDeviceCreateCount;
+        unsigned _totalDeviceCreateCount;
     };
 
     struct PoolSystemMetrics

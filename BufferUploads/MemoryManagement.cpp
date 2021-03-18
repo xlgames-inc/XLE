@@ -220,9 +220,8 @@ namespace BufferUploads
         signed refMin = INT_MAX, refMax = INT_MIN;
         for (;;) {
             if (i >= _entries.end() || currentStart < i->_start) {
-                if (i >= _entries.end() || internalEnd <= i->_start) {
+                if (i >= _entries.end() || internalEnd <= i->_start)
                     break;
-                }
                 currentStart = i->_start;
             }
             assert(i>=_entries.begin() && i<_entries.end());
@@ -237,9 +236,7 @@ namespace BufferUploads
 
             if (i->_start == currentStart) {
                 if (internalEnd >= i->_end) {
-                        // we've hit a block identical to the one we're looking for. Just increase the ref count
                     signed newRefCount = --i->_refCount;
-                    currentStart = i->_end;
                     Marker iEnd = i->_end;
                     if (!newRefCount) {
                         i = _entries.erase(i);
@@ -248,9 +245,9 @@ namespace BufferUploads
                     if (internalEnd == iEnd) {
                         break;  // it's the end
                     }
-                    if (!newRefCount) {
+                    currentStart = i->_end;
+                    if (!newRefCount)
                         continue; // continue to skip the next ++i (because we've just done an erase)
-                    }
                 } else {
                         // split the block and add a new one in front
                     signed newRefCount = i->_refCount-1;

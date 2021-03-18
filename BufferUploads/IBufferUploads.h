@@ -91,7 +91,8 @@ namespace BufferUploads
         ResourceLocator(
             std::shared_ptr<IResource> containingResource,
             size_t interiorOffset, size_t interiorSize,
-            std::weak_ptr<IResourcePool> pool, uint64_t poolMarker);
+            std::weak_ptr<IResourcePool> pool, uint64_t poolMarker,
+            bool initialReferenceAlreadyTaken = false);
         ResourceLocator(
             std::shared_ptr<IResource> containingResource,
             size_t interiorOffset, size_t interiorSize);
@@ -211,9 +212,8 @@ namespace BufferUploads
     class IDataPacket
     {
     public:
-        virtual void*           GetData         (SubResourceId subRes = {}) = 0;
-        virtual size_t          GetDataSize     (SubResourceId subRes = {}) const = 0;
-        virtual TexturePitches  GetPitches      (SubResourceId subRes = {}) const = 0;
+        virtual IteratorRange<void*>    GetData         (SubResourceId subRes = {}) = 0;
+        virtual TexturePitches          GetPitches      (SubResourceId subRes = {}) const = 0;
         virtual ~IDataPacket();
     };
 
@@ -265,7 +265,10 @@ namespace BufferUploads
     buffer_upload_dll_export std::shared_ptr<IDataPacket> CreateEmptyPacket(
         const ResourceDesc& desc);
 
-    buffer_upload_dll_export std::unique_ptr<IManager>      CreateManager(RenderCore::IDevice& renderDevice);
+    buffer_upload_dll_export std::shared_ptr<IDataPacket> CreateEmptyLinearBufferPacket(
+        size_t size);
+
+    buffer_upload_dll_export std::unique_ptr<IManager> CreateManager(RenderCore::IDevice& renderDevice);
 
 }
 

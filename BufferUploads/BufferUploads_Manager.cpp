@@ -286,7 +286,7 @@ namespace BufferUploads
                     //
             if (data && desc._type == ResourceDesc::Type::Texture) {
                 for (unsigned m=0; m<desc._textureDesc._mipCount; ++m) {
-                    const size_t dataSize = data->GetDataSize(SubResourceId{m, 0});
+                    const size_t dataSize = data->GetData(SubResourceId{m, 0}).size();
                     if (dataSize) {
                         TextureDesc mipMapDesc     = RenderCore::CalculateMipMapDesc(desc._textureDesc, m);
                         mipMapDesc._mipCount       = 1;
@@ -521,10 +521,8 @@ namespace BufferUploads
                 [&part, &initialisationData](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
                 {
                     RenderCore::SubResourceInitData result = {};
-                    auto size = initialisationData.GetDataSize(SubResourceId{sr._mip, sr._arrayLayer});
-                    const void* data = initialisationData.GetData(SubResourceId{sr._mip, sr._arrayLayer});
-                    assert(data);
-					result._data = MakeIteratorRange(data, PtrAdd(data, size));
+					result._data = initialisationData.GetData(SubResourceId{sr._mip, sr._arrayLayer});
+                    assert(result._data.empty());
                     result._pitches = initialisationData.GetPitches(SubResourceId{sr._mip, sr._arrayLayer});
                     return result;
                 });
@@ -893,11 +891,13 @@ namespace BufferUploads
             Transaction* transaction = GetTransaction(i->_id);
             assert(transaction);
             unsigned size = RenderCore::ByteCount(transaction->_desc);
-            const void* sourceData = i->_initialisationData?i->_initialisationData->GetData():nullptr;
-            if (sourceData && !destination.empty()) {
-                assert(size == i->_initialisationData->GetDataSize());
+            IteratorRange<void*> sourceData;
+            if (i->_initialisationData)
+                sourceData = i->_initialisationData->GetData();
+            if (!sourceData.empty() && !destination.empty()) {
+                assert(size == sourceData.size());
                 assert(offset+size <= destination.size());
-                XlCopyMemoryAlign16(PtrAdd(destination.begin(), offset), sourceData, size);
+                XlCopyMemoryAlign16(PtrAdd(destination.begin(), offset), sourceData.begin(), size);
             }
             (*offsetWriteIterator) = offset;
             queuedBytesAdjustment[(unsigned)AsUploadDataType(transaction->_desc)] -= size;
@@ -1035,35 +1035,32 @@ namespace BufferUploads
         if (!batchOperation._batchedSteps.empty() && batchOperation._batchedAllocationSize) {
 
                 //
-                //      Perform all batched operations before resolving a command list...
-                //
-
-            const unsigned maxSingleBatch = RenderCore::ByteCount(_resourceSource.GetBatchedResources().GetPrototype())/2;
-            auto batchingI      = batchOperation._batchedSteps.begin();
-            auto batchingStart  = batchOperation._batchedSteps.begin();
-            unsigned currentBatchSize = 0;
-            if (batchOperation._batchedAllocationSize <= maxSingleBatch) {
-                batchingI = batchOperation._batchedSteps.end();
-                currentBatchSize = batchOperation._batchedAllocationSize;
-            }
-
-                //
                 //      Sort largest to smallest. This is an attempt to reduce fragmentation slightly by grouping
                 //      large and small allocations. Plus, this should guarantee good packing into the batch size limit.
                 //
 
             std::sort(batchOperation._batchedSteps.begin(), batchOperation._batchedSteps.end(), SortSize_SmallestToLargest);
 
-            for (;;) {
-                unsigned thisSize = 0;
-                if (batchingI!=batchOperation._batchedSteps.end()) {
-                    thisSize = MarkerHeap<uint16_t>::AlignSize(RenderCore::ByteCount(batchingI->_creationDesc));
-                }
-                if (batchingI == batchOperation._batchedSteps.end() || (currentBatchSize+thisSize) > maxSingleBatch) {
-                    if (batchingI == batchingStart) {
-                        ++batchingI;        // if a single object is larger than the batching size, we allocate it in one go
-                    }
+                //
+                //      Perform all batched operations before resolving a command list...
+                //
 
+            const unsigned maxSingleBatch = RenderCore::ByteCount(_resourceSource.GetBatchedResources().GetPrototype());
+            auto batchingI      = batchOperation._batchedSteps.begin();
+            auto batchingStart  = batchOperation._batchedSteps.begin();
+            unsigned currentBatchSize = 0;
+            if (batchOperation._batchedAllocationSize <= maxSingleBatch) {
+                // If we know we can fit the whole thing with one go; just go ahead and do it
+                batchingI = batchOperation._batchedSteps.end();
+                currentBatchSize = batchOperation._batchedAllocationSize;
+            }
+
+            for (;;) {
+                unsigned nextSize = 0;
+                if (batchingI!=batchOperation._batchedSteps.end())
+                    nextSize = MarkerHeap<uint16_t>::AlignSize(RenderCore::ByteCount(batchingI->_creationDesc));
+
+                if (batchingI == batchOperation._batchedSteps.end() || (currentBatchSize+nextSize) > maxSingleBatch) {
                     ResourceLocator batchedResource;
                     for (;;) {
                         batchedResource = _resourceSource.GetBatchedResources().Allocate(currentBatchSize, "SuperBlock");
@@ -1115,17 +1112,20 @@ namespace BufferUploads
 
                     }
 
-                    metricsUnderConstruction._batchedCopyBytes += currentBatchSize;
+                    metricsUnderConstruction._batchedUploadBytes += currentBatchSize;
                     metricsUnderConstruction._bytesUploadTotal += currentBatchSize;
-                    metricsUnderConstruction._batchedCopyCount ++;
-                    ++metricsUnderConstruction._countDeviceCreations[
-                        (unsigned)AsUploadDataType(_resourceSource.GetBatchedResources().GetPrototype())];
+                    metricsUnderConstruction._batchedUploadCount ++;
 
                         // now apply the result to the transactions, and release them...
                     auto o=offsets.begin();
                     for (auto i=batchingStart; i!=batchingI; ++i, ++o) {
+                        auto byteCount = RenderCore::ByteCount(i->_creationDesc);
+                        unsigned uploadDataType = (unsigned)AsUploadDataType(i->_creationDesc);
+                        metricsUnderConstruction._bytesUploaded[uploadDataType] += byteCount;
+                        metricsUnderConstruction._countUploaded[uploadDataType] += 1;
+
                         Transaction* transaction = GetTransaction(i->_id);
-                        transaction->_finalResource = batchedResource.MakeSubLocator(*o, RenderCore::ByteCount(i->_creationDesc));
+                        transaction->_finalResource = batchedResource.MakeSubLocator(*o, byteCount);
                         transaction->_promise.set_value(transaction->_finalResource);
                         ReleaseTransaction(transaction, context);
                     }
@@ -1137,7 +1137,7 @@ namespace BufferUploads
                     currentBatchSize = 0;
                 } else {
                     ++batchingI;
-                    currentBatchSize+=thisSize;
+                    currentBatchSize += nextSize;
                 }
             }
         }
@@ -1212,7 +1212,7 @@ namespace BufferUploads
         if ((metricsUnderConstruction._bytesUploadTotal+uploadRequestSize) > budgetUnderConstruction._limit_BytesUploaded && metricsUnderConstruction._bytesUploadTotal !=0)
             return false;
 
-        if (transaction->_desc._type == ResourceDesc::Type::LinearBuffer && transaction->_desc._allocationRules & RenderCore::AllocationRules::Batched) {
+        if (transaction->_desc._type == ResourceDesc::Type::LinearBuffer && _resourceSource.CanBeBatched(transaction->_desc)) {
                 //      In the batched path, we pop now, and perform all of the batched operations as once when we resolve the 
                 //      command list. But don't release the transaction -- that will happen after the batching operation is 
                 //      performed.
@@ -1229,42 +1229,48 @@ namespace BufferUploads
             return false;
 
         if (resourceCreateStep._initialisationData && !(finalConstruction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful)) {
-            assert(transaction->_desc._bindFlags & BindFlag::TransferDst);    // need TransferDst to recieve staging data
-            
-            ResourceDesc stagingDesc;
-            PlatformInterface::StagingToFinalMapping stagingToFinalMapping;
-            std::tie(stagingDesc, stagingToFinalMapping) = PlatformInterface::CalculatePartialStagingDesc(transaction->_desc, resourceCreateStep._part);
-
-            auto stagingConstruction = _resourceSource.Create(stagingDesc, resourceCreateStep._initialisationData.get());
-            assert(!stagingConstruction._locator.IsEmpty());
-            if (stagingConstruction._locator.IsEmpty())
-                return false;
-    
-            PlatformInterface::ResourceUploadHelper& deviceContext = context.GetResourceUploadHelper();
-            deviceContext.WriteToTextureViaMap(
-                stagingConstruction._locator,
-                stagingDesc, Box2D(),
-                [part{resourceCreateStep._part}, initialisationData{resourceCreateStep._initialisationData.get()}](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
-                {
-                    RenderCore::SubResourceInitData result = {};
-                    auto size = initialisationData->GetDataSize(SubResourceId{sr._mip, sr._arrayLayer});
-                    const void* data = initialisationData->GetData(SubResourceId{sr._mip, sr._arrayLayer});
-                    assert(data);
-                    result._data = MakeIteratorRange(data, PtrAdd(data, size));
-                    result._pitches = initialisationData->GetPitches(SubResourceId{sr._mip, sr._arrayLayer});
-                    return result;
-                });
-    
-            deviceContext.UpdateFinalResourceFromStaging(
-                finalConstruction._locator, 
-                stagingConstruction._locator, transaction->_desc, 
-                stagingToFinalMapping);
+            if (transaction->_desc._type == ResourceDesc::Type::Texture) {
+                assert(transaction->_desc._bindFlags & BindFlag::TransferDst);    // need TransferDst to recieve staging data
                 
-            ++metricsUnderConstruction._contextOperations;
-            metricsUnderConstruction._stagingBytesUsed[uploadDataType] += uploadRequestSize;
+                ResourceDesc stagingDesc;
+                PlatformInterface::StagingToFinalMapping stagingToFinalMapping;
+                std::tie(stagingDesc, stagingToFinalMapping) = PlatformInterface::CalculatePartialStagingDesc(transaction->_desc, resourceCreateStep._part);
+
+                auto stagingConstruction = _resourceSource.Create(stagingDesc, resourceCreateStep._initialisationData.get());
+                assert(!stagingConstruction._locator.IsEmpty());
+                if (stagingConstruction._locator.IsEmpty())
+                    return false;
+        
+                auto& helper = context.GetResourceUploadHelper();
+                helper.WriteToTextureViaMap(
+                    stagingConstruction._locator,
+                    stagingDesc, Box2D(),
+                    [part{resourceCreateStep._part}, initialisationData{resourceCreateStep._initialisationData.get()}](RenderCore::SubResourceId sr) -> RenderCore::SubResourceInitData
+                    {
+                        RenderCore::SubResourceInitData result = {};
+                        result._data = initialisationData->GetData(SubResourceId{sr._mip, sr._arrayLayer});
+                        assert(!result._data.empty());
+                        result._pitches = initialisationData->GetPitches(SubResourceId{sr._mip, sr._arrayLayer});
+                        return result;
+                    });
+        
+                helper.UpdateFinalResourceFromStaging(
+                    finalConstruction._locator, 
+                    stagingConstruction._locator, transaction->_desc, 
+                    stagingToFinalMapping);
+                    
+                ++metricsUnderConstruction._contextOperations;
+                metricsUnderConstruction._stagingBytesUsed[uploadDataType] += uploadRequestSize;
+            } else {
+                auto& helper = context.GetResourceUploadHelper();
+                helper.WriteToBufferViaMap(
+                    finalConstruction._locator, transaction->_desc,
+                    0, resourceCreateStep._initialisationData->GetData());
+            }
         }
 
         metricsUnderConstruction._bytesUploaded[uploadDataType] += uploadRequestSize;
+        metricsUnderConstruction._countUploaded[uploadDataType] += 1;
         metricsUnderConstruction._bytesUploadTotal += uploadRequestSize;
         _currentQueuedBytes[uploadDataType] -= uploadRequestSize;
         metricsUnderConstruction._bytesCreated[uploadDataType] += objectSize;
