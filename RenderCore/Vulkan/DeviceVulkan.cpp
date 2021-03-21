@@ -501,8 +501,8 @@ namespace RenderCore { namespace ImplVulkan
 	class EventBasedTracker : public Metal_Vulkan::IAsyncTracker
 	{
 	public:
-		virtual Marker GetConsumerMarker() const;
-		virtual Marker GetProducerMarker() const;
+		virtual Marker GetConsumerMarker() const { return _lastConsumerFrame; }
+		virtual Marker GetProducerMarker() const { return _currentProducerFrame; }
 
 		void IncrementProducerFrame();
 		void SetConsumerEndOfFrame(Metal_Vulkan::DeviceContext&);
@@ -514,27 +514,17 @@ namespace RenderCore { namespace ImplVulkan
 		struct Tracker
 		{
 			VulkanUniquePtr<VkEvent> _event;
-			Marker _frameMarker;
+			Marker _producerFrameMarker;
+			Marker _consumerFrameMarker;
 		};
-		std::unique_ptr<Tracker[]> _trackers;
+		std::vector<Tracker> _trackers;
 		unsigned _bufferCount;
 		unsigned _producerBufferIndex;
 		unsigned _consumerBufferIndex;
-		bool _firstProducerFrame;
 		Marker _currentProducerFrame;
 		Marker _lastConsumerFrame;
 		VkDevice _device;
 	};
-
-	auto EventBasedTracker::GetConsumerMarker() const -> Marker
-	{
-		return _lastConsumerFrame;
-	}
-
-	auto EventBasedTracker::GetProducerMarker() const -> Marker
-	{
-		return _currentProducerFrame;
-	}
 
 	void EventBasedTracker::SetConsumerEndOfFrame(Metal_Vulkan::DeviceContext& context)
 	{
@@ -542,34 +532,41 @@ namespace RenderCore { namespace ImplVulkan
 		// Note that if we use VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, this is only going 
 		// to be tracking rendering command progress -- not compute shaders!
 		// Is ALL_COMMANDS fine?
-		if (_trackers[_producerBufferIndex]._frameMarker != Marker_Invalid)
+		if (_trackers[_producerBufferIndex]._consumerFrameMarker != _currentProducerFrame) {
 			context.GetActiveCommandList().SetEvent(_trackers[_producerBufferIndex]._event.get(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+			_trackers[_producerBufferIndex]._consumerFrameMarker = _currentProducerFrame;
+		}
 	}
 
 	void EventBasedTracker::IncrementProducerFrame()
 	{
-		if (!_firstProducerFrame) {
-			++_currentProducerFrame;
-			_producerBufferIndex = (_producerBufferIndex + 1) % _bufferCount; 
-			// If we start "eating our tail" (ie, we don't have enough buffers to support the queued GPU frames, we will get an assert
-			// here... This needs to be replaced with something more robust
-			// Probably higher level code should prevent the CPU from getting too far ahead of the GPU, so as to guarantee we never
-			// end up eating our tail here...
-			while (_trackers[_producerBufferIndex]._frameMarker != Marker_Invalid) {
-				Threading::YieldTimeSlice();
-				UpdateConsumer();
+		++_currentProducerFrame;
+		_producerBufferIndex = (_producerBufferIndex + 1) % _bufferCount; 
+		// If we start "eating our tail" (ie, we don't have enough buffers to support the queued GPU frames, we will get an assert
+		// here... This needs to be replaced with something more robust
+		// Probably higher level code should prevent the CPU from getting too far ahead of the GPU, so as to guarantee we never
+		// end up eating our tail here...
+		while (_trackers[_producerBufferIndex]._producerFrameMarker != Marker_Invalid) {
+			
+			using namespace std::chrono_literals;
+			static std::chrono::steady_clock::time_point lastReport{};		// (defaults to start of epoch)
+			auto now = std::chrono::steady_clock::now();
+			if ((now - lastReport) > 1s) {
+				Log(Verbose) << "Stalling due to insufficient trackers in Vulkan EventBasedTracker" << std::endl;
+				lastReport = now;
 			}
-			assert(_trackers[_producerBufferIndex]._frameMarker == Marker_Invalid); 
+
+			Threading::YieldTimeSlice();
+			UpdateConsumer();
 		}
-		
-		_firstProducerFrame = false;
-		_trackers[_producerBufferIndex]._frameMarker = _currentProducerFrame;
+		assert(_trackers[_producerBufferIndex]._producerFrameMarker == Marker_Invalid); 
+		_trackers[_producerBufferIndex]._producerFrameMarker = _currentProducerFrame;
 	}
 
 	void EventBasedTracker::UpdateConsumer()
 	{
 		for (;;) {
-			if (_trackers[_consumerBufferIndex]._frameMarker == Marker_Invalid)
+			if (_trackers[_consumerBufferIndex]._consumerFrameMarker == Marker_Invalid)
 				break;
 			auto status = vkGetEventStatus(_device, _trackers[_consumerBufferIndex]._event.get());
 			if (status == VK_EVENT_RESET)
@@ -579,9 +576,10 @@ namespace RenderCore { namespace ImplVulkan
 			auto res = vkResetEvent(_device, _trackers[_consumerBufferIndex]._event.get());
 			assert(res == VK_SUCCESS); (void)res;
 
-			assert(_trackers[_consumerBufferIndex]._frameMarker > _lastConsumerFrame);
-			_lastConsumerFrame = _trackers[_consumerBufferIndex]._frameMarker;
-			_trackers[_consumerBufferIndex]._frameMarker = Marker_Invalid;
+			assert(_trackers[_consumerBufferIndex]._consumerFrameMarker > _lastConsumerFrame);
+			_lastConsumerFrame = _trackers[_consumerBufferIndex]._consumerFrameMarker;
+			_trackers[_consumerBufferIndex]._consumerFrameMarker = Marker_Invalid;
+			_trackers[_consumerBufferIndex]._producerFrameMarker = Marker_Invalid;
 			_consumerBufferIndex = (_consumerBufferIndex + 1) % _bufferCount;
 		}
 	}
@@ -589,17 +587,18 @@ namespace RenderCore { namespace ImplVulkan
 	EventBasedTracker::EventBasedTracker(Metal_Vulkan::ObjectFactory& factory, unsigned queueDepth)
 	{
 		assert(queueDepth > 0);
-		_trackers = std::make_unique<Tracker[]>(queueDepth);
+		_trackers.resize(queueDepth);
 		for (unsigned q = 0; q < queueDepth; ++q) {
 			_trackers[q]._event = factory.CreateEvent();
-			_trackers[q]._frameMarker = Marker_Invalid;
+			_trackers[q]._consumerFrameMarker = Marker_Invalid;
+			_trackers[q]._producerFrameMarker = Marker_Invalid;
 		}
 		_currentProducerFrame = 1;
 		_bufferCount = queueDepth;
-		_consumerBufferIndex = 0;
-		_producerBufferIndex = 0;
+		_consumerBufferIndex = 1;
+		_producerBufferIndex = 1;
+		_trackers[_producerBufferIndex]._producerFrameMarker = _currentProducerFrame;
 		_lastConsumerFrame = 0;
-		_firstProducerFrame = true;
 		_device = factory.GetDevice().get();
 	}
 
@@ -1361,9 +1360,15 @@ namespace RenderCore { namespace ImplVulkan
 		if (!_utilityFence && waitForCompletion)
 			_utilityFence = _factory->CreateFence(0);
 
+		_gpuTracker->SetConsumerEndOfFrame(*_metalContext);
 		VkSemaphore signalSema[] = { _interimCommandBufferComplete.get() };
 		QueuePrimaryContext(MakeIteratorRange(signalSema), waitForCompletion ? _utilityFence.get() : VK_NULL_HANDLE);
 		_nextQueueShouldWaitOnInterimBuffer = true;
+
+		#if defined(HACK_FORCE_SYNC)
+			// Hack -- complete GPU synchronize
+			vkQueueWaitIdle(_queue);
+		#endif
 
 		// We need to flush the destruction queues at some point for clients that never actually call Present
 		// We have less control over the frequency of CommitCommands, though, so it's going to be less clear
@@ -1384,6 +1389,9 @@ namespace RenderCore { namespace ImplVulkan
 			if (res != VK_SUCCESS)
 				Throw(VulkanAPIFailure(res, "Failure while resetting presentation fence"));
 		}
+
+		if (_gpuTracker)
+			_gpuTracker->IncrementProducerFrame();
 	}
 
     bool ThreadContext::IsImmediate() const

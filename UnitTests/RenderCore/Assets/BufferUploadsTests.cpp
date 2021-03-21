@@ -197,6 +197,7 @@ namespace UnitTests
 			destagingDesc._bindFlags = BindFlag::TransferDst;
 			destagingDesc._cpuAccess = CPUAccess::Read;
 			destagingDesc._gpuAccess = 0;
+			destagingDesc._allocationRules = AllocationRules::Staging;
 			auto destaging = metalHelper->_device->CreateResource(destagingDesc);
 			{
 				auto blitEncoder = Metal::DeviceContext::Get(*metalHelper->_device->GetImmediateContext())->BeginBlitEncoder();
@@ -308,7 +309,7 @@ namespace UnitTests
 		TransactionTestHelper transactionHelper;
 		transactionHelper._liveTransactions.reserve(steadyPoint);
 
-		std::mt19937 rng(std::random_device{}());
+		std::mt19937 rng(0);
 		unsigned loopCounter = 0;
 		auto startTime = std::chrono::steady_clock::now();
 		for (;;) {
@@ -322,9 +323,9 @@ namespace UnitTests
 			}
 
 			bu->Update(*metalHelper->_device->GetImmediateContext());
+			metalHelper->_device->GetImmediateContext()->CommitCommands();
 			transactionHelper.RemoveCompletedTransactions();
 			std::this_thread::sleep_for(16ms);
-			metalHelper->_device->GetImmediateContext()->CommitCommands();
 			
 			loopCounter++;
 			if ((loopCounter%60) == 0) {
@@ -348,7 +349,7 @@ namespace UnitTests
 		TransactionTestHelper transactionHelper;
 		transactionHelper._liveTransactions.reserve(steadyPoint);
 		
-		std::mt19937 rng(std::random_device{}());
+		std::mt19937 rng(0);
 		unsigned loopCounter = 0;
 
 		auto startTime = std::chrono::steady_clock::now();
@@ -378,6 +379,85 @@ namespace UnitTests
 				if ((std::chrono::steady_clock::now() - startTime) > 20s)
 					break;
 			}
+		}
+	}
+
+	TEST_CASE( "BufferUploads-SimpleBackgroundCmdList", "[rendercore_techniques]" )
+	{
+		// Emulate the kind of behaviour that buffer uploads does, just in a very
+		// simple and controlled way. This can help us isolate issues between the metal
+		// layer and with buffer uploads
+		using namespace RenderCore;
+		auto metalHelper = MakeTestHelper();
+		std::shared_ptr<IThreadContext> backgroundContext = metalHelper->_device->CreateDeferredContext();
+
+		std::mt19937 rng(0);
+		
+		struct Queue
+		{
+			struct Item
+			{
+				std::vector<std::shared_ptr<IResource>> _finalResources;
+				std::vector<std::shared_ptr<IResource>> _stagingResources;
+				std::shared_ptr<Metal::CommandList> _cmdList;
+			};
+			std::deque<Item> _items;
+			Threading::Mutex _lock;
+		};
+		Queue queue;
+
+		auto startTime = std::chrono::steady_clock::now();
+		for (;;) {
+			std::thread thread(
+				[backgroundContext, dev = metalHelper->_device, seed = rng(), &queue]() {
+					auto& metalContext = *Metal::DeviceContext::Get(*backgroundContext);
+					auto finalResourceDesc = CreateDesc(
+						BindFlag::ShaderResource | BindFlag::TransferDst, 0, GPUAccess::Read, TextureDesc::Plain2D(256, 256, Format::R8G8B8A8_UNORM),
+						"bu-test-texture");
+
+					auto stagingResourceDesc = CreateDesc(
+						BindFlag::TransferSrc, CPUAccess::Write, 0, TextureDesc::Plain2D(256, 256, Format::R8G8B8A8_UNORM),
+						"bu-test-staging");
+
+					Queue::Item item;
+					std::mt19937 rng(seed);
+
+					for (unsigned c=0; c<8; ++c) {
+						auto stagingResource = dev->CreateResource(stagingResourceDesc);
+						auto finalResource = dev->CreateResource(finalResourceDesc);
+
+						Metal::ResourceMap map{metalContext, *stagingResource, Metal::ResourceMap::Mode::WriteDiscardPrevious};
+						FillWithRandomData(rng(), map.GetData());
+
+						Metal::Internal::CaptureForBind(metalContext, *stagingResource, BindFlag::TransferSrc);
+						Metal::Internal::CaptureForBind(metalContext, *finalResource, BindFlag::TransferDst);
+						auto blitEncoder = metalContext.BeginBlitEncoder();
+						blitEncoder.Copy(*finalResource, *stagingResource);
+
+						item._finalResources.push_back(std::move(finalResource));
+						item._stagingResources.push_back(std::move(stagingResource));
+					}
+					
+					item._cmdList = metalContext.ResolveCommandList();
+
+					ScopedLock(queue._lock);
+					queue._items.push_back(std::move(item));
+				});
+
+			thread.join();
+
+			ScopedLock(queue._lock);
+			while (queue._items.size() >= 2) {
+				auto& immediateContext = *Metal::DeviceContext::Get(*metalHelper->_device->GetImmediateContext());
+				immediateContext.ExecuteCommandList(*queue._items.begin()->_cmdList, false);
+				queue._items.erase(queue._items.begin());
+			}
+
+			metalHelper->_device->GetImmediateContext()->CommitCommands();
+			std::this_thread::sleep_for(16ms);
+
+			if ((std::chrono::steady_clock::now() - startTime) > 20s)
+				break;
 		}
 	}
 

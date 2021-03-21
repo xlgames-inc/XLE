@@ -44,6 +44,7 @@ namespace BufferUploads
 
         void Add(DeferredCopy&& copy);
         void Add(DeferredDefragCopy&& copy);
+        void AddDelayedDelete(ResourceLocator&& locator);
         void CommitToImmediate_PreCommandList(RenderCore::IThreadContext& immediateContext);
         void CommitToImmediate_PostCommandList(RenderCore::IThreadContext& immediateContext);
         bool IsEmpty() const;
@@ -51,15 +52,13 @@ namespace BufferUploads
         void swap(CommitStep& other);
 
         CommitStep();
-        CommitStep(CommitStep&& moveFrom);
-        CommitStep& operator=(CommitStep&& moveFrom);
+        CommitStep(CommitStep&& moveFrom) = default;
+        CommitStep& operator=(CommitStep&& moveFrom) = default;
         ~CommitStep();
     private:
         std::vector<DeferredCopy>       _deferredCopies;
         std::vector<DeferredDefragCopy> _deferredDefragCopies;
-
-        CommitStep(const CommitStep& copyForm);
-        CommitStep& operator=(const CommitStep&);
+        std::vector<ResourceLocator>    _delayedDeletes;
     };
 
         //////   T H R E A D   C O N T E X T   //////

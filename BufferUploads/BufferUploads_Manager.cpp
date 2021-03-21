@@ -181,11 +181,6 @@ namespace BufferUploads
         unsigned                _peakPrepareStaging, _peakTransferStagingToFinal, _peakCreateFromDataPacket;
         int64_t                 _waitTime;
 
-        #if defined(_DEBUG)
-            Threading::Mutex _transactionsToBeCompletedNextFramePriorityCommit_Lock;
-            std::vector<TransactionID> _transactionsToBeCompletedNextFramePriorityCommit;
-        #endif
-
         struct PrepareStagingStep
         {
             TransactionID _id = ~TransactionID(0);
@@ -247,7 +242,7 @@ namespace BufferUploads
 
         bool    Process(const CreateFromDataPacketStep& resourceCreateStep, ThreadContext& context, const CommandListBudget& budgetUnderConstruction);
         bool    Process(const PrepareStagingStep& prepareStagingStep, ThreadContext& context, const CommandListBudget& budgetUnderConstruction);
-        bool    Process(const TransferStagingToFinalStep& transferStagingToFinalStep, ThreadContext& context, const CommandListBudget& budgetUnderConstruction);
+        bool    Process(TransferStagingToFinalStep& transferStagingToFinalStep, ThreadContext& context, const CommandListBudget& budgetUnderConstruction);
 
         bool    ProcessQueueSet(QueueSet& queueSet, unsigned stepMask, ThreadContext& context, const CommandListBudget& budgetUnderConstruction);
         bool    DrainPriorityQueueSet(QueueSet& queueSet, unsigned stepMask, ThreadContext& context);
@@ -410,6 +405,13 @@ namespace BufferUploads
         auto newRefCount = --transaction->_referenceCount;
         assert(newRefCount>=0);
 
+        if (abort) {
+            // If we abort with a final resource registered in the transaction, then destruction order
+            // will not be controlled correctly (ie, the _retirementCommandList is set to 0, and so any
+            // commands pending on a command list will not be taken into account)
+            assert(transaction->_finalResource.IsEmpty());
+        }
+
         if ((newRefCount&0x00ffffff)==0) {
                 //      After the last system reference is released (regardless of client references) we call it retired...
             transaction->_retirementCommandList = abort ? 0 : context.CommandList_GetUnderConstruction();
@@ -547,8 +549,6 @@ namespace BufferUploads
                 if (transaction->_finalResource.IsEmpty()) {
                     assert(transaction->_creationOptions & TransactionOptions::FramePriority);
                 }
-                ScopedLock(_transactionsToBeCompletedNextFramePriorityCommit_Lock);
-                _transactionsToBeCompletedNextFramePriorityCommit.push_back(id);
             }
         #endif
     }
@@ -1221,6 +1221,7 @@ namespace BufferUploads
             return true;
         }
 
+        assert(!(transaction->_desc._allocationRules & AllocationRules::Staging));
         auto finalConstruction = _resourceSource.Create(
             transaction->_desc, resourceCreateStep._initialisationData.get(), 
             ((metricsUnderConstruction._deviceCreateOperations+1) <= budgetUnderConstruction._limit_DeviceCreates)?0:ResourceSource::CreationOptions::PreventDeviceCreation);
@@ -1258,6 +1259,8 @@ namespace BufferUploads
                     finalConstruction._locator, 
                     stagingConstruction._locator, transaction->_desc, 
                     stagingToFinalMapping);
+
+                context.GetCommitStepUnderConstruction().AddDelayedDelete(std::move(stagingConstruction._locator));
                     
                 ++metricsUnderConstruction._contextOperations;
                 metricsUnderConstruction._stagingBytesUsed[uploadDataType] += uploadRequestSize;
@@ -1386,7 +1389,7 @@ namespace BufferUploads
             transaction->_promise.set_exception(std::current_exception());
         }
 
-        ReleaseTransaction(transaction, context, true);
+        ReleaseTransaction(transaction, context);
         return true;
     }
 
@@ -1412,7 +1415,7 @@ namespace BufferUploads
             [transactionID](AssemblyLine& assemblyLine, ThreadContext& context) {
                 Transaction* transaction = assemblyLine.GetTransaction(transactionID);
                 assert(transaction);
-                assemblyLine.ReleaseTransaction(transaction, context, true);
+                assemblyLine.ReleaseTransaction(transaction, context);
             });
         _wakeupEvent.Increment();
     }
@@ -1440,12 +1443,12 @@ namespace BufferUploads
             [transactionID](AssemblyLine& assemblyLine, ThreadContext& context) {
                 Transaction* transaction = assemblyLine.GetTransaction(transactionID);
                 assert(transaction);
-                assemblyLine.ReleaseTransaction(transaction, context, true);
+                assemblyLine.ReleaseTransaction(transaction, context);
             });
         _wakeupEvent.Increment();
     }
 
-    bool AssemblyLine::Process(const TransferStagingToFinalStep& transferStagingToFinalStep, ThreadContext& context, const CommandListBudget& budgetUnderConstruction)
+    bool AssemblyLine::Process(TransferStagingToFinalStep& transferStagingToFinalStep, ThreadContext& context, const CommandListBudget& budgetUnderConstruction)
     {
         CommandListMetrics& metricsUnderConstruction = context.GetMetricsUnderConstruction();
         if ((metricsUnderConstruction._contextOperations+1) >= budgetUnderConstruction._limit_Operations)
@@ -1483,6 +1486,10 @@ namespace BufferUploads
                 transaction->_finalResource, 
                 transferStagingToFinalStep._stagingResource, transaction->_desc, 
                 transferStagingToFinalStep._stagingToFinalMapping);
+
+            // Don't delete the staging buffer immediately. It must stick around until the command list is resolved
+            // and done with it
+            context.GetCommitStepUnderConstruction().AddDelayedDelete(std::move(transferStagingToFinalStep._stagingResource));
 
             metricsUnderConstruction._bytesUploadTotal += transferStagingToFinalStep._stagingByteCount;
             metricsUnderConstruction._bytesUploaded[dataType] += transferStagingToFinalStep._stagingByteCount;
@@ -1615,20 +1622,19 @@ namespace BufferUploads
         }
 
         bool framePriorityResolve = false;
+        bool popFromFramePriority = false;
         unsigned *qs = NULL;
-
-        unsigned fromFramePriorityQueueSet = ~unsigned(0x0);
 
         if (pendingFramePriorityCommandLists.try_front(qs)) {
 
                 //      --~<   Drain all frame priority steps   >~--      //
-            if (DrainPriorityQueueSet(_queueSet_FramePriority[*qs], stepMask, context)) {
-                atLeastOneRealAction = true;
-            }
-            framePriorityResolve = true;
-            fromFramePriorityQueueSet = *qs;
+            framePriorityResolve = DrainPriorityQueueSet(_queueSet_FramePriority[*qs], stepMask, context);
+            atLeastOneRealAction |= framePriorityResolve;
+            popFromFramePriority = true;
 
-        } else {
+        }
+
+        if (!framePriorityResolve) {
 
                 //
                 //      Process the queue set, but do everything in the "frame priority" queue set that we're writing 
@@ -1636,11 +1642,7 @@ namespace BufferUploads
                 //      things will complete first
                 //
 
-            atLeastOneRealAction  |= ProcessQueueSet(_queueSet_FramePriority[_framePriority_WritingQueueSet], stepMask, context, budgetUnderConstruction);
-            if (atLeastOneRealAction) {
-                fromFramePriorityQueueSet = _framePriority_WritingQueueSet;
-            }
-
+            atLeastOneRealAction |= ProcessQueueSet(_queueSet_FramePriority[_framePriority_WritingQueueSet], stepMask, context, budgetUnderConstruction);
             atLeastOneRealAction |= ProcessQueueSet(_queueSet_Main, stepMask, context, budgetUnderConstruction);
 
         }
@@ -1653,29 +1655,17 @@ namespace BufferUploads
             ||  _batchPreparation_Main._batchedAllocationSize
             || !context.GetCommitStepUnderConstruction().IsEmpty()
             ||  publishableEventList > context.EventList_GetPublishedID();
+        
+        // The commit count is a scheduling scheme
+        //    -- we will generally "resolve" a command list and queue it for submission
+        //      once per call to Manager::Update(). The exception is when there are frame
+        //      priority requests
         const unsigned commitCountCurrent = context.CommitCount_Current();
         const bool normalPriorityResolve = commitCountCurrent > context.CommitCount_LastResolve();
         if ((framePriorityResolve||normalPriorityResolve) && somethingToResolve) {
             commandListIdCommitted = context.CommandList_GetUnderConstruction();
-
-            // OutputDebugString(FormatString("Resolving command list: (%i)\n", commandListIdCommitted).c_str());
-            // OutputDebugString(FormatString("   Context operations: (%i)\n", metricsUnderConstruction._contextOperations).c_str());
-            // OutputDebugString(FormatString("   Non context operations: (%i)\n", metricsUnderConstruction._nonContextOperations).c_str());
-            // OutputDebugString(FormatString("   Batched Allocation Size: (%i)\n", _batchPreparation_Main._batchedAllocationSize).c_str());
-            // OutputDebugString(FormatString("   Commit Step Empty: (%i)\n", context.GetCommitStepUnderConstruction().IsEmpty()).c_str());
-            // OutputDebugString(FormatString("   Publishable event list: (%i)\n", publishableEventList).c_str());
-            // OutputDebugString(FormatString("   Commit count current: (%i)\n", commitCountCurrent).c_str());
-            // OutputDebugString(FormatString("   Commit count last resolve: (%i)\n", context.CommitCount_LastResolve()).c_str());
-            // OutputDebugString(FormatString("   Frame priority: (%i)\n", framePriorityResolve).c_str());
-            // OutputDebugString(FormatString("   From frame priority: (%i)\n", fromFramePriorityQueueSet).c_str());
-
             context.CommitCount_LastResolve() = commitCountCurrent;
 
-                //
-                //      Flush through the delayed releases again. Let's try to hit a low water mark before we allocate
-                //      from the batched buffers
-                //
-            publishableEventList = TickResourceSource(stepMask, context, isLoading);
             ResolveBatchOperation(_batchPreparation_Main, context, stepMask);
             _batchPreparation_Main = BatchPreparation();
             metricsUnderConstruction._assemblyLineMetrics = CalculateMetrics();
@@ -1686,24 +1676,7 @@ namespace BufferUploads
             atLeastOneRealAction = true;
         }
 
-        #if defined(_DEBUG)
-            if (framePriorityResolve) {
-                ScopedLock(_transactionsToBeCompletedNextFramePriorityCommit_Lock);
-                for (   auto i =_transactionsToBeCompletedNextFramePriorityCommit.begin(); 
-                                i!=_transactionsToBeCompletedNextFramePriorityCommit.end(); ++i) {
-                    Transaction* transaction = GetTransaction(*i);
-                    if (transaction) {
-                        auto referenceCount = transaction->_referenceCount.load();
-                        const bool isCompleted = ((referenceCount & 0x00ffffff) == 0)
-                            &&  (transaction->_retirementCommandList <= commandListIdCommitted);
-                        assert(isCompleted);
-                    }
-                }
-                _transactionsToBeCompletedNextFramePriorityCommit.clear();
-            }
-        #endif
-
-        if (framePriorityResolve) {
+        if (popFromFramePriority) {
             pendingFramePriorityCommandLists.pop();
             assert(!_batchPreparation_Main._batchedAllocationSize);
         }
@@ -1987,12 +1960,9 @@ namespace BufferUploads
         }
 
         while (!_shutdownBackgroundThread && _backgroundStepMask) {
-            if (!_shutdownBackgroundThread) {
-                _assemblyLine->Process(_backgroundStepMask, *_backgroundContext, _pendingFramePriority_CommandLists);
-            }
-            if (!_shutdownBackgroundThread) {
+            _assemblyLine->Process(_backgroundStepMask, *_backgroundContext, _pendingFramePriority_CommandLists);
+            if (!_shutdownBackgroundThread)
                 _assemblyLine->Wait(_backgroundStepMask, *_backgroundContext);
-            }
         }
         return 0;
     }

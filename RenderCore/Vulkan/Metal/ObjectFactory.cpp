@@ -9,6 +9,7 @@
 #include "IncludeVulkan.h"
 #include "../../../OSServices/Log.h"
 #include "../../../Core/Prefix.h"
+#include "../../../Utility/Threading/Mutex.h"
 #include "../../../Utility/HeapUtils.h"
 #include <queue>
 #include <deque>
@@ -511,6 +512,7 @@ namespace RenderCore { namespace Metal_Vulkan
             class Queue 
 			{
 			public:
+                Threading::Mutex _lock;
 				CircularBuffer<std::pair<Marker, unsigned>, 8> _markerCounts;
 				std::deque<Type> _objects;
 			};
@@ -556,6 +558,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		auto marker = _gpuTracker->GetProducerMarker();
         auto& q = std::get<Index>(_queues);
 		bool success = true;
+        ScopedLock(q._lock);
 		if (q._markerCounts.empty()) {
 			assert(q._objects.empty());
 			success = q._markerCounts.try_emplace_back(std::make_pair(marker, 1u));
@@ -603,6 +606,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
 		// destroy up to and including the given marker
         auto& q = std::get<Index>(_queues);
+        ScopedLock(q._lock);
 		while (!q._markerCounts.empty() && q._markerCounts.front().first <= marker) {
 			auto countToDelete = (size_t)q._markerCounts.front().second;
 

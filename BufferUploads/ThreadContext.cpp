@@ -37,6 +37,8 @@ namespace BufferUploads
                     // immediate resolve -- skip the render thread resolve step...
             _commitStepUnderConstruction.CommitToImmediate_PreCommandList(*_underlyingContext);
             _commitStepUnderConstruction.CommitToImmediate_PostCommandList(*_underlyingContext);
+            _commandListIDCommittedToImmediate = std::max(_commandListIDCommittedToImmediate, _commandListIDUnderConstruction);
+
             newCommandList._metrics._frameId = _underlyingContext->GetStateDesc()._frameId;
             newCommandList._metrics._commitTime = currentTime;
             #if defined(XL_BUFFER_UPLOAD_RECORD_THREAD_CONTEXT_METRICS)
@@ -44,7 +46,6 @@ namespace BufferUploads
                     _recentRetirements.pop();   // note -- this might violate the single-popping-thread rule!
                 }
             #endif
-            _commandListIDCommittedToImmediate = std::max(_commandListIDCommittedToImmediate, _commandListIDUnderConstruction);
         }
 
         _commandListUnderConstruction = CommandListMetrics();
@@ -57,58 +58,62 @@ namespace BufferUploads
         RenderCore::IThreadContext& commitTo,
         LockFreeFixedSizeQueue<unsigned, 4>* framePriorityQueue)
     {
-        const bool preserveRenderState = false;
-        auto immContext = RenderCore::Metal::DeviceContext::Get(commitTo);
-        if (!_isImmediateContext) {
-            TimeMarker stallStart = OSServices::GetPerformanceCounter();
-            bool gotStart = false;
-            for (;;) {
-
-                    //
-                    //      While there are uncommitted frame-priority command lists, we need to 
-                    //      stall to wait until they are committed. Keep trying to drain the queue
-                    //      until there are no lists, and nothing pending.
-                    //
-
-                const bool currentlyUncommitedFramePriorityCommandLists = framePriorityQueue && framePriorityQueue->size()!=0;
-
-                CommandList* commandList = 0;
-                while (_queuedCommandLists.try_front(commandList)) {
-                    TimeMarker stallEnd = OSServices::GetPerformanceCounter();
-                    if (!gotStart) {
-                        commitTo.GetAnnotator().Event("BufferUploads", RenderCore::IAnnotator::EventTypes::MarkerBegin);
-                        gotStart = true;
-                    }
-
-                    commandList->_commitStep.CommitToImmediate_PreCommandList(commitTo);
-                    if (commandList->_deviceCommandList)
-                        immContext->ExecuteCommandList(*commandList->_deviceCommandList.get(), preserveRenderState);
-                    commandList->_commitStep.CommitToImmediate_PostCommandList(commitTo);
-                    _commandListIDCommittedToImmediate = std::max(_commandListIDCommittedToImmediate, commandList->_id);
-                
-                    commandList->_metrics._frameId                  = commitTo.GetStateDesc()._frameId;
-                    commandList->_metrics._commitTime               = OSServices::GetPerformanceCounter();
-                    commandList->_metrics._framePriorityStallTime   = stallEnd - stallStart;    // this should give us very small numbers, when we're not actually stalling for frame priority commits
-                    #if defined(XL_BUFFER_UPLOAD_RECORD_THREAD_CONTEXT_METRICS)
-                        while (!_recentRetirements.push(commandList->_metrics))
-                            _recentRetirements.pop();   // note -- this might violate the single-popping-thread rule!
-                    #endif
-                    _queuedCommandLists.pop();
-
-                    stallStart = OSServices::GetPerformanceCounter();                
-                }
-                    
-                if (!currentlyUncommitedFramePriorityCommandLists)
-                    break;
-
-                Threading::YieldTimeSlice();
-            }
-
-            if (gotStart) {
-                commitTo.GetAnnotator().Event("BufferUploads", RenderCore::IAnnotator::EventTypes::MarkerEnd);
-            }
+        if (_isImmediateContext) {
+            ++_commitCountCurrent;
+            return;
         }
 
+        const bool preserveRenderState = false;
+        auto immContext = RenderCore::Metal::DeviceContext::Get(commitTo);
+        
+        TimeMarker stallStart = OSServices::GetPerformanceCounter();
+        bool gotStart = false;
+        for (;;) {
+
+                //
+                //      While there are uncommitted frame-priority command lists, we need to 
+                //      stall to wait until they are committed. Keep trying to drain the queue
+                //      until there are no lists, and nothing pending.
+                //
+
+            const bool currentlyUncommitedFramePriorityCommandLists = framePriorityQueue && framePriorityQueue->size()!=0;
+
+            CommandList* commandList = 0;
+            while (_queuedCommandLists.try_front(commandList)) {
+                TimeMarker stallEnd = OSServices::GetPerformanceCounter();
+                if (!gotStart) {
+                    commitTo.GetAnnotator().Event("BufferUploads", RenderCore::IAnnotator::EventTypes::MarkerBegin);
+                    gotStart = true;
+                }
+
+                commandList->_commitStep.CommitToImmediate_PreCommandList(commitTo);
+                if (commandList->_deviceCommandList)
+                    immContext->ExecuteCommandList(*commandList->_deviceCommandList.get(), preserveRenderState);
+                commandList->_commitStep.CommitToImmediate_PostCommandList(commitTo);
+                _commandListIDCommittedToImmediate = std::max(_commandListIDCommittedToImmediate, commandList->_id);
+            
+                commandList->_metrics._frameId                  = commitTo.GetStateDesc()._frameId;
+                commandList->_metrics._commitTime               = OSServices::GetPerformanceCounter();
+                commandList->_metrics._framePriorityStallTime   = stallEnd - stallStart;    // this should give us very small numbers, when we're not actually stalling for frame priority commits
+                #if defined(XL_BUFFER_UPLOAD_RECORD_THREAD_CONTEXT_METRICS)
+                    while (!_recentRetirements.push(commandList->_metrics))
+                        _recentRetirements.pop();   // note -- this might violate the single-popping-thread rule!
+                #endif
+                _queuedCommandLists.pop();
+
+                stallStart = OSServices::GetPerformanceCounter();                
+            }
+                
+            if (!currentlyUncommitedFramePriorityCommandLists)
+                break;
+
+            Threading::YieldTimeSlice();
+        }
+
+        if (gotStart) {
+            commitTo.GetAnnotator().Event("BufferUploads", RenderCore::IAnnotator::EventTypes::MarkerEnd);
+        }
+        
         ++_commitCountCurrent;
     }
 
@@ -253,6 +258,11 @@ namespace BufferUploads
         _deferredDefragCopies.push_back(std::forward<CommitStep::DeferredDefragCopy>(copy));
     }
 
+    void CommitStep::AddDelayedDelete(ResourceLocator&& locator)
+    {
+        _delayedDeletes.push_back(std::move(locator));
+    }
+
     void CommitStep::CommitToImmediate_PreCommandList(RenderCore::IThreadContext& immContext)
     {
         // D3D11 has some issues with mapping and writing to linear buffers from a background thread
@@ -278,31 +288,18 @@ namespace BufferUploads
 
     bool CommitStep::IsEmpty() const 
     {
-        return _deferredCopies.empty() && _deferredDefragCopies.empty();
+        return _deferredCopies.empty() && _deferredDefragCopies.empty() && _delayedDeletes.empty();
     }
 
     void CommitStep::swap(CommitStep& other)
     {
         _deferredCopies.swap(other._deferredCopies);
         _deferredDefragCopies.swap(other._deferredDefragCopies);
+        _delayedDeletes.swap(other._delayedDeletes);
     }
 
     CommitStep::CommitStep()
     {
-    }
-
-    CommitStep::CommitStep(CommitStep&& moveFrom)
-    : _deferredCopies(std::move(moveFrom._deferredCopies))
-    , _deferredDefragCopies(std::move(moveFrom._deferredDefragCopies))
-    {
-
-    }
-
-    CommitStep& CommitStep::operator=(CommitStep&& moveFrom)
-    {
-        _deferredCopies = std::move(moveFrom._deferredCopies);
-        _deferredDefragCopies = std::move(moveFrom._deferredDefragCopies);
-        return *this;
     }
 
     CommitStep::~CommitStep()
