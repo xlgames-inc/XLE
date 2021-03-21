@@ -20,8 +20,6 @@ namespace BufferUploads
     class Manager : public IManager
     {
     public:
-        void                    UpdateData(TransactionID id, const std::shared_ptr<IDataPacket>& data, const PartialResource&) override;
-
         TransactionMarker       Transaction_Begin(const ResourceDesc& desc, const std::shared_ptr<IDataPacket>& data, TransactionOptions::BitField flags) override;
         TransactionMarker       Transaction_Begin(const std::shared_ptr<IAsyncDataSource>& data, BindFlag::BitField bindFlags, TransactionOptions::BitField flags) override;
         TransactionMarker       Transaction_Begin(const ResourceLocator& locator, TransactionOptions::BitField flags=0) override;
@@ -35,7 +33,7 @@ namespace BufferUploads
         
         ResourceLocator         GetResource(TransactionID id);
         void                    Resource_Validate(const ResourceLocator& locator) override;
-        bool                    IsComplete(TransactionID id) override;
+        bool                    IsComplete(CommandListID id) override;
 
         CommandListMetrics      PopMetrics() override;
         PoolSystemMetrics       CalculatePoolMetrics() const override;

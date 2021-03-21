@@ -91,7 +91,7 @@ namespace UnitTests
 			auto start = std::chrono::steady_clock::now();
 			for (;;) {
 				bu->Update(*metalHelper->_device->GetImmediateContext());
-				auto status = transaction.WaitFor(100ms);
+				auto status = transaction._future.wait_for(100ms);
 				if (status == std::future_status::ready)
 					break;
 
@@ -101,8 +101,7 @@ namespace UnitTests
 
 			bu->Update(*metalHelper->_device->GetImmediateContext());
 
-			REQUIRE(transaction.IsComplete());
-			auto finalResource = transaction.StallAndGetResource().AsIndependentResource();
+			auto finalResource = transaction._future.get().AsIndependentResource();
 			REQUIRE(finalResource != nullptr);
 			auto finalResourceDesc = finalResource->GetDesc();
 			REQUIRE(finalResourceDesc._type == ResourceDesc::Type::Texture);
@@ -122,7 +121,7 @@ namespace UnitTests
 			auto start = std::chrono::steady_clock::now();
 			for (;;) {
 				bu->Update(*metalHelper->_device->GetImmediateContext());
-				auto status = transaction.WaitFor(100ms);
+				auto status = transaction._future.wait_for(100ms);
 				if (status == std::future_status::ready)
 					break;
 
@@ -132,8 +131,7 @@ namespace UnitTests
 
 			bu->Update(*metalHelper->_device->GetImmediateContext());
 
-			REQUIRE(transaction.IsComplete());
-			auto finalResource = transaction.StallAndGetResource().AsIndependentResource();
+			auto finalResource = transaction._future.get().AsIndependentResource();
 			REQUIRE(finalResource != nullptr);
 			auto finalResourceDesc = finalResource->GetDesc();
 			REQUIRE(finalResourceDesc._type == ResourceDesc::Type::Texture);
@@ -175,7 +173,7 @@ namespace UnitTests
 			auto start = std::chrono::steady_clock::now();
 			for (;;) {
 				bu->Update(*metalHelper->_device->GetImmediateContext());
-				auto status = transaction.WaitFor(100ms);
+				auto status = transaction._future.wait_for(100ms);
 				if (status == std::future_status::ready)
 					break;
 
@@ -183,12 +181,14 @@ namespace UnitTests
 					FAIL("Too much time has passed waiting for buffer uploads transaction to complete");
 			}
 
-			while (!transaction.IsComplete())
+			auto finalLocator = transaction._future.get();
+			REQUIRE(!finalLocator.IsEmpty());
+			while (!bu->IsComplete(finalLocator.GetCompletionCommandList()))
 				bu->Update(*metalHelper->_device->GetImmediateContext());
-			
-			REQUIRE(transaction.IsComplete());
-			auto finalResource = transaction.StallAndGetResource().AsIndependentResource();
+
+			auto finalResource = finalLocator.AsIndependentResource();
 			REQUIRE(finalResource != nullptr);
+
 			auto finalResourceDesc = finalResource->GetDesc();
 			REQUIRE(finalResourceDesc._type == ResourceDesc::Type::Texture);
 
@@ -266,17 +266,28 @@ namespace UnitTests
 
 	struct TransactionTestHelper
 	{
-		std::vector<BufferUploads::TransactionMarker> _liveTransactions;
+		struct Marker
+		{
+			std::future<BufferUploads::ResourceLocator> _future;
+			BufferUploads::ResourceLocator _retrieved;
+		};
+		std::vector<Marker> _liveTransactions;
 		unsigned _incrementalTransactionCounter = 0;
 
-		void RemoveCompletedTransactions()
+		void RemoveCompletedTransactions(BufferUploads::IManager& manager)
 		{
 			// Note -- some of the transactions may fail (eg, out of the device space). However, they
 			// are stil considered complete and we should be able to continue on
 			auto i = std::remove_if(
 				_liveTransactions.begin(), _liveTransactions.end(),
-				[](auto& transaction) {
-					return transaction.IsComplete();
+				[&manager](auto& transaction) {
+					if (transaction._retrieved.IsEmpty()) {
+						auto futureState = transaction._future.wait_for(0s);
+						if (futureState == std::future_status::timeout)
+							return false;
+						transaction._retrieved = transaction._future.get();
+					}
+					return manager.IsComplete(transaction._retrieved.GetCompletionCommandList());
 				});
 			_liveTransactions.erase(i, _liveTransactions.end());
 		}
@@ -284,7 +295,7 @@ namespace UnitTests
 		void AddTransaction(BufferUploads::TransactionMarker&& marker)
 		{
 			REQUIRE(marker.IsValid());
-			_liveTransactions.push_back(std::move(marker));
+			_liveTransactions.push_back(Marker{std::move(marker._future), BufferUploads::ResourceLocator{}});
 			++_incrementalTransactionCounter;
 		}
 
@@ -324,7 +335,7 @@ namespace UnitTests
 
 			bu->Update(*metalHelper->_device->GetImmediateContext());
 			metalHelper->_device->GetImmediateContext()->CommitCommands();
-			transactionHelper.RemoveCompletedTransactions();
+			transactionHelper.RemoveCompletedTransactions(*bu);
 			std::this_thread::sleep_for(16ms);
 			
 			loopCounter++;
@@ -368,7 +379,7 @@ namespace UnitTests
 			}
 
 			bu->Update(*metalHelper->_device->GetImmediateContext());
-			transactionHelper.RemoveCompletedTransactions();
+			transactionHelper.RemoveCompletedTransactions(*bu);
 			std::this_thread::sleep_for(16ms);
 			metalHelper->_device->GetImmediateContext()->CommitCommands();
 

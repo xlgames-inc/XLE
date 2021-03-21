@@ -38,6 +38,9 @@ namespace BufferUploads
         /////////////////////////////////////////////////
 
     using TransactionID = uint64_t;
+    using CommandListID = uint32_t;
+    static const CommandListID CommandListID_Invalid = ~CommandListID(0);
+    static const TransactionID TransactionID_Invalid = ~TransactionID(0);
     class Event_ResourceReposition;
 
     struct BatchedHeapMetrics;
@@ -81,6 +84,8 @@ namespace BufferUploads
         const std::shared_ptr<IResource>& GetContainingResource() const { return _resource; }
         std::pair<size_t, size_t> GetRangeInContainingResource() const { return std::make_pair(_interiorOffset, _interiorOffset+_interiorSize); }
 
+        CommandListID GetCompletionCommandList() const { return _completionCommandList; }
+
         ResourceLocator MakeSubLocator(size_t offset, size_t size);
 
         bool IsEmpty() const { return _resource == nullptr; }
@@ -92,10 +97,15 @@ namespace BufferUploads
             std::shared_ptr<IResource> containingResource,
             size_t interiorOffset, size_t interiorSize,
             std::weak_ptr<IResourcePool> pool, uint64_t poolMarker,
-            bool initialReferenceAlreadyTaken = false);
+            bool initialReferenceAlreadyTaken = false,
+            CommandListID completionCommandList = CommandListID_Invalid);
         ResourceLocator(
             std::shared_ptr<IResource> containingResource,
-            size_t interiorOffset, size_t interiorSize);
+            size_t interiorOffset, size_t interiorSize,
+            CommandListID completionCommandList = CommandListID_Invalid);
+        ResourceLocator(
+            ResourceLocator&& moveFrom,
+            CommandListID completionCommandList);
         ResourceLocator();
         ~ResourceLocator();
 
@@ -109,6 +119,7 @@ namespace BufferUploads
         std::weak_ptr<IResourcePool> _pool;
         uint64_t _poolMarker = ~0ull;
         bool _managedByPool = false;
+        CommandListID _completionCommandList = CommandListID_Invalid;
     };
 
         /////////////////////////////////////////////////
@@ -116,16 +127,6 @@ namespace BufferUploads
     class IManager
     {
     public:
-            /// \name Upload Data to an existing transaction
-            /// @{
-
-            /// <summary>Use UpdateData to change the data within an existing object</summary>
-            /// Upload data for buffer uploads can be provided either to the Transaction_Begin
-            /// call, or to UploadData. Use UploadData when you want to update an existing resource,
-            /// or change the data that's already present.
-        virtual void            UpdateData  (TransactionID id, const std::shared_ptr<IDataPacket>& data, const PartialResource& = PartialResource()) = 0;
-            /// @}
-
             /// \name Begin and End transactions
             /// @{
 
@@ -159,7 +160,7 @@ namespace BufferUploads
 
             /// <summary>Checks for completion</summary>
             /// Returns true iff the given transaction has been completed.
-        virtual bool            IsComplete (TransactionID id) = 0;
+        virtual bool            IsComplete (CommandListID id) = 0;
 
             /// \name Event queue
             /// @{
@@ -235,26 +236,16 @@ namespace BufferUploads
     class TransactionMarker
     {
     public:
-        bool IsComplete() const;
-        bool IsValid() const;
-        ResourceLocator StallAndGetResource();
-        template<typename Duration> std::future_status WaitFor(Duration duration);
-
-        TransactionMarker();
-        ~TransactionMarker();
-        TransactionMarker& operator=(TransactionMarker&&) never_throws;
-        TransactionMarker(TransactionMarker&&) never_throws;
-    private:
-        TransactionMarker(std::future<ResourceLocator>&&, TransactionID, IManager*);
         std::future<ResourceLocator> _future;
-        TransactionID _transactionID;
-        IManager* _manager;
+        TransactionID _transactionID = TransactionID_Invalid;
+
+        bool IsValid() const;
+    private:
+        TransactionMarker(std::future<ResourceLocator>&&, TransactionID);
 
         friend class AssemblyLine;
         friend class Manager;
     };
-
-    template<typename Duration> std::future_status TransactionMarker::WaitFor(Duration duration) { return _future.wait_for(duration); }
 
         /////////////////////////////////////////////////
 

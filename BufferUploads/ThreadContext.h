@@ -63,8 +63,6 @@ namespace BufferUploads
 
         //////   T H R E A D   C O N T E X T   //////
 
-    using CommandListID = uint32_t;
-    
     class Event_ResourceReposition
     {
     public:

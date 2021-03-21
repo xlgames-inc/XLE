@@ -90,8 +90,6 @@ namespace BufferUploads
             Step_BatchedDefrag          = (1<<4)
         };
         
-        // void                UpdateData(TransactionID id, IDataPacket& rawData, const PartialResource& part);
-        
         TransactionMarker       Transaction_Begin(const ResourceDesc& desc, const std::shared_ptr<IDataPacket>& data, TransactionOptions::BitField flags);
         TransactionMarker       Transaction_Begin(const std::shared_ptr<IAsyncDataSource>& data, BindFlag::BitField bindFlags, TransactionOptions::BitField flags);
         TransactionMarker       Transaction_Begin(const ResourceLocator& locator, TransactionOptions::BitField flags=0);
@@ -104,7 +102,6 @@ namespace BufferUploads
                                     const ResourceDesc& desc, IDataPacket& data,
                                     const PartialResource&);
 
-        bool                IsComplete(TransactionID id, CommandListID lastCommandList_CommittedToImmediate);
         void                Process(unsigned stepMask, ThreadContext& context, LockFreeFixedSizeQueue<unsigned, 4>& pendingFramePriorityCommandLists);
         ResourceLocator     GetResource(TransactionID id);
 
@@ -138,7 +135,6 @@ namespace BufferUploads
             std::future<void> _waitingFuture;
 
             std::atomic<bool> _statusLock;
-            unsigned _retirementCommandList;
             TransactionOptions::BitField _creationOptions;
             #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
                 unsigned _heapIndex;
@@ -304,7 +300,7 @@ namespace BufferUploads
             *transaction,
             CreateFromDataPacketStep { transactionID, desc, data, PartialResource_All() });
 
-        return { transaction->_promise.get_future(), transactionID, nullptr };
+        return { transaction->_promise.get_future(), transactionID };
     }
 
     TransactionMarker AssemblyLine::Transaction_Begin(
@@ -314,7 +310,7 @@ namespace BufferUploads
         Transaction* transaction = GetTransaction(transactionID);
         assert(transaction);
 
-        TransactionMarker result { transaction->_promise.get_future(), transactionID, nullptr };
+        TransactionMarker result { transaction->_promise.get_future(), transactionID };
 
         // Let's optimize the case where the desc is available immediately, since certain
         // usage patterns will allow for that
@@ -381,7 +377,7 @@ namespace BufferUploads
         assert(transaction);
         transaction->_desc = desc;
         transaction->_finalResource = locator;
-        return { std::future<ResourceLocator>{}, result, nullptr };
+        return { transaction->_promise.get_future(), result };
     }
 
     void AssemblyLine::ReleaseTransaction(Transaction* transaction, ThreadContext& context, bool abort)
@@ -414,7 +410,6 @@ namespace BufferUploads
 
         if ((newRefCount&0x00ffffff)==0) {
                 //      After the last system reference is released (regardless of client references) we call it retired...
-            transaction->_retirementCommandList = abort ? 0 : context.CommandList_GetUnderConstruction();
             retirement->_retirementTime = OSServices::GetPerformanceCounter();
             if ((metrics._retirementCount+1) <= dimof(metrics._retirements)) {
                 metrics._retirementCount++;
@@ -562,7 +557,7 @@ namespace BufferUploads
         }
     }
 
-    bool AssemblyLine::IsComplete(TransactionID id, CommandListID lastCommandList_CommittedToImmediate)
+    /*bool AssemblyLine::IsComplete(TransactionID id, CommandListID lastCommandList_CommittedToImmediate)
     {
         Transaction* transaction = GetTransaction(id);
         assert(transaction);
@@ -581,7 +576,7 @@ namespace BufferUploads
         } else {
             return false;
         }
-    }
+    }*/
 
         //////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -590,7 +585,6 @@ namespace BufferUploads
         _idTopPart = idTopPart;
         _statusLock = 0;
         _referenceCount = 0;
-        _retirementCommandList = ~unsigned(0x0);
         _creationOptions = 0;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
             _heapIndex = heapIndex;
@@ -602,7 +596,6 @@ namespace BufferUploads
         _idTopPart = 0;
         _statusLock = 0;
         _referenceCount = 0;
-        _retirementCommandList = ~unsigned(0x0);
         _creationOptions = 0;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
             _heapIndex = ~unsigned(0x0);
@@ -621,7 +614,6 @@ namespace BufferUploads
         _promise = std::move(moveFrom._promise);
         _waitingFuture = std::move(moveFrom._waitingFuture);
 
-        _retirementCommandList = moveFrom._retirementCommandList;
         _creationOptions = moveFrom._creationOptions;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
             _heapIndex = moveFrom._heapIndex;
@@ -630,7 +622,6 @@ namespace BufferUploads
         moveFrom._idTopPart = 0;
         moveFrom._statusLock = 0;
         moveFrom._referenceCount = 0;
-        moveFrom._retirementCommandList = ~unsigned(0x0);
         moveFrom._creationOptions = 0;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
             moveFrom._heapIndex = ~unsigned(0x0);
@@ -652,7 +643,6 @@ namespace BufferUploads
         _promise = std::move(moveFrom._promise);
         _waitingFuture = std::move(moveFrom._waitingFuture);
 
-        _retirementCommandList = moveFrom._retirementCommandList;
         _creationOptions = moveFrom._creationOptions;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
             _heapIndex = moveFrom._heapIndex;
@@ -661,7 +651,6 @@ namespace BufferUploads
         moveFrom._idTopPart = 0;
         moveFrom._statusLock = 0;
         moveFrom._referenceCount = 0;
-        moveFrom._retirementCommandList = ~unsigned(0x0);
         moveFrom._creationOptions = 0;
         #if defined(OPTIMISED_ALLOCATE_TRANSACTION)
             moveFrom._heapIndex = ~unsigned(0x0);
@@ -1204,6 +1193,7 @@ namespace BufferUploads
         
         if (!(transaction->_referenceCount & 0xff000000)) {
                 //  If there are no client references, we can consider this cancelled...
+            transaction->_promise.set_exception(std::make_exception_ptr(std::runtime_error("Aborted because client references were released")));
             ReleaseTransaction(transaction, context, true);
             _currentQueuedBytes[uploadDataType] -= uploadRequestSize;
             return true;
@@ -1283,7 +1273,8 @@ namespace BufferUploads
             ++metricsUnderConstruction._deviceCreateOperations;
         }
 
-        transaction->_finalResource = std::move(finalConstruction._locator);
+        // Embue the final resource with the completion command list information
+        transaction->_finalResource = ResourceLocator { std::move(finalConstruction._locator), context.CommandList_GetUnderConstruction() };
         transaction->_promise.set_value(transaction->_finalResource);
 
         ReleaseTransaction(transaction, context);
@@ -1303,6 +1294,7 @@ namespace BufferUploads
         assert(transaction);
 
         if (!(transaction->_referenceCount & 0xff000000)) {
+            transaction->_promise.set_exception(std::make_exception_ptr(std::runtime_error("Aborted because client references were released")));
             ReleaseTransaction(transaction, context, true);
             return true;
         }
@@ -1459,6 +1451,7 @@ namespace BufferUploads
         auto dataType = (unsigned)AsUploadDataType(transaction->_desc);
 
         if (!(transaction->_referenceCount & 0xff000000)) {
+            transaction->_promise.set_exception(std::make_exception_ptr(std::runtime_error("Aborted because client references were released")));
             ReleaseTransaction(transaction, context, true);
             _currentQueuedBytes[dataType] -= transferStagingToFinalStep._stagingByteCount;
             return true;
@@ -1490,6 +1483,9 @@ namespace BufferUploads
             // Don't delete the staging buffer immediately. It must stick around until the command list is resolved
             // and done with it
             context.GetCommitStepUnderConstruction().AddDelayedDelete(std::move(transferStagingToFinalStep._stagingResource));
+
+            // Embue the final resource with the completion command list information
+            transaction->_finalResource = ResourceLocator { std::move(transaction->_finalResource), context.CommandList_GetUnderConstruction() };
 
             metricsUnderConstruction._bytesUploadTotal += transferStagingToFinalStep._stagingByteCount;
             metricsUnderConstruction._bytesUploaded[dataType] += transferStagingToFinalStep._stagingByteCount;
@@ -1820,30 +1816,19 @@ namespace BufferUploads
 
         ///////////////////   M A N A G E R   ///////////////////
 
-    void                    Manager::UpdateData(TransactionID id, const std::shared_ptr<IDataPacket>& data, const PartialResource& part)
-    {
-        assert(0);
-    }
-
     TransactionMarker           Manager::Transaction_Begin(const ResourceDesc& desc, const std::shared_ptr<IDataPacket>& data, TransactionOptions::BitField flags)
     {
-        auto res = _assemblyLine->Transaction_Begin(desc, data, flags);
-        res._manager = this;
-        return res;
+        return _assemblyLine->Transaction_Begin(desc, data, flags);
     }
 
     TransactionMarker           Manager::Transaction_Begin(const std::shared_ptr<IAsyncDataSource>& data, BindFlag::BitField bindFlags, TransactionOptions::BitField flags)
     {
-        auto res = _assemblyLine->Transaction_Begin(data, bindFlags, flags);
-        res._manager = this;
-        return res;
+        return _assemblyLine->Transaction_Begin(data, bindFlags, flags);
     }
 
     TransactionMarker           Manager::Transaction_Begin(const ResourceLocator& locator, TransactionOptions::BitField flags)
     {
-        auto res = _assemblyLine->Transaction_Begin(locator, flags);
-        res._manager = this;
-        return res;
+        return _assemblyLine->Transaction_Begin(locator, flags);
     }
 
     ResourceLocator         Manager::GetResource(TransactionID id)
@@ -1886,9 +1871,9 @@ namespace BufferUploads
         return _backgroundStepMask ? _backgroundContext.get() : _foregroundContext.get(); 
     }
 
-    bool                    Manager::IsComplete(TransactionID id)
+    bool                    Manager::IsComplete(CommandListID id)
     {
-        return _assemblyLine->IsComplete(id, MainContext()->CommandList_GetCommittedToImmediate());
+        return id <= MainContext()->CommandList_GetCommittedToImmediate();
     }
 
     CommandListMetrics      Manager::PopMetrics()
@@ -2037,57 +2022,14 @@ namespace BufferUploads
         }
     }
 
-    bool TransactionMarker::IsComplete() const
-    {
-        if (_manager)
-            return _manager->IsComplete(_transactionID);
-        return true;
-    }
-
     bool TransactionMarker::IsValid() const
     {
-        return _transactionID != ~TransactionID(0) && _future.valid();
+        return _transactionID != TransactionID_Invalid && _future.valid();
     }
 
-    ResourceLocator TransactionMarker::StallAndGetResource()
-    {
-        return _future.get();
-    }
-
-    TransactionMarker::TransactionMarker()
-    : _transactionID(~TransactionID(0))
-    , _manager(nullptr)
-    {}
-
-    TransactionMarker::~TransactionMarker()
-    {
-        if (_manager)
-            _manager->Transaction_Cancel(_transactionID);
-    }
-    TransactionMarker& TransactionMarker::operator=(TransactionMarker&& moveFrom) never_throws
-    {
-        if (_manager)
-            _manager->Transaction_Cancel(_transactionID);
-        _manager = moveFrom._manager;
-        _transactionID = moveFrom._transactionID;
-        _future = std::move(moveFrom._future);
-        moveFrom._transactionID = ~TransactionID(0);
-        moveFrom. _manager = nullptr;
-        return *this;
-    }
-    TransactionMarker::TransactionMarker(TransactionMarker&& moveFrom) never_throws
-    : _manager(moveFrom._manager)
-    , _transactionID(moveFrom._transactionID)
-    , _future(std::move(moveFrom._future))
-    {
-        moveFrom._transactionID = ~TransactionID(0);
-        moveFrom. _manager = nullptr;
-    }
-
-    TransactionMarker::TransactionMarker(std::future<ResourceLocator>&& future, TransactionID transactionID, IManager* manager)
+    TransactionMarker::TransactionMarker(std::future<ResourceLocator>&& future, TransactionID transactionID)
     : _future(std::move(future))
     , _transactionID(transactionID)
-    , _manager(manager)
     {}
 
     std::unique_ptr<IManager> CreateManager(RenderCore::IDevice& renderDevice)
