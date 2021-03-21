@@ -4,10 +4,11 @@
 
 #pragma once
 
-#include "../../BufferUploads/IBufferUploads.h"
 #include "../../Utility/StringUtils.h"
-#include <regex>
 #include <functional>
+#include <memory>
+
+namespace BufferUploads { class IAsyncDataSource; }
 
 namespace RenderCore { namespace Techniques
 {
@@ -18,12 +19,6 @@ namespace RenderCore { namespace Techniques
     }
     
     using TextureLoaderSignature = std::shared_ptr<BufferUploads::IAsyncDataSource>(StringSection<>, TextureLoaderFlags::BitField);
-    
-    void RegisterTextureLoader(
-        std::regex _filenameMatcher,
-        std::function<TextureLoaderSignature>&& loader);
-
-    std::function<TextureLoaderSignature> GetDDSTextureLoader();
-    std::function<TextureLoaderSignature> GetWICTextureLoader();
+    std::function<TextureLoaderSignature> CreateDDSTextureLoader();
+    std::function<TextureLoaderSignature> CreateWICTextureLoader();
 }}
-

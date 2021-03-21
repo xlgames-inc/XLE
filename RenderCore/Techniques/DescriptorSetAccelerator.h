@@ -43,6 +43,7 @@ namespace RenderCore { namespace Techniques
 		const std::shared_ptr<IDevice>& device,
 		const Utility::ParameterBox& constantBindings,
 		const Utility::ParameterBox& resourceBindings,
+		IteratorRange<const std::pair<uint64_t, std::shared_ptr<ISampler>>*> samplerBindings,
 		const RenderCore::Assets::PredefinedDescriptorSetLayout& layout);
 
 }}

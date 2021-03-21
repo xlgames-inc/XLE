@@ -15,13 +15,13 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         RenderPassUtils.cpp
         RenderStateResolver.cpp
         ShaderVariationSet.cpp
-        # SimpleModelDeform.cpp
+        SimpleModelDeform.cpp
         # SimpleModelRenderer.cpp
-        # SkinDeformer.cpp
+        SkinDeformer.cpp
         TechniqueDelegates.cpp
         Techniques.cpp
         TechniqueUtils.cpp
-        # Services.cpp
+        Services.cpp
         ModelCache.cpp
         TextureLoaders.cpp
         )

@@ -3,7 +3,11 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TextureLoaders.h"
+#include "../ResourceDesc.h"
+#include "../Format.h"
+#include "../../BufferUploads/IBufferUploads.h"
 #include "../../Assets/IFileSystem.h"
+#include "../../Assets/DepVal.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../OSServices/RawFS.h"
 #include "../../OSServices/Log.h"
@@ -195,6 +199,13 @@ namespace RenderCore { namespace Techniques
 			return result;
 		}
 
+		std::shared_ptr<Assets::DependencyValidation> GetDependencyValidation() const override
+		{
+			auto depVal = std::make_shared<::Assets::DependencyValidation>();
+	        ::Assets::RegisterFileDependency(depVal, _filename);
+			return depVal;
+		}
+
 		DDSDataSource(const std::string& filename)
 		: _filename(filename)
 		{
@@ -211,7 +222,7 @@ namespace RenderCore { namespace Techniques
 		bool _hasReadMetadata = false;
 	};
 
-	std::function<TextureLoaderSignature> GetDDSTextureLoader()
+	std::function<TextureLoaderSignature> CreateDDSTextureLoader()
 	{
 		// the DirectXTex library is expecting us to call CoInitializeEx.
 		// We need to call this in every thread that uses the DirectXTex library.
@@ -352,6 +363,13 @@ namespace RenderCore { namespace Techniques
 			return result;
 		}
 
+		std::shared_ptr<Assets::DependencyValidation> GetDependencyValidation() const override
+		{
+			auto depVal = std::make_shared<::Assets::DependencyValidation>();
+	        ::Assets::RegisterFileDependency(depVal, _filename);
+			return depVal;
+		}
+
 		WICDataSource(const std::string& filename, TextureLoaderFlags::BitField flags)
 		: _filename(filename)
 		{
@@ -368,7 +386,7 @@ namespace RenderCore { namespace Techniques
 		bool _hasBeenInitialized = false;
 	};
 
-	std::function<TextureLoaderSignature> GetWICTextureLoader()
+	std::function<TextureLoaderSignature> CreateWICTextureLoader()
 	{
 		// the DirectXTex library is expecting us to call CoInitializeEx.
 		// We need to call this in every thread that uses the DirectXTex library.
@@ -378,13 +396,6 @@ namespace RenderCore { namespace Techniques
 		return [](StringSection<> filename, TextureLoaderFlags::BitField flags) -> std::shared_ptr<BufferUploads::IAsyncDataSource> {
 			return std::make_shared<WICDataSource>(filename.AsString(), flags);
 		};
-	}
-
-	void RegisterTextureLoader(
-		std::regex _filenameMatcher,
-		std::function<TextureLoaderSignature>&& loader)
-	{
-		// ....
 	}
 
 }}

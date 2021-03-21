@@ -1,17 +1,13 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#define _SCL_SECURE_NO_WARNINGS
-
 #include "DeferredShaderResource.h"
+#include "TextureLoaders.h"
 #include "Services.h"
 #include "../Format.h"
+#include "../IDevice.h"
 #include "../../BufferUploads/IBufferUploads.h"
-#include "../../BufferUploads/DataPacket.h"
-#include "../../BufferUploads/ResourceLocator.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetFuture.h"
 #include "../../Assets/IFileSystem.h"
@@ -23,6 +19,7 @@
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../ConsoleRig/ResourceBox.h"
+#include <chrono>
 
 namespace RenderCore { namespace Techniques 
 {
@@ -111,36 +108,6 @@ namespace RenderCore { namespace Techniques
 	}
 #endif
 
-	class TransactionMonitor
-	{
-	public:
-		BufferUploads::TransactionID GetId() const { return _id; }
-		TransactionMonitor(BufferUploads::TransactionID id = ~BufferUploads::TransactionID(0)) : _id(id) {}
-		~TransactionMonitor()
-		{
-			if (_id != ~BufferUploads::TransactionID(0)) {
-				assert(Services::HasInstance());
-				Services::GetBufferUploads().Transaction_End(_id);
-			}
-		}
-		TransactionMonitor(TransactionMonitor&& moveFrom)
-		: _id(moveFrom._id)
-		{
-			moveFrom._id = ~BufferUploads::TransactionID(0);
-		}
-		TransactionMonitor& operator=(TransactionMonitor&& moveFrom)
-		{
-			if (_id != ~BufferUploads::TransactionID(0)) {
-				Services::GetBufferUploads().Transaction_End(_id);
-				_id = ~BufferUploads::TransactionID(0);
-			}
-			std::swap(_id, moveFrom._id);
-			return *this;
-		}
-	private:
-		BufferUploads::TransactionID _id;
-	};
-
 	void DeferredShaderResource::ConstructToFuture(
 		::Assets::AssetFuture<DeferredShaderResource>& future,
 		StringSection<> initializer)
@@ -177,44 +144,47 @@ namespace RenderCore { namespace Techniques
         }
 
         using namespace BufferUploads;
-        TextureLoadFlags::BitField flags = init._generateMipmaps ? TextureLoadFlags::GenerateMipmaps : 0;
+        TextureLoaderFlags::BitField flags = init._generateMipmaps ? TextureLoaderFlags::GenerateMipmaps : 0;
 
 		// We're going to check for the existance of a "shadowing" file first. We'll write onto "filename"
 		// two names -- a possible shadowing file, and the original file as well. But don't do this for
 		// DDS files. We'll assume they do not have a shadowing file.
-		intrusive_ptr<DataPacket> pkt;
+		std::shared_ptr<BufferUploads::IAsyncDataSource> pkt;
 		/*const bool checkForShadowingFile = CheckShadowingFile(splitter);
 		if (checkForShadowingFile) {
 			BuildRequestString(filename, splitter);
 			pkt = CreateStreamingTextureSource(RenderCore::Techniques::Services::GetInstance().GetTexturePlugins(), MakeStringSection(filename), flags);
 		} else*/ {
-			pkt = CreateStreamingTextureSource(RenderCore::Techniques::Services::GetInstance().GetTexturePlugins(), splitter.AllExceptParameters(), flags);
+			pkt = Services::GetInstance().CreateTextureDataSource(splitter.AllExceptParameters(), flags);
 		}
 
-        auto transactionId = RenderCore::Techniques::Services::GetBufferUploads().Transaction_Begin(
-            CreateDesc(
-                BindFlag::ShaderResource,
-                0, GPUAccess::Read,
-                TextureDesc::Empty(), initializer),
-            pkt.get());
+        if (!pkt) {
+            future.SetInvalidAsset(nullptr, ::Assets::AsBlob("Could not find matching texture loader"));
+			return;
+        }
 
-		auto depVal = std::make_shared<::Assets::DependencyValidation>();
-		::Assets::RegisterFileDependency(depVal, splitter.AllExceptParameters());
-
-		if (transactionId == ~BufferUploads::TransactionID(0)) {
-			future.SetInvalidAsset(depVal, ::Assets::AsBlob("Could not begin buffer uploads transaction"));
+        auto transactionMarker = RenderCore::Techniques::Services::GetBufferUploads().Transaction_Begin(pkt, BindFlag::ShaderResource);
+		if (!transactionMarker.IsValid()) {
+			future.SetInvalidAsset(nullptr, ::Assets::AsBlob("Could not begin buffer uploads transaction"));
 			return;
 		}
 
-		auto mon = std::make_shared<TransactionMonitor>(transactionId);
-
-		std::string intializerStr = initializer.AsString();
+		struct Captures
+        {
+            std::future<BufferUploads::ResourceLocator> _futureResource;
+        };
+        auto captures = std::make_shared<Captures>();
+        captures->_futureResource = std::move(transactionMarker._future);
 
         future.SetPollingFunction(
-			[mon, metaDataFuture, depVal, init, intializerStr](::Assets::AssetFuture<DeferredShaderResource>& thatFuture) -> bool {
-				auto& bu = RenderCore::Techniques::Services::GetBufferUploads();
-				if (!bu.IsCompleted(mon->GetId()))
-					return true;
+			[   metaDataFuture, init, 
+                initializerStr = initializer.AsString(), 
+                pkt,
+                captures](::Assets::AssetFuture<DeferredShaderResource>& thatFuture) -> bool {
+                using namespace std::chrono_literals;
+                auto resStatus = captures->_futureResource.wait_for(0s);
+                if (resStatus == std::future_status::timeout)
+                    return true;
 
                 ::Assets::Blob metaDataLog;
 			    ::Assets::DepValPtr metaDataDepVal;
@@ -225,19 +195,9 @@ namespace RenderCore { namespace Techniques
                         return true;        // still waiting to see if there's attached metadata
                 }
 
-				auto locator = bu.GetResource(mon->GetId());
-				*mon = {};	// release the transaction
-
-				if (!locator || !locator->GetUnderlying()) {
-					thatFuture.SetInvalidAsset(depVal, ::Assets::AsBlob("Buffer upload transaction completed, but with invalid resource"));
-					return false;
-				}
-
-				auto desc = locator->GetUnderlying()->GetDesc();
-				if (desc._type != RenderCore::ResourceDesc::Type::Texture) {
-					thatFuture.SetInvalidAsset(depVal, ::Assets::AsBlob("Unexpected resource type returned from buffer uploads transaction"));
-					return false;
-				}
+                auto locator = captures->_futureResource.get();
+                auto desc = locator.GetContainingResource()->GetDesc();
+                auto depVal = pkt->GetDependencyValidation();
 
 					// calculate the color space to use (resolving the defaults, request string and metadata)
 				auto colSpace = SourceColorSpace::Unspecified;
@@ -251,7 +211,10 @@ namespace RenderCore { namespace Techniques
 				} else if (actualizedMetaData) {
                     if (actualizedMetaData->_colorSpace != SourceColorSpace::Unspecified)
                         colSpace = actualizedMetaData->_colorSpace;
-                    ::Assets::RegisterAssetDependency(depVal, metaDataDepVal);
+                    auto parentDepVal = std::make_shared<::Assets::DependencyValidation>();
+                    ::Assets::RegisterAssetDependency(parentDepVal, depVal);
+                    ::Assets::RegisterAssetDependency(parentDepVal, metaDataDepVal);
+                    depVal = parentDepVal;
 				}
 
 				if (colSpace == SourceColorSpace::Unspecified && init._colSpaceDefault != SourceColorSpace::Unspecified)
@@ -261,11 +224,15 @@ namespace RenderCore { namespace Techniques
 				if (colSpace == SourceColorSpace::SRGB) viewDesc._format._aspect = TextureViewDesc::Aspect::ColorSRGB;
 				else if (colSpace == SourceColorSpace::Linear) viewDesc._format._aspect = TextureViewDesc::Aspect::ColorLinear;
 
-				auto finalAsset = std::make_shared<DeferredShaderResource>(
-					locator->GetUnderlying()->CreateTextureView(BindFlag::ShaderResource, viewDesc),
-					intializerStr,
-					depVal);
+                auto view = locator.CreateTextureView(BindFlag::ShaderResource, viewDesc);
+				if (!view) {
+					thatFuture.SetInvalidAsset(depVal, ::Assets::AsBlob("Buffer upload transaction completed, but with invalid resource"));
+					return false;
+				}
 
+				auto finalAsset = std::make_shared<DeferredShaderResource>(
+                    std::move(view), initializerStr,
+                    locator.GetCompletionCommandList(), depVal);
 				thatFuture.SetAsset(std::move(finalAsset), nullptr);
 				return false;
 			});
@@ -273,6 +240,7 @@ namespace RenderCore { namespace Techniques
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0
     static TextureViewDesc ResolveTextureViewDescImmediate(const DecodedInitializer& init, const FileNameSplitter<ResChar>& splitter)
     {
         TextureViewDesc result{};
@@ -300,15 +268,17 @@ namespace RenderCore { namespace Techniques
         return result;
     }
 
-    std::shared_ptr<IResourceView> DeferredShaderResource::LoadImmediately(StringSection<::Assets::ResChar> initializer)
+    std::shared_ptr<IResourceView> DeferredShaderResource::LoadImmediately(
+        IThreadContext& threadContext,
+        StringSection<::Assets::ResChar> initializer)
     {
 		auto splitter = MakeFileNameSplitter(initializer);
         DecodedInitializer init(splitter);
 
         using namespace BufferUploads;
-        TextureLoadFlags::BitField flags = init._generateMipmaps ? TextureLoadFlags::GenerateMipmaps : 0;
+        TextureLoaderFlags::BitField flags = init._generateMipmaps ? TextureLoaderFlags::GenerateMipmaps : 0;
 
-		intrusive_ptr<DataPacket> pkt;
+		std::shared_ptr<BufferUploads::IAsyncDataSource> pkt;
 		/*const bool checkForShadowingFile = CheckShadowingFile(splitter);
 		if (checkForShadowingFile) {
 			::Assets::ResChar filename[MaxPath];
@@ -317,12 +287,7 @@ namespace RenderCore { namespace Techniques
 		} else*/
 			pkt = CreateStreamingTextureSource(RenderCore::Techniques::Services::GetInstance().GetTexturePlugins(), splitter.AllExceptParameters(), flags);
 
-        auto result = Services::GetBufferUploads().Transaction_Immediate(
-            CreateDesc(
-                BindFlag::ShaderResource,
-                0, GPUAccess::Read,
-                TextureDesc::Empty(), initializer),
-            pkt.get());
+        auto result = Services::GetBufferUploads().Transaction_Immediate(threadContext, *pkt, BindFlag::ShaderResource);
 
             //  We don't have to change the SRGB modes here -- the caller should select the
             //  right srgb mode when creating a shader resource view
@@ -330,11 +295,10 @@ namespace RenderCore { namespace Techniques
         if (!result)
             Throw(::Assets::Exceptions::ConstructionError(::Assets::Exceptions::ConstructionError::Reason::Unknown, nullptr, "Failure while attempting to load texture immediately"));
 
-        auto desc = result->GetUnderlying()->GetDesc();
-        assert(desc._type == BufferDesc::Type::Texture);
         auto view = ResolveTextureViewDescImmediate(init, splitter);
-        return result->GetUnderlying()->CreateTextureView(BindFlag::ShaderResource, view);
+        return result.CreateTextureView(BindFlag::ShaderResource, view);
     }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -378,6 +342,7 @@ namespace RenderCore { namespace Techniques
 
     CachedTextureFormats::~CachedTextureFormats() {}
 
+#if 0
     static bool IsDXTNormalMapFormat(Format format)
     {
         return unsigned(format) >= unsigned(RenderCore::Format::BC1_TYPELESS)
@@ -388,7 +353,7 @@ namespace RenderCore { namespace Techniques
     {
 		auto splitter = MakeFileNameSplitter(initializer);
         DecodedInitializer init(splitter);
-		return BufferUploads::LoadTextureFormat(splitter.AllExceptParameters())._format;
+		return LoadTextureFormat(splitter.AllExceptParameters())._format;
     }
 
     bool DeferredShaderResource::IsDXTNormalMap(StringSection<::Assets::ResChar> textureName)
@@ -435,13 +400,14 @@ namespace RenderCore { namespace Techniques
 
         return IsDXTNormalMapFormat(i->second);
     }
-
+#endif
 
 	DeferredShaderResource::DeferredShaderResource(
 		const std::shared_ptr<IResourceView>& srv,
 		const std::string& initializer,
+        BufferUploads::CommandListID completionCommandList,
 		const ::Assets::DepValPtr& depVal)
-	: _srv(srv), _initializer(initializer), _depVal(depVal)
+	: _srv(srv), _initializer(initializer), _depVal(depVal), _completionCommandList(completionCommandList)
 	{}
 
 	DeferredShaderResource::~DeferredShaderResource()
@@ -462,6 +428,7 @@ namespace RenderCore { namespace Techniques
         ParameterBox result = inputMatParameters;
         for (const auto& param:resBindings) {
             result.SetParameter(StringMeld<64, utf8>() << "RES_HAS_" << param.Name(), 1);
+#if 0
             if (param.HashName() == DefaultNormalsTextureBindingHash) {
                 auto resourceName = resBindings.GetParameterAsString(DefaultNormalsTextureBindingHash);
                 if (resourceName.has_value()) {
@@ -472,6 +439,7 @@ namespace RenderCore { namespace Techniques
                         DeferredShaderResource::IsDXTNormalMap(resolvedName));
                 }
             }
+#endif
         }
         return std::move(result);
     }

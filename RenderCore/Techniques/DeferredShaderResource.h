@@ -13,6 +13,7 @@
 
 namespace Utility { class ParameterBox; }
 namespace Assets { class DirectorySearchRules; }
+namespace BufferUploads { using CommandListID = uint32_t; }
 
 namespace RenderCore { namespace Techniques 
 {
@@ -51,13 +52,12 @@ namespace RenderCore { namespace Techniques
 		const std::shared_ptr<IResourceView>&   GetShaderResource() const			{ return _srv; }
         const ::Assets::DepValPtr&				GetDependencyValidation() const     { return _depVal; }
 		StringSection<>							Initializer() const					{ return MakeStringSection(_initializer); }
-
-        static std::shared_ptr<IResourceView> LoadImmediately(StringSection<::Assets::ResChar> initializer);
-        static bool IsDXTNormalMap(StringSection<::Assets::ResChar> initializer);
+        BufferUploads::CommandListID            GetCompletionCommandList() const    { return _completionCommandList; }
 
         DeferredShaderResource(
 			const std::shared_ptr<IResourceView>& srv,
 			const std::string& initializer,
+            BufferUploads::CommandListID completionCommandList,
 			const ::Assets::DepValPtr& depVal);
         ~DeferredShaderResource();
 
@@ -68,6 +68,7 @@ namespace RenderCore { namespace Techniques
 		std::shared_ptr<IResourceView> _srv;
         std::string _initializer;
 		::Assets::DepValPtr _depVal;
+        BufferUploads::CommandListID _completionCommandList;
     };
     
 	/// <summary>Set the RES_HAS technique materials parameter</summary>

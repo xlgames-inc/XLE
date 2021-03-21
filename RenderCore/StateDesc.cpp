@@ -92,6 +92,21 @@ namespace RenderCore
 		return HashCombine(p0, p1);
 	}
 
+    uint64_t SamplerDesc::Hash() const
+    {
+        assert((unsigned(_filter) & ~0xff) == 0);
+        assert((unsigned(_addressU) & ~0xf) == 0);
+        assert((unsigned(_addressV) & ~0xf) == 0);
+        assert((unsigned(_comparison) & ~0xf) == 0);
+
+        return  uint64_t(_filter)
+            |   (uint64_t(_addressU) << 8ull)
+            |   (uint64_t(_addressV) << 12ull)
+            |   (uint64_t(_comparison) << 16ull)
+            |   (uint64_t(_enableMipmaps) << 20ull)
+            ;
+    }
+
 	StencilDesc StencilDesc::NoEffect { StencilOp::DontWrite, StencilOp::DontWrite, StencilOp::DontWrite, CompareOp::Always };
 	StencilDesc StencilDesc::AlwaysWrite { StencilOp::Replace, StencilOp::DontWrite, StencilOp::DontWrite, CompareOp::Always };
 }

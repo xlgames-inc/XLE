@@ -192,6 +192,8 @@ namespace RenderCore
         RenderCore::AddressMode _addressV = RenderCore::AddressMode::Wrap;
         RenderCore::CompareOp _comparison = RenderCore::CompareOp::Never;
         bool _enableMipmaps = true;
+
+		uint64_t Hash() const;
     };
 
     namespace ColorWriteMask

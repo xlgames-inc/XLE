@@ -62,6 +62,8 @@ namespace UnitTests
 				});
 		}
 
+		std::shared_ptr<Assets::DependencyValidation> GetDependencyValidation() const override { return nullptr; }
+
 		std::vector<unsigned> _rawData;
 		RenderCore::ResourceDesc _desc;
 	};
@@ -151,8 +153,8 @@ namespace UnitTests
 		auto metalHelper = MakeTestHelper();
 		auto bu = BufferUploads::CreateManager(*metalHelper->_device);
 
-		auto ddsLoader = Techniques::GetDDSTextureLoader();
-		auto wicLoader = Techniques::GetWICTextureLoader();
+		auto ddsLoader = Techniques::CreateDDSTextureLoader();
+		auto wicLoader = Techniques::CreateWICTextureLoader();
 		const char* texturesToTry[] {
 			"xleres/DefaultResources/glosslut.dds",
 			"xleres/DefaultResources/waternoise.png"
@@ -251,6 +253,8 @@ namespace UnitTests
 						FillWithRandomData(rng(), subRes._destination);
 				});
 		}
+
+		std::shared_ptr<Assets::DependencyValidation> GetDependencyValidation() const override { return nullptr; }
 
 		RenderCore::ResourceDesc _desc;
 		uint32_t _rngSeed;

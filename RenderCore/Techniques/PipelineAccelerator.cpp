@@ -362,7 +362,8 @@ namespace RenderCore { namespace Techniques
 			const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
 			const ParameterBox& materialSelectors,
 			const Utility::ParameterBox& constantBindings,
-			const Utility::ParameterBox& resourceBindings) override;
+			const Utility::ParameterBox& resourceBindings,
+			IteratorRange<const std::pair<uint64_t, SamplerDesc>*> samplerBindings) override;
 
 		std::shared_ptr<SequencerConfig> CreateSequencerConfig(
 			const std::shared_ptr<ITechniqueDelegate>& delegate,
@@ -394,6 +395,7 @@ namespace RenderCore { namespace Techniques
 		ParameterBox _globalSelectors;
 		std::vector<std::pair<uint64_t, std::weak_ptr<SequencerConfig>>> _sequencerConfigById;
 		std::vector<std::pair<uint64_t, std::weak_ptr<PipelineAccelerator>>> _pipelineAccelerators;
+		std::vector<std::pair<uint64_t, std::shared_ptr<ISampler>>> _compiledSamplerStates;
 
 		SequencerConfig MakeSequencerConfig(
 			/*out*/ uint64_t& hash,
@@ -404,6 +406,8 @@ namespace RenderCore { namespace Techniques
 
 		void RebuildAllPipelines(unsigned poolGuid);
 		void RebuildAllPipelines(unsigned poolGuid, PipelineAccelerator& pipeline);
+
+		const std::shared_ptr<ISampler>& GetMetalSampler(const SamplerDesc& desc);
 
 		std::shared_ptr<ICompiledPipelineLayout> _pipelineLayout;
 		MaterialDescriptorSetLayout _matDescSetLayout;
@@ -551,12 +555,18 @@ namespace RenderCore { namespace Techniques
 		const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
 		const ParameterBox& materialSelectors,
 		const Utility::ParameterBox& constantBindings,
-		const Utility::ParameterBox& resourceBindings)
+		const Utility::ParameterBox& resourceBindings,
+		IteratorRange<const std::pair<uint64_t, SamplerDesc>*> samplerBindings)
 	{
 		auto result = std::make_shared<DescriptorSetAccelerator>();
 		result->_descriptorSet = std::make_shared<::Assets::AssetFuture<IDescriptorSet>>("descriptorset-accelerator");
 
 		auto patchCollectionFuture = ::Assets::MakeAsset<CompiledShaderPatchCollection>(*shaderPatches, _matDescSetLayout);
+
+		std::vector<std::pair<uint64_t, std::shared_ptr<ISampler>>> metalSamplers;
+		metalSamplers.reserve(samplerBindings.size());
+		for (const auto&c:samplerBindings)
+			metalSamplers.push_back(std::make_pair(c.first, GetMetalSampler(c.second)));
 
 		// Most of the time, it will be ready immediately, and we can avoid some of the overhead of the
 		// future continuation functions
@@ -566,14 +576,16 @@ namespace RenderCore { namespace Techniques
 				_device,
 				constantBindings,
 				resourceBindings,
+				MakeIteratorRange(metalSamplers),
 				patchCollection->GetInterface().GetMaterialDescriptorSet());
 		} else {
 			Utility::ParameterBox constantBindingsCopy = constantBindings;
 			Utility::ParameterBox resourceBindingsCopy = resourceBindings;
+
 			std::weak_ptr<IDevice> weakDevice = _device;
 			::Assets::WhenAll(patchCollectionFuture).ThenConstructToFuture<RenderCore::IDescriptorSet>(
 				*result->_descriptorSet,
-				[constantBindingsCopy, resourceBindingsCopy, weakDevice](
+				[constantBindingsCopy, resourceBindingsCopy, metalSamplers, weakDevice](
 					::Assets::AssetFuture<RenderCore::IDescriptorSet>& future,
 					const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection) {
 
@@ -586,6 +598,7 @@ namespace RenderCore { namespace Techniques
 						d,
 						constantBindingsCopy,
 						resourceBindingsCopy,
+						MakeIteratorRange(metalSamplers),
 						patchCollection->GetInterface().GetMaterialDescriptorSet());
 				});
 		}
@@ -709,6 +722,18 @@ namespace RenderCore { namespace Techniques
 	{
 		_globalSelectors.RemoveParameter(name.Cast<utf8>());
 		RebuildAllPipelines(_guid);
+	}
+
+	const std::shared_ptr<ISampler>& PipelineAcceleratorPool::GetMetalSampler(const SamplerDesc& desc)
+	{
+		auto hash = desc.Hash();
+		auto i = LowerBound(_compiledSamplerStates, hash);
+		if (i != _compiledSamplerStates.end() && i->first == hash)
+			return i->second;
+
+		auto result = _device->CreateSampler(desc);
+		i = _compiledSamplerStates.insert(i, std::make_pair(hash, result));
+		return i->second;
 	}
 
 	const std::shared_ptr<IDevice>& PipelineAcceleratorPool::GetDevice() const { return _device; }

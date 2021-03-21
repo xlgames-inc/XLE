@@ -248,5 +248,6 @@ namespace BufferUploads
     }
 
     IDataPacket::~IDataPacket() {}
+    IAsyncDataSource::~IAsyncDataSource() {}
     
 }

@@ -17,6 +17,8 @@
     #define buffer_upload_dll_export
 #endif
 
+namespace Assets { class DependencyValidation; }
+
 namespace BufferUploads
 {
 	using LinearBufferDesc = RenderCore::LinearBufferDesc;
@@ -77,9 +79,12 @@ namespace BufferUploads
     {
     public:
         std::shared_ptr<IResource> AsIndependentResource() const;
-        RenderCore::VertexBufferView AsVertexBufferView() const;
-        RenderCore::IndexBufferView AsIndexBufferView(RenderCore::Format indexFormat) const;
-        RenderCore::ConstantBufferView AsConstantBufferView() const;
+
+        RenderCore::VertexBufferView CreateVertexBufferView() const;
+        RenderCore::IndexBufferView CreateIndexBufferView(RenderCore::Format indexFormat) const;
+        RenderCore::ConstantBufferView CreateConstantBufferView() const;
+        std::shared_ptr<RenderCore::IResourceView> CreateTextureView(BindFlag::Enum usage = BindFlag::ShaderResource, const RenderCore::TextureViewDesc& window = RenderCore::TextureViewDesc{});
+        std::shared_ptr<RenderCore::IResourceView> CreateBufferView(BindFlag::Enum usage = BindFlag::ConstantBuffer, unsigned rangeOffset = 0, unsigned rangeSize = 0);
 
         const std::shared_ptr<IResource>& GetContainingResource() const { return _resource; }
         std::pair<size_t, size_t> GetRangeInContainingResource() const { return std::make_pair(_interiorOffset, _interiorOffset+_interiorSize); }
@@ -231,6 +236,10 @@ namespace BufferUploads
         };
 
         virtual std::future<void> PrepareData(IteratorRange<const SubResource*> subResources) = 0;
+
+        virtual std::shared_ptr<Assets::DependencyValidation> GetDependencyValidation() const = 0;
+
+        virtual ~IAsyncDataSource();
     };
 
     class TransactionMarker
@@ -253,12 +262,8 @@ namespace BufferUploads
         IteratorRange<const void*> data = {}, 
         TexturePitches pitches = TexturePitches());
 
-    buffer_upload_dll_export std::shared_ptr<IDataPacket> CreateEmptyPacket(
-        const ResourceDesc& desc);
-
-    buffer_upload_dll_export std::shared_ptr<IDataPacket> CreateEmptyLinearBufferPacket(
-        size_t size);
-
+    buffer_upload_dll_export std::shared_ptr<IDataPacket> CreateEmptyPacket(const ResourceDesc& desc);
+    buffer_upload_dll_export std::shared_ptr<IDataPacket> CreateEmptyLinearBufferPacket(size_t size);
     buffer_upload_dll_export std::unique_ptr<IManager> CreateManager(RenderCore::IDevice& renderDevice);
 
 }

@@ -6,6 +6,7 @@
 
 #include "../Metal/Forward.h"		// (for Metal::GraphicsPipeline)
 #include "../Types.h"
+#include "../StateDesc.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/IteratorUtils.h"
@@ -48,7 +49,8 @@ namespace RenderCore { namespace Techniques
 			const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
 			const ParameterBox& materialSelectors,
 			const Utility::ParameterBox& constantBindings,
-			const Utility::ParameterBox& resourceBindings) = 0;
+			const Utility::ParameterBox& resourceBindings,
+			IteratorRange<const std::pair<uint64_t, SamplerDesc>*> samplerBindings = {}) = 0;
 
 		virtual std::shared_ptr<SequencerConfig> CreateSequencerConfig(
 			const std::shared_ptr<ITechniqueDelegate>& delegate,

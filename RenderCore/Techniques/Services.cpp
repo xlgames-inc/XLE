@@ -6,43 +6,52 @@
 #include "SimpleModelDeform.h"
 #include "SkinDeformer.h"
 #include "../../BufferUploads/IBufferUploads.h"
-#include "../../BufferUploads/DataPacket.h"
-#include "../../ConsoleRig/AttachablePtr.h"		// (for ConsoleRig::CrossModule::GetInstance)
+#include "../../ConsoleRig/AttachablePtr.h"
+#include <vector>
+#include <regex>
 
 namespace RenderCore { namespace Techniques
 {
-	Services* Services::s_instance = nullptr;
-
 	class Services::Pimpl
 	{
 	public:
-		std::vector<BufferUploads::TexturePlugin> _texturePlugins;
-		std::vector<unsigned> _texturePluginIds;
+		struct TexturePlugin
+		{
+			std::regex _initializerMatcher;
+			std::function<TextureLoaderSignature> _loader;
+			unsigned _id;
+		};
+		std::vector<TexturePlugin> _texturePlugins;
 		unsigned _nextTexturePluginId = 1;
 	};
 
-	IteratorRange<const BufferUploads::TexturePlugin*> Services::GetTexturePlugins()
+	unsigned Services::RegisterTextureLoader(
+		const std::basic_regex<char, std::regex_traits<char>>& initializerMatcher, 
+		std::function<TextureLoaderSignature>&& loader)
 	{
-		return MakeIteratorRange(_pimpl->_texturePlugins);
-	}
+		auto res = _pimpl->_nextTexturePluginId++;
 
-	unsigned Services::RegisterTexturePlugin(BufferUploads::TexturePlugin&& plugin)
-	{
-		auto res = _pimpl->_nextTexturePluginId;
-		++_pimpl->_nextTexturePluginId;
-
-		_pimpl->_texturePlugins.emplace_back(std::move(plugin));
-		_pimpl->_texturePluginIds.push_back(res);
+		Pimpl::TexturePlugin plugin;
+		plugin._initializerMatcher = initializerMatcher;
+		plugin._loader = std::move(loader);
+		plugin._id = res;
+		_pimpl->_texturePlugins.push_back(std::move(plugin));
 		return res;
 	}
 
-	void Services::DeregisterTexturePlugin(unsigned pluginId)
+	void Services::DeregisterTextureLoader(unsigned pluginId)
 	{
-		auto i = std::find(_pimpl->_texturePluginIds.begin(), _pimpl->_texturePluginIds.end(), pluginId);
-		if (i != _pimpl->_texturePluginIds.end()) {
-			_pimpl->_texturePlugins.erase(_pimpl->_texturePlugins.begin() + (i-_pimpl->_texturePluginIds.begin()));
-			_pimpl->_texturePluginIds.erase(i);
-		}
+		auto i = std::find_if(_pimpl->_texturePlugins.begin(), _pimpl->_texturePlugins.end(), [pluginId](const auto& c) { return c._id == pluginId; });
+		if (i != _pimpl->_texturePlugins.end())
+			_pimpl->_texturePlugins.erase(i);
+	}
+
+	std::shared_ptr<BufferUploads::IAsyncDataSource> Services::CreateTextureDataSource(StringSection<> identifier, TextureLoaderFlags::BitField flags)
+	{
+		for (const auto& plugin:_pimpl->_texturePlugins)
+			if (std::regex_match(identifier.begin(), identifier.end(), plugin._initializerMatcher))
+				return plugin._loader(identifier, flags);
+		return nullptr;
 	}
 
 	Services::Services(const std::shared_ptr<RenderCore::IDevice>& device)
@@ -53,7 +62,6 @@ namespace RenderCore { namespace Techniques
 		_deformOpsFactory->RegisterDeformOperation("skin", SkinDeformer::InstantiationFunction);
 
 		if (device) {
-            BufferUploads::AttachLibrary(ConsoleRig::CrossModule::GetInstance());
             _bufferUploads = BufferUploads::CreateManager(*device);
         }
 	}
@@ -62,20 +70,11 @@ namespace RenderCore { namespace Techniques
 	{
 		if (_bufferUploads) {
             _bufferUploads.reset();
-            BufferUploads::DetachLibrary();
         }
 	}
 
-    void Services::AttachCurrentModule()
-	{
-		assert(s_instance==nullptr);
-        s_instance = this;
-	}
-
-    void Services::DetachCurrentModule()
-	{
-		assert(s_instance==this);
-        s_instance = nullptr;
-	}
+	static ConsoleRig::AttachablePtr<Services> s_servicesInstance;
+	bool Services::HasInstance() { return s_servicesInstance != nullptr; }
+	Services& Services::GetInstance() { return *s_servicesInstance; }
 }}
 

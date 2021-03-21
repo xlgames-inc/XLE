@@ -45,6 +45,7 @@ namespace RenderCore { namespace Techniques
 		const std::shared_ptr<IDevice>& device,
 		const Utility::ParameterBox& constantBindings,
 		const Utility::ParameterBox& resourceBindings,
+		IteratorRange<const std::pair<uint64_t, std::shared_ptr<ISampler>>*> samplerBindings,
 		const RenderCore::Assets::PredefinedDescriptorSetLayout& layout)
 	{
 		auto shrLanguage = GetDefaultShaderLanguage();
@@ -67,14 +68,18 @@ namespace RenderCore { namespace Techniques
 				DescriptorType _slotType;
 			};
 			std::vector<Slot> _slots;
+
+			DescriptorSetSignature _signature;
 		};
 		DescriptorSetInProgress working;
 		working._slots.reserve(layout._slots.size());
+		working._signature._slots.reserve(working._slots.size());
 		for (const auto& s:layout._slots) {
 			DescriptorSetInProgress::Slot slotInProgress;
 			slotInProgress._slotName = s._name;
 			slotInProgress._slotType = s._type;
 
+			bool gotBinding = false;
 			auto hashName = Hash64(s._name);
 			auto boundResource = resourceBindings.GetParameterAsString(hashName);
 			if (boundResource.has_value() && !boundResource.value().empty()) {
@@ -86,6 +91,7 @@ namespace RenderCore { namespace Techniques
 				DescriptorSetInProgress::Resource res;
 				res._pendingResource = ::Assets::MakeAsset<DeferredShaderResource>(MakeStringSection(boundResource.value()));
 				working._resources.push_back(res);
+				gotBinding = true;
 			} else if (s._type == DescriptorType::ConstantBuffer && s._cbIdx < (unsigned)layout._constantBuffers.size()) {
 				auto& cbLayout = layout._constantBuffers[s._cbIdx];
 				auto buffer = cbLayout->BuildCBDataAsVector(constantBindings, shrLanguage);
@@ -100,8 +106,21 @@ namespace RenderCore { namespace Techniques
 				DescriptorSetInProgress::Resource res;
 				res._fixedResource = cb->CreateBufferView(BindFlag::ConstantBuffer);
 				working._resources.push_back(res);
-			} else
-				Throw(std::runtime_error("No binding provided for descriptor slot " + s._name));
+				gotBinding = true;
+			} else if (s._type == DescriptorType::Sampler) {
+				auto i = std::find_if(samplerBindings.begin(), samplerBindings.end(), [hashName](const auto& c) { return c.first == hashName; });
+				if (i != samplerBindings.end()) {
+					slotInProgress._bindType = DescriptorSetInitializer::BindType::Sampler;
+					slotInProgress._resourceIdx = (unsigned)working._samplers.size();
+					working._samplers.push_back(i->second);
+					gotBinding = true;
+				}
+			} 
+			
+			if (!gotBinding)
+				slotInProgress._bindType = DescriptorSetInitializer::BindType::Empty;
+			working._signature._slots.push_back(DescriptorSlot{s._type});
+			working._slots.push_back(slotInProgress);
 		}
 
 		future.SetPollingFunction(
@@ -138,13 +157,10 @@ namespace RenderCore { namespace Techniques
 				auto depVal = std::make_shared<::Assets::DependencyValidation>();
 				for (const auto&d:subDepVals) ::Assets::RegisterAssetDependency(depVal, d);
 
-				DescriptorSetSignature signature;
 				std::vector<DescriptorSetInitializer::BindTypeAndIdx> bindTypesAndIdx;
 				bindTypesAndIdx.reserve(working._slots.size());
-				signature._slots.reserve(working._slots.size());
 				for (const auto&s:working._slots) {
 					bindTypesAndIdx.push_back(DescriptorSetInitializer::BindTypeAndIdx{s._bindType, s._resourceIdx});
-					signature._slots.push_back(DescriptorSlot{s._slotType});
 				}
 				std::vector<const IResourceView*> resourceViews;
 				std::vector<const ISampler*> samplers;
@@ -157,7 +173,7 @@ namespace RenderCore { namespace Techniques
 				initializer._slotBindings = MakeIteratorRange(bindTypesAndIdx);
 				initializer._bindItems._resourceViews = MakeIteratorRange(resourceViews);
 				initializer._bindItems._samplers = MakeIteratorRange(samplers);
-				initializer._signature = &signature;
+				initializer._signature = &working._signature;
 
 				auto finalDescriptorSet = device->CreateDescriptorSet(initializer);
 				thatFuture.SetAsset(std::move(finalDescriptorSet), {});

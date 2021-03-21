@@ -14,12 +14,15 @@
 #include "../../../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../../../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../../RenderCore/Techniques/Services.h"
 #include "../../../RenderCore/Metal/DeviceContext.h"
 #include "../../../RenderCore/Metal/InputLayout.h"
 #include "../../../RenderCore/Format.h"
 #include "../../../RenderCore/BufferView.h"
+#include "../../../RenderCore/StateDesc.h"
 #include "../../../RenderCore/IDevice.h"
 #include "../../../RenderCore/IAnnotator.h"
+#include "../../../BufferUploads/IBufferUploads.h"
 #include "../../../ShaderParser/ShaderInstantiation.h"
 #include "../../../ShaderParser/DescriptorSetInstantiation.h"
 #include "../../../ShaderParser/ShaderAnalysis.h"
@@ -34,6 +37,7 @@
 #include "../../../Assets/CompileAndAsyncManager.h"
 #include "../../../Assets/Assets.h"
 #include "../../../Math/Transformations.h"
+#include "../../../Math/MathSerialization.h"
 #include "../../../ConsoleRig/Console.h"
 #include "../../../OSServices/Log.h"
 #include "../../../OSServices/FileSystemMonitor.h"
@@ -42,8 +46,11 @@
 #include "../../../Utility/Streams/OutputStreamFormatter.h"
 #include "../../../Utility/Streams/StreamTypes.h"
 #include "../../../Utility/MemoryUtils.h"
+#include "thousandeyes/futures/then.h"
+#include "thousandeyes/futures/DefaultExecutor.h"
 #include "catch2/catch_test_macros.hpp"
 #include "catch2/catch_approx.hpp"
+#include <regex>
 
 using namespace Catch::literals;
 namespace UnitTests
@@ -186,12 +193,14 @@ namespace UnitTests
 				{
 					captures MaterialUniforms = (
 						Texture2D InputTexture,
-						SamplerState InputSampler
+						SamplerState InputSampler,
+						float2 TextureAspectDistortion = "{10, 1}"
 					);
+					node texCoordNode = basic::Multiply2(lhs:coord, rhs:MaterialUniforms.TextureAspectDistortion);
 					return texture::SampleWithSampler(
 						inputTexture:MaterialUniforms.InputTexture, 
 						inputSampler:MaterialUniforms.InputSampler,
-						texCoord:coord).result;
+						texCoord:texCoordNode.result).result;
 				}
 			)--")),
 
@@ -605,6 +614,12 @@ namespace UnitTests
 
 			SECTION("Graph based technique with resources")
 			{
+				auto techniqueServices = ConsoleRig::MakeAttachablePtr<Techniques::Services>(testHelper->_device);
+				auto executor = std::make_shared<thousandeyes::futures::DefaultExecutor>(std::chrono::milliseconds(2));
+				thousandeyes::futures::Default<thousandeyes::futures::Executor>::Setter execSetter(executor);
+				auto textureLoader0 = techniqueServices->RegisterTextureLoader(std::regex(R"(.*\.[dD][dD][sS])"), Techniques::CreateDDSTextureLoader());
+				auto textureLoader1 = techniqueServices->RegisterTextureLoader(std::regex(R"(.*)"), Techniques::CreateWICTextureLoader());
+
 				static const char sphericalCollectionFragments[] = R"--(
 				main=~
 					ut-data/spherical.graph::PerPixelImplementation
@@ -627,17 +642,32 @@ namespace UnitTests
 
 				ParameterBox constantBindings;
 				ParameterBox resourceBindings;
+				std::vector<std::pair<uint64_t, SamplerDesc>> samplerBindings;
 				resourceBindings.SetParameter("InputTexture", "xleres/DefaultResources/waternoise.png");
+				samplerBindings.push_back(std::make_pair(Hash64("InputSampler"), SamplerDesc{}));
+				constantBindings.SetParameter("TextureAspectDistortion", Float2{0.5f, 3.0f});
 				auto descriptorSetAccelerator = pipelinePool->CreateDescriptorSetAccelerator(
 					patchCollection,
 					ParameterBox{},
 					constantBindings,
-					resourceBindings);
+					resourceBindings,
+					MakeIteratorRange(samplerBindings));
+
+				// hack -- 
+				// we need to pump buffer uploads a bit to ensure the texture load gets completed
+				for (unsigned c=0; c<5; ++c) {
+					Techniques::Services::GetBufferUploads().Update(*threadContext);
+					using namespace std::chrono_literals;
+					std::this_thread::sleep_for(16ms);
+				}
 
 				DrawViaPipelineAccelerator(
 					threadContext, fbHelper, globalTransform, pipelinePool,
 					pipelineAccelerator, descriptorSetAccelerator, cfg, 
 					*sphereVb, sphereGeo.size());
+
+				techniqueServices->DeregisterTextureLoader(textureLoader1);
+				techniqueServices->DeregisterTextureLoader(textureLoader0);
 			}
 
 			compilers.DeregisterCompiler(shaderCompiler2Registration._registrationId);

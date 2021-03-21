@@ -1138,7 +1138,7 @@ namespace BufferUploads
         return (!_managedByPool && IsWholeResource()) ? _resource : nullptr;
     }
 
-    RenderCore::VertexBufferView ResourceLocator::AsVertexBufferView() const
+    RenderCore::VertexBufferView ResourceLocator::CreateVertexBufferView() const
     {
         return RenderCore::VertexBufferView {
             _resource,
@@ -1146,18 +1146,30 @@ namespace BufferUploads
         };
     }
 
-    RenderCore::IndexBufferView ResourceLocator::AsIndexBufferView(RenderCore::Format indexFormat) const
+    RenderCore::IndexBufferView ResourceLocator::CreateIndexBufferView(RenderCore::Format indexFormat) const
     {
         return RenderCore::IndexBufferView { _resource, indexFormat, (_interiorOffset != ~size_t(0)) ? unsigned(_interiorOffset) : 0u };
     }
 
-    RenderCore::ConstantBufferView ResourceLocator::AsConstantBufferView() const
+    RenderCore::ConstantBufferView ResourceLocator::CreateConstantBufferView() const
     {
         if (_interiorOffset != ~size_t(0)) {
             return RenderCore::ConstantBufferView { _resource, unsigned(_interiorOffset), unsigned(_interiorOffset + _interiorSize) };
         } else {
             return RenderCore::ConstantBufferView { _resource };
         }
+    }
+
+    std::shared_ptr<RenderCore::IResourceView> ResourceLocator::CreateTextureView(BindFlag::Enum usage, const RenderCore::TextureViewDesc& window)
+    {
+        if (!IsWholeResource() || _managedByPool)
+            Throw(std::runtime_error("Cannot create a texture view from a partial resource locator"));
+        return _resource->CreateTextureView(usage, window);
+    }
+
+    std::shared_ptr<RenderCore::IResourceView> ResourceLocator::CreateBufferView(BindFlag::Enum usage, unsigned rangeOffset, unsigned rangeSize)
+    {
+        return _resource->CreateBufferView(usage, rangeOffset + ((_interiorOffset != ~size_t(0)) ? unsigned(_interiorOffset) : 0u), rangeSize);
     }
 
     bool ResourceLocator::IsWholeResource() const
