@@ -308,6 +308,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout,
 			const std::shared_ptr<VulkanEncoderSharedState>& sharedState);
 
+		void LogPipeline(const GraphicsPipeline& pipeline);
+
 		friend class DeviceContext;
 	};
 
@@ -424,7 +426,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		friend class BlitEncoder;
 		void EndBlitEncoder();
-		void SetupPipelineBuilders();
 		void ResetDescriptorSetState();
 	};
 

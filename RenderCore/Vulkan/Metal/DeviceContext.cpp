@@ -239,15 +239,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		assert(_currentGraphicsPipeline);
 		LogPipeline();
 
-		#if 0 // defined(_DEBUG)
-			// check for unbound descriptor sets
-			const auto& sig = *GetBoundShaderProgram()->_pipelineLayoutConfig;
-			for (unsigned c=0; c<sig._descriptorSets.size(); ++c)
-				if (c >= _sharedState->_graphicsDescriptors._descriptorSets.size() || !_sharedState->_graphicsDescriptors._descriptorSets[c]) {
-					Log(Warning) << "Graphics descriptor set index [" << c << "] (" << sig._descriptorSets[c]._name << ") is unbound when creating pipeline. This will probably result in a crash." << std::endl;
-				}
-		#endif
-
 		vkCmdBindPipeline(
 			_sharedState->_commandList.GetUnderlying().get(),
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -266,15 +257,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			*_factory, _globalPools->_mainPipelineCache.get());
 		assert(_currentComputePipeline);
 		LogPipeline();
-
-		#if 0 // defined(_DEBUG)
-			// check for unbound descriptor sets
-			const auto& sig = *GetBoundShaderProgram()->_pipelineLayoutConfig;
-			for (unsigned c=0; c<sig._descriptorSets.size(); ++c)
-				if (c >= _sharedState->_computeDescriptors._descriptorSets.size() || !_sharedState->_computeDescriptors._descriptorSets[c]) {
-					Log(Warning) << "Compute descriptor set index [" << c << "] (" << sig._descriptorSets[c]._name << ") is unbound when creating pipeline. This will probably result in a crash." << std::endl;
-				}
-		#endif
 
 		vkCmdBindPipeline(
 			_sharedState->_commandList.GetUnderlying().get(),
@@ -298,12 +280,29 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<ShaderProgram::s_maxShaderStages; ++c)
 				shaders[c] = &GetBoundShaderProgram()->GetCompiledCode((ShaderStage)c);
 
-			/*} else {
-				assert(pipeline == PipelineType::Compute);
-				Log(Verbose) << "-------------ComputeShader------------" << std::endl;
-				Log(Verbose) << SPIRVReflection(GetBoundComputeShader()->GetCompiledShaderByteCode().GetByteCode()) << std::endl;
-				shaders[(unsigned)ShaderStage::Compute] = &GetBoundComputeShader()->GetCompiledShaderByteCode();
-			}*/
+			#if defined(VULKAN_VERBOSE_DEBUG)
+				const auto& descriptors = _sharedState->_graphicsDescriptors;
+				_pipelineLayout->WriteDebugInfo(
+					Log(Verbose),
+					MakeIteratorRange(shaders),
+					MakeIteratorRange(descriptors._currentlyBoundDesc));
+			#endif
+		#endif
+	}
+
+	void GraphicsEncoder_Optimized::LogPipeline(const GraphicsPipeline& pipeline)
+	{
+		#if defined(_DEBUG)
+			if (!Verbose.IsEnabled()) return;
+
+			const CompiledShaderByteCode* shaders[(unsigned)ShaderStage::Max] = {};
+			Log(Verbose) << "-------------VertexShader------------" << std::endl;
+			Log(Verbose) << SPIRVReflection(pipeline._shader.GetCompiledCode(ShaderStage::Vertex).GetByteCode()) << std::endl;
+			Log(Verbose) << "-------------PixelShader------------" << std::endl;
+			Log(Verbose) << SPIRVReflection(pipeline._shader.GetCompiledCode(ShaderStage::Pixel).GetByteCode()) << std::endl;
+			static_assert(ShaderProgram::s_maxShaderStages <= dimof(shaders));
+			for (unsigned c=0; c<ShaderProgram::s_maxShaderStages; ++c)
+				shaders[c] = &pipeline._shader.GetCompiledCode((ShaderStage)c);
 
 			#if defined(VULKAN_VERBOSE_DEBUG)
 				const auto& descriptors = _sharedState->_graphicsDescriptors;
@@ -433,6 +432,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			_sharedState->_commandList.GetUnderlying().get(),
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
 			pipeline.get());
+		DEBUG_ONLY(LogPipeline(pipeline));
 		
 		assert(vertexCount);
 		vkCmdDraw(
@@ -449,6 +449,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			_sharedState->_commandList.GetUnderlying().get(),
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
 			pipeline.get());
+		DEBUG_ONLY(LogPipeline(pipeline));
 
 		assert(indexCount);
 		vkCmdDrawIndexed(
@@ -466,6 +467,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			_sharedState->_commandList.GetUnderlying().get(),
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
 			pipeline.get());
+		DEBUG_ONLY(LogPipeline(pipeline));
 
 		VkDrawIndirectCommand indirectCommands[] {
 			VkDrawIndirectCommand { vertexCount, instanceCount, startVertexLocation, 0 }
@@ -491,6 +493,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			_sharedState->_commandList.GetUnderlying().get(),
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
 			pipeline.get());
+		DEBUG_ONLY(LogPipeline(pipeline));
 
 		VkDrawIndexedIndirectCommand indirectCommands[] {
 			VkDrawIndexedIndirectCommand { indexCount, instanceCount, startIndexLocation, 0, 0 }
@@ -891,43 +894,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		return _sharedState->_commandList.GetUnderlying() != nullptr;
 	}
 
-	void DeviceContext::SetupPipelineBuilders()
-	{
-		#if 0
-		auto& globals = Internal::VulkanGlobalsTemp::GetInstance();
-
-		if (!globals._compiledDescriptorSetLayoutCache)
-			globals._compiledDescriptorSetLayoutCache = Internal::CreateCompiledDescriptorSetLayoutCache(*_factory, *_globalPools);
-
-		{
-			#if defined(_DEBUG)
-				Internal::ValidateRootSignature(_factory->GetPhysicalDevice(), *globals._graphicsRootSignatureFile);
-			#endif
-
-			auto graphicsPartialLayout = Internal::CreatePartialPipelineDescriptorsLayout(
-				*globals._graphicsRootSignatureFile, PipelineType::Graphics);
-
-			globals._graphicsPipelineLayout = Internal::CreateCompiledPipelineLayout(
-				*_factory, *globals._compiledDescriptorSetLayoutCache, 
-				MakeIteratorRange(graphicsPartialLayout.get(), graphicsPartialLayout.get()+1),
-				VK_SHADER_STAGE_ALL_GRAPHICS);
-		}
-
-		{
-			#if defined(_DEBUG)
-				Internal::ValidateRootSignature(_factory->GetPhysicalDevice(), *globals._computeRootSignatureFile);
-			#endif
-
-			auto computePartialLayout = Internal::CreatePartialPipelineDescriptorsLayout(
-				*globals._computeRootSignatureFile, PipelineType::Compute);
-
-			globals._computePipelineLayout = Internal::CreateCompiledPipelineLayout(
-				*_factory, *globals._compiledDescriptorSetLayoutCache, MakeIteratorRange(computePartialLayout.get(), computePartialLayout.get()+1),
-				VK_SHADER_STAGE_COMPUTE_BIT);
-		}
-		#endif
-	}
-
 	void DeviceContext::RequireResourceVisbility(IteratorRange<const uint64_t*> resourceGuids)
 	{
 		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
@@ -1004,18 +970,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		auto& globals = Internal::VulkanGlobalsTemp::GetInstance();
 		globals._globalPools = &globalPools;
-
-		SetupPipelineBuilders();
-
-		/*
-		globals._boundGraphicsSignatures = std::make_shared<BoundSignatureFile>(*_factory, *_globalPools, VK_SHADER_STAGE_ALL_GRAPHICS);
-		globals._boundGraphicsSignatures->RegisterSignatureFile(VulkanGlobalsTemp::s_mainSignature, *globals._graphicsRootSignatureFile);
-		globals._boundComputeSignatures = std::make_shared<BoundSignatureFile>(*_factory, *_globalPools, VK_SHADER_STAGE_COMPUTE_BIT);
-		globals._boundComputeSignatures->RegisterSignatureFile(VulkanGlobalsTemp::s_mainSignature, *globals._computeRootSignatureFile);
-
-		globals._mainGraphicsConfig = std::make_shared<PartialPipelineDescriptorsLayout>(factory, *globals._graphicsRootSignatureFile, globals.s_mainSignature, PipelineType::Graphics);
-		globals._mainComputeConfig = std::make_shared<PartialPipelineDescriptorsLayout>(factory, *globals._computeRootSignatureFile, globals.s_mainSignature, PipelineType::Compute);
-		*/
 	}
 
 	DeviceContext::~DeviceContext()
