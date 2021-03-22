@@ -145,6 +145,7 @@ namespace RenderCore { namespace ImplVulkan
 	    }
 
         static VkDebugReportCallbackEXT msg_callback;
+		static bool s_debugInitialized = false;
         static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback( VkFlags msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject, size_t location, int32_t msgCode, const char *pLayerPrefix, const char *pMsg, void *pUserData )
         {
 	        (void)msgFlags; (void)objType; (void)srcObject; (void)location; (void)pUserData; (void)msgCode;
@@ -154,6 +155,7 @@ namespace RenderCore { namespace ImplVulkan
     
         static void debug_init(VkInstance instance)
         {
+			assert(!s_debugInitialized);
             VkDebugReportCallbackCreateInfoEXT debug_callback_info = {};
             debug_callback_info.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
             debug_callback_info.pfnCallback = debug_callback;
@@ -162,11 +164,14 @@ namespace RenderCore { namespace ImplVulkan
 	
 	        auto proc = ((PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr( instance, "vkCreateDebugReportCallbackEXT" ));
             proc( instance, &debug_callback_info, Metal_Vulkan::g_allocationCallbacks, &msg_callback );
+			s_debugInitialized = true;
         }
     
         static void debug_destroy(VkInstance instance)
         {
+			assert(s_debugInitialized);
 	        ((PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr( instance, "vkDestroyDebugReportCallbackEXT" ))( instance, msg_callback, 0 );
+			s_debugInitialized = false;
         }
     #else
         static void debug_init(VkInstance instance) {}
