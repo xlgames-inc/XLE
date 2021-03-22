@@ -11,6 +11,7 @@
 #include "../../Utility/StringUtils.h"
 #include <unordered_map>
 #include <string>
+#include <iosfwd>
 
 namespace RenderCore { class SharedPkt; }
 namespace RenderCore { namespace Assets
@@ -62,6 +63,8 @@ namespace RenderCore { namespace Assets
         uint64_t CalculateHash() const;
 
         PredefinedCBLayout Filter(const std::unordered_map<std::string, int>& definedTokens);
+
+        std::ostream& DescribeCB(std::ostream& str, IteratorRange<const void*> cbData, ShaderLanguage lang);
 
         PredefinedCBLayout();
         PredefinedCBLayout(StringSection<::Assets::ResChar> initializer);

@@ -244,6 +244,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	SamplerState::SamplerState(   
 		ObjectFactory& objectFactory, 
 		const SamplerDesc& desc)
+	: _desc(desc)
 	{
 		VkSamplerCreateInfo samplerCreateInfo = {};
 		samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -303,5 +304,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	SamplerState::~SamplerState() {}
+
+	SamplerDesc SamplerState::GetDesc() const { return _desc; }
 
 }}

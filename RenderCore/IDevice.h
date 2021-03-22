@@ -207,6 +207,7 @@ namespace RenderCore
     class ISampler
     {
     public:
+        virtual SamplerDesc GetDesc() const = 0;
         virtual ~ISampler();
     };
 

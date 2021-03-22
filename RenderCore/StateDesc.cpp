@@ -5,6 +5,7 @@
 #include "StateDesc.h"
 #include "../Utility/MemoryUtils.h"
 #include <cassert>
+#include <ostream>
 
 namespace RenderCore
 {
@@ -107,7 +108,85 @@ namespace RenderCore
             ;
     }
 
+    std::ostream& operator<<(std::ostream& str, const SamplerDesc& desc)
+    {
+        str << "{Filter: " << AsString(desc._filter) << ", U: " << AsString(desc._addressU) << ", V: " << AsString(desc._addressV);
+        if (desc._comparison != CompareOp::Never)
+            str << ", Compare: " << AsString(desc._comparison);
+        if (!desc._enableMipmaps)
+            str << ", Mipmaps disabled";
+        str << "}";
+        return str;
+    }
+
 	StencilDesc StencilDesc::NoEffect { StencilOp::DontWrite, StencilOp::DontWrite, StencilOp::DontWrite, CompareOp::Always };
 	StencilDesc StencilDesc::AlwaysWrite { StencilOp::Replace, StencilOp::DontWrite, StencilOp::DontWrite, CompareOp::Always };
+
+    const char* AsString(AddressMode addressMode)
+    {
+        switch (addressMode) {
+        case AddressMode::Wrap: return "Wrap";
+        case AddressMode::Mirror: return "Mirror";
+        case AddressMode::Clamp: return "Clamp";
+        case AddressMode::Border: return "Border";
+        default: return "<<unknown>>";
+        }
+    }
+
+	const char* AsString(FilterMode filterMode)
+    {
+        switch (filterMode) {
+        case FilterMode::Point: return "Point";
+        case FilterMode::Trilinear: return "Trilinear";
+        case FilterMode::Anisotropic: return "Anisotropic";
+        case FilterMode::Bilinear: return "Bilinear";
+        case FilterMode::ComparisonBilinear: return "ComparisonBilinear";
+        default: return "<<unknown>>";
+        }
+    }
+
+	const char* AsString(CompareOp compareOp)
+    {
+        switch (compareOp) {
+        case CompareOp::Never: return "Never";
+        case CompareOp::Less: return "Less";
+        case CompareOp::Equal: return "Equal";
+        case CompareOp::LessEqual: return "LessEqual";
+        case CompareOp::Greater: return "Greater";
+        case CompareOp::NotEqual: return "NotEqual";
+        case CompareOp::GreaterEqual: return "GreaterEqual";
+        case CompareOp::Always: return "Always";
+        default: return "<<unknown>>";
+        }
+    }
+
+    const char* AsString(Topology topology)
+	{
+		switch (topology) {
+		case Topology::PointList: return "PointList";
+		case Topology::LineList: return "LineList";
+		case Topology::LineStrip: return "LineStrip";
+		case Topology::TriangleList: return "TriangleList";
+        case Topology::TriangleStrip: return "TriangleStrip";
+        case Topology::LineListAdj: return "LineListAdj";
+        case Topology::PatchList1: return "PatchList1";
+        case Topology::PatchList2: return "PatchList2";
+        case Topology::PatchList3: return "PatchList3";
+        case Topology::PatchList4: return "PatchList4";
+        case Topology::PatchList5: return "PatchList5";
+        case Topology::PatchList6: return "PatchList6";
+        case Topology::PatchList7: return "PatchList7";
+        case Topology::PatchList8: return "PatchList8";
+        case Topology::PatchList9: return "PatchList9";
+        case Topology::PatchList10: return "PatchList10";
+        case Topology::PatchList11: return "PatchList11";
+        case Topology::PatchList12: return "PatchList12";
+        case Topology::PatchList13: return "PatchList13";
+        case Topology::PatchList14: return "PatchList14";
+        case Topology::PatchList15: return "PatchList15";
+        case Topology::PatchList16: return "PatchList16";
+		default: return "<<unknown>>";
+		}
+	}
 }
 

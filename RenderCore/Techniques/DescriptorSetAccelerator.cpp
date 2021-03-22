@@ -13,6 +13,7 @@
 #include "../IDevice.h"
 #include "../BufferView.h"
 #include "../UniformsStream.h"
+#include "../StateDesc.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/Assets.h"
 #include "../../Utility/ParameterBox.h"
@@ -46,7 +47,8 @@ namespace RenderCore { namespace Techniques
 		const Utility::ParameterBox& constantBindings,
 		const Utility::ParameterBox& resourceBindings,
 		IteratorRange<const std::pair<uint64_t, std::shared_ptr<ISampler>>*> samplerBindings,
-		const RenderCore::Assets::PredefinedDescriptorSetLayout& layout)
+		const RenderCore::Assets::PredefinedDescriptorSetLayout& layout,
+		DescriptorSetBindingInfo* bindingInfo)
 	{
 		auto shrLanguage = GetDefaultShaderLanguage();
 
@@ -74,10 +76,19 @@ namespace RenderCore { namespace Techniques
 		DescriptorSetInProgress working;
 		working._slots.reserve(layout._slots.size());
 		working._signature._slots.reserve(working._slots.size());
+		if (bindingInfo) {
+			bindingInfo->_slots.clear();
+			bindingInfo->_slots.reserve(working._slots.size());
+		}
+		char stringMeldBuffer[512];
 		for (const auto& s:layout._slots) {
 			DescriptorSetInProgress::Slot slotInProgress;
 			slotInProgress._slotName = s._name;
 			slotInProgress._slotType = s._type;
+
+			DescriptorSetBindingInfo::Slot slotBindingInfo;
+			slotBindingInfo._layoutName = s._name;
+			slotBindingInfo._layoutSlotType = s._type;
 
 			bool gotBinding = false;
 			auto hashName = Hash64(s._name);
@@ -92,6 +103,10 @@ namespace RenderCore { namespace Techniques
 				res._pendingResource = ::Assets::MakeAsset<DeferredShaderResource>(MakeStringSection(boundResource.value()));
 				working._resources.push_back(res);
 				gotBinding = true;
+
+				if (bindingInfo)
+					slotBindingInfo._binding = (StringMeldInPlace(stringMeldBuffer) << "DeferredShaderResource: " << boundResource.value()).AsString();
+
 			} else if (s._type == DescriptorType::ConstantBuffer && s._cbIdx < (unsigned)layout._constantBuffers.size()) {
 				auto& cbLayout = layout._constantBuffers[s._cbIdx];
 				auto buffer = cbLayout->BuildCBDataAsVector(constantBindings, shrLanguage);
@@ -107,6 +122,12 @@ namespace RenderCore { namespace Techniques
 				res._fixedResource = cb->CreateBufferView(BindFlag::ConstantBuffer);
 				working._resources.push_back(res);
 				gotBinding = true;
+
+				if (bindingInfo) {
+					std::stringstream str;
+					cbLayout->DescribeCB(str, MakeIteratorRange(buffer), shrLanguage);
+					slotBindingInfo._binding = str.str();
+				}
 			} else if (s._type == DescriptorType::Sampler) {
 				auto i = std::find_if(samplerBindings.begin(), samplerBindings.end(), [hashName](const auto& c) { return c.first == hashName; });
 				if (i != samplerBindings.end()) {
@@ -114,6 +135,9 @@ namespace RenderCore { namespace Techniques
 					slotInProgress._resourceIdx = (unsigned)working._samplers.size();
 					working._samplers.push_back(i->second);
 					gotBinding = true;
+
+					if (bindingInfo)
+						slotBindingInfo._binding = (StringMeldInPlace(stringMeldBuffer) << "Sampler: " << i->second->GetDesc()).AsString();
 				}
 			} 
 			
@@ -121,6 +145,10 @@ namespace RenderCore { namespace Techniques
 				slotInProgress._bindType = DescriptorSetInitializer::BindType::Empty;
 			working._signature._slots.push_back(DescriptorSlot{s._type});
 			working._slots.push_back(slotInProgress);
+			if (bindingInfo) {
+				slotBindingInfo._bindType = slotInProgress._bindType;
+				bindingInfo->_slots.push_back(slotBindingInfo);
+			}
 		}
 
 		future.SetPollingFunction(

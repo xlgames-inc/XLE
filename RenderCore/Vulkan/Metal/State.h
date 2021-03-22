@@ -31,8 +31,10 @@ namespace RenderCore { namespace Metal_Vulkan
         using UnderlyingType = VkSampler;
         VkSampler GetUnderlying() const { return _sampler.get(); }
 
+        SamplerDesc GetDesc() const override;
     private:
         VulkanSharedPtr<VkSampler> _sampler;
+        SamplerDesc _desc;
     };
 
     namespace Internal

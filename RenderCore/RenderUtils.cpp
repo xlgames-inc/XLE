@@ -673,35 +673,6 @@ namespace RenderCore
 	    }
     }
 
-	const char* AsString(Topology topology)
-	{
-		switch (topology) {
-		case Topology::PointList: return "PointList";
-		case Topology::LineList: return "LineList";
-		case Topology::LineStrip: return "LineStrip";
-		case Topology::TriangleList: return "TriangleList";
-        case Topology::TriangleStrip: return "TriangleStrip";
-        case Topology::LineListAdj: return "LineListAdj";
-        case Topology::PatchList1: return "PatchList1";
-        case Topology::PatchList2: return "PatchList2";
-        case Topology::PatchList3: return "PatchList3";
-        case Topology::PatchList4: return "PatchList4";
-        case Topology::PatchList5: return "PatchList5";
-        case Topology::PatchList6: return "PatchList6";
-        case Topology::PatchList7: return "PatchList7";
-        case Topology::PatchList8: return "PatchList8";
-        case Topology::PatchList9: return "PatchList9";
-        case Topology::PatchList10: return "PatchList10";
-        case Topology::PatchList11: return "PatchList11";
-        case Topology::PatchList12: return "PatchList12";
-        case Topology::PatchList13: return "PatchList13";
-        case Topology::PatchList14: return "PatchList14";
-        case Topology::PatchList15: return "PatchList15";
-        case Topology::PatchList16: return "PatchList16";
-		default: return "<<unknown>>";
-		}
-	}
-    
     const char* AsString(ShaderStage stage)
 	{
 		switch (stage) {

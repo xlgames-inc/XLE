@@ -26,6 +26,7 @@ namespace RenderCore { namespace Techniques
 {
 	class PipelineAccelerator;
 	class DescriptorSetAccelerator;
+	class DescriptorSetBindingInfo;
 	class SequencerConfig;
 	class ITechniqueDelegate;
 	class MaterialDescriptorSetLayout;
@@ -63,6 +64,7 @@ namespace RenderCore { namespace Techniques
 
 		virtual const ::Assets::FuturePtr<IDescriptorSet>& GetDescriptorSet(DescriptorSetAccelerator& accelerator) const = 0;
 		virtual const IDescriptorSet* TryGetDescriptorSet(DescriptorSetAccelerator& accelerator) const = 0;
+		virtual const DescriptorSetBindingInfo* TryGetBindingInfo(DescriptorSetAccelerator& accelerator) const = 0;
 
 		virtual void	SetGlobalSelector(StringSection<> name, IteratorRange<const void*> data, const ImpliedTyping::TypeDesc& type) = 0;
 		T1(Type) void   SetGlobalSelector(StringSection<> name, Type value);
@@ -91,9 +93,16 @@ namespace RenderCore { namespace Techniques
 
 	namespace Internal { const MaterialDescriptorSetLayout& GetDefaultMaterialDescriptorSetLayout(); }
 
+	namespace PipelineAcceleratorPoolFlags
+	{
+		enum Flags { RecordDescriptorSetBindingInfo = 1<<0 };
+		using BitField = unsigned;
+	}
+
 	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool(
 		const std::shared_ptr<IDevice>&,
 		const std::shared_ptr<ICompiledPipelineLayout>&,
+		PipelineAcceleratorPoolFlags::BitField flags = 0,
 		const MaterialDescriptorSetLayout& = Internal::GetDefaultMaterialDescriptorSetLayout());
 }}
 

@@ -390,6 +390,33 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
+    std::ostream& PredefinedCBLayout::DescribeCB(std::ostream& str, IteratorRange<const void*> cbData, ShaderLanguage lang)
+    {
+        unsigned alignmentRules = AlignmentRulesForLanguage(lang);
+        for (const auto&e:_elements) {
+            if (!e._conditions.empty())
+                str << "#if " << e._conditions << std::endl;
+            str << "\t" << AsShaderLangTypeName(e._type, lang) << " " << e._name;
+            if (e._arrayElementCount != 0) {
+                str << "[" << e._arrayElementCount << "] = {" << std::endl;
+                for (unsigned a=0; a<e._arrayElementCount; ++a) {
+                    auto range = MakeIteratorRange(PtrAdd(cbData.begin(), e._arrayElementStride*a + e._offsetsByLanguage[alignmentRules]), cbData.end());
+                    str << "\t\t" << ImpliedTyping::AsString(range, e._type);
+                    if ((a+1) != e._arrayElementCount)
+                        str << ",";
+                    str << std::endl;
+                }
+                str << "};" << std::endl;
+            } else {
+                str << " = " << ImpliedTyping::AsString(MakeIteratorRange(PtrAdd(cbData.begin(), e._offsetsByLanguage[alignmentRules]), cbData.end()), e._type) 
+                    << ";" << std::endl;
+            }
+            if (!e._conditions.empty())
+                str << "#endif" << std::endl;
+        }
+        return str;
+    }
+
     PredefinedCBLayout::PredefinedCBLayout(IteratorRange<const NameAndType*> elements, const ParameterBox& defaults)
 	: _defaults(defaults)
     {

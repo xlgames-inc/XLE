@@ -174,6 +174,7 @@ namespace Utility
             }
 
             uint8* Begin() { return (uint8*)this->pbase(); }
+            const uint8* Begin() const { return (const uint8*)this->pbase(); }
         };
 
         template<typename CharType = char>
@@ -206,8 +207,10 @@ namespace Utility
 			using DemotedType = typename Internal::DemoteCharType<CharType>::Value;
             mutable MoveableOStream<DemotedType> _stream;
 
-            operator const CharType*() const    { return (const CharType*)_buffer._buffer; }
-            const CharType* get() const         { return (const CharType*)_buffer._buffer; }
+            operator const CharType*() const    { return (const CharType*)_buffer.Begin(); }
+            const CharType* get() const         { return (const CharType*)_buffer.Begin(); }
+            StringSection<CharType> AsStringSection() const { return MakeStringSection(get()); }
+            std::basic_string<CharType> AsString() const { return AsStringSection().AsString(); }
 
             StringMeldInPlace(CharType* bufferStart, CharType* bufferEnd)
             : _stream(&_buffer)

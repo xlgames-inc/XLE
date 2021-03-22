@@ -342,6 +342,7 @@ namespace RenderCore { namespace Techniques
 	{
 	public:
 		::Assets::FuturePtr<RenderCore::IDescriptorSet> _descriptorSet;
+		DescriptorSetBindingInfo _bindingInfo;
 	};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -376,6 +377,7 @@ namespace RenderCore { namespace Techniques
 
 		const ::Assets::FuturePtr<IDescriptorSet>& GetDescriptorSet(DescriptorSetAccelerator& accelerator) const override;
 		const IDescriptorSet* TryGetDescriptorSet(DescriptorSetAccelerator& accelerator) const override;
+		const DescriptorSetBindingInfo* TryGetBindingInfo(DescriptorSetAccelerator& accelerator) const override;
 
 		void			SetGlobalSelector(StringSection<> name, IteratorRange<const void*> data, const ImpliedTyping::TypeDesc& type) override;
 		T1(Type) void   SetGlobalSelector(StringSection<> name, Type value);
@@ -386,7 +388,7 @@ namespace RenderCore { namespace Techniques
 		const std::shared_ptr<IDevice>& GetDevice() const override;
 		const std::shared_ptr<ICompiledPipelineLayout>& GetPipelineLayout() const override;
 
-		PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout, const MaterialDescriptorSetLayout& matDescSetLayout);
+		PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout, PipelineAcceleratorPoolFlags::BitField flags, const MaterialDescriptorSetLayout& matDescSetLayout);
 		~PipelineAcceleratorPool();
 		PipelineAcceleratorPool(const PipelineAcceleratorPool&) = delete;
 		PipelineAcceleratorPool& operator=(const PipelineAcceleratorPool&) = delete;
@@ -412,6 +414,7 @@ namespace RenderCore { namespace Techniques
 		std::shared_ptr<ICompiledPipelineLayout> _pipelineLayout;
 		MaterialDescriptorSetLayout _matDescSetLayout;
 		std::shared_ptr<SharedPools> _sharedPools;
+		PipelineAcceleratorPoolFlags::BitField _flags;
 	};
 
 	const ::Assets::FuturePtr<Metal::GraphicsPipeline>& PipelineAcceleratorPool::GetPipeline(
@@ -454,6 +457,15 @@ namespace RenderCore { namespace Techniques
 	const IDescriptorSet* PipelineAcceleratorPool::TryGetDescriptorSet(DescriptorSetAccelerator& accelerator) const
 	{
 		return accelerator._descriptorSet->TryActualize().get();
+	}
+
+	const DescriptorSetBindingInfo* PipelineAcceleratorPool::TryGetBindingInfo(DescriptorSetAccelerator& accelerator) const
+	{
+		if (!(_flags & PipelineAcceleratorPoolFlags::RecordDescriptorSetBindingInfo))
+			return nullptr;
+		if (accelerator._descriptorSet->GetAssetState() == ::Assets::AssetState::Ready)
+			return &accelerator._bindingInfo;
+		return nullptr;
 	}
 
 	SequencerConfig PipelineAcceleratorPool::MakeSequencerConfig(
@@ -577,15 +589,19 @@ namespace RenderCore { namespace Techniques
 				constantBindings,
 				resourceBindings,
 				MakeIteratorRange(metalSamplers),
-				patchCollection->GetInterface().GetMaterialDescriptorSet());
+				patchCollection->GetInterface().GetMaterialDescriptorSet(),
+				(_flags & PipelineAcceleratorPoolFlags::RecordDescriptorSetBindingInfo) ? &result->_bindingInfo : nullptr);
 		} else {
 			Utility::ParameterBox constantBindingsCopy = constantBindings;
 			Utility::ParameterBox resourceBindingsCopy = resourceBindings;
 
 			std::weak_ptr<IDevice> weakDevice = _device;
+			std::shared_ptr<DescriptorSetAccelerator> bindingInfoHolder;
+			if (_flags & PipelineAcceleratorPoolFlags::RecordDescriptorSetBindingInfo)
+				bindingInfoHolder = result;
 			::Assets::WhenAll(patchCollectionFuture).ThenConstructToFuture<RenderCore::IDescriptorSet>(
 				*result->_descriptorSet,
-				[constantBindingsCopy, resourceBindingsCopy, metalSamplers, weakDevice](
+				[constantBindingsCopy, resourceBindingsCopy, metalSamplers, weakDevice, bindingInfoHolder](
 					::Assets::AssetFuture<RenderCore::IDescriptorSet>& future,
 					const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection) {
 
@@ -599,7 +615,8 @@ namespace RenderCore { namespace Techniques
 						constantBindingsCopy,
 						resourceBindingsCopy,
 						MakeIteratorRange(metalSamplers),
-						patchCollection->GetInterface().GetMaterialDescriptorSet());
+						patchCollection->GetInterface().GetMaterialDescriptorSet(),
+						bindingInfoHolder ? &bindingInfoHolder->_bindingInfo : nullptr);
 				});
 		}
 
@@ -741,12 +758,13 @@ namespace RenderCore { namespace Techniques
 
 	static unsigned s_nextPipelineAcceleratorPoolGUID = 1;
 
-	PipelineAcceleratorPool::PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout, const MaterialDescriptorSetLayout& matDescSetLayout)
+	PipelineAcceleratorPool::PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout, PipelineAcceleratorPoolFlags::BitField flags, const MaterialDescriptorSetLayout& matDescSetLayout)
 	: _matDescSetLayout(matDescSetLayout)
 	{
 		_guid = s_nextPipelineAcceleratorPoolGUID++;
 		_device = device;
 		_pipelineLayout = pipelineLayout;
+		_flags = flags;
 		_sharedPools = std::make_shared<SharedPools>();
 
 		// The _matDescSetLayout must agree with what we find the pipeline layout
@@ -793,10 +811,11 @@ namespace RenderCore { namespace Techniques
 
 	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool(
 		const std::shared_ptr<IDevice>& device, 
-		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout, 
+		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
+		PipelineAcceleratorPoolFlags::BitField flags,
 		const MaterialDescriptorSetLayout& matDescSetLayout)
 	{
-		return std::make_shared<PipelineAcceleratorPool>(device, pipelineLayout, matDescSetLayout);
+		return std::make_shared<PipelineAcceleratorPool>(device, pipelineLayout, flags, matDescSetLayout);
 	}
 
 	namespace Internal

@@ -5,6 +5,7 @@
 #pragma once
 
 #include <cstdint>
+#include <iosfwd>
 
 namespace RenderCore
 {
@@ -194,6 +195,7 @@ namespace RenderCore
         bool _enableMipmaps = true;
 
 		uint64_t Hash() const;
+		friend std::ostream& operator<<(std::ostream&, const SamplerDesc&);
     };
 
     namespace ColorWriteMask
@@ -257,6 +259,9 @@ namespace RenderCore
 		PatchList16 = 48    // D3D11_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST	= 48
 	};
 
-    const char* AsString(Topology);
+    const char* AsString(AddressMode);
+	const char* AsString(FilterMode);
+	const char* AsString(CompareOp);
+	const char* AsString(Topology);
 }
 
