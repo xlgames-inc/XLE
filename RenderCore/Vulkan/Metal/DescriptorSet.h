@@ -48,7 +48,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		bool		HasChanges() const;
 		void		Reset();
-		uint64_t	PendingWriteMask() const { return _pendingWrites; }
 
 		uint64_t	FlushChanges(
 			VkDevice device,

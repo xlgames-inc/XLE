@@ -567,7 +567,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			uint64_t bindingsWrittenTo = 0u;
 
 			for (auto bind:bindingIndicies) {
-				assert(!(builder.PendingWriteMask() & (1ull<<uint64_t(bind._descSetSlot))));
+				assert(!(bindingsWrittenTo & (1ull<<uint64_t(bind._descSetSlot))));
 				
 				auto& pkt = pkts[bind._inputUniformStreamIdx];
 				// We must either allocate some memory from a temporary pool, or 
@@ -602,7 +602,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				assert(bind._inputUniformStreamIdx < srvs.size());
 				auto* srv = srvs[bind._inputUniformStreamIdx];
 
-				assert(!(builder.PendingWriteMask() & (1ull<<uint64_t(bind._descSetSlot))));
+				assert(!(bindingsWrittenTo & (1ull<<uint64_t(bind._descSetSlot))));
 
 				builder.Bind(bind._descSetSlot, *checked_cast<const ResourceView*>(srv));
 
@@ -623,7 +623,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				assert(bind._inputUniformStreamIdx < samplerStates.size());
 				auto& samplerState = samplerStates[bind._inputUniformStreamIdx];
 
-				assert(!(builder.PendingWriteMask() & (1ull<<uint64_t(bind._descSetSlot))));
+				assert(!(bindingsWrittenTo & (1ull<<uint64_t(bind._descSetSlot))));
 
 				builder.Bind(bind._descSetSlot, samplerState->GetUnderlying());
 
