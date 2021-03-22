@@ -1325,24 +1325,46 @@ namespace BufferUploads
 
             IAsyncDataSource::SubResource uploadList[mipCount*arrayCount];
             std::vector<Metal::ResourceMap> maps;
-            maps.resize(mipCount*arrayCount);
-
             assert(stagingConstruction._locator.IsWholeResource());
-            for (unsigned a=stagingToFinalMapping._dstArrayLayerMin; a<=dstArrayLayerMax; ++a) {
-                for (unsigned mip=stagingToFinalMapping._dstLodLevelMin; mip<=dstLodLevelMax; ++mip) {
-                    SubResourceId subRes { mip - stagingToFinalMapping._stagingLODOffset, a - stagingToFinalMapping._stagingArrayOffset };
-                    auto idx = subRes._arrayLayer*mipCount+subRes._mip;
-                    
-                    maps[idx] = Metal::ResourceMap(
-                        *Metal::DeviceContext::Get(*context.GetRenderCoreThreadContext()),
-                        *stagingConstruction._locator.GetContainingResource(),
-                        Metal::ResourceMap::Mode::WriteDiscardPrevious,
-                        subRes);
 
-                    auto& upload = uploadList[idx];
-                    upload._id = subRes;
-                    upload._destination = maps[idx].GetData();
-                    upload._pitches = maps[idx].GetPitches();
+            // In Vulkan we can't map the same resource mutliple times, even if we're
+            // looking at different subresources each time. So we must instead map
+            // once and get all subresources at the same time
+            const bool mapEntireResourceInOneOperation = true;
+            if (mapEntireResourceInOneOperation) {
+                maps.resize(1);
+                maps[0] = Metal::ResourceMap(
+                    *Metal::DeviceContext::Get(*context.GetRenderCoreThreadContext()),
+                    *stagingConstruction._locator.GetContainingResource(),
+                    Metal::ResourceMap::Mode::WriteDiscardPrevious);
+
+                for (unsigned a=stagingToFinalMapping._dstArrayLayerMin; a<=dstArrayLayerMax; ++a) {
+                    for (unsigned mip=stagingToFinalMapping._dstLodLevelMin; mip<=dstLodLevelMax; ++mip) {
+                        SubResourceId subRes { mip - stagingToFinalMapping._stagingLODOffset, a - stagingToFinalMapping._stagingArrayOffset };
+                        auto& upload = uploadList[subRes._arrayLayer*mipCount+subRes._mip];
+                        upload._id = subRes;
+                        upload._destination = maps[0].GetData(subRes);
+                        upload._pitches = maps[0].GetPitches(subRes);
+                    }
+                }
+            } else {
+                maps.resize(mipCount*arrayCount);
+                for (unsigned a=stagingToFinalMapping._dstArrayLayerMin; a<=dstArrayLayerMax; ++a) {
+                    for (unsigned mip=stagingToFinalMapping._dstLodLevelMin; mip<=dstLodLevelMax; ++mip) {
+                        SubResourceId subRes { mip - stagingToFinalMapping._stagingLODOffset, a - stagingToFinalMapping._stagingArrayOffset };
+                        auto idx = subRes._arrayLayer*mipCount+subRes._mip;
+                        
+                        maps[idx] = Metal::ResourceMap(
+                            *Metal::DeviceContext::Get(*context.GetRenderCoreThreadContext()),
+                            *stagingConstruction._locator.GetContainingResource(),
+                            Metal::ResourceMap::Mode::WriteDiscardPrevious,
+                            subRes);
+
+                        auto& upload = uploadList[idx];
+                        upload._id = subRes;
+                        upload._destination = maps[idx].GetData(subRes);
+                        upload._pitches = maps[idx].GetPitches(subRes);
+                    }
                 }
             }
 

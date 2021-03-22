@@ -321,6 +321,11 @@ namespace RenderCore
         return strm;
     }
 
+    std::ostream& operator<<(std::ostream& str, SubResourceId subr)
+    {
+        return str << "{ mip: " << subr._mip << ", arrayLayer: " << subr._arrayLayer << " }";
+    }
+
     static uint64_t CalculateHash(const TextureViewDesc& viewDesc)
 	{
 		return Hash64(&viewDesc, PtrAdd(&viewDesc, sizeof(TextureViewDesc)));

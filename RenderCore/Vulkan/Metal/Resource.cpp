@@ -15,6 +15,7 @@
 #include "../../../OSServices/Log.h"
 #include "../../../Utility/BitUtils.h"
 #include "../../../Utility/MemoryUtils.h"
+#include "../../../Utility/StringFormat.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -664,8 +665,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			subRes);
 
 		return std::vector<uint8_t>{
-			(const uint8_t*)map.GetData().begin(),
-			(const uint8_t*)map.GetData().end()};
+			(const uint8_t*)map.GetData(subRes).begin(),
+			(const uint8_t*)map.GetData(subRes).end()};
 	}
 
 	static std::function<SubResourceInitData(SubResourceId)> AsResInitializer(const SubResourceInitData& initData)
@@ -1086,6 +1087,49 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	static std::vector<std::pair<SubResourceId, SubResourceOffset>> FindSubresources(VkDevice dev, IResource& iresource)
+	{
+		std::vector<std::pair<SubResourceId, SubResourceOffset>> result;
+		auto& resource = *checked_cast<Resource*>(&iresource);
+
+		auto desc = resource.GetDesc();
+		result.reserve(std::max(1u, (unsigned)desc._textureDesc._arrayCount) * std::max(1u, (unsigned)desc._textureDesc._mipCount));
+
+		auto* image = resource.GetImage();
+        if (image) {
+			assert(desc._type == ResourceDesc::Type::Texture);
+            auto aspectMask = AsImageAspectMask(desc._textureDesc._format);
+
+			for (unsigned arrayLayer=0; arrayLayer<std::max(1u, (unsigned)desc._textureDesc._arrayCount); ++arrayLayer)
+				for (unsigned mip=0; mip<std::max(1u, (unsigned)desc._textureDesc._mipCount); ++mip) {
+					VkImageSubresource sub = { aspectMask, mip, arrayLayer };
+					VkSubresourceLayout layout = {};
+					vkGetImageSubresourceLayout(dev, image, &sub, &layout);
+
+					SubResourceOffset loc;
+					loc._offset = layout.offset;
+					loc._size = layout.size;
+					loc._pitches = TexturePitches { unsigned(layout.rowPitch), unsigned(layout.depthPitch) };
+					result.push_back(std::make_pair(SubResourceId{mip, arrayLayer}, loc));
+				}
+        } else if (desc._type == ResourceDesc::Type::Texture) {
+			// This is the staging texture case. We can use GetSubResourceOffset to
+			// calculate the arrangement of subresources
+			for (unsigned arrayLayer=0; arrayLayer<std::max(1u, (unsigned)desc._textureDesc._arrayCount); ++arrayLayer)
+				for (unsigned mip=0; mip<std::max(1u, (unsigned)desc._textureDesc._mipCount); ++mip) {
+					auto subResOffset = GetSubResourceOffset(desc._textureDesc, mip, arrayLayer);
+					result.push_back(std::make_pair(SubResourceId{mip, arrayLayer}, subResOffset));
+				}
+		} else {
+			SubResourceOffset sub;
+			sub._offset = 0;
+			sub._size = desc._linearBufferDesc._sizeInBytes;
+			sub._pitches = TexturePitches { desc._linearBufferDesc._sizeInBytes, desc._linearBufferDesc._sizeInBytes, desc._linearBufferDesc._sizeInBytes };
+			result.push_back(std::make_pair(SubResourceId{}, sub));
+		}
+		return result;
+	}
+
 	ResourceMap::ResourceMap(
 		VkDevice dev, VkDeviceMemory memory,
 		VkDeviceSize offset, VkDeviceSize size)
@@ -1103,54 +1147,76 @@ namespace RenderCore { namespace Metal_Vulkan
 
         // we don't actually know the size or pitches in this case
         _dataSize = 0;
-        _pitches = {};
-	}
-
-	ResourceMap::ResourceMap(
-		DeviceContext& context, IResource& resource,
-		Mode mapMode,
-        SubResourceId subResource,
-		VkDeviceSize offset, VkDeviceSize size)
-	: ResourceMap(context.GetUnderlyingDevice(), resource, mapMode, subResource, offset, size)
-	{
+		TexturePitches pitches { (unsigned)_dataSize, (unsigned)_dataSize, (unsigned)_dataSize };
+		_subResources.push_back(std::make_pair(SubResourceId{}, SubResourceOffset{ 0, _dataSize, pitches }));
 	}
 
 	ResourceMap::ResourceMap(
 		VkDevice dev, IResource& iresource,
 		Mode mapMode,
-        SubResourceId subResource,
-		VkDeviceSize offset, VkDeviceSize size)
+        VkDeviceSize offset, VkDeviceSize size)
 	{
-        VkDeviceSize finalOffset = offset, finalSize = size;
-        _pitches = TexturePitches { unsigned(size), unsigned(size) };
+		///////////
+			// Map a range in a linear buffer (makes less sense for textures)
+		///////////////////
+		auto& resource = *checked_cast<Resource*>(&iresource);
+		auto desc = resource.GetDesc();
+		if (desc._type != ResourceDesc::Type::LinearBuffer)
+			Throw(std::runtime_error("Attempting to map a linear range in a non-linear buffer resource"));
+
+		if (offset >= desc._linearBufferDesc._sizeInBytes || (offset+size) > desc._linearBufferDesc._sizeInBytes || size == 0)
+			Throw(std::runtime_error(StringMeld<256>() << "Invalid range when attempting to map a linear buffer range. Offset: " << offset << ", Size: " << size));
+
+		_dataSize = std::min(desc._linearBufferDesc._sizeInBytes - offset, size);
+		TexturePitches pitches { (unsigned)_dataSize, (unsigned)_dataSize, (unsigned)_dataSize };
+			
+		auto res = vkMapMemory(dev, resource.GetMemory(), offset, size, 0, &_data);
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failed while mapping device memory"));
+
+        _dev = dev;
+        _mem = resource.GetMemory();
+		_subResources.push_back(std::make_pair(SubResourceId{}, SubResourceOffset{ 0, _dataSize, pitches }));
+	}
+
+	ResourceMap::ResourceMap(
+		VkDevice dev, IResource& iresource,
+		Mode mapMode,
+        SubResourceId subResource)
+	{
+		///////////
+			// Map a single subresource
+		///////////////////
+        VkDeviceSize finalOffset = 0, finalSize = VK_WHOLE_SIZE;
+		TexturePitches pitches;
 
 		auto& resource = *checked_cast<Resource*>(&iresource);
 
         // special case for images, where we need to take into account the requested "subresource"
         auto* image = resource.GetImage();
-        const auto& desc = resource.GetDesc();
+        auto desc = resource.GetDesc();
         if (image) {
+			assert(desc._type == ResourceDesc::Type::Texture);
             auto aspectMask = AsImageAspectMask(desc._textureDesc._format);
             VkImageSubresource sub = { aspectMask, subResource._mip, subResource._arrayLayer };
             VkSubresourceLayout layout = {};
             vkGetImageSubresourceLayout(dev, image, &sub, &layout);
             finalOffset += layout.offset;
             finalSize = std::min(layout.size, finalSize);
-            _pitches = TexturePitches { unsigned(layout.rowPitch), unsigned(layout.depthPitch) };
+            pitches = TexturePitches { unsigned(layout.rowPitch), unsigned(layout.depthPitch) };
             _dataSize = finalSize;
-        } else {
-            if (desc._type == ResourceDesc::Type::Texture) {
-                // This is the staging texture case. We can use GetSubResourceOffset to
-                // calculate the arrangement of subresources
-                auto subResOffset = GetSubResourceOffset(desc._textureDesc, subResource._mip, subResource._arrayLayer);
-                finalOffset = subResOffset._offset;
-                finalSize = subResOffset._size;
-                _pitches = subResOffset._pitches;
-                _dataSize = finalSize;
-            } else {
-                _dataSize = desc._linearBufferDesc._sizeInBytes;
-            }
-        }
+        } else if (desc._type == ResourceDesc::Type::Texture) {
+			// This is the staging texture case. We can use GetSubResourceOffset to
+			// calculate the arrangement of subresources
+			auto subResOffset = GetSubResourceOffset(desc._textureDesc, subResource._mip, subResource._arrayLayer);
+			finalOffset = subResOffset._offset;
+			finalSize = subResOffset._size;
+			pitches = subResOffset._pitches;
+			_dataSize = finalSize;
+		} else {
+			_dataSize = desc._linearBufferDesc._sizeInBytes;
+			pitches = TexturePitches { (unsigned)_dataSize, (unsigned)_dataSize, (unsigned)_dataSize };
+		}
 
         auto res = vkMapMemory(dev, resource.GetMemory(), finalOffset, finalSize, 0, &_data);
 		if (res != VK_SUCCESS)
@@ -1158,7 +1224,52 @@ namespace RenderCore { namespace Metal_Vulkan
 
         _dev = dev;
         _mem = resource.GetMemory();
+		_subResources.push_back(std::make_pair(subResource, SubResourceOffset{ 0, _dataSize, pitches }));
     }
+
+	ResourceMap::ResourceMap(
+		VkDevice dev, IResource& iresource,
+		Mode mapMode)
+	{
+		///////////
+			// Map all subresources
+		///////////////////
+		auto& resource = *checked_cast<Resource*>(&iresource);
+
+		auto res = vkMapMemory(dev, resource.GetMemory(), 0, VK_WHOLE_SIZE, 0, &_data);
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failed while mapping device memory"));
+
+		_subResources = FindSubresources(dev, resource);
+		_dev = dev;
+        _mem = resource.GetMemory();
+		_dataSize = 0;
+		for (const auto& subRes:_subResources)
+			_dataSize = std::max(_dataSize, subRes.second._offset + subRes.second._size);
+	}
+
+	ResourceMap::ResourceMap(
+		DeviceContext& context, IResource& resource,
+		Mode mapMode)
+	: ResourceMap(context.GetUnderlyingDevice(), resource, mapMode)
+	{
+	}
+
+	ResourceMap::ResourceMap(
+		DeviceContext& context, IResource& resource,
+		Mode mapMode,
+		SubResourceId subResource)
+	: ResourceMap(context.GetUnderlyingDevice(), resource, mapMode, subResource)
+	{
+	}
+	
+	ResourceMap::ResourceMap(
+		DeviceContext& context, IResource& resource,
+		Mode mapMode,
+		VkDeviceSize offset, VkDeviceSize size)
+	: ResourceMap(context.GetUnderlyingDevice(), resource, mapMode, offset, size)
+	{
+	}
 
 	void ResourceMap::TryUnmap()
 	{
@@ -1166,7 +1277,44 @@ namespace RenderCore { namespace Metal_Vulkan
 		    vkUnmapMemory(_dev, _mem);
 	}
 
-    ResourceMap::ResourceMap() : _dev(nullptr), _mem(nullptr), _data(nullptr), _pitches{} {}
+	#define FIND(v, X)					\
+		std::find_if(					\
+			v.begin(), v.end(),			\
+			[&](const auto& ele) X);	\
+		/**/
+
+	IteratorRange<void*>        ResourceMap::GetData(SubResourceId subr)
+	{
+		auto i = FIND(_subResources, { return ele.first == subr; })
+		if (i == _subResources.end())
+			Throw(std::runtime_error(StringMeld<256>() << "Requested subresource does not exist or was not mapped: " << subr));
+		return MakeIteratorRange(
+			PtrAdd(_data, i->second._offset),
+			PtrAdd(_data, i->second._offset + i->second._size));
+	}
+
+	IteratorRange<const void*>  ResourceMap::GetData(SubResourceId subr) const
+	{
+		auto i = FIND(_subResources, { return ele.first == subr; })
+		if (i == _subResources.end())
+			Throw(std::runtime_error(StringMeld<256>() << "Requested subresource does not exist or was not mapped: " << subr));
+		return MakeIteratorRange(
+			PtrAdd(_data, i->second._offset),
+			PtrAdd(_data, i->second._offset + i->second._size));
+	}
+	TexturePitches				ResourceMap::GetPitches(SubResourceId subr) const
+	{
+		auto i = FIND(_subResources, { return ele.first == subr; })
+		if (i == _subResources.end())
+			Throw(std::runtime_error(StringMeld<256>() << "Requested subresource does not exist or was not mapped: " << subr));
+		return i->second._pitches;
+	}
+
+	IteratorRange<void*>        ResourceMap::GetData() { assert(_subResources.size() == 1); return GetData(SubResourceId{}); }
+	IteratorRange<const void*>  ResourceMap::GetData() const { assert(_subResources.size() == 1); return GetData(SubResourceId{}); }
+	TexturePitches				ResourceMap::GetPitches() const { assert(_subResources.size() == 1); return GetPitches(SubResourceId{}); }
+
+    ResourceMap::ResourceMap() : _dev(nullptr), _mem(nullptr), _data(nullptr), _dataSize{0} {}
 
 	ResourceMap::~ResourceMap()
 	{
@@ -1179,7 +1327,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		_dataSize = moveFrom._dataSize; moveFrom._dataSize = 0;
 		_dev = moveFrom._dev; moveFrom._dev = nullptr;
 		_mem = moveFrom._mem; moveFrom._mem = nullptr;
-        _pitches = moveFrom._pitches;
+		_subResources = std::move(moveFrom._subResources);
 	}
 
 	ResourceMap& ResourceMap::operator=(ResourceMap&& moveFrom) never_throws
@@ -1189,7 +1337,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		_dataSize = moveFrom._dataSize; moveFrom._dataSize = 0;
 		_dev = moveFrom._dev; moveFrom._dev = nullptr;
 		_mem = moveFrom._mem; moveFrom._mem = nullptr;
-        _pitches = moveFrom._pitches;
+		_subResources = std::move(moveFrom._subResources);
 		return *this;
 	}
 

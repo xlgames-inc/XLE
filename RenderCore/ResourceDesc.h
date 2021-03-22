@@ -223,6 +223,9 @@ namespace RenderCore
     public:
         unsigned _mip = 0;
         unsigned _arrayLayer = 0;
+        
+        friend std::ostream& operator<<(std::ostream& str, SubResourceId subr);
+        friend bool operator==(SubResourceId lhs, SubResourceId rhs) { return lhs._mip == rhs._mip && lhs._arrayLayer == rhs._arrayLayer; }
     };
 
     class PresentationChainDesc

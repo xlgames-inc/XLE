@@ -48,9 +48,10 @@ namespace BufferUploads { namespace PlatformInterface
                 auto srd = data({mip, arrayLayer});
                 if (!srd._data.size()) continue;
 
-                Metal::ResourceMap map(metalContext, *metalResource, Metal::ResourceMap::Mode::WriteDiscardPrevious, SubResourceId{mip, arrayLayer});
+                SubResourceId sub{mip, arrayLayer};
+                Metal::ResourceMap map(metalContext, *metalResource, Metal::ResourceMap::Mode::WriteDiscardPrevious, sub);
                 copiedBytes += CopyMipLevel(
-                    map.GetData().begin(), map.GetData().size(), map.GetPitches(), 
+                    map.GetData(sub).begin(), map.GetData(sub).size(), map.GetPitches(sub), 
                     desc._textureDesc,
                     box, srd);
             }
@@ -119,7 +120,7 @@ namespace BufferUploads { namespace PlatformInterface
         // note -- this is a direct, immediate map... There must be no contention while we map.
         assert(desc._type == ResourceDesc::Type::LinearBuffer);
         auto& metalContext = *Metal::DeviceContext::Get(*_renderCoreContext);
-        Metal::ResourceMap map(metalContext, *metalResource, Metal::ResourceMap::Mode::WriteDiscardPrevious, SubResourceId{0,0}, finalOffset, finalSize);
+        Metal::ResourceMap map(metalContext, *metalResource, Metal::ResourceMap::Mode::WriteDiscardPrevious, finalOffset, finalSize);
         auto copyAmount = std::min(map.GetData().size(), data.size());
         if (copyAmount > 0)
             XlCopyMemory(map.GetData().begin(), data.begin(), copyAmount);

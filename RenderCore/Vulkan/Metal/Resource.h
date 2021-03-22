@@ -8,6 +8,7 @@
 #include "../../IDevice.h"
 #include "../../ResourceDesc.h"
 #include "../../Types.h"
+#include "../../ResourceUtils.h"
 #include "../../../Utility/IteratorUtils.h"
 
 using VkSampleCountFlagBits_ = uint32_t;
@@ -94,25 +95,40 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ResourceMap
 	{
 	public:
-		IteratorRange<void*>        GetData()               { return { _data, PtrAdd(_data, _dataSize) }; }
-		IteratorRange<const void*>  GetData() const         { return { _data, PtrAdd(_data, _dataSize) }; }
-		TexturePitches				GetPitches() const      { return _pitches; }
+		IteratorRange<void*>        GetData();
+		IteratorRange<const void*>  GetData() const;
+		TexturePitches				GetPitches() const;
+
+		IteratorRange<void*>        GetData(SubResourceId);
+		IteratorRange<const void*>  GetData(SubResourceId) const;
+		TexturePitches				GetPitches(SubResourceId) const;
 
 		enum class Mode { Read, WriteDiscardPrevious };
 
 		ResourceMap(
-			VkDevice dev, VkDeviceMemory memory,
-			VkDeviceSize offset = 0, VkDeviceSize size = ~0ull);
-		ResourceMap(
-			DeviceContext& context, IResource& resource,
-			Mode mapMode,
-			SubResourceId subResource = {},
-			VkDeviceSize offset = 0, VkDeviceSize size = ~0ull);
+			VkDevice dev, IResource& resource,
+			Mode mapMode);
 		ResourceMap(
 			VkDevice dev, IResource& resource,
 			Mode mapMode,
-			SubResourceId subResource = {},
-			VkDeviceSize offset = 0, VkDeviceSize size = ~0ull);
+			SubResourceId subResource);
+		ResourceMap(
+			VkDevice dev, IResource& resource,
+			Mode mapMode,
+			VkDeviceSize offset, VkDeviceSize size);
+
+		ResourceMap(
+			DeviceContext& context, IResource& resource,
+			Mode mapMode);
+		ResourceMap(
+			DeviceContext& context, IResource& resource,
+			Mode mapMode,
+			SubResourceId subResource);
+		ResourceMap(
+			DeviceContext& context, IResource& resource,
+			Mode mapMode,
+			VkDeviceSize offset, VkDeviceSize size);
+
 		ResourceMap();
 		~ResourceMap();
 
@@ -121,12 +137,17 @@ namespace RenderCore { namespace Metal_Vulkan
 		ResourceMap(ResourceMap&&) never_throws;
 		ResourceMap& operator=(ResourceMap&&) never_throws;
 
+		ResourceMap(
+			VkDevice dev, VkDeviceMemory memory,
+			VkDeviceSize offset = 0, VkDeviceSize size = ~0ull);
+
 	private:
 		VkDevice            _dev;
 		VkDeviceMemory      _mem;
 		void*               _data;
 		size_t              _dataSize;
-		TexturePitches      _pitches;
+
+		std::vector<std::pair<SubResourceId, SubResourceOffset>> _subResources;
 
 		void TryUnmap();
 	};
