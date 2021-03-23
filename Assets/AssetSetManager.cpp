@@ -59,7 +59,12 @@ namespace Assets
     void AssetSetManager::Clear()
     {
         ScopedLock(_pimpl->_lock);
+		assert(!_pimpl->_inIterationOperation);
         _pimpl->_sets.clear();
+		_pimpl->_setsPendingIteration.clear();
+		_pimpl->_frameBarrierFunctions.clear();
+		_pimpl->_pendingFrameBarrierFunctions.clear();
+		_pimpl->_pendingRemoveFrameBarrierFunctions.clear();
     }
 
 	std::vector<AssetHeapRecord> AssetSetManager::LogRecords() const

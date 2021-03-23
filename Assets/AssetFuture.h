@@ -346,7 +346,20 @@ namespace Assets
 					break;
 				} CATCH_END
 
-				if (!pollingResult) break;
+				if (!pollingResult) {
+					lock = std::unique_lock<decltype(that->_lock)>(that->_lock);
+					// If pollingResult was false, and no replacement polling function 
+					// has been set, then we are done, and we break out of the loop
+					// If we replacement polling function was set, we now capture that
+					// function and continue on as before
+					if (!that->_pollingFunction) {
+						isInLock = true;
+						break;
+					}
+					pollingFunction = std::move(that->_pollingFunction);
+					lock = {};
+				}
+
                 if (timeout.count() != 0 && std::chrono::steady_clock::now() >= timeToCancel) {
                     // return the polling function to the future
                     lock = std::unique_lock<decltype(that->_lock)>(that->_lock);
@@ -362,7 +375,11 @@ namespace Assets
 				// can end up here, waiting on some other operation to execute on the same pool,
 				// but it can never happen because all workers are stuck yielding.
 				using namespace std::chrono_literals;
-				YieldToPoolFor(std::min(std::chrono::duration_cast<std::chrono::microseconds>(timeout), 50us));
+				if (timeout.count() != 0) {
+					YieldToPoolFor(std::min(std::chrono::duration_cast<std::chrono::microseconds>(timeout), 50us));
+				} else {
+					YieldToPoolFor(50us);
+				}
 				DEBUG_ONLY(Internal::CheckMainThreadStall(startTime));
 			}
 			
@@ -442,7 +459,6 @@ namespace Assets
 	template<typename AssetType>
 		void AssetFuture<AssetType>::SetInvalidAsset(const DepValPtr& depVal, const Blob& log)
 	{
-		assert(depVal);
 		{
 			ScopedLock(_lock);
 			_pending = nullptr;
