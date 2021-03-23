@@ -23,6 +23,11 @@ float4 Sample(Texture2D inputTexture, float2 texCoord : TEXCOORD0)
     return inputTexture.Sample(DefaultSampler, texCoord);
 }
 
+float4 SampleWithSampler(Texture2D inputTexture, SamplerState inputSampler, float2 texCoord : TEXCOORD0)
+{
+    return inputTexture.Sample(inputSampler, texCoord);
+}
+
 float4 GetPixelCoords(VSOUT geo)
 {
     return geo.position;

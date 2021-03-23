@@ -16,8 +16,8 @@
 	#include "../../xleres_cry/postprocess/crytonemap.h"
 #endif
 
-Texture2D	InputTexture BIND_MAT_T0;
-Texture2D	BloomMap BIND_MAT_T1;
+Texture2D	InputTexture BIND_MAT_T3;
+Texture2D	BloomMap BIND_MAT_T4;
 
 struct LuminanceBufferStruct
 {
@@ -25,7 +25,7 @@ struct LuminanceBufferStruct
 	float	_prevLuminance;
 };
 
-StructuredBuffer<LuminanceBufferStruct>	LuminanceBuffer BIND_MAT_T4;
+StructuredBuffer<LuminanceBufferStruct>	LuminanceBuffer BIND_MAT_T5;
 
 float4 Uncharted2Tonemap(float4 x)
 {

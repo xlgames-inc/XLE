@@ -8,7 +8,7 @@
 #include "../Utility/Colour.hlsl"
 #include "../Framework/Binding.hlsl"
 
-Texture2D		InputTexture BIND_MAT_T0;
+Texture2D		InputTexture BIND_MAT_T3;
 
 float4 copy(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {

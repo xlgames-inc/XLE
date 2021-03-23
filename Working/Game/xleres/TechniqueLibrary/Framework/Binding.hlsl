@@ -30,6 +30,8 @@
 #define BIND_NUMERIC_S5 : register(s5)
 #define BIND_NUMERIC_S6 : register(s6)
 
+#define BIND_MAT_S12 : register(s7)
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define BIND_SEQ_T0 : register(t16)
@@ -40,14 +42,14 @@
 #define BIND_SEQ_T5 : register(t21)
 #define BIND_SEQ_T6 : register(t22)
 
-#define BIND_MAT_T0 : register(t23)
-#define BIND_MAT_T1 : register(t24)
-#define BIND_MAT_T2 : register(t25)
-#define BIND_MAT_T3 : register(t26)
-#define BIND_MAT_T4 : register(t27)
-#define BIND_MAT_T5 : register(t28)
-#define BIND_MAT_T6 : register(t29)
-#define BIND_MAT_T7 : register(t30)
+#define BIND_MAT_T3 : register(t23)
+#define BIND_MAT_T4 : register(t24)
+#define BIND_MAT_T5 : register(t25)
+#define BIND_MAT_T6 : register(t26)
+#define BIND_MAT_T7 : register(t27)
+#define BIND_MAT_T8 : register(t28)
+#define BIND_MAT_T9 : register(t29)
+#define BIND_MAT_T10 : register(t30)
 
 #define BIND_NUMERIC_T0 : register(t0)
 #define BIND_NUMERIC_T1 : register(t1)

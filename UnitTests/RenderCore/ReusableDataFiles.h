@@ -105,18 +105,22 @@ static const char* s_basicTechniqueFile = R"--(
 
 	Deferred_NoPatches=~
 		Inherit=~; Shared
-		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:frameworkEntry
 		PixelShader=xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl:deferred
 
 	Deferred_PerPixel=~
 		Inherit=~; Shared
-		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:frameworkEntry
 		PixelShader=xleres/TechniqueLibrary/Standard/deferred.pixel.hlsl:frameworkEntry
 
 	Deferred_PerPixelAndEarlyRejection=~
 		Inherit=~; Shared
-		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:frameworkEntry
 		PixelShader=xleres/TechniqueLibrary/Standard/deferred.pixel.hlsl:frameworkEntryWithEarlyRejection
+
+	VS_NoPatches=~
+		VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
+
+	VS_DeformVertex=~
+		VertexShader=xleres/TechniqueLibrary/Standard/main.vertex.hlsl:frameworkEntryWithDeformVertex
+
 )--";
 
 static const char* s_basicFrameworkEntryPixel = R"--(
