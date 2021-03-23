@@ -48,14 +48,11 @@ namespace RenderCore { namespace Techniques
 		virtual ~ITechniqueDelegate();
 	};
 
-	class TechniqueSharedResources
-	{
-	public:
-		// UniqueShaderVariationSet _mainVariationSet;
-	};
+	class TechniqueSharedResources;
+	std::shared_ptr<TechniqueSharedResources> MakeTechniqueSharedResources(IDevice&);
 
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_Deferred(
-		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const ::Assets::FuturePtr<TechniqueSetFile>& techniqueSet,
 		const std::shared_ptr<TechniqueSharedResources>& sharedResources);
 
 	namespace TechniqueDelegateForwardFlags { 

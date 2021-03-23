@@ -367,9 +367,8 @@ namespace UnitTests
 			auto descSetFuture = pipelinePool->GetDescriptorSet(*descriptorSetAccelerator);
 			REQUIRE(descSetFuture != nullptr);
 			descSetFuture->StallWhilePending();
-			if (descSetFuture->GetAssetState() == ::Assets::AssetState::Invalid) {
-				INFO(::Assets::AsString(descSetFuture->GetActualizationLog()));
-			}
+			INFO(::Assets::AsString(descSetFuture->GetActualizationLog()));
+			REQUIRE(descSetFuture->GetAssetState() == ::Assets::AssetState::Ready);
 			descriptorSet = descSetFuture->Actualize();
 			REQUIRE(descriptorSet != nullptr);
 		}

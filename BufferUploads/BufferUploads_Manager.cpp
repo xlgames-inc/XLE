@@ -1944,6 +1944,10 @@ namespace BufferUploads
             //  Commit both the foreground and background contexts here
         _foregroundContext->CommitToImmediate(immediateContext);
         _backgroundContext->CommitToImmediate(immediateContext, &_pendingFramePriority_CommandLists);
+        
+            // Assembly line uses the number of times we've run CommitToImmediate() for some
+            // internal scheduling -- so we need to wake it up now, because it may do something
+        _assemblyLine->TriggerWakeupEvent();
 
         PlatformInterface::Resource_RecalculateVideoMemoryHeadroom();
     }
@@ -1980,6 +1984,8 @@ namespace BufferUploads
 
         bool multithreadingOk = true;
         bool doBatchingUploadInForeground = !PlatformInterface::CanDoNooverwriteMapInBackground;
+
+        // multithreadingOk = false;
 
         const auto nsightMode = ConsoleRig::CrossModule::GetInstance()._services.CallDefault(Hash64("nsight"), false);
         if (nsightMode)

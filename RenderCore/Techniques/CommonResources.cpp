@@ -5,10 +5,13 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CommonResources.h"
-#include "TechniqueUtils.h" // just for sizeof(LocalTransformConstants)
 #include "../IDevice.h"
-#include "../Metal/ObjectFactory.h"
-#include "../../ConsoleRig/ResourceBox.h"
+#include "../Metal/Metal.h"
+
+#if GFXAPI_TARGET == GFXAPI_DX11
+    #include "TechniqueUtils.h" // just for sizeof(LocalTransformConstants)
+    #include "../Metal/ObjectFactory.h"
+#endif
 
 namespace RenderCore { namespace Techniques
 {
@@ -57,8 +60,6 @@ namespace RenderCore { namespace Techniques
         _rsCullReverse = RasterizationDesc { CullMode::Back, FaceWinding::CW };
     }
 
-    /*CommonResourceBox& CommonResources()
-    {
-        return ConsoleRig::FindCachedBox<CommonResourceBox>(CommonResourceBox::Desc());
-    }*/
+    CommonResourceBox::~CommonResourceBox()
+    {}
 }}

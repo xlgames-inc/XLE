@@ -171,8 +171,13 @@ namespace RenderCore { namespace Techniques
 						} else if (status == ::Assets::AssetState::Ready) {
 							finalResources.push_back(actualized->GetShaderResource());
 						} else {
-							// todo -- use some kind of "invalid marker" for this resource
-							finalResources.push_back(nullptr);
+							// If any subassets fail, we consider the entire descriptor set to be invalid
+							// We'll return, and propagate the actualization log back
+							std::stringstream str;
+							str << "Failed to actualize subasset resource (" << d._pendingResource->Initializer() << "): ";
+							if (actualizationLog) { str << ::Assets::AsString(actualizationLog); } else { str << std::string("<<no log>>"); }
+							thatFuture.SetInvalidAsset(depVal, ::Assets::AsBlob(str.str()));
+							return false;
 						}
 
 						if (depVal)
