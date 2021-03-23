@@ -9,22 +9,22 @@
 
 namespace Assets
 {
-    static ConsoleRig::AttachablePtr<AssetSetManager> s_assetSetsManagerInstance;
-    static ConsoleRig::AttachablePtr<CompileAndAsyncManager> s_compileAndAsyncManager;
+	static ConsoleRig::WeakAttachablePtr<AssetSetManager> s_assetSetsManagerInstance;
+	static ConsoleRig::WeakAttachablePtr<CompileAndAsyncManager> s_compileAndAsyncManager;
 
-    AssetSetManager& Services::GetAssetSets()
-    {
-        return *s_assetSetsManagerInstance;
-    }
+	AssetSetManager& Services::GetAssetSets()
+	{
+		return *s_assetSetsManagerInstance.lock();
+	}
 
-    CompileAndAsyncManager& Services::GetAsyncMan()
-    {
-        return *s_compileAndAsyncManager;
-    }
+	CompileAndAsyncManager& Services::GetAsyncMan()
+	{
+		return *s_compileAndAsyncManager.lock();
+	}
 
-    bool Services::HasAssetSets()
-    {
-        return s_assetSetsManagerInstance != nullptr;
-    }
+	bool Services::HasAssetSets()
+	{
+		return !s_assetSetsManagerInstance.expired();
+	}
 }
 

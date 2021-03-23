@@ -27,13 +27,15 @@ namespace ConsoleRig
 			struct RegisteredPtr
 			{
 				IRegistrablePointer* _ptr = nullptr;
-				RegisteredPointerId _id = 0; 
+				RegisteredPointerId _id = 0;
+				bool _strong = false;
 			};
 			std::vector<std::pair<TypeKey, RegisteredPtr>> _registeredPointers;
 
 			struct RegisteredType
 			{
-				unsigned _localReferenceCounts = 0;
+				unsigned _localStrongReferenceCounts = 0;
+				unsigned _localWeakReferenceCounts = 0;
 				std::shared_ptr<void> _currentValue;
 				std::function<void(const std::shared_ptr<void>&)> _attachModuleFn;
 				std::function<void(const std::shared_ptr<void>&)> _detachModuleFn;
@@ -48,7 +50,7 @@ namespace ConsoleRig
 		{
 			auto i2 = LowerBound(_pimpl->_registeredTypes, id);
 			// If there are no pointers currently referencing this type, we will just early out now
-			if (i2 == _pimpl->_registeredTypes.end() || i2->first != id || i2->second._localReferenceCounts == 0)
+			if (i2 == _pimpl->_registeredTypes.end() || i2->first != id || (i2->second._localStrongReferenceCounts + i2->second._localWeakReferenceCounts) == 0)
 				return;
 
 			if (i2->second._detachModuleFn && i2->second._currentValue)
@@ -63,15 +65,18 @@ namespace ConsoleRig
 				i2->second._attachModuleFn(i2->second._currentValue);
 		}
 
-		auto InfraModuleManager::Register(TypeKey id, IRegistrablePointer* ptr) -> RegisteredPointerId
+		auto InfraModuleManager::Register(TypeKey id, IRegistrablePointer* ptr, bool strong) -> RegisteredPointerId
 		{
 			auto result = _pimpl->_nextRegisteredPointerId++;
 			auto i = LowerBound(_pimpl->_registeredPointers, id);
-			_pimpl->_registeredPointers.insert(i, {id, Pimpl::RegisteredPtr{ptr, result}});
+			_pimpl->_registeredPointers.insert(i, {id, Pimpl::RegisteredPtr{ptr, result, strong}});
 
 			auto i2 = LowerBound(_pimpl->_registeredTypes, id);
 			if (i2 != _pimpl->_registeredTypes.end() && i2->first == id) {
-				i2->second._localReferenceCounts++;
+				if (strong) {
+					i2->second._localStrongReferenceCounts++;
+				} else
+					i2->second._localWeakReferenceCounts++;
 			} else {
 				_pimpl->_registeredTypes.insert(i2, {id, Pimpl::RegisteredType{1}});
 			}
@@ -85,15 +90,31 @@ namespace ConsoleRig
 			assert(i != _pimpl->_registeredPointers.end());
 			if (i != _pimpl->_registeredPointers.end()) {
 				auto type = i->first;
+				auto strong = i->second._strong;
 				_pimpl->_registeredPointers.erase(i);
+
+				bool isReleaseFinalStrongReference = false;
 
 				auto i2 = LowerBound(_pimpl->_registeredTypes, type);
 				assert(i2 != _pimpl->_registeredTypes.end() && i2->first == type);
 				if (i2 != _pimpl->_registeredTypes.end() && i2->first == type) {
-					assert(i2->second._localReferenceCounts > 0);
-					auto newRefCount = --i2->second._localReferenceCounts;
+					if (strong) {
+						assert(i2->second._localStrongReferenceCounts > 0);
+						--i2->second._localStrongReferenceCounts;
+						isReleaseFinalStrongReference = i2->second._localStrongReferenceCounts == 0;
+					} else {
+						assert(i2->second._localWeakReferenceCounts > 0);
+						--i2->second._localWeakReferenceCounts;
+					}
 
-					if (newRefCount == 0 && i2->second._detachModuleFn && i2->second._currentValue) {
+					if (isReleaseFinalStrongReference && i2->second._detachModuleFn && i2->second._currentValue) {
+						// Clear any weak pointers
+						for (const auto&ptr:_pimpl->_registeredPointers)
+							if (ptr.first == type) {
+								assert(!ptr.second._strong);
+								ptr.second._ptr->PropagateChange(nullptr);
+							}
+
 						i2->second._detachModuleFn(i2->second._currentValue);
 						i2->second._currentValue = nullptr;
 					}
@@ -115,7 +136,7 @@ namespace ConsoleRig
 			i2->second._detachModuleFn = std::move(detachModuleFn);
 
 			// if there's already local reference counts, we should in theory call the attach function here
-			if (i2->second._localReferenceCounts && i2->second._currentValue)
+			if ((i2->second._localStrongReferenceCounts + i2->second._localWeakReferenceCounts) != 0 && i2->second._currentValue)
 				i2->second._attachModuleFn(i2->second._currentValue);
 		}
 
@@ -148,7 +169,7 @@ namespace ConsoleRig
 				ptr.second._ptr->ManagerShuttingDown();
 			_pimpl->_registeredPointers.clear();
 			for (const auto&type:_pimpl->_registeredTypes)
-				if (type.second._localReferenceCounts && type.second._currentValue && type.second._detachModuleFn)
+				if ((type.second._localStrongReferenceCounts + type.second._localWeakReferenceCounts) != 0 && type.second._currentValue && type.second._detachModuleFn)
 					type.second._detachModuleFn(type.second._currentValue);
 			_pimpl->_registeredTypes.clear();
 			_pimpl->_crossModuleRegistration = ~0u;
@@ -167,7 +188,7 @@ namespace ConsoleRig
 				ptr.second._ptr->ManagerShuttingDown();
 			_pimpl->_registeredPointers.clear();
 			for (const auto&type:_pimpl->_registeredTypes)
-				if (type.second._localReferenceCounts && type.second._currentValue && type.second._detachModuleFn)
+				if ((type.second._localStrongReferenceCounts + type.second._localWeakReferenceCounts) != 0 && type.second._currentValue && type.second._detachModuleFn)
 					type.second._detachModuleFn(type.second._currentValue);
 			_pimpl->_registeredTypes.clear();
 			if (_pimpl->_crossModuleRegistration != ~0u)

@@ -16,11 +16,18 @@ namespace ConsoleRig
 
 	class CrossModule;
 	template<typename Obj> class AttachablePtr;
+	template<typename Obj> class WeakAttachablePtr;
 
 	namespace Internal
 	{
-		using TypeKey = std::type_index;
-		template<typename Obj> TypeKey KeyForType() { return std::type_index(typeid(Obj)); }
+		// Using std::type_index is unsafe for KeyForType(), because that can be implemented
+		// as just a pointer to the type_info. The issue is, we use this is a key in a cross-module
+		// dictionary; and when modules are unloaded, the type_info pointer becomes invalidated. We
+		// need the those keys to survive longer that the lifetime of any specific module
+		// using TypeKey = std::type_index;
+		// template<typename Obj> TypeKey KeyForType() { return std::type_index(typeid(Obj)); }
+		using TypeKey = uint64_t;
+		template<typename Obj> TypeKey KeyForType() { return typeid(Obj).hash_code(); }
 
 		class InfraModuleManager
 		{
@@ -33,7 +40,7 @@ namespace ConsoleRig
 				virtual void ManagerShuttingDown() = 0;
 				virtual ~IRegistrablePointer() = default;
 			};
-			RegisteredPointerId Register(TypeKey id, IRegistrablePointer* ptr);
+			RegisteredPointerId Register(TypeKey id, IRegistrablePointer* ptr, bool strong);
 			void Deregister(RegisteredPointerId);
 
 			void ConfigureType(
@@ -59,9 +66,15 @@ namespace ConsoleRig
 			template<typename Obj>
 				friend class ConsoleRig::AttachablePtr;
 
+			template<typename Obj>
+				friend class ConsoleRig::WeakAttachablePtr;
+
 			auto Get(TypeKey id) -> std::shared_ptr<void>;
 			void Reset(TypeKey id, const std::shared_ptr<void>& obj);
 		};
+
+		template<typename Obj>
+			void TryConfigureType() __attribute__((visibility("hidden")));
 	}
 
 	/**
@@ -120,11 +133,27 @@ namespace ConsoleRig
 
 		void PropagateChange(const std::shared_ptr<void>& newValue) override;
 		void ManagerShuttingDown() override;
-		static void TryConfigureType() __attribute__((visibility("hidden")));
 	};
 
 	template<typename Obj, typename... Args>
 		AttachablePtr<Obj> MakeAttachablePtr(Args... a);
+
+	template<typename Obj>
+		class WeakAttachablePtr : Internal::InfraModuleManager::IRegistrablePointer
+	{
+	public:
+		std::shared_ptr<Obj> lock() { return _internalPointer.lock(); }
+		bool expired() const { return _internalPointer.expired(); }
+
+        void PropagateChange(const std::shared_ptr<void>& newValue) override;
+		void ManagerShuttingDown() override;
+
+		WeakAttachablePtr();
+		~WeakAttachablePtr();
+	private:
+		std::weak_ptr<Obj> _internalPointer;
+		Internal::InfraModuleManager::RegisteredPointerId _managerRegistry;
+	};
 
 	class CrossModule
 	{
@@ -183,8 +212,8 @@ namespace ConsoleRig
 	template<typename Obj>
 		AttachablePtr<Obj>::AttachablePtr(const std::shared_ptr<Obj>& copyFrom)
 	{
-		TryConfigureType();
-		_managerRegistry = Internal::InfraModuleManager::GetInstance().Register(Internal::KeyForType<Obj>(), this);
+		Internal::TryConfigureType<Obj>();
+		_managerRegistry = Internal::InfraModuleManager::GetInstance().Register(Internal::KeyForType<Obj>(), this, true);
 		Internal::InfraModuleManager::GetInstance().Reset(Internal::KeyForType<Obj>(), copyFrom);
 	}
 
@@ -221,9 +250,9 @@ namespace ConsoleRig
 	template<typename Obj>
 		AttachablePtr<Obj>::AttachablePtr()
 	{
-		TryConfigureType();
+		Internal::TryConfigureType<Obj>();
 		auto& man = Internal::InfraModuleManager::GetInstance();
-		_managerRegistry = man.Register(Internal::KeyForType<Obj>(), this);
+		_managerRegistry = man.Register(Internal::KeyForType<Obj>(), this, true);
 		_internalPointer = std::static_pointer_cast<Obj>(man.Get(Internal::KeyForType<Obj>()));
 	}
    
@@ -237,22 +266,25 @@ namespace ConsoleRig
 		oldValue.reset();
 	}
 
-	template<typename Obj>
-		void AttachablePtr<Obj>::TryConfigureType()
-    {
-		static __attribute__((visibility("hidden"))) bool s_typeConfigured = false;
-		if (!s_typeConfigured) {
-			Internal::InfraModuleManager::GetInstance().ConfigureType(
-				Internal::KeyForType<Obj>(),
-				[](const std::shared_ptr<void>& singleton) {
-					Internal::TryAttachCurrentModule(*static_cast<Obj*>(singleton.get()));
-				},
-				[](const std::shared_ptr<void>& singleton) {
-					Internal::TryDetachCurrentModule(*static_cast<Obj*>(singleton.get()));
-				});
-			s_typeConfigured = true;
+	namespace Internal
+	{
+		template<typename Obj>
+			void TryConfigureType()
+		{
+			static __attribute__((visibility("hidden"))) bool s_typeConfigured = false;
+			if (!s_typeConfigured) {
+				Internal::InfraModuleManager::GetInstance().ConfigureType(
+					Internal::KeyForType<Obj>(),
+					[](const std::shared_ptr<void>& singleton) {
+						Internal::TryAttachCurrentModule(*static_cast<Obj*>(singleton.get()));
+					},
+					[](const std::shared_ptr<void>& singleton) {
+						Internal::TryDetachCurrentModule(*static_cast<Obj*>(singleton.get()));
+					});
+				s_typeConfigured = true;
+			}
 		}
-    }
+	}
 
 	T1(Obj) bool operator==(const AttachablePtr<Obj>& lhs, const std::shared_ptr<Obj>& rhs) { return lhs._internalPointer == rhs; }
 	T1(Obj) bool operator==(const std::shared_ptr<Obj>& lhs, const AttachablePtr<Obj>& rhs) { return lhs == rhs._internalPointer; }
@@ -262,6 +294,38 @@ namespace ConsoleRig
 	T1(Obj) bool operator!=(const std::shared_ptr<Obj>& lhs, const AttachablePtr<Obj>& rhs) { return lhs != rhs._internalPointer; }
 	T1(Obj) bool operator!=(const AttachablePtr<Obj>& lhs, std::nullptr_t) { return lhs._internalPointer != nullptr; }
 	T1(Obj) bool operator!=(std::nullptr_t, const AttachablePtr<Obj>& rhs) { return rhs._internalPointer != nullptr; }
+
+	template<typename Obj>
+        void WeakAttachablePtr<Obj>::PropagateChange(const std::shared_ptr<void>& newValue)
+    {
+        _internalPointer = std::static_pointer_cast<Obj>(newValue);
+    }
+
+    template<typename Obj>
+        void WeakAttachablePtr<Obj>::ManagerShuttingDown()
+    {
+        _managerRegistry = ~0u;
+        _internalPointer.reset();
+    }
+
+    template<typename Obj>
+        WeakAttachablePtr<Obj>::WeakAttachablePtr()
+    {
+        Internal::TryConfigureType<Obj>();
+        auto& man = Internal::InfraModuleManager::GetInstance();
+        _managerRegistry = man.Register(Internal::KeyForType<Obj>(), this, false);
+        _internalPointer = std::static_pointer_cast<Obj>(man.Get(Internal::KeyForType<Obj>()));
+    }
+
+    template<typename Obj>
+        WeakAttachablePtr<Obj>::~WeakAttachablePtr()
+    {
+        auto oldValue = std::move(_internalPointer);
+        // The manager may have shutdown before us; in which case we should avoid attempting to deregister ourselves
+        if (_managerRegistry != ~0u)
+            Internal::InfraModuleManager::GetInstance().Deregister(_managerRegistry);
+        oldValue.reset();
+    }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -29,6 +29,7 @@ dll_export std::string ExampleFunctionReturnsString(std::string acrossInterface)
 
 static ConsoleRig::AttachablePtr<UnitTests::SingletonSharedFromAttachedModule> s_singletonToPublish;
 static ConsoleRig::AttachablePtr<UnitTests::SingletonSharedFromMainModule2> s_embuedByMainModule2;
+static ConsoleRig::WeakAttachablePtr<UnitTests::SingletonSharedFromMainModule3> s_embuedByMainModule3;
 
 dll_export std::string FunctionCheckingAttachablePtrs() asm("FunctionCheckingAttachablePtrs");
 dll_export std::string FunctionCheckingAttachablePtrs()
@@ -36,7 +37,15 @@ dll_export std::string FunctionCheckingAttachablePtrs()
 	s_singletonToPublish = std::make_shared<UnitTests::SingletonSharedFromAttachedModule>();
 
 	ConsoleRig::AttachablePtr<UnitTests::SingletonSharedFromMainModule1> embuedByMainModule1;
-	return embuedByMainModule1->_identifyingString + " and " + s_embuedByMainModule2->_identifyingString;
+	return embuedByMainModule1->_identifyingString + " and " + s_embuedByMainModule2->_identifyingString + " and " + s_embuedByMainModule3.lock()->_identifyingString;
+}
+
+dll_export std::string CheckWeakAttachable() asm("CheckWeakAttachable");
+dll_export std::string CheckWeakAttachable()
+{
+	if (s_embuedByMainModule3.lock() != nullptr)
+		return "Still have value";
+	return "No longer have value";
 }
 
 extern "C" 

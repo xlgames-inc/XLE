@@ -73,8 +73,12 @@ namespace RenderCore { namespace Techniques
         }
 	}
 
-	static ConsoleRig::AttachablePtr<Services> s_servicesInstance;
-	bool Services::HasInstance() { return s_servicesInstance != nullptr; }
-	Services& Services::GetInstance() { return *s_servicesInstance; }
+	// Our "s_instance" pointer to services must act as a weak pointer (otherwise clients can't control
+	// the lifetime). We can achieve that with this pattern (though there may be some complexity between
+	// the different ways clang and msvc handle dynamic libraries)
+	static ConsoleRig::WeakAttachablePtr<Services> s_servicesInstance;
+
+	bool Services::HasInstance() { return !s_servicesInstance.expired(); }
+	Services& Services::GetInstance() { return *s_servicesInstance.lock(); }
 }}
 

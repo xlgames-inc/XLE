@@ -69,6 +69,9 @@ namespace UnitTests
 		auto attachablePtrBeforeLibraryAttach = ConsoleRig::MakeAttachablePtr<SingletonSharedFromMainModule1>();
 		attachablePtrBeforeLibraryAttach->_identifyingString = "ConfiguredBeforeLibraryAttach";
 
+		auto attachablePropagatedAsWeak = ConsoleRig::MakeAttachablePtr<SingletonSharedFromMainModule3>();
+		attachablePropagatedAsWeak->_identifyingString = "PropagatedAsWeak";
+
 		ConsoleRig::AttachablePtr<SingletonSharedFromAttachedModule> singletonFromAttachedModule;
 
 		{
@@ -95,12 +98,19 @@ namespace UnitTests
 			//		use that singleton with the pointer "singletonFromAttachedModule"
 			//
 
-			REQUIRE(fnResult == "ConfiguredBeforeLibraryAttach and ConfiguredAfterLibraryAttach");
+			REQUIRE(fnResult == "ConfiguredBeforeLibraryAttach and ConfiguredAfterLibraryAttach and PropagatedAsWeak");
 			REQUIRE(SingletonSharedFromMainModule1::s_aliveCount == 1);
 			REQUIRE(SingletonSharedFromMainModule2::s_aliveCount == 1);
 			REQUIRE(attachablePtrBeforeLibraryAttach->_attachedModuleCount == 1);
 			REQUIRE(attachablePtrAfterLibraryAttach->_attachedModuleCount == 2);
 			REQUIRE(singletonFromAttachedModule != nullptr);		// should be embued with a value from the attached module
+
+			attachablePropagatedAsWeak = nullptr;
+			{
+				auto checkWkFn = testLibrary.GetFunction<FnSig>("CheckWeakAttachable");
+				auto checkWkFnResult = checkWkFn();
+				REQUIRE(checkWkFnResult == "No longer have value");
+			}
 		}
 
 		//

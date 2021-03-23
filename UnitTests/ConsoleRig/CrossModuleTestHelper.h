@@ -49,6 +49,12 @@ namespace UnitTests
         }
     };
 
+    class SingletonSharedFromMainModule3
+    {
+    public:
+        std::string _identifyingString;
+    };
+
     class SingletonSharedFromAttachedModule
     {
     public:
