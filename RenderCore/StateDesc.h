@@ -188,10 +188,10 @@ namespace RenderCore
     class SamplerDesc
     {
     public:
-        RenderCore::FilterMode _filter = RenderCore::FilterMode::Trilinear;
-        RenderCore::AddressMode _addressU = RenderCore::AddressMode::Wrap;
-        RenderCore::AddressMode _addressV = RenderCore::AddressMode::Wrap;
-        RenderCore::CompareOp _comparison = RenderCore::CompareOp::Never;
+        FilterMode _filter = FilterMode::Trilinear;
+        AddressMode _addressU = AddressMode::Wrap;
+        AddressMode _addressV = AddressMode::Wrap;
+        CompareOp _comparison = CompareOp::Never;
         bool _enableMipmaps = true;
 
 		uint64_t Hash() const;

@@ -86,14 +86,17 @@ static const char* s_basicTexturingGraph = R"--(
 
 	GBufferValues Bind_PerPixel(VSOUT geo) implements templates::PerPixel
 	{
-		captures MaterialUniforms = ( float3 Multiplier = "{1,1,1}", Texture2D BoundTexture, SamplerState InputSampler );
-		node loadFromTexture = texture::LoadAbsolute(
+		captures MaterialUniforms = ( float3 Multiplier = "{1,1,1}", float Adder = "{0,0,0}", Texture2D BoundTexture, SamplerState BoundSampler );
+		node samplingCoords = basic::Multiply2(lhs:texture::GetPixelCoords(geo:geo).result, rhs:"float2(.1, .1)");
+		node loadFromTexture = texture::SampleWithSampler(
 			inputTexture:MaterialUniforms.BoundTexture, 
-			pixelCoords:texture::GetPixelCoords(geo:geo).result);
+			inputSampler:MaterialUniforms.BoundSampler,
+			texCoord:samplingCoords.result);
 		node multiply = basic::Multiply3(lhs:loadFromTexture.result, rhs:MaterialUniforms.Multiplier);
+		node add = basic::Add3(lhs:multiply.result, rhs:MaterialUniforms.Adder);
 		node mat = materialParam::CommonMaterialParam_Make(roughness:"1", specular:"1", metal:"1");
 		return output::Output_PerPixel(
-			diffuseAlbedo:multiply.result, 
+			diffuseAlbedo:add.result, 
 			material:mat.result).result;
 	}
 )--";
@@ -166,6 +169,13 @@ namespace UnitTests
 		return std::make_shared<RenderCore::Assets::ShaderPatchCollection>(formattr, ::Assets::DirectorySearchRules{}, std::make_shared<::Assets::DependencyValidation>());
 	}
 
+	template<typename Type>
+		void RequireReady(::Assets::AssetFuture<Type>& future)
+	{
+		INFO(::Assets::AsString(future.GetActualizationLog()));
+		REQUIRE(future.GetAssetState() == ::Assets::AssetState::Ready);
+	}
+
 	TEST_CASE( "PipelineAcceleratorTests-ConfigurationAndCreation", "[rendercore_techniques]" )
 	{
 		using namespace RenderCore;
@@ -204,7 +214,7 @@ namespace UnitTests
 
 			auto finalPipeline = mainPool->GetPipeline(*pipelineAccelerator, *cfgId);
 			finalPipeline->StallWhilePending();
-			REQUIRE(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
+			RequireReady(*finalPipeline);
 			auto pipelineActual = finalPipeline->Actualize();
 			REQUIRE(pipelineActual != nullptr);
 		}
@@ -229,7 +239,7 @@ namespace UnitTests
 					//
 				auto finalPipeline = mainPool->GetPipeline(*pipelineNoTexCoord, *cfgId);
 				finalPipeline->StallWhilePending();
-				REQUIRE(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
+				RequireReady(*finalPipeline);
 			}
 
 			auto pipelineWithTexCoord = mainPool->CreatePipelineAccelerator(
@@ -271,7 +281,7 @@ namespace UnitTests
 			{
 				auto finalPipeline = mainPool->GetPipeline(*pipelineWithTexCoord, *cfgIdWithColor);
 				finalPipeline->StallWhilePending();
-				REQUIRE(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
+				RequireReady(*finalPipeline);
 
 				auto rpi = fbHelper.BeginRenderPass(*threadContext);
 				RenderQuad(*testHelper, *threadContext, *vertexBuffer, (unsigned)dimof(vertices_fullViewport), *finalPipeline->Actualize());
@@ -292,7 +302,7 @@ namespace UnitTests
 			{
 				auto finalPipeline = mainPool->GetPipeline(*pipelineWithTexCoord, *cfgIdWithColor);
 				finalPipeline->StallWhilePending();
-				REQUIRE(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
+				RequireReady(*finalPipeline);
 
 				auto rpi = fbHelper.BeginRenderPass(*threadContext);
 				RenderQuad(*testHelper, *threadContext, *vertexBuffer, (unsigned)dimof(vertices_fullViewport), *finalPipeline->Actualize());
@@ -307,8 +317,37 @@ namespace UnitTests
 		::Assets::MainFileSystem::GetMountingTree()->Unmount(xlresmnt);
 	}
 
+	static void StallForDescriptorSet(RenderCore::IThreadContext& threadContext, ::Assets::AssetFuture<RenderCore::IDescriptorSet>& descriptorSetFuture)
+	{
+		// If we're running buffer uploads in single thread mode, we need to pump it while
+		// waiting for the descriptor set
+		for (unsigned c=0; c<5; ++c) {
+			RenderCore::Techniques::Services::GetBufferUploads().Update(threadContext);
+			using namespace std::chrono_literals;
+			descriptorSetFuture.StallWhilePending(16ms);
+		}
+
+		descriptorSetFuture.StallWhilePending();
+
+		// hack -- 
+		// we need to pump buffer uploads a bit to ensure the texture load gets completed
+		for (unsigned c=0; c<5; ++c) {
+			RenderCore::Techniques::Services::GetBufferUploads().Update(threadContext);
+			using namespace std::chrono_literals;
+			std::this_thread::sleep_for(16ms);
+		}
+	}
+
 	TEST_CASE( "PipelineAcceleratorTests-DescriptorSetAcceleratorConstruction", "[rendercore_techniques]" )
 	{
+		//
+		// Create descriptor set accelerators and pipeline accelerators from the pipeline accelerator pool
+		// using configurations that require shader inputs
+		// Test rendering after assigning those shader inputs 
+		// Also in this case, we have a technique delegate that uses the standard infrastructure (ie, instead
+		// of something that's simplified for unit tests)
+		//
+
 		using namespace RenderCore;
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
 		auto xlresmnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", UnitTests::CreateEmbeddedResFileSystem());
@@ -451,21 +490,10 @@ namespace UnitTests
 			{
 				auto finalPipeline = pipelineAcceleratorPool->GetPipeline(*pipelineWithTexCoord, *cfgId);
 				finalPipeline->StallWhilePending();
-				INFO(::Assets::AsString(finalPipeline->GetActualizationLog()));
-				REQUIRE(finalPipeline->GetAssetState() == ::Assets::AssetState::Ready);
+				RequireReady(*finalPipeline);
 
-				// If we're running buffer uploads in single thread mode, we need to pump it while
-				// waiting for the descriptor set
-				for (unsigned c=0; c<5; ++c) {
-					Techniques::Services::GetBufferUploads().Update(*threadContext);
-					using namespace std::chrono_literals;
-					descriptorSetFuture->StallWhilePending(16ms);
-				}
-
-				descriptorSetFuture->StallWhilePending();
-				INFO(::Assets::AsString(descriptorSetFuture->GetActualizationLog()));
-				REQUIRE(descriptorSetFuture->GetAssetState() == ::Assets::AssetState::Ready);
-
+				StallForDescriptorSet(*threadContext, *descriptorSetFuture);
+				RequireReady(*descriptorSetFuture);
 				auto* bindingInfo = pipelineAcceleratorPool->TryGetBindingInfo(*descriptorSetAccelerator);
 				REQUIRE(bindingInfo);
 				auto boundTextureI = std::find_if(bindingInfo->_slots.begin(), bindingInfo->_slots.end(), [](const auto& slot) { return slot._layoutName == "BoundTexture"; });
@@ -473,22 +501,10 @@ namespace UnitTests
 				REQUIRE(boundTextureI->_layoutSlotType == DescriptorType::Texture);
 				REQUIRE(boundTextureI->_bindType == DescriptorSetInitializer::BindType::ResourceView);
 				REQUIRE(!boundTextureI->_binding.empty());
-
-				// hack -- 
-				// we need to pump buffer uploads a bit to ensure the texture load gets completed
-				for (unsigned c=0; c<5; ++c) {
-					Techniques::Services::GetBufferUploads().Update(*threadContext);
-					using namespace std::chrono_literals;
-					std::this_thread::sleep_for(16ms);
-				}
-
+				
 				auto rpi = fbHelper.BeginRenderPass(*threadContext);
 				RenderQuad(*testHelper, *threadContext, *vertexBuffer, (unsigned)dimof(vertices_fullViewport), *finalPipeline->Actualize(), descriptorSetFuture->Actualize().get());
 			}
-
-			fbHelper.SaveImage(
-				*threadContext,
-				(StringMeld<MaxPath>{} << "TechniqueDelegateTest-" << std::hex << 9).AsStringSection());
 
 			auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);
 
@@ -501,8 +517,184 @@ namespace UnitTests
 		}
 
 		// check that depvals react to texture updates
-		// check rendering "invalid" textures
-		// default descriptor set for "legacy" techniques
+
+		pipelineAcceleratorPool.reset();
+		compilers.DeregisterCompiler(shaderCompiler2Registration._registrationId);
+		compilers.DeregisterCompiler(shaderCompilerRegistration._registrationId);
+		compilers.DeregisterCompiler(filteringRegistration._registrationId);
+
+		::Assets::MainFileSystem::GetMountingTree()->Unmount(utdatamnt);
+		::Assets::MainFileSystem::GetMountingTree()->Unmount(xlresmnt);
+	}
+
+	TEST_CASE( "PipelineAcceleratorTests-IncorrectConfiguration", "[rendercore_techniques]" )
+	{
+		//
+		// Create descriptor set via the the pipeline accelerator pool, but configure it incorrectly
+		// in a number of ways.
+		//
+
+		using namespace RenderCore;
+		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
+		auto xlresmnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", UnitTests::CreateEmbeddedResFileSystem());
+		auto utdatamnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
+		auto testHelper = MakeTestHelper();
+
+		Verbose.SetConfiguration(OSServices::MessageTargetConfiguration{});
+
+		auto techniqueServices = ConsoleRig::MakeAttachablePtr<Techniques::Services>(testHelper->_device);
+		techniqueServices->RegisterTextureLoader(std::regex(R"(.*\.[dD][dD][sS])"), Techniques::CreateDDSTextureLoader());
+		techniqueServices->RegisterTextureLoader(std::regex(R"(.*)"), Techniques::CreateWICTextureLoader());
+
+		auto executor = std::make_shared<thousandeyes::futures::DefaultExecutor>(std::chrono::milliseconds(2));
+		thousandeyes::futures::Default<thousandeyes::futures::Executor>::Setter execSetter(executor);
+
+		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+		auto filteringRegistration = ShaderSourceParser::RegisterShaderSelectorFilteringCompiler(compilers);
+		auto shaderCompilerRegistration = RenderCore::RegisterShaderCompiler(testHelper->_shaderSource, compilers);
+		auto shaderCompiler2Registration = RenderCore::Techniques::RegisterInstantiateShaderGraphCompiler(testHelper->_shaderSource, compilers);
+		auto pipelineAcceleratorPool = Techniques::CreatePipelineAcceleratorPool(testHelper->_device, testHelper->_pipelineLayout, Techniques::PipelineAcceleratorPoolFlags::RecordDescriptorSetBindingInfo);
+
+		////////////////////////////////////////
+
+		{
+			auto threadContext = testHelper->_device->GetImmediateContext();
+			auto targetDesc = CreateDesc(
+				BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
+				TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
+				"temporary-out");
+			UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
+
+			auto techniqueSetFile = ::Assets::MakeAsset<Techniques::TechniqueSetFile>("ut-data/basic.tech");
+			auto cfgId = pipelineAcceleratorPool->CreateSequencerConfig(
+				Techniques::CreateTechniqueDelegate_Deferred(techniqueSetFile, Techniques::MakeTechniqueSharedResources(*testHelper->_device)),
+				ParameterBox {},
+				fbHelper.GetDesc());
+
+			auto patches = GetPatchCollectionFromText(s_techniqueBasicTexturing);
+			RenderCore::Assets::RenderStateSet doubledSidedStateSet;
+			doubledSidedStateSet._doubleSided = true;
+			doubledSidedStateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::DoubleSided;
+			auto pipelineWithTexCoord = pipelineAcceleratorPool->CreatePipelineAccelerator(
+				patches,
+				ParameterBox {},
+				GlobalInputLayouts::PCT,
+				Topology::TriangleList,
+				doubledSidedStateSet);
+			auto finalPipeline = pipelineAcceleratorPool->GetPipeline(*pipelineWithTexCoord, *cfgId);
+			finalPipeline->StallWhilePending();
+			RequireReady(*finalPipeline);
+
+			auto vertexBuffer = testHelper->CreateVB(vertices_fullViewport);
+
+			SECTION("Missing bindings")
+			{
+				// Nothing is bound -- we can still render, but in this case we'll just get
+				// black output
+				auto descriptorSetAccelerator = pipelineAcceleratorPool->CreateDescriptorSetAccelerator(
+					patches,
+					ParameterBox {}, ParameterBox {}, ParameterBox {});
+				auto descriptorSetFuture = pipelineAcceleratorPool->GetDescriptorSet(*descriptorSetAccelerator);
+				StallForDescriptorSet(*threadContext, *descriptorSetFuture);
+				RequireReady(*descriptorSetFuture);
+				auto* bindingInfo = pipelineAcceleratorPool->TryGetBindingInfo(*descriptorSetAccelerator);
+				REQUIRE(bindingInfo);
+				REQUIRE(bindingInfo->_slots.size() > 0);
+				
+				{
+					auto rpi = fbHelper.BeginRenderPass(*threadContext);
+					RenderQuad(*testHelper, *threadContext, *vertexBuffer, (unsigned)dimof(vertices_fullViewport), *finalPipeline->Actualize(), descriptorSetFuture->Actualize().get());
+				}
+
+				auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);
+				REQUIRE(breakdown.size() == 1);
+				REQUIRE(breakdown.find(0xff000000) != breakdown.end());
+			}
+
+			SECTION("Bind missing texture")
+			{
+				ParameterBox resourceBindings;
+				resourceBindings.SetParameter("BoundTexture", "xleres/texture_does_not_exist.png");
+				resourceBindings.SetParameter("ExtraneousTexture", "xleres/DefaultResources/waternoise.png");
+				auto descriptorSetAccelerator = pipelineAcceleratorPool->CreateDescriptorSetAccelerator(
+					patches,
+					ParameterBox {}, ParameterBox {}, resourceBindings);
+				auto descriptorSetFuture = pipelineAcceleratorPool->GetDescriptorSet(*descriptorSetAccelerator);
+				StallForDescriptorSet(*threadContext, *descriptorSetFuture);
+				REQUIRE_THROWS(descriptorSetFuture->Actualize());		// if any texture is bad, the entire descriptor set is considered bad
+			}
+
+			SECTION("Bind invalid texture")
+			{
+				// we'll try the load the following text file as a texture; it should just give us an invalid descriptor set
+				ParameterBox resourceBindings;
+				resourceBindings.SetParameter("BoundTexture", "xleres/TechniqueLibrary/Config/Illum.tech");
+				auto descriptorSetAccelerator = pipelineAcceleratorPool->CreateDescriptorSetAccelerator(
+					patches,
+					ParameterBox {}, ParameterBox {}, resourceBindings);
+				auto descriptorSetFuture = pipelineAcceleratorPool->GetDescriptorSet(*descriptorSetAccelerator);
+				StallForDescriptorSet(*threadContext, *descriptorSetFuture);
+				REQUIRE_THROWS(descriptorSetFuture->Actualize());		// if any texture is bad, the entire descriptor set is considered bad
+			}
+
+			SECTION("Bind bad uniform inputs")
+			{
+				// Pass in invalid inputs for shader constants. They will get casted and converted as much as possible,
+				// and we'll still get a valid descriptor set at the end
+				ParameterBox constantBindings;
+				constantBindings.SetParameter("Multiplier", "not a float");
+				constantBindings.SetParameter("Adder", -40);	// too few elements
+				auto descriptorSetAccelerator = pipelineAcceleratorPool->CreateDescriptorSetAccelerator(
+					patches,
+					ParameterBox {}, constantBindings, ParameterBox {});
+				auto descriptorSetFuture = pipelineAcceleratorPool->GetDescriptorSet(*descriptorSetAccelerator);
+				StallForDescriptorSet(*threadContext, *descriptorSetFuture);
+				RequireReady(*descriptorSetFuture);
+				auto* bindingInfo = pipelineAcceleratorPool->TryGetBindingInfo(*descriptorSetAccelerator);
+				REQUIRE(bindingInfo);
+				REQUIRE(bindingInfo->_slots.size() > 0);
+
+				// If we try to create another accelerator with the same settings, we'll get the same
+				// one returned
+				auto secondDescriptorSetAccelerator = pipelineAcceleratorPool->CreateDescriptorSetAccelerator(
+					patches,
+					ParameterBox {}, constantBindings, ParameterBox {});
+				REQUIRE(descriptorSetAccelerator == secondDescriptorSetAccelerator);
+			}
+			
+			SECTION("Bind wrong type")
+			{
+				ParameterBox constantBindings;
+				constantBindings.SetParameter("BoundTexture", Float3{1,1,1});
+				constantBindings.SetParameter("BoundSampler", 3);
+				ParameterBox resourceBindings;
+				resourceBindings.SetParameter("MaterialUniforms", "xleres/DefaultResources/waternoise.png");
+				resourceBindings.SetParameter("Adder", "xleres/DefaultResources/waternoise.png");
+				auto descriptorSetAccelerator = pipelineAcceleratorPool->CreateDescriptorSetAccelerator(
+					patches,
+					ParameterBox {}, constantBindings, resourceBindings);
+				auto descriptorSetFuture = pipelineAcceleratorPool->GetDescriptorSet(*descriptorSetAccelerator);
+				StallForDescriptorSet(*threadContext, *descriptorSetFuture);
+				REQUIRE_THROWS(descriptorSetFuture->Actualize());
+
+				// do the same, but messing up sampler configurations
+				std::vector<std::pair<uint64_t, SamplerDesc>> samplerBindings {
+					std::make_pair(Hash64("BoundTexture"), SamplerDesc{ FilterMode::Point }),
+					std::make_pair(Hash64("MaterialUniforms"), SamplerDesc{ FilterMode::Bilinear }),
+					std::make_pair(Hash64("Multiplier"), SamplerDesc{ FilterMode::Trilinear })
+				};
+				resourceBindings = {};
+				resourceBindings.SetParameter("BoundSampler", "xleres/DefaultResources/waternoise.png");
+				descriptorSetAccelerator = pipelineAcceleratorPool->CreateDescriptorSetAccelerator(
+					patches,
+					ParameterBox {}, ParameterBox {}, resourceBindings, samplerBindings);
+				descriptorSetFuture = pipelineAcceleratorPool->GetDescriptorSet(*descriptorSetAccelerator);
+				StallForDescriptorSet(*threadContext, *descriptorSetFuture);
+				REQUIRE_THROWS(descriptorSetFuture->Actualize());
+			}
+		}
+
+		////////////////////////////////////////
 
 		pipelineAcceleratorPool.reset();
 		compilers.DeregisterCompiler(shaderCompiler2Registration._registrationId);

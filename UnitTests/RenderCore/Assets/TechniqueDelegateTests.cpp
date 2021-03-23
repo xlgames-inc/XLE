@@ -455,6 +455,10 @@ namespace UnitTests
 
 		auto testHelper = MakeTestHelper();
 
+		auto cleanup = AutoCleanup([]() {
+			::Assets::Services::GetAssetSets().Clear();
+		});
+
 		SECTION("Retrieve minimal legacy technique")
 		{
 			static const char simplePatchCollectionFragments[] = R"--(
@@ -511,8 +515,7 @@ namespace UnitTests
 
 			auto globalTransform = MakeGlobalTransformConstants(targetDesc);
 
-			// SECTION("2x2 combinations")
-			if (false)
+			SECTION("2x2 combinations")
 			{
 				std::shared_ptr<RenderCore::Assets::ShaderPatchCollection> patchCollectionNoDeform, patchCollectionWithDeform;
 

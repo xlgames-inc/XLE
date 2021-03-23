@@ -362,8 +362,8 @@ namespace RenderCore { namespace Techniques
 		virtual std::shared_ptr<DescriptorSetAccelerator> CreateDescriptorSetAccelerator(
 			const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
 			const ParameterBox& materialSelectors,
-			const Utility::ParameterBox& constantBindings,
-			const Utility::ParameterBox& resourceBindings,
+			const ParameterBox& constantBindings,
+			const ParameterBox& resourceBindings,
 			IteratorRange<const std::pair<uint64_t, SamplerDesc>*> samplerBindings) override;
 
 		std::shared_ptr<SequencerConfig> CreateSequencerConfig(
@@ -397,6 +397,7 @@ namespace RenderCore { namespace Techniques
 		ParameterBox _globalSelectors;
 		std::vector<std::pair<uint64_t, std::weak_ptr<SequencerConfig>>> _sequencerConfigById;
 		std::vector<std::pair<uint64_t, std::weak_ptr<PipelineAccelerator>>> _pipelineAccelerators;
+		std::vector<std::pair<uint64_t, std::weak_ptr<DescriptorSetAccelerator>>> _descriptorSetAccelerators;
 		std::vector<std::pair<uint64_t, std::shared_ptr<ISampler>>> _compiledSamplerStates;
 
 		SequencerConfig MakeSequencerConfig(
@@ -566,10 +567,29 @@ namespace RenderCore { namespace Techniques
 	std::shared_ptr<DescriptorSetAccelerator> PipelineAcceleratorPool::CreateDescriptorSetAccelerator(
 		const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
 		const ParameterBox& materialSelectors,
-		const Utility::ParameterBox& constantBindings,
-		const Utility::ParameterBox& resourceBindings,
+		const ParameterBox& constantBindings,
+		const ParameterBox& resourceBindings,
 		IteratorRange<const std::pair<uint64_t, SamplerDesc>*> samplerBindings)
 	{
+		uint64_t hash = HashCombine(materialSelectors.GetHash(), materialSelectors.GetParameterNamesHash());
+		hash = HashCombine(constantBindings.GetHash(), hash);
+		hash = HashCombine(constantBindings.GetParameterNamesHash(), hash);
+		hash = HashCombine(resourceBindings.GetHash(), hash);
+		hash = HashCombine(resourceBindings.GetParameterNamesHash(), hash);
+		for (const auto&s:samplerBindings) {		// (note, different ordering will result in different hashes)
+			hash = HashCombine(s.first, hash);
+			hash = HashCombine(s.second.Hash(), hash);
+		}
+		hash = HashCombine(shaderPatches->GetHash(), hash);
+
+		// If it already exists in the cache, just return it now
+		auto cachei = LowerBound(_descriptorSetAccelerators, hash);
+		if (cachei != _descriptorSetAccelerators.end() && cachei->first == hash) {
+			auto l = cachei->second.lock();
+			if (l)
+				return l;
+		}
+
 		auto result = std::make_shared<DescriptorSetAccelerator>();
 		result->_descriptorSet = std::make_shared<::Assets::AssetFuture<IDescriptorSet>>("descriptorset-accelerator");
 
@@ -592,8 +612,8 @@ namespace RenderCore { namespace Techniques
 				patchCollection->GetInterface().GetMaterialDescriptorSet(),
 				(_flags & PipelineAcceleratorPoolFlags::RecordDescriptorSetBindingInfo) ? &result->_bindingInfo : nullptr);
 		} else {
-			Utility::ParameterBox constantBindingsCopy = constantBindings;
-			Utility::ParameterBox resourceBindingsCopy = resourceBindings;
+			ParameterBox constantBindingsCopy = constantBindings;
+			ParameterBox resourceBindingsCopy = resourceBindings;
 
 			std::weak_ptr<IDevice> weakDevice = _device;
 			std::shared_ptr<DescriptorSetAccelerator> bindingInfoHolder;
@@ -618,6 +638,12 @@ namespace RenderCore { namespace Techniques
 						patchCollection->GetInterface().GetMaterialDescriptorSet(),
 						bindingInfoHolder ? &bindingInfoHolder->_bindingInfo : nullptr);
 				});
+		}
+
+		if (cachei != _descriptorSetAccelerators.end() && cachei->first == hash) {
+			cachei->second = result;		// (we replaced one that expired)
+		} else {
+			_descriptorSetAccelerators.insert(cachei, std::make_pair(hash, result));
 		}
 
 		return result;
