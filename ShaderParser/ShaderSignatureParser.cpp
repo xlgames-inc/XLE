@@ -9,12 +9,13 @@
 #include "Grammar/ShaderLexer.h"
 #include "Grammar/ShaderParser.h"
 #include "Grammar/ShaderTreeWalk.h"
+#include "../OSServices/Log.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/Streams/Stream.h"
 #include <assert.h>
 #include <vector>
-// #include <iostream>
+#include <iostream>
 
 struct SSPFormalArg 
 { 
@@ -80,10 +81,11 @@ namespace ShaderSourceParser
 		if (!ast)
 			Throw(::Exceptions::BasicLabel("Could not build AST from shader fragment input"));
 
-		// StructureDescription(std::cout, ast);
+		// StructureDescription(reinterpret_cast<std::ostream&>(Log(Warning)), ast);
+		// Log(Warning) << std::endl << std::flush;
 
-		auto* strTree = ast->toStringTree(ast);
-		(void)strTree;
+		// auto* strTree = ast->toStringTree(ast);
+		// (void)strTree;
 
 		AntlrPtr<struct ANTLR3_COMMON_TREE_NODE_STREAM_struct> nodes = antlr3CommonTreeNodeStreamNewTree(ast, ANTLR3_SIZE_HINT);
 		AntlrPtr<struct ShaderTreeWalk_Ctx_struct> evalTree = ShaderTreeWalkNew(nodes);

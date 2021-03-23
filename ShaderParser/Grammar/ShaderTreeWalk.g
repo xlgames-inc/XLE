@@ -69,14 +69,14 @@ direction returns [unsigned directionFlags = 0u]
 identifier returns [StringId str = ~0u] : Identifier { str = String_Register(ctx, $Identifier); } ;
 
 typeName returns [StringId str = ~0u]
-	: ^(TYPE_NAME s=identifier) { str = s; }
+	: ^(TYPE_NAME s=identifier identifier*) { str = s; }	// extra identifiers can be for template arguments. We should in theory also support literals here
 	;
 
 semantic returns [StringId str = ~0u]
 	: ^(SEMANTIC n=identifier) { str = n; }
 	;
 
-subscript : ^(SUBSCRIPT .*) ;
+subscript : SUBSCRIPT;
 
 formalArg returns [struct FormalArg result = (struct FormalArg){~0u, ~0u, ~0u, 0}]
 	: ^(FORMAL_ARG
@@ -87,8 +87,6 @@ formalArg returns [struct FormalArg result = (struct FormalArg){~0u, ~0u, ~0u, 0
 			d=direction { result._directionFlags = d; }
 		)
 	;
-
-statement : .;		// this generates warnings because we want to skip an entire tree
 
 function returns [struct Function result = (struct Function){~0u, ~0u, ~0u, UINT_MAX, 0, 0}]
 	: ^(FUNCTION
@@ -101,7 +99,7 @@ function returns [struct Function result = (struct Function){~0u, ~0u, ~0u, UINT
 				result._lastArg = (idx > result._lastArg) ? idx : result._lastArg;
 			})*
 			(retSemantic=semantic { result._returnSemantic = retSemantic; })?
-			(^(BLOCK { result._hasImplementation = 1; } statement*))?
+			(^(BLOCK { result._hasImplementation = 1; }))?
 		)
 	;
 
@@ -110,7 +108,7 @@ parameterStruct returns [struct ParameterStruct result = (struct ParameterStruct
 			n=identifier { result._name = n; }
 			(^(VARIABLE t=typeName
 				(
-					^(VARIABLE_NAME n=identifier subscript* s=semantic (^(ASSIGNMENT_EXPRESSION .*))?)
+					^(VARIABLE_NAME n=identifier subscript* (s=semantic|{s=~0u;}))
 					{
 						VariableId var = Variable_Register(ctx, n, t, s);
 						result._firstParameter = (var < result._firstParameter) ? var : result._firstParameter;
@@ -124,12 +122,11 @@ parameterStruct returns [struct ParameterStruct result = (struct ParameterStruct
 toplevel
 	: p=parameterStruct { ParameterStruct_Register(ctx, &p); }
 	| f=function { Function_Register(ctx, &f); }
-	| ^(UNIFORM 
-		^(TYPE_NAME t=typeName
-			(
-				^(VARIABLE_NAME identifier subscript* semantic? (^(ASSIGNMENT_EXPRESSION .*))?)
-			)*
-		)
+	| ^(UNIFORM t=typeName
+		(
+			^(VARIABLE_NAME identifier subscript* semantic?)
+		)*
 	  )
 	;
+
 entrypoint : toplevel* ;

@@ -150,7 +150,7 @@ global
 	:	uniform
 	;
 	
-variablename_single : id=ident sub+=subscript* sem=semantic? registerAssignment? ('=' e=expression)? -> ^(VARIABLE_NAME $id $sub* $sem? ^(ASSIGNMENT_EXPRESSION $e)?);
+variablename_single : id=ident sub+=subscript* sem=semantic? registerAssignment? ('=' e=expression)? -> ^(VARIABLE_NAME $id $sub* $sem?);
 variablename_list	: variablename_single (',' variablename_single)* -> variablename_single+;
 
 uniform
@@ -164,7 +164,7 @@ variable
 	;
 	
 subscript
-	:	'[' (e=expression)? ']' -> ^(SUBSCRIPT $e)
+	:	'[' (e=expression)? ']' -> SUBSCRIPT
 	;
 
 registerValue : ident;
@@ -207,10 +207,9 @@ functionAttributeType
 	| 'domain' | 'partitioning' | 'outputtopology' | 'patchconstantfunc' | 'outputcontrolpoints' | 'maxtessfactor' // hull & domain shaders
 	;
 	
-staticExpression : literal|StringLiteral|ident;
-staticExpressionList : staticExpression (','! staticExpression)*;
-
-functionAttributes :	('[' functionAttributeType ('(' staticExpressionList ')')? ']')*;
+identifierOrLiteral : literal|StringLiteral|ident;
+identifierOrLiteralList : identifierOrLiteral (','! identifierOrLiteral)*;
+functionAttributes : ('[' functionAttributeType ('(' identifierOrLiteralList ')')? ']')*;
 
 function
 	:	'export'? functionAttributes ret=type_name name=ident '(' args=formal_arglist ')' semantic? block
@@ -233,7 +232,7 @@ function_signature
 //		We're going to use common preprocessor formatting conventions to try to limit
 //		matches with this rule. We can use a semantic predicate test the identifier
 isolated_macro
-	:	{ LooksLikePreprocessorMacro(LT(1)) }? Identifier
+	:	{ LooksLikePreprocessorMacro(LT(1)) }? Identifier!
 	;
 	
 semantic
@@ -261,27 +260,26 @@ streamOutputObject : 'PointStream' | 'LineStream' | 'TriangleStream';
 type_name
 	:	sampler_type_name										-> ^(TYPE_NAME sampler_type_name)
 	|	texture_type_name										-> ^(TYPE_NAME texture_type_name)
-	|	texture_type_name ('<' staticExpressionList '>')		-> ^(TYPE_NAME texture_type_name staticExpressionList)
-	|	structuredBufferTypeName '<' staticExpressionList '>'	-> ^(TYPE_NAME structuredBufferTypeName staticExpressionList)
-	|	streamOutputObject '<' staticExpressionList '>'			-> ^(TYPE_NAME streamOutputObject staticExpressionList)
-	|	'InputPatch' '<' staticExpressionList '>'				-> ^(TYPE_NAME 'InputPatch' staticExpressionList)
-	|	'OutputPatch' '<' staticExpressionList '>'				-> ^(TYPE_NAME 'OutputPatch' staticExpressionList)
+	|	texture_type_name ('<' identifierOrLiteralList '>')		-> ^(TYPE_NAME texture_type_name identifierOrLiteralList)
+	|	structuredBufferTypeName '<' identifierOrLiteralList '>'	-> ^(TYPE_NAME structuredBufferTypeName identifierOrLiteralList)
+	|	streamOutputObject '<' identifierOrLiteralList '>'			-> ^(TYPE_NAME streamOutputObject identifierOrLiteralList)
+	|	'InputPatch' '<' identifierOrLiteralList '>'				-> ^(TYPE_NAME 'InputPatch' identifierOrLiteralList)
+	|	'OutputPatch' '<' identifierOrLiteralList '>'				-> ^(TYPE_NAME 'OutputPatch' identifierOrLiteralList)
 	|	ident													-> ^(TYPE_NAME ident)
 	;
 */
 
 type_name
 	:	ident										-> ^(TYPE_NAME ident)
-	|	ident ('<' staticExpressionList '>')		-> ^(TYPE_NAME ident staticExpressionList)
+	|	ident ('<' identifierOrLiteralList '>')		-> ^(TYPE_NAME ident identifierOrLiteralList)
 	;
-
 	
 ident
 	:	id=Identifier
 	;	
 	
 block
-	:	'{' statements+=statement* '}' -> ^(BLOCK $statements*)
+	:	'{' statements+=statement* '}' -> ^(BLOCK)		// Don't output statements (ie, with: $statements*) because we don't actually parse that in the tree walker
 	;
 	
 formal_arglist

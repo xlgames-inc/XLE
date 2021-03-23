@@ -121,31 +121,44 @@ static const int NonPreprocessorLine0 = 0;
 	public:
 		std::shared_ptr<::Assets::MountingTree> _mountingTree;
 		::Assets::MountingTree::MountID _utDataMount;
+		::Assets::MountingTree::MountID _xleresMount;
 
 		LocalHelper()
 		{
 			_mountingTree = std::make_shared<::Assets::MountingTree>(s_defaultFilenameRules);
 			_utDataMount = _mountingTree->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
-			// _mountingTree->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
+			_xleresMount = _mountingTree->Mount("xleres", UnitTests::CreateEmbeddedResFileSystem());
 			::Assets::MainFileSystem::Init(_mountingTree, nullptr);
 		}
 
 		~LocalHelper()
 		{
 			::Assets::MainFileSystem::Shutdown();
-			_mountingTree->Unmount(_utDataMount);			
+			_mountingTree->Unmount(_utDataMount);
+			_mountingTree->Unmount(_xleresMount);
 			_mountingTree.reset();
 		}
 	};
 
 	TEST_CASE( "ShaderParser-ParseAllSystemShaderSources", "[shader_parser]" )
 	{
-			// Search for all of the shader sources in the xleres directory
-		std::vector<std::string> inputFiles;
-		FindShaderSources(inputFiles, ::Assets::MainFileSystem::BeginWalk("xleres"));
-		for (auto& i:inputFiles) {
-			auto memBlock = ::Assets::TryLoadFileAsBlob(MakeStringSection(i));
+		LocalHelper localHelper;
 
+			// Search for all of the shader sources in the embedded xleres directory
+		#define X(file, id) std::string { #file },
+		std::vector<std::string> inputFiles = {
+			#include "../../EmbeddedResFileList.h"
+		};
+		#undef X
+		
+		for (auto& i:inputFiles) {
+			auto splitter = MakeFileNameSplitter(i);
+			if (	!XlFindStringI(splitter.Extension(), "hlsl")
+				&&  !XlEqStringI(splitter.Extension(), "sh")
+				&&  !XlEqStringI(splitter.Extension(), "h"))
+				continue;
+
+			auto memBlock = ::Assets::TryLoadFileAsBlob(MakeStringSection("xleres/" + i));
 			const char* flgId = "FunctionLinkingGraph";
 			if (XlFindString(MakeStringSection((const char*)AsPointer(memBlock->begin()), (const char*)AsPointer(memBlock->end())), flgId))
 				continue;

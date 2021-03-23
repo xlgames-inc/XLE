@@ -106,40 +106,79 @@ namespace ShaderSourceParser { namespace AntlrHelper
         // would like to have a bit more flexibility here (such as using UTF8
         // for the error message strings)
         using CharType = decltype(error._message)::value_type;
-        ANTLR3_COMMON_TOKEN* token = (ANTLR3_COMMON_TOKEN*)exc->token;
-        std::string text;
-		if (token)
-			text = AsString<CharType>(token->getText(token));
 
         error._lineStart = error._lineEnd = exc->line;
         error._charStart = error._charEnd = exc->charPositionInLine;
 
         std::basic_stringstream<CharType> str;
-        switch (exc->type) {
-        case ANTLR3_UNWANTED_TOKEN_EXCEPTION:
-            str << "Extraneous input - expected (" << (tokenNames ? tokenNames[exc->expecting] : (const ANTLR3_UINT8*)"<<unknown>>") << ")";
-            break;
+        if (tokenNames && exc->expectingSet) {
 
-        case ANTLR3_MISSING_TOKEN_EXCEPTION:
-            str << "Missing (" << (tokenNames ? tokenNames[exc->expecting] : (const ANTLR3_UINT8*)"<<unknown>>") << ")";
-            break;
+            auto* bitset = (ANTLR3_BITSET*)exc->expectingSet;
+            auto* expectedIntList = (*bitset->toIntList)(bitset);
+            auto expectedCount = (*bitset->size)(bitset);
 
-        case ANTLR3_RECOGNITION_EXCEPTION:
-            str << "Syntax error";
-            break;
+            bool printExpectedList = false;
+            switch (exc->type) {
+            case ANTLR3_UNWANTED_TOKEN_EXCEPTION:
+                str << "Extraneous input - expected any of the following tokens:" << std::endl;
+                printExpectedList = true;
+                break;
 
-        case ANTLR3_MISMATCHED_TOKEN_EXCEPTION:
-            str << "Expected (" << (tokenNames ? tokenNames[exc->expecting] : (const ANTLR3_UINT8*)"<<unknown>>") << ")";
-            break;
+            case ANTLR3_MISSING_TOKEN_EXCEPTION:
+                str << "Missing token -- expected any of the following tokens:" << std::endl;
+                printExpectedList = true;
+                break;
 
-        case ANTLR3_NO_VIABLE_ALT_EXCEPTION: str << "No viable alternative"; break;
-        case ANTLR3_MISMATCHED_SET_EXCEPTION: str << "Mismatched set"; break;
-        case ANTLR3_EARLY_EXIT_EXCEPTION: str << "Early exit exception"; break;
-        default: str << "Syntax not recognized"; break;
+            case ANTLR3_MISMATCHED_TOKEN_EXCEPTION:
+                str << "Mismatched token. Eexpected any of the following tokens:" << std::endl;
+                printExpectedList = true;
+                break;
+
+            case ANTLR3_RECOGNITION_EXCEPTION: str << "Syntax error"; break;
+            case ANTLR3_NO_VIABLE_ALT_EXCEPTION: str << "No viable alternative"; break;
+            case ANTLR3_MISMATCHED_SET_EXCEPTION: str << "Mismatched set"; break;
+            case ANTLR3_EARLY_EXIT_EXCEPTION: str << "Early exit exception"; break;
+            default: str << "Syntax not recognized"; break;
+            }
+
+            if (printExpectedList) {
+                for (unsigned c=0; c<expectedCount; ++c)
+                    str << "\t" << tokenNames[expectedIntList[c]] << std::endl;
+            }
+
+            free(expectedIntList);
+
+        } else {
+            switch (exc->type) {
+            case ANTLR3_UNWANTED_TOKEN_EXCEPTION:
+                str << "Extraneous input - expected (" << (tokenNames ? tokenNames[exc->expecting] : (const ANTLR3_UINT8*)"<<unknown>>") << ")";
+                break;
+
+            case ANTLR3_MISSING_TOKEN_EXCEPTION:
+                str << "Missing (" << (tokenNames ? tokenNames[exc->expecting] : (const ANTLR3_UINT8*)"<<unknown>>") << ")";
+                break;
+
+            case ANTLR3_RECOGNITION_EXCEPTION:
+                str << "Syntax error";
+                break;
+
+            case ANTLR3_MISMATCHED_TOKEN_EXCEPTION:
+                str << "Expected (" << (tokenNames ? tokenNames[exc->expecting] : (const ANTLR3_UINT8*)"<<unknown>>") << ")";
+                break;
+
+            case ANTLR3_NO_VIABLE_ALT_EXCEPTION: str << "No viable alternative"; break;
+            case ANTLR3_MISMATCHED_SET_EXCEPTION: str << "Mismatched set"; break;
+            case ANTLR3_EARLY_EXIT_EXCEPTION: str << "Early exit exception"; break;
+            default: str << "Syntax not recognized"; break;
+            }
         }
 
         // assert(recognizer->type == ANTLR3_TYPE_PARSER);
-        str << ". Near token: (" << text << ")";
+        ANTLR3_COMMON_TOKEN* token = (ANTLR3_COMMON_TOKEN*)exc->token;
+		if (token) {
+			auto text = AsString<CharType>(token->getText(token));
+            str << ". Near token: (" << text << " at " << token->getLine(token) << ":" << token->getCharPositionInLine(token) << ")";
+        }
 
         str << ". Msg: " << (const char*)exc->message << " (" << exc->type << ")";
 
