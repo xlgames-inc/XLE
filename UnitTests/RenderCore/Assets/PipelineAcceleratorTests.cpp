@@ -185,6 +185,11 @@ namespace UnitTests
 		auto utdatamnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
 		auto testHelper = MakeTestHelper();
 
+		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+		auto filteringRegistration = ShaderSourceParser::RegisterShaderSelectorFilteringCompiler(compilers);
+		auto shaderCompilerRegistration = RenderCore::RegisterShaderCompiler(testHelper->_shaderSource, compilers);
+		auto shaderCompiler2Registration = RenderCore::Techniques::RegisterInstantiateShaderGraphCompiler(testHelper->_shaderSource, compilers);
+
 		auto techniqueSetFile = ::Assets::MakeAsset<Techniques::TechniqueSetFile>("ut-data/basic.tech");
 		auto techniqueSharedResources = Techniques::MakeTechniqueSharedResources(*testHelper->_device);
 		auto techniqueDelegate = Techniques::CreateTechniqueDelegate_Deferred(techniqueSetFile, techniqueSharedResources);
@@ -312,6 +317,10 @@ namespace UnitTests
 			REQUIRE(breakdown1.size() == 1);
 			REQUIRE(breakdown1.begin()->first == 0xff00ff00);
 		}
+
+		compilers.DeregisterCompiler(shaderCompiler2Registration._registrationId);
+		compilers.DeregisterCompiler(shaderCompilerRegistration._registrationId);
+		compilers.DeregisterCompiler(filteringRegistration._registrationId);
 
 		::Assets::MainFileSystem::GetMountingTree()->Unmount(utdatamnt);
 		::Assets::MainFileSystem::GetMountingTree()->Unmount(xlresmnt);

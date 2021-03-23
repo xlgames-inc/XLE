@@ -289,18 +289,20 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			if (!_usingCompatibleSteadyState) {
 				if (!pendingInit) {
-					Internal::SetImageLayout(
-						*_context, *res,
-						res->_steadyStateLayout, res->_steadyStateAccessMask, res->_steadyStateAssociatedStageMask,
-						_capturedLayout, _capturedAccessMask, newMode._pipelineStageFlags);
+					if (res->GetImage())
+						Internal::SetImageLayout(
+							*_context, *res,
+							res->_steadyStateLayout, res->_steadyStateAccessMask, res->_steadyStateAssociatedStageMask,
+							_capturedLayout, _capturedAccessMask, newMode._pipelineStageFlags);
 				} else {
 					// The init operation will normally shift from undefined layout -> steady state
 					// We're just going to skip that and jump directly to our captured layout
 					res->_pendingInitialization = {};
-					Internal::SetImageLayout(
-						*_context, *res,
-						Internal::ImageLayout::Undefined, 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-						_capturedLayout, _capturedAccessMask, newMode._pipelineStageFlags);
+					if (res->GetImage())
+						Internal::SetImageLayout(
+							*_context, *res,
+							Internal::ImageLayout::Undefined, 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+							_capturedLayout, _capturedAccessMask, newMode._pipelineStageFlags);
 				}
 			}
 		}
@@ -327,10 +329,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			// always return back to the "steady state" layout for this resource
 			if (!_usingCompatibleSteadyState) {
-				Internal::SetImageLayout(
-					*_context, *res,
-					_capturedLayout, _capturedAccessMask, _capturedStageMask,
-					res->_steadyStateLayout, res->_steadyStateAccessMask, res->_steadyStateAssociatedStageMask);
+				if (res->GetImage())
+					Internal::SetImageLayout(
+						*_context, *res,
+						_capturedLayout, _capturedAccessMask, _capturedStageMask,
+						res->_steadyStateLayout, res->_steadyStateAccessMask, res->_steadyStateAssociatedStageMask);
 			}
 		}
 

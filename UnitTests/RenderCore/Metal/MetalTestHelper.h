@@ -6,6 +6,7 @@
 
 #include "../../../RenderCore/Init.h"
 #include "../../../RenderCore/ShaderService.h"
+#include "../../../RenderCore/FrameBufferDesc.h"
 #include "../../../RenderCore/Metal/Shader.h"
 #include <memory>
 #include <map>
@@ -59,7 +60,8 @@ namespace UnitTests
         UnitTestFBHelper(
             RenderCore::IDevice& device,
             RenderCore::IThreadContext& threadContext,
-            const RenderCore::ResourceDesc& mainTargetDesc);
+            const RenderCore::ResourceDesc& mainTargetDesc,
+            RenderCore::LoadStore beginLoadStore = RenderCore::LoadStore::Clear);
         ~UnitTestFBHelper();
 
         class IRenderPassToken

@@ -327,7 +327,8 @@ namespace UnitTests
 	UnitTestFBHelper::UnitTestFBHelper(
 		RenderCore::IDevice& device, 
 		RenderCore::IThreadContext& threadContext,
-		const RenderCore::ResourceDesc& mainFBDesc)
+		const RenderCore::ResourceDesc& mainFBDesc,
+		RenderCore::LoadStore beginLoadStore)
 	{
 		using namespace RenderCore;
 		_pimpl = std::make_unique<UnitTestFBHelper::Pimpl>();
@@ -342,7 +343,7 @@ namespace UnitTests
 
 		FrameBufferDesc::Attachment mainAttachment { 0, AsAttachmentDesc(mainFBDesc) };
 		SubpassDesc mainSubpass;
-		mainSubpass.AppendOutput(0, LoadStore::Clear, LoadStore::Retain);
+		mainSubpass.AppendOutput(0, beginLoadStore, LoadStore::Retain);
 		mainSubpass.SetName("unit-test-subpass");
 		_pimpl->_fbDesc = FrameBufferDesc { 
 			std::vector<FrameBufferDesc::Attachment>{ mainAttachment },
