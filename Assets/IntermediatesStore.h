@@ -8,6 +8,9 @@
 #include "ICompileOperation.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/StringUtils.h"
+#include "../Utility/Threading/Mutex.h"
+#include <set>
+#include <vector>
 
 namespace Utility { class OutputStream; }
 namespace OSServices { class BasicFile; }
@@ -35,7 +38,6 @@ namespace Assets
 	class IntermediatesStore
 	{
 	public:
-		using DepVal = std::shared_ptr<DependencyValidation>;
 		using CompileProductsGroupId = uint64_t;
 
 		void StoreCompileProducts(
@@ -43,17 +45,22 @@ namespace Assets
 			CompileProductsGroupId groupId,
 			IteratorRange<const ICompileOperation::SerializedArtifact*> artifacts,
 			::Assets::AssetState state,
-			IteratorRange<const DependentFileState*> dependencies,
-			const ConsoleRig::LibVersionDesc& compilerVersionInfo);
+			IteratorRange<const DependentFileState*> dependencies);
 
 		std::shared_ptr<IArtifactCollection> RetrieveCompileProducts(
             StringSection<> archivableName,
 			CompileProductsGroupId groupId);
 
-		CompileProductsGroupId RegisterCompileProductsGroup(StringSection<> name);
+		CompileProductsGroupId RegisterCompileProductsGroup(
+			StringSection<> name,
+			const ConsoleRig::LibVersionDesc& compilerVersionInfo);
 
 		static auto GetDependentFileState(StringSection<> filename) -> DependentFileState;
 		static void ShadowFile(StringSection<> filename);
+		static bool TryRegisterDependency(
+			const std::shared_ptr<DependencyValidation>& target,
+			const DependentFileState& fileState,
+			const StringSection<> assetName);
 
 		IntermediatesStore(
 			const char baseDirectory[],
@@ -68,7 +75,12 @@ namespace Assets
 		class Pimpl;
 		std::unique_ptr<Pimpl> _pimpl;
 	};
+
+	class StoreReferenceCounts
+	{
+	public:
+		Threading::Mutex _lock;
+		std::set<uint64_t> _storeOperationsInFlight;
+		std::vector<std::pair<uint64_t, unsigned>> _readReferenceCount;
+	};
 }
-
-
-

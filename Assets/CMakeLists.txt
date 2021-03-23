@@ -20,6 +20,7 @@ set(Src
     NascentChunk.cpp
     OSFileSystem.cpp
     RawFileAsset.cpp
+    LooseFilesCache.cpp
     Legacy/AssetsLegacy.cpp)
 
 add_library(Assets STATIC ${Src})

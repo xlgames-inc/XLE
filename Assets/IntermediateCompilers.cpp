@@ -141,8 +141,7 @@ namespace Assets
 					delegate._storeGroupId,
 					MakeIteratorRange(artifactsForStore),
 					::Assets::AssetState::Ready,
-					MakeIteratorRange(deps),
-					delegate._srcVersion);
+					MakeIteratorRange(deps));
 			}
 
 			if (!resultantArtifacts)
@@ -286,7 +285,7 @@ namespace Assets
 		registration->_archiveNameDelegate = std::move(archiveNameDelegate);
 		registration->_compilerLibraryDepVal = compilerDepVal;
 		if (_pimpl->_store)
-			registration->_storeGroupId = _pimpl->_store->RegisterCompileProductsGroup(MakeStringSection(name));
+			registration->_storeGroupId = _pimpl->_store->RegisterCompileProductsGroup(MakeStringSection(name), srcVersion);
 		_pimpl->_delegates.push_back(std::make_pair(result, std::move(registration)));
 		return { result };
 	}

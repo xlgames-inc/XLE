@@ -2,9 +2,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#define _SCL_SECURE_NO_WARNINGS
-
 #include "IntermediatesStore.h"
+#include "LooseFilesCache.h"
 #include "IArtifact.h"
 #include "IFileSystem.h"
 #include "DepVal.h"
@@ -12,16 +11,12 @@
 #include "ChunkFileContainer.h"
 #include "BlockSerializer.h"
 #include "MemoryFile.h"
-#include "ChunkFile.h"
 #include "../OSServices/Log.h"
 #include "../OSServices/RawFS.h"
-#include "../Utility/Streams/PathUtils.h"
-#include "../Utility/Streams/StreamFormatter.h"
-#include "../Utility/Streams/OutputStreamFormatter.h"
-#include "../Utility/Streams/Stream.h"
-#include "../Utility/Streams/StreamDOM.h"
-#include "../Utility/Streams/PathUtils.h"
+#include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Streams/SerializationUtils.h"
+#include "../Utility/Streams/PathUtils.h"
+#include "../Utility/Streams/StreamDOM.h"
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/PtrUtils.h"
@@ -29,139 +24,13 @@
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/FunctionUtils.h"
-#include "../Utility/Conversion.h"
 #include "../Utility/FastParseValue.h"
 #include <filesystem>
-#include <set>
-#include <sstream>
-
-#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-	#include "../OSServices/WinAPI/IncludeWindows.h"
-#endif
 #include <memory>
 
 namespace Assets
 {
-	static const auto ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
 	static const auto ChunkType_Log = ConstHash64<'Log'>::Value;
-	static const auto ChunkType_Multi = ConstHash64<'Mult', 'iChu', 'nk'>::Value;
-
-	class CompileProductsFile
-	{
-	public:
-		struct Product
-		{
-			uint64_t _type;
-			std::string _intermediateArtifact;
-		};
-		std::vector<Product> _compileProducts;
-		std::vector<DependentFileState> _dependencies;
-
-		::Assets::AssetState _state = AssetState::Ready;
-		std::string _basePath;
-
-		const Product* FindProduct(uint64_t type) const
-		{
-			for (const auto&p:_compileProducts)
-				if (p._type == type)
-					return &p;
-			return nullptr;
-		}
-	};
-
-	static void SerializationOperator(OutputStreamFormatter& formatter, const CompileProductsFile& compileProducts)
-	{
-		formatter.WriteKeyedValue("BasePath", compileProducts._basePath);
-		formatter.WriteKeyedValue("Invalid", compileProducts._state == AssetState::Ready ? "0" : "1");
-
-		for (const auto&product:compileProducts._compileProducts) {
-			auto ele = formatter.BeginKeyedElement(std::to_string(product._type));
-			formatter.WriteKeyedValue("Artifact", product._intermediateArtifact.c_str());
-			formatter.EndElement(ele);
-		}
-
-		{
-			auto ele = formatter.BeginKeyedElement("Dependencies");
-			for (const auto&product:compileProducts._dependencies) {
-				formatter.WriteKeyedValue(
-					MakeStringSection(product._filename), 
-					MakeStringSection(std::to_string(product._timeMarker)));
-			}
-			formatter.EndElement(ele);
-		}
-	}
-
-	static void DeserializationOperator(InputStreamFormatter<utf8>& formatter, CompileProductsFile::Product& result)
-	{
-		while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
-			StringSection<utf8> name, value;
-			if (!formatter.TryKeyedItem(name) || !formatter.TryValue(value))
-				Throw(Utility::FormatException("Poorly formed attribute in CompileProductsFile", formatter.GetLocation()));
-			if (XlEqString(name, "Artifact")) {
-				result._intermediateArtifact = value.AsString();
-			} else
-				Throw(Utility::FormatException("Unknown attribute in CompileProductsFile", formatter.GetLocation()));
-		}
-	}
-
-	static void DerializeDependencies(InputStreamFormatter<utf8>& formatter, CompileProductsFile& result)
-	{
-		while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
-			StringSection<utf8> name, value;
-			if (!formatter.TryKeyedItem(name) || !formatter.TryValue(value))
-				Throw(Utility::FormatException("Poorly formed attribute in CompileProductsFile", formatter.GetLocation()));
-			result._dependencies.push_back(DependentFileState {
-				name.AsString(),
-				Conversion::Convert<uint64_t>(value)
-			});
-		}
-	}
-
-	static StringSection<utf8> DeserializeValue(InputStreamFormatter<utf8>& formatter)
-	{
-		StringSection<utf8> value;
-		if (!formatter.TryValue(value))
-			Throw(Utility::FormatException("Expecting value", formatter.GetLocation()));
-		return value;
-	}
-
-	static void DeserializationOperator(InputStreamFormatter<utf8>& formatter, CompileProductsFile& result)
-	{
-		while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
-			InputStreamFormatter<utf8>::InteriorSection name;
-			if (!formatter.TryKeyedItem(name))
-				Throw(Utility::FormatException("Poorly formed item in CompileProductsFile", formatter.GetLocation()));
-
-			if (XlEqString(name, "Dependencies")) {
-				RequireBeginElement(formatter);
-				DerializeDependencies(formatter, result);
-				RequireEndElement(formatter);
-			} else if (XlEqString(name, "BasePath")) {
-				result._basePath = DeserializeValue(formatter).AsString();
-			} else if (XlEqString(name, "Invalid")) {
-				if (XlEqString(DeserializeValue(formatter), "1")) {
-					result._state = AssetState::Invalid;
-				} else
-					result._state = AssetState::Ready;
-			} else if (formatter.PeekNext() == FormatterBlob::BeginElement) {
-				RequireBeginElement(formatter);
-				CompileProductsFile::Product product;
-				formatter >> product;
-				product._type = Conversion::Convert<uint64_t>(name);
-				result._compileProducts.push_back(product);
-				RequireEndElement(formatter);
-			} else
-				Throw(Utility::FormatException("Unknown attribute in CompileProductsFile", formatter.GetLocation()));
-		}
-	}
-
-	class StoreReferenceCounts
-	{
-	public:
-		Threading::Mutex _lock;
-		std::set<uint64_t> _storeOperationsInFlight;
-		std::vector<std::pair<uint64_t, unsigned>> _readReferenceCount;
-	};
 
 	class IntermediatesStore::Pimpl
 	{
@@ -177,14 +46,16 @@ namespace Assets
 		};
 		ConstructorOptions _constructorOptions;
 
-		std::unordered_map<uint64_t, std::string> _groupIdToDirName;
+		struct Group
+		{
+			std::shared_ptr<LooseFilesStorage> _looseFilesStorage;
+		};
+
+		std::unordered_map<uint64_t, Group> _groups;
 
 		std::shared_ptr<StoreReferenceCounts> _storeRefCounts;
 
 		void ResolveBaseDirectory() const;
-		std::string MakeStoreName(
-			StringSection<> archivableName,
-			CompileProductsGroupId groupId) const;
 		uint64_t MakeHashCode(
 			StringSection<> archivableName,
 			CompileProductsGroupId groupId) const;
@@ -203,53 +74,12 @@ namespace Assets
 		return result;
 	}
 
-	std::string IntermediatesStore::Pimpl::MakeStoreName(
-		StringSection<> archivableName,
-		CompileProductsGroupId groupId) const
-	{
-		ResolveBaseDirectory();
-
-		assert(_groupIdToDirName.find(groupId) != _groupIdToDirName.end());
-		const auto& groupName = _groupIdToDirName.find(groupId)->second;
-
-		std::string result;
-		result.reserve(_resolvedBaseDirectory.size() + 1 + groupName.size() + 1 + archivableName.size());
-		result.insert(result.end(), _resolvedBaseDirectory.begin(), _resolvedBaseDirectory.end());
-		result.push_back('/');
-		result.insert(result.end(), groupName.begin(), groupName.end());
-		result.push_back('/');
-		for (auto b:archivableName)
-			result.push_back((b != ':' && b != '*')?b:'-');
-		return result;
-	}
-
 	uint64_t IntermediatesStore::Pimpl::MakeHashCode(
 		StringSection<> archivableName,
 		CompileProductsGroupId groupId) const
 	{
 		return Hash64(archivableName.begin(), archivableName.end(), groupId);
 	}
-
-	template <int DestCount>
-		static void MakeDepFileName(ResChar (&destination)[DestCount], StringSection<ResChar> baseDirectory, StringSection<ResChar> depFileName)
-		{
-				//  if the prefix of "baseDirectory" and "intermediateFileName" match, we should skip over that
-			const ResChar* f = depFileName.begin(), *b = baseDirectory.begin();
-
-			while (f != depFileName.end() && b != baseDirectory.end() && ConvChar(*f) == ConvChar(*b)) { ++f; ++b; }
-			while (f != depFileName.end() && ConvChar(*f) == '/') { ++f; }
-
-			static_assert(DestCount > 0, "Attempting to use MakeDepFileName with zero length array");
-			auto* dend = &destination[DestCount-1];
-			auto* d = destination;
-			auto* s = baseDirectory.begin();
-			while (d != dend && s != baseDirectory.end()) *d++ = *s++;
-			s = "/.deps/";
-			while (d != dend && *s != '\0') *d++ = *s++;
-			s = f;
-			while (d != dend && s != depFileName.end()) *d++ = *s++;
-			*d = '\0';
-		}
 
 	class RetainedFileRecord : public DependencyValidation
 	{
@@ -304,99 +134,7 @@ namespace Assets
 		}
 	}
 
-	DependentFileState IntermediatesStore::GetDependentFileState(StringSection<ResChar> filename)
-	{
-		return GetRetainedFileRecord(filename)->_state;
-	}
-
-	void IntermediatesStore::ShadowFile(StringSection<ResChar> filename)
-	{
-		auto record = GetRetainedFileRecord(filename);
-		record->_state._status = DependentFileState::Status::Shadowed;
-
-			// propagate change messages...
-			// (duplicating processing from RegisterFileDependency)
-		MainFileSystem::TryFakeFileChange(filename);
-		record->OnChange();
-	}
-
-	static std::string DescriptiveName(const StringSection<ResChar> initializers[], unsigned initializerCount)
-	{
-		if (!initializerCount) return "<<unnamed>>";
-		std::stringstream str;
-		for (unsigned i=0; i<initializerCount; ++i) {
-			if (i != 0) str << "-";
-			str << initializers[i];
-		}
-		return str.str();
-	}
-
-	class CompileProductsArtifactCollection : public IArtifactCollection
-	{
-	public:
-		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const override
-		{
-			// look for the main chunk file in the compile products -- we'll use this for resolving requests
-			for (const auto&prod:_productsFile._compileProducts)
-				if (prod._type == ChunkType_Multi) {
-					// open with no sharing
-					auto mainChunkFile = MainFileSystem::OpenFileInterface(prod._intermediateArtifact, "rb", 0);
-					ChunkFileContainer temp;
-					return temp.ResolveRequests(*mainChunkFile, requests);
-				}
-			return {};
-		}
-
-		DepValPtr GetDependencyValidation() const override { return _depVal; }
-		StringSection<ResChar> GetRequestParameters() const override { return {}; }
-		AssetState GetAssetState() const override { return _productsFile._state; }
-		CompileProductsArtifactCollection(
-			const CompileProductsFile& productsFile, 
-			const ::Assets::DepValPtr& depVal,
-			const std::shared_ptr<StoreReferenceCounts>& refCounts,
-			uint64_t refCountHashCode)
-		: _productsFile(productsFile), _depVal(depVal)
-		, _refCounts(refCounts), _refCountHashCode(refCountHashCode)
-		{
-			ScopedLock(_refCounts->_lock);
-			auto read = LowerBound(_refCounts->_readReferenceCount, _refCountHashCode);
-			if (read != _refCounts->_readReferenceCount.end() && read->first == _refCountHashCode) {
-				++read->second;
-			} else
-				_refCounts->_readReferenceCount.insert(read, std::make_pair(_refCountHashCode, 1));
-		}
-
-		~CompileProductsArtifactCollection() 
-		{
-			ScopedLock(_refCounts->_lock);
-			auto read = LowerBound(_refCounts->_readReferenceCount, _refCountHashCode);
-			if (read != _refCounts->_readReferenceCount.end() && read->first == _refCountHashCode) {
-				assert(read->second > 0);
-				--read->second;
-			} else {
-				Log(Error) << "Missing _readReferenceCount marker during cleanup op in RetrieveCompileProducts" << std::endl;
-			}
-		}
-
-		CompileProductsArtifactCollection(const CompileProductsArtifactCollection&) = delete;
-		CompileProductsArtifactCollection& operator=(const CompileProductsArtifactCollection&) = delete;
-	private:
-		CompileProductsFile _productsFile;
-		DepValPtr _depVal;
-		std::shared_ptr<StoreReferenceCounts> _refCounts;
-		uint64_t _refCountHashCode;
-	};
-
-	static std::shared_ptr<IArtifactCollection> MakeArtifactCollection(
-		const CompileProductsFile& productsFile, 
-		const ::Assets::DepValPtr& depVal,
-		const std::shared_ptr<StoreReferenceCounts>& refCounts,
-		uint64_t refCountHashCode)
-	{
-		return std::make_shared<CompileProductsArtifactCollection>(productsFile, depVal, refCounts, refCountHashCode);
-	}
-
-	bool TryRegisterDependency(
+	bool IntermediatesStore::TryRegisterDependency(
 		const std::shared_ptr<DependencyValidation>& target,
 		const DependentFileState& fileState,
 		const StringSection<> assetName)
@@ -423,6 +161,22 @@ namespace Assets
 		}
 
 		return true;
+	}
+
+	DependentFileState IntermediatesStore::GetDependentFileState(StringSection<ResChar> filename)
+	{
+		return GetRetainedFileRecord(filename)->_state;
+	}
+
+	void IntermediatesStore::ShadowFile(StringSection<ResChar> filename)
+	{
+		auto record = GetRetainedFileRecord(filename);
+		record->_state._status = DependentFileState::Status::Shadowed;
+
+			// propagate change messages...
+			// (duplicating processing from RegisterFileDependency)
+		MainFileSystem::TryFakeFileChange(filename);
+		record->OnChange();
 	}
 
 	std::shared_ptr<IArtifactCollection> IntermediatesStore::RetrieveCompileProducts(
@@ -454,46 +208,11 @@ namespace Assets
 			});
 		(void)cleanup;
 
-			//  When we process a file, we write a little text file to the
-			//  ".deps" directory. This contains a list of dependency files, and
-			//  the state of those files when this file was compiled.
-			//  If the current files don't match the state that's recorded in
-			//  the .deps file, then we can assume that it is out of date and
-			//  must be recompiled.
+		auto groupi = _pimpl->_groups.find(groupId);
+		if (groupi == _pimpl->_groups.end())
+			Throw(std::runtime_error("GroupId has not be registered in intermediates store during retrieve operation"));
 
-		auto intermediateName = _pimpl->MakeStoreName(archivableName, groupId);
-		std::unique_ptr<IFileInterface> productsFile;
-		auto ioResult = MainFileSystem::TryOpen(productsFile, intermediateName.c_str(), "rb", 0);
-		if (ioResult != ::Assets::IFileSystem::IOReason::Success || !productsFile)
-			return nullptr;
-	
-		size_t size = productsFile->GetSize();
-		auto productsFileData = std::make_unique<char[]>(size);
-		productsFile->Read(productsFileData.get(), 1, size);
-
-		InputStreamFormatter<> formatter(
-			MakeStringSection(productsFileData.get(), PtrAdd(productsFileData.get(), size)));
-
-		CompileProductsFile finalProductsFile;
-		formatter >> finalProductsFile;
-
-		auto depVal = std::make_shared<DependencyValidation>();
-
-		for (const auto&dep:finalProductsFile._dependencies) {
-			if (!finalProductsFile._basePath.empty()) {
-				auto adjustedDep = dep;
-				char buffer[MaxPath];
-				Legacy::XlConcatPath(buffer, dimof(buffer), finalProductsFile._basePath.c_str(), AsPointer(dep._filename.begin()), AsPointer(dep._filename.end()));
-				adjustedDep._filename = buffer;
-				if (!TryRegisterDependency(depVal, adjustedDep, archivableName))
-					return nullptr;
-			} else {
-				if (!TryRegisterDependency(depVal, dep, archivableName))
-					return nullptr;
-			}
-		}
-
-		return MakeArtifactCollection(finalProductsFile, depVal, _pimpl->_storeRefCounts, hashCode);
+		return groupi->second._looseFilesStorage->RetrieveCompileProducts(archivableName, _pimpl->_storeRefCounts, hashCode);
 	}
 
 	void IntermediatesStore::StoreCompileProducts(
@@ -501,8 +220,7 @@ namespace Assets
 		CompileProductsGroupId groupId,
 		IteratorRange<const ICompileOperation::SerializedArtifact*> artifacts,
 		::Assets::AssetState state,
-		IteratorRange<const DependentFileState*> dependencies,
-		const ConsoleRig::LibVersionDesc& compilerVersionInfo)
+		IteratorRange<const DependentFileState*> dependencies)
 	{
 		//
 		//		Maintain _pimpl->_storeOperationsInFlight, which just records what
@@ -521,9 +239,8 @@ namespace Assets
 			_pimpl->_storeRefCounts->_storeOperationsInFlight.insert(hashCode);
 		}
 
-		bool successfulStore = false;
 		auto cleanup = AutoCleanup(
-			[&successfulStore, hashCode, this]() {
+			[hashCode, this]() {
 				ScopedLock(this->_pimpl->_storeRefCounts->_lock);
 				auto existing = this->_pimpl->_storeRefCounts->_storeOperationsInFlight.find(hashCode);
 				if (existing != this->_pimpl->_storeRefCounts->_storeOperationsInFlight.end()) {
@@ -538,91 +255,11 @@ namespace Assets
 		// 		Now write out the compile products
 		//
 
-		CompileProductsFile compileProductsFile;
-		compileProductsFile._state = state;
+		auto groupi = _pimpl->_groups.find(groupId);
+		if (groupi == _pimpl->_groups.end())
+			Throw(std::runtime_error("GroupId has not be registered in intermediates store during retrieve operation"));
 
-		for (const auto& s:dependencies) {
-			auto filename = MakeSplitPath(s._filename).Simplify().Rebuild();
-			assert(!filename.empty());
-			compileProductsFile._dependencies.push_back({filename, s._timeMarker});
-		}
-
-		auto intermediateName = _pimpl->MakeStoreName(archivableName, groupId);
-		OSServices::CreateDirectoryRecursive(MakeFileNameSplitter(intermediateName).DriveAndPath());
-		std::vector<std::pair<std::string, std::string>> renameOps;
-
-		// Will we create one chunk file that will contain most of the artifacts
-		// However, some special artifacts (eg, metric files), can become separate files
-		std::vector<ICompileOperation::SerializedArtifact> chunksInMainFile;
-		for (const auto&a:artifacts)
-			if (a._type == ChunkType_Metrics) {
-				std::string metricsName;
-				if (!a._name.empty()) {
-					metricsName = intermediateName + "-" + a._name + ".metrics";
-				} else 
-					metricsName = intermediateName + ".metrics";
-				auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".staging", "wb", 0);
-				outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
-				compileProductsFile._compileProducts.push_back({a._type, metricsName});
-				renameOps.push_back({metricsName + ".staging", metricsName});
-			} else if (a._type == ChunkType_Log) {
-				std::string metricsName;
-				if (!a._name.empty()) {
-					metricsName = intermediateName + "-" + a._name + ".log";
-				} else 
-					metricsName = intermediateName + ".log";
-				auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".staging", "wb", 0);
-				outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
-				compileProductsFile._compileProducts.push_back({a._type, metricsName});
-				renameOps.push_back({metricsName + ".staging", metricsName});
-			} else {
-				chunksInMainFile.push_back(a);
-			}
-
-		if (!chunksInMainFile.empty()) {
-			auto mainBlobName = intermediateName + ".chunk";
-			auto outputFile = MainFileSystem::OpenFileInterface(mainBlobName + ".staging", "wb", 0);
-			ChunkFile::BuildChunkFile(*outputFile, MakeIteratorRange(chunksInMainFile), compilerVersionInfo);
-			compileProductsFile._compileProducts.push_back({ChunkType_Multi, mainBlobName});
-			renameOps.push_back({mainBlobName + ".staging", mainBlobName});
-		}
-
-		// note -- we can set compileProductsFile._basePath here, and then make the dependencies
-		// 			within the compiler products file into relative filenames
-		/*
-			auto basePathSplitPath = MakeSplitPath(compileProductsFile._basePath);
-			if (!compileProductsFile._basePath.empty()) {
-				filename = MakeRelativePath(basePathSplitPath, MakeSplitPath(filename));
-			} else {
-		*/
-
-		{
-			std::shared_ptr<IFileInterface> productsFile = MainFileSystem::OpenFileInterface(intermediateName + ".staging", "wb", 0); // note -- no sharing allowed on this file. We take an exclusive lock on it
-			FileOutputStream stream(productsFile);
-			OutputStreamFormatter fmtter(stream);
-			fmtter << compileProductsFile;
-			renameOps.push_back({intermediateName + ".staging", intermediateName});
-		}
-
-#if defined(_DEBUG)
-		// Check for duplicated names in renameOps. Any dupes will result in exceptions later
-		for (auto i=renameOps.begin(); i!=renameOps.end(); ++i)
-			for (auto i2=renameOps.begin(); i2!=i; ++i2) {
-				if (i->first == i2->first)
-					Throw(std::runtime_error("Duplicated rename op in IntermediatesStore for intermediate: " + i->first));
-				if (i->second == i2->second)
-					Throw(std::runtime_error("Duplicated rename op in IntermediatesStore for intermediate: " + i->second));
-			}
-#endif
-
-		// If we get to here successfully, go ahead and rename all of the staging files to their final names 
-		// This gives us a little bit of protection against exceptions while writing out the staging files
-		for (const auto& renameOp:renameOps) {
-			std::filesystem::remove(renameOp.second);
-			std::filesystem::rename(renameOp.first, renameOp.second);
-		}
-
-		successfulStore = false;		
+		groupi->second._looseFilesStorage->StoreCompileProducts(archivableName, artifacts, state, dependencies);
 	}
 
 	void IntermediatesStore::Pimpl::ResolveBaseDirectory() const
@@ -695,15 +332,17 @@ namespace Assets
 		_resolvedBaseDirectory = goodBranchDir;
 	}
 
-	auto IntermediatesStore::RegisterCompileProductsGroup(StringSection<> name) -> CompileProductsGroupId
+	auto IntermediatesStore::RegisterCompileProductsGroup(StringSection<> name, const ConsoleRig::LibVersionDesc& compilerVersionInfo) -> CompileProductsGroupId
 	{
 		auto id = Hash64(name.begin(), name.end());
-		auto existing = _pimpl->_groupIdToDirName.find(id);
-		if (existing == _pimpl->_groupIdToDirName.end()) {
-			auto safeName = MakeSafeName(name);
-			_pimpl->_groupIdToDirName.insert({id, safeName});
-		} else {
-			assert(existing->second == MakeSafeName(name));
+		auto existing = _pimpl->_groups.find(id);
+		if (existing == _pimpl->_groups.end()) {
+			auto safeGroupName = MakeSafeName(name);
+			_pimpl->ResolveBaseDirectory();
+			std::string looseFilesBase = Concatenate(_pimpl->_resolvedBaseDirectory, "/", safeGroupName, "/");
+			Pimpl::Group newGroup;
+			newGroup._looseFilesStorage = std::make_shared<LooseFilesStorage>(looseFilesBase, compilerVersionInfo);
+			_pimpl->_groups.insert({id, std::move(newGroup)});
 		}
 		return id;
 	}
