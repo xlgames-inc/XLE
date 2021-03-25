@@ -72,7 +72,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         RenderCore/Assets/TransformationMachineOpt.cpp
         RenderCore/Assets/RenderCoreCompilerTests.cpp
         RenderCore/Assets/FakeModelCompiler.cpp
-		RenderCore/Assets/ShaderCompilation.cpp
+		RenderCore/Assets/ShaderCompilationTests.cpp
         RenderCore/Assets/TechniqueDelegateTests.cpp
         RenderCore/Assets/TechniqueFileTests.cpp
         RenderCore/Assets/NodeGraphInstantiationTests.cpp

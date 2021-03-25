@@ -11,6 +11,7 @@
 #include "ChunkFileContainer.h"
 #include "BlockSerializer.h"
 #include "MemoryFile.h"
+#include "ArchiveCache.h"
 #include "../OSServices/Log.h"
 #include "../OSServices/RawFS.h"
 #include "../ConsoleRig/GlobalServices.h"
@@ -35,6 +36,7 @@ namespace Assets
 	class IntermediatesStore::Pimpl
 	{
 	public:
+		Threading::Mutex _lock;
 		mutable std::string _resolvedBaseDirectory;
 		mutable std::unique_ptr<IFileInterface> _markerFile;
 
@@ -49,6 +51,8 @@ namespace Assets
 		struct Group
 		{
 			std::shared_ptr<LooseFilesStorage> _looseFilesStorage;
+			std::shared_ptr<ArchiveCacheSet> _archiveCacheSet;
+			std::string _archiveCacheBase;
 		};
 
 		std::unordered_map<uint64_t, Group> _groups;
@@ -59,6 +63,71 @@ namespace Assets
 		uint64_t MakeHashCode(
 			StringSection<> archivableName,
 			CompileProductsGroupId groupId) const;
+		uint64_t MakeHashCode(
+			StringSection<> archiveName,
+			ArchiveEntryId entryId,
+			CompileProductsGroupId groupId) const;
+
+		struct ReadRefCountLock
+		{
+			ReadRefCountLock(Pimpl* pimpl, uint64_t hashCode, StringSection<> descriptiveName)
+			: _pimpl(pimpl), _hashCode(hashCode)
+			{
+				ScopedLock(_pimpl->_storeRefCounts->_lock);
+				auto existing = _pimpl->_storeRefCounts->_storeOperationsInFlight.find(_hashCode);
+				if (existing != _pimpl->_storeRefCounts->_storeOperationsInFlight.end())
+					Throw(std::runtime_error("Attempting to retrieve compile products while store in flight: " + descriptiveName.AsString()));
+				auto read = LowerBound(_pimpl->_storeRefCounts->_readReferenceCount, _hashCode);
+				if (read != _pimpl->_storeRefCounts->_readReferenceCount.end() && read->first == _hashCode) {
+					++read->second;
+				} else
+					_pimpl->_storeRefCounts->_readReferenceCount.insert(read, std::make_pair(_hashCode, 1));
+			}
+			~ReadRefCountLock()
+			{
+				ScopedLock(_pimpl->_storeRefCounts->_lock);
+				auto read = LowerBound(_pimpl->_storeRefCounts->_readReferenceCount, _hashCode);
+				if (read != _pimpl->_storeRefCounts->_readReferenceCount.end() && read->first == _hashCode) {
+					assert(read->second > 0);
+					--read->second;
+				} else {
+					Log(Error) << "Missing _readReferenceCount marker during cleanup op in RetrieveCompileProducts" << std::endl;
+				}
+			}
+		private:
+			Pimpl* _pimpl;
+			uint64_t _hashCode;
+		};
+
+		struct WriteRefCountLock
+		{
+			WriteRefCountLock(Pimpl* pimpl, uint64_t hashCode, StringSection<> descriptiveName)
+			: _pimpl(pimpl), _hashCode(hashCode)
+			{
+				ScopedLock(_pimpl->_storeRefCounts->_lock);
+				auto existing = _pimpl->_storeRefCounts->_storeOperationsInFlight.find(_hashCode);
+				if (existing != _pimpl->_storeRefCounts->_storeOperationsInFlight.end())
+					Throw(std::runtime_error("Multiple stores in flight for the same compile product: " + descriptiveName.AsString()));
+				auto read = LowerBound(_pimpl->_storeRefCounts->_readReferenceCount, _hashCode);
+				if (read != _pimpl->_storeRefCounts->_readReferenceCount.end() && read->first == _hashCode && read->second != 0)
+					Throw(std::runtime_error("Attempting to store compile product while still reading from it: " + descriptiveName.AsString()));
+				_pimpl->_storeRefCounts->_storeOperationsInFlight.insert(_hashCode);
+			}
+
+			~WriteRefCountLock()
+			{
+				ScopedLock(_pimpl->_storeRefCounts->_lock);
+				auto existing = _pimpl->_storeRefCounts->_storeOperationsInFlight.find(_hashCode);
+				if (existing != _pimpl->_storeRefCounts->_storeOperationsInFlight.end()) {
+					_pimpl->_storeRefCounts->_storeOperationsInFlight.erase(existing);
+				} else {
+					Log(Error) << "Missing _storeOperationsInFlight marker during cleanup op in StoreCompileProducts" << std::endl;
+				}
+			}
+		private:
+			Pimpl* _pimpl;
+			uint64_t _hashCode;
+		};
 	};
 
 	static ResChar ConvChar(ResChar input) 
@@ -79,6 +148,14 @@ namespace Assets
 		CompileProductsGroupId groupId) const
 	{
 		return Hash64(archivableName.begin(), archivableName.end(), groupId);
+	}
+
+	uint64_t IntermediatesStore::Pimpl::MakeHashCode(
+		StringSection<> archiveName,
+		ArchiveEntryId entryId,
+		CompileProductsGroupId groupId) const
+	{
+		return HashCombine(entryId, Hash64(archiveName.begin(), archiveName.end(), groupId));
 	}
 
 	class RetainedFileRecord : public DependencyValidation
@@ -183,30 +260,9 @@ namespace Assets
 		StringSection<> archivableName,
 		CompileProductsGroupId groupId)
 	{
+		ScopedLock(_pimpl->_lock);
 		auto hashCode = _pimpl->MakeHashCode(archivableName, groupId);
-		{
-			ScopedLock(_pimpl->_storeRefCounts->_lock);
-			auto existing = _pimpl->_storeRefCounts->_storeOperationsInFlight.find(hashCode);
-			if (existing != _pimpl->_storeRefCounts->_storeOperationsInFlight.end())
-				Throw(std::runtime_error("Attempting to retrieve compile products while store in flight: " + archivableName.AsString()));
-			auto read = LowerBound(_pimpl->_storeRefCounts->_readReferenceCount, hashCode);
-			if (read != _pimpl->_storeRefCounts->_readReferenceCount.end() && read->first == hashCode) {
-				++read->second;
-			} else
-				_pimpl->_storeRefCounts->_readReferenceCount.insert(read, std::make_pair(hashCode, 1));
-		}
-		auto cleanup = AutoCleanup(
-			[hashCode, this]() {
-				ScopedLock(this->_pimpl->_storeRefCounts->_lock);
-				auto read = LowerBound(this->_pimpl->_storeRefCounts->_readReferenceCount, hashCode);
-				if (read != this->_pimpl->_storeRefCounts->_readReferenceCount.end() && read->first == hashCode) {
-					assert(read->second > 0);
-					--read->second;
-				} else {
-					Log(Error) << "Missing _readReferenceCount marker during cleanup op in RetrieveCompileProducts" << std::endl;
-				}
-			});
-		(void)cleanup;
+		Pimpl::ReadRefCountLock readRef(_pimpl.get(), hashCode, archivableName);
 
 		auto groupi = _pimpl->_groups.find(groupId);
 		if (groupi == _pimpl->_groups.end())
@@ -222,44 +278,70 @@ namespace Assets
 		::Assets::AssetState state,
 		IteratorRange<const DependentFileState*> dependencies)
 	{
-		//
-		//		Maintain _pimpl->_storeOperationsInFlight, which just records what
-		//		store operations are currently in flight
-		//
-
+		ScopedLock(_pimpl->_lock);
 		auto hashCode = _pimpl->MakeHashCode(archivableName, groupId);
-		{
-			ScopedLock(_pimpl->_storeRefCounts->_lock);
-			auto existing = _pimpl->_storeRefCounts->_storeOperationsInFlight.find(hashCode);
-			if (existing != _pimpl->_storeRefCounts->_storeOperationsInFlight.end())
-				Throw(std::runtime_error("Multiple stores in flight for the same compile product: " + archivableName.AsString()));
-			auto read = LowerBound(_pimpl->_storeRefCounts->_readReferenceCount, hashCode);
-			if (read != _pimpl->_storeRefCounts->_readReferenceCount.end() && read->first == hashCode && read->second != 0)
-				Throw(std::runtime_error("Attempting to store compile product while still reading from it: " + archivableName.AsString()));
-			_pimpl->_storeRefCounts->_storeOperationsInFlight.insert(hashCode);
-		}
-
-		auto cleanup = AutoCleanup(
-			[hashCode, this]() {
-				ScopedLock(this->_pimpl->_storeRefCounts->_lock);
-				auto existing = this->_pimpl->_storeRefCounts->_storeOperationsInFlight.find(hashCode);
-				if (existing != this->_pimpl->_storeRefCounts->_storeOperationsInFlight.end()) {
-					this->_pimpl->_storeRefCounts->_storeOperationsInFlight.erase(existing);
-				} else {
-					Log(Error) << "Missing _storeOperationsInFlight marker during cleanup op in StoreCompileProducts" << std::endl;
-				}
-			});
-		(void)cleanup;
-
-		//
-		// 		Now write out the compile products
-		//
+		Pimpl::WriteRefCountLock writeRef(_pimpl.get(), hashCode, archivableName);
 
 		auto groupi = _pimpl->_groups.find(groupId);
 		if (groupi == _pimpl->_groups.end())
 			Throw(std::runtime_error("GroupId has not be registered in intermediates store during retrieve operation"));
 
 		groupi->second._looseFilesStorage->StoreCompileProducts(archivableName, artifacts, state, dependencies);
+	}
+
+	std::shared_ptr<IArtifactCollection> IntermediatesStore::RetrieveCompileProducts(
+		StringSection<> archiveName,
+		ArchiveEntryId entryId,
+		CompileProductsGroupId groupId)
+	{
+		ScopedLock(_pimpl->_lock);
+		auto hashCode = _pimpl->MakeHashCode(archiveName, entryId, groupId);
+		Pimpl::ReadRefCountLock readRef(_pimpl.get(), hashCode, (StringMeld<256>() << archiveName << "-" << std::hex << entryId).AsStringSection());
+
+		auto groupi = _pimpl->_groups.find(groupId);
+		if (groupi == _pimpl->_groups.end())
+			Throw(std::runtime_error("GroupId has not be registered in intermediates store during retrieve operation"));
+		if (!groupi->second._archiveCacheSet) return nullptr;
+
+		auto archive = groupi->second._archiveCacheSet->GetArchive(groupi->second._archiveCacheBase + archiveName.AsString());
+		if (!archive) return nullptr;
+
+		return archive->TryOpenFromCache(entryId);
+	}
+
+	void IntermediatesStore::StoreCompileProducts(
+		StringSection<> archiveName,
+		ArchiveEntryId entryId,
+		StringSection<> entryDescriptiveName,
+		CompileProductsGroupId groupId,
+		IteratorRange<const ICompileOperation::SerializedArtifact*> artifacts,
+		::Assets::AssetState state,
+		IteratorRange<const DependentFileState*> dependencies)
+	{
+		ScopedLock(_pimpl->_lock);
+		auto hashCode = _pimpl->MakeHashCode(archiveName, entryId, groupId);
+		Pimpl::WriteRefCountLock writeRef(_pimpl.get(), hashCode, entryDescriptiveName);
+
+		auto groupi = _pimpl->_groups.find(groupId);
+		if (groupi == _pimpl->_groups.end())
+			Throw(std::runtime_error("GroupId has not be registered in intermediates store during retrieve operation"));
+
+		if (!groupi->second._archiveCacheSet)
+			Throw(std::runtime_error("Attempting to store compile products in an archive cache for a group that doesn't have archives enabled"));
+
+		auto archive = groupi->second._archiveCacheSet->GetArchive(groupi->second._archiveCacheBase + archiveName.AsString());
+		if (!archive)
+			Throw(std::runtime_error("Failed to create archive when storing compile products"));
+
+		archive->Commit(entryId, entryDescriptiveName.AsString(), artifacts, state, dependencies);
+	}
+
+	void IntermediatesStore::FlushToDisk()
+	{
+		ScopedLock(_pimpl->_lock);
+		for (const auto&group:_pimpl->_groups)
+			if (group.second._archiveCacheSet)
+				group.second._archiveCacheSet->FlushToDisk();
 	}
 
 	void IntermediatesStore::Pimpl::ResolveBaseDirectory() const
@@ -332,8 +414,12 @@ namespace Assets
 		_resolvedBaseDirectory = goodBranchDir;
 	}
 
-	auto IntermediatesStore::RegisterCompileProductsGroup(StringSection<> name, const ConsoleRig::LibVersionDesc& compilerVersionInfo) -> CompileProductsGroupId
+	auto IntermediatesStore::RegisterCompileProductsGroup(
+		StringSection<> name, 
+		const ConsoleRig::LibVersionDesc& compilerVersionInfo,
+		bool enableArchiveCacheSet) -> CompileProductsGroupId
 	{
+		ScopedLock(_pimpl->_lock);
 		auto id = Hash64(name.begin(), name.end());
 		auto existing = _pimpl->_groups.find(id);
 		if (existing == _pimpl->_groups.end()) {
@@ -342,6 +428,10 @@ namespace Assets
 			std::string looseFilesBase = Concatenate(_pimpl->_resolvedBaseDirectory, "/", safeGroupName, "/");
 			Pimpl::Group newGroup;
 			newGroup._looseFilesStorage = std::make_shared<LooseFilesStorage>(looseFilesBase, compilerVersionInfo);
+			if (enableArchiveCacheSet) {
+				newGroup._archiveCacheSet = std::make_shared<ArchiveCacheSet>(compilerVersionInfo);
+				newGroup._archiveCacheBase = looseFilesBase;
+			}
 			_pimpl->_groups.insert({id, std::move(newGroup)});
 		}
 		return id;

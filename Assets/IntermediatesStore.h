@@ -39,7 +39,9 @@ namespace Assets
 	{
 	public:
 		using CompileProductsGroupId = uint64_t;
+		using ArchiveEntryId = uint64_t;
 
+		// --------- Store & retrieve loose files ---------
 		void StoreCompileProducts(
             StringSection<> archivableName,
 			CompileProductsGroupId groupId,
@@ -51,9 +53,28 @@ namespace Assets
             StringSection<> archivableName,
 			CompileProductsGroupId groupId);
 
+		// --------- Store & retrieve from optimized archive caches ---------
+		void StoreCompileProducts(
+            StringSection<> archiveName,
+			ArchiveEntryId entryId,
+			StringSection<> entryDescriptiveName,
+			CompileProductsGroupId groupId,
+			IteratorRange<const ICompileOperation::SerializedArtifact*> artifacts,
+			::Assets::AssetState state,
+			IteratorRange<const DependentFileState*> dependencies);
+
+		std::shared_ptr<IArtifactCollection> RetrieveCompileProducts(
+            StringSection<> archiveName,
+			ArchiveEntryId entryId,
+			CompileProductsGroupId groupId);
+
+		// --------- Registration & utilities ---------
 		CompileProductsGroupId RegisterCompileProductsGroup(
 			StringSection<> name,
-			const ConsoleRig::LibVersionDesc& compilerVersionInfo);
+			const ConsoleRig::LibVersionDesc& compilerVersionInfo,
+			bool enableArchiveCacheSet = false);
+
+		void FlushToDisk();
 
 		static auto GetDependentFileState(StringSection<> filename) -> DependentFileState;
 		static void ShadowFile(StringSection<> filename);

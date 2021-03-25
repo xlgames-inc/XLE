@@ -87,6 +87,12 @@ namespace Assets
 		if (!d)
 			return nullptr;
 
+		if (d->_archiveNameDelegate) {
+			auto archiveEntry = d->_archiveNameDelegate(_initializers);
+			if (!archiveEntry._archive.empty())
+				return _intermediateStore->RetrieveCompileProducts(archiveEntry._archive, archiveEntry._entryId, d->_storeGroupId);
+		}
+
 		return _intermediateStore->RetrieveCompileProducts(_initializers.ArchivableName(), d->_storeGroupId);
     }
 
@@ -136,12 +142,30 @@ namespace Assets
 
 			// Write out the intermediate file that lists the products of this compile operation
 			if (destinationStore && !artifactsForStore.empty()) {
-				destinationStore->StoreCompileProducts(
-					initializers.ArchivableName(),
-					delegate._storeGroupId,
-					MakeIteratorRange(artifactsForStore),
-					::Assets::AssetState::Ready,
-					MakeIteratorRange(deps));
+				bool storedInArchive = false;
+				if (delegate._archiveNameDelegate) {
+					auto archiveEntry = delegate._archiveNameDelegate(initializers);
+					if (!archiveEntry._archive.empty()) {
+						destinationStore->StoreCompileProducts(
+							archiveEntry._archive,
+							archiveEntry._entryId,
+							archiveEntry._descriptiveName,
+							delegate._storeGroupId,
+							MakeIteratorRange(artifactsForStore),
+							::Assets::AssetState::Ready,
+							MakeIteratorRange(deps));
+						storedInArchive = true;
+					}
+				}
+
+				if (!storedInArchive) {
+					destinationStore->StoreCompileProducts(
+						initializers.ArchivableName(),
+						delegate._storeGroupId,
+						MakeIteratorRange(artifactsForStore),
+						::Assets::AssetState::Ready,
+						MakeIteratorRange(deps));
+				}
 			}
 
 			if (!resultantArtifacts)
@@ -285,7 +309,7 @@ namespace Assets
 		registration->_archiveNameDelegate = std::move(archiveNameDelegate);
 		registration->_compilerLibraryDepVal = compilerDepVal;
 		if (_pimpl->_store)
-			registration->_storeGroupId = _pimpl->_store->RegisterCompileProductsGroup(MakeStringSection(name), srcVersion);
+			registration->_storeGroupId = _pimpl->_store->RegisterCompileProductsGroup(MakeStringSection(name), srcVersion, !!registration->_archiveNameDelegate);
 		_pimpl->_delegates.push_back(std::make_pair(result, std::move(registration)));
 		return { result };
 	}
@@ -365,6 +389,12 @@ namespace Assets
 		// todo -- must reimplement, because compilation operations now occur on the main thread pool, rather than a custom thread
 		assert(0);
     }
+
+	void IntermediateCompilers::FlushCachedMarkers()
+	{
+		ScopedLock(_pimpl->_delegatesLock);
+		_pimpl->_markers.clear();
+	}
 
 	IntermediateCompilers::IntermediateCompilers(
 		const std::shared_ptr<IntermediatesStore>& store)

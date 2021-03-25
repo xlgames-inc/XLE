@@ -24,6 +24,7 @@ namespace Assets
 	class DependencyValidation; class DependentFileState; 
 	class ArtifactCollectionFuture; class IIntermediateCompileMarker; 
 	class IArtifactCollection;
+    class InitializerPack;
 }
 
 namespace RenderCore
@@ -124,15 +125,17 @@ namespace RenderCore
                 StringSection<> shaderInMemory, StringSection<> entryPoint, 
 				StringSection<> shaderModel, StringSection<> definesTable) const = 0;
 
+            virtual ILowLevelCompiler::ResId MakeResId(
+                StringSection<> initializer) const = 0;
+
+            virtual std::string GenerateMetrics(
+                IteratorRange<const void*> byteCodeBlob) const = 0;
+
             virtual ~IShaderSource();
         };
 
         void SetShaderSource(std::shared_ptr<IShaderSource> shaderSource);
         const std::shared_ptr<IShaderSource>& GetShaderSource();
-
-        static ILowLevelCompiler::ResId MakeResId(
-            StringSection<::Assets::ResChar> initializer, 
-            const ILowLevelCompiler* compiler = nullptr);
 
         static ShaderService& GetInstance() { assert(s_instance); return *s_instance; }
         static void SetInstance(ShaderService*);

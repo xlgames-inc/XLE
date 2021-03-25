@@ -112,46 +112,6 @@ namespace RenderCore
         _dynamicLinkageEnabled = false;
     }
 
-
-    auto ShaderService::MakeResId(
-        StringSection<::Assets::ResChar> initializer,
-        const ILowLevelCompiler* compiler) -> ILowLevelCompiler::ResId
-    {
-        ILowLevelCompiler::ResId shaderId;
-
-        const ::Assets::ResChar* startShaderModel = nullptr;
-        auto splitter = MakeFileNameSplitter(initializer);
-        XlCopyString(shaderId._filename, splitter.AllExceptParameters());
-
-        if (splitter.Parameters().IsEmpty()) {
-            XlCopyString(shaderId._entryPoint, "main");
-        } else {
-            startShaderModel = XlFindChar(splitter.Parameters().begin(), ':');
-
-            if (!startShaderModel) {
-                XlCopyString(shaderId._entryPoint, splitter.Parameters().begin());
-            } else {
-                XlCopyNString(shaderId._entryPoint, splitter.Parameters().begin(), startShaderModel - splitter.Parameters().begin());
-                if (*(startShaderModel+1) == '!') {
-                    shaderId._dynamicLinkageEnabled = true;
-                    ++startShaderModel;
-                }
-                XlCopyString(shaderId._shaderModel, startShaderModel+1);
-            }
-        }
-
-        if (!startShaderModel)
-            XlCopyString(shaderId._shaderModel, PS_DefShaderModel);
-
-            //  we have to do the "AdaptShaderModel" shader model here to convert
-            //  the default shader model string (etc, "vs_*) to a resolved shader model
-            //  this is because we want the archive name to be correct
-        if (compiler)
-            compiler->AdaptShaderModel(shaderId._shaderModel, dimof(shaderId._shaderModel), shaderId._shaderModel);
-
-        return shaderId;
-    }
-
     void ShaderService::SetShaderSource(std::shared_ptr<IShaderSource> shaderSource)
     {
         _shaderSource = shaderSource;

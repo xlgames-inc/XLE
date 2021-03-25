@@ -11,6 +11,7 @@
 #include "AssetUtils.h"
 #include "DepVal.h"
 #include "BlockSerializer.h"
+#include "IntermediatesStore.h"		// (for TryRegisterDependency)
 #include "../OSServices/Log.h"
 #include "../OSServices/RawFS.h"
 #include "../OSServices/LegacyFileStreams.h"
@@ -31,16 +32,14 @@
 namespace Assets
 {
 	static const uint64_t ChunkType_ArchiveDirectory = ConstHash64<'Arch', 'ive', 'Dir'>::Value;
+	static const uint64_t ChunkType_CollectionDirectory = ConstHash64<'Coll', 'ecti', 'onDi', 'r'>::Value;
 	static const auto ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
 	static const auto ChunkType_Log = ConstHash64<'Log'>::Value;
+	static const unsigned ArchiveHeaderChunkVersion = 1;
 
-	bool TryRegisterDependency(
-		const std::shared_ptr<DependencyValidation>& target,
-		const DependentFileState& fileState,
-		const StringSection<> assetName);
 	ArtifactRequestResult MakeArtifactRequestResult(ArtifactRequest::DataType dataType, const ::Assets::Blob& blob);
 
-	class ArchiveDirectoryBlock 
+	class ArtifactDirectoryBlock 
 	{
 	public:
 		uint64_t _objectId;
@@ -49,17 +48,33 @@ namespace Assets
 		unsigned _start, _size;
 	};
 
-	class CompareArchiveDirectoryBlock
+	class CompareArtifactDirectoryBlock
 	{
 	public:
-		bool operator()(const ArchiveDirectoryBlock& lhs, uint64_t rhs) { return lhs._objectId < rhs; }
-		bool operator()(uint64_t lhs, const ArchiveDirectoryBlock& rhs) { return lhs < rhs._objectId; }
-		bool operator()(const ArchiveDirectoryBlock& lhs, const ArchiveDirectoryBlock& rhs) { return lhs._objectId < rhs._objectId; }
+		bool operator()(const ArtifactDirectoryBlock& lhs, uint64_t rhs) { return lhs._objectId < rhs; }
+		bool operator()(uint64_t lhs, const ArtifactDirectoryBlock& rhs) { return lhs < rhs._objectId; }
+		bool operator()(const ArtifactDirectoryBlock& lhs, const ArtifactDirectoryBlock& rhs) { return lhs._objectId < rhs._objectId; }
+	};
+
+	class CollectionDirectoryBlock 
+	{
+	public:
+		uint64_t _objectId;
+		unsigned _state;
+	};
+
+	class CompareCollectionDirectoryBlock
+	{
+	public:
+		bool operator()(const CollectionDirectoryBlock& lhs, uint64_t rhs) { return lhs._objectId < rhs; }
+		bool operator()(uint64_t lhs, const CollectionDirectoryBlock& rhs) { return lhs < rhs._objectId; }
+		bool operator()(const CollectionDirectoryBlock& lhs, const CollectionDirectoryBlock& rhs) { return lhs._objectId < rhs._objectId; }
 	};
 	
 	class DirectoryChunk
 	{
 	public:
+		unsigned _collectionCount = 0;
 		unsigned _blockCount = 0;
 		unsigned _spanningHeapSize = 0;
 	};
@@ -69,6 +84,7 @@ namespace Assets
 	public:
 		uint64_t          			_objectId = 0;
 		std::vector<ICompileOperation::SerializedArtifact>    _data;
+		::Assets::AssetState		_state;
 		std::vector<DependentFileState> _deps;
 		unsigned        			_pendingCommitPtr = 0;      // (only used during FlushToDisk)
 		std::function<void()> 		_onFlush;
@@ -93,6 +109,7 @@ namespace Assets
 		uint64_t objectId,
 		const std::string& attachedStringName,
 		IteratorRange<const ICompileOperation::SerializedArtifact*> artifacts,
+		::Assets::AssetState state,
 		IteratorRange<const DependentFileState*> dependentFiles,
 		std::function<void()>&& onFlush)
 	{
@@ -108,6 +125,7 @@ namespace Assets
 
 		i->_data = std::vector<ICompileOperation::SerializedArtifact> { artifacts.begin(), artifacts.end() };
 		i->_deps = std::vector<DependentFileState> { dependentFiles.begin(), dependentFiles.end() };
+		i->_state = state;
 		i->_attachedStringName = attachedStringName;
 		i->_onFlush = std::move(onFlush);
 		i->_totalBinarySize = 0;
@@ -123,7 +141,7 @@ namespace Assets
 		}
 	}
 
-	static bool LoadBlockList(const utf8 filename[], std::vector<ArchiveDirectoryBlock>& blocks)
+	static bool LoadArtifactBlockList(const utf8 filename[], std::vector<ArtifactDirectoryBlock>& blocks)
 	{
 		using namespace Assets::ChunkFile;
 		std::unique_ptr<IFileInterface> directoryFile;
@@ -131,7 +149,7 @@ namespace Assets
 			return false;
 
 		auto chunkTable = LoadChunkTable(*directoryFile);
-		auto chunk = FindChunk(filename, chunkTable, ChunkType_ArchiveDirectory, 0);
+		auto chunk = FindChunk(filename, chunkTable, ChunkType_ArchiveDirectory, ArchiveHeaderChunkVersion);
 
 		DirectoryChunk dirHdr;
 		directoryFile->Seek(chunk._fileOffset);
@@ -140,20 +158,54 @@ namespace Assets
 		// we're going to remove any previous contents of "blocks"
 		blocks.clear();
 		blocks.resize(dirHdr._blockCount);
-		directoryFile->Read(AsPointer(blocks.begin()), sizeof(ArchiveDirectoryBlock), dirHdr._blockCount);
+		directoryFile->Seek(dirHdr._collectionCount * sizeof(CollectionDirectoryBlock), OSServices::FileSeekAnchor::Current);
+		directoryFile->Read(blocks.data(), sizeof(ArtifactDirectoryBlock), dirHdr._blockCount);
 		return true;
 	}
 
-	auto ArchiveCache::GetBlockList() const -> const std::vector<ArchiveDirectoryBlock>*
+	auto ArchiveCache::GetArtifactBlockList() const -> const std::vector<ArtifactDirectoryBlock>*
 	{
 		if (!_cachedBlockListValid) {
 			// note that on failure, we will continue to attempt to open the file each time
-			if (!LoadBlockList(_directoryFileName.c_str(), _cachedBlockList))
+			if (!LoadArtifactBlockList(_directoryFileName.c_str(), _cachedBlockList))
 				return nullptr;
 
 			_cachedBlockListValid = true;
 		}
 		return &_cachedBlockList;
+	}
+
+	static bool LoadCollectionBlockList(const utf8 filename[], std::vector<CollectionDirectoryBlock>& collections)
+	{
+		using namespace Assets::ChunkFile;
+		std::unique_ptr<IFileInterface> directoryFile;
+		if (MainFileSystem::TryOpen(directoryFile, filename, "rb") != MainFileSystem::IOReason::Success)
+			return false;
+
+		auto chunkTable = LoadChunkTable(*directoryFile);
+		auto chunk = FindChunk(filename, chunkTable, ChunkType_ArchiveDirectory, ArchiveHeaderChunkVersion);
+
+		DirectoryChunk dirHdr;
+		directoryFile->Seek(chunk._fileOffset);
+		directoryFile->Read(&dirHdr, sizeof(dirHdr), 1);
+
+		// we're going to remove any previous contents of "collections"
+		collections.clear();
+		collections.resize(dirHdr._collectionCount);
+		directoryFile->Read(collections.data(), sizeof(CollectionDirectoryBlock), dirHdr._collectionCount);
+		return true;
+	}
+
+	auto ArchiveCache::GetCollectionBlockList() const -> const std::vector<CollectionDirectoryBlock>*
+	{
+		if (!_cachedCollectionBlockListValid) {
+			// note that on failure, we will continue to attempt to open the file each time
+			if (!LoadCollectionBlockList(_directoryFileName.c_str(), _cachedCollectionBlockList))
+				return nullptr;
+
+			_cachedCollectionBlockListValid = true;
+		}
+		return &_cachedCollectionBlockList;
 	}
 
 	static std::vector<std::pair<std::string, std::string>> TryParseStringTable(IteratorRange<const void*> data)
@@ -237,6 +289,7 @@ namespace Assets
 
 		_cachedBlockListValid = false;
 		_cachedDependencyTableValid = false;
+		_cachedCollectionBlockListValid = false;
 
 			// 1.   Open the directory and initialize our heap
 			//      representation
@@ -254,7 +307,8 @@ namespace Assets
 		using namespace Assets::ChunkFile;
 		{
 			DirectoryChunk dirHdr;
-			std::vector<ArchiveDirectoryBlock> blocks;
+			std::vector<CollectionDirectoryBlock> collections;
+			std::vector<ArtifactDirectoryBlock> blocks;
 			std::unique_ptr<uint8[]> flattenedSpanningHeap;
 		
 			std::unique_ptr<IFileInterface> directoryFile;
@@ -264,13 +318,15 @@ namespace Assets
 			if (MainFileSystem::TryOpen(directoryFile, _directoryFileName.c_str(), "r+b") == MainFileSystem::IOReason::Success) {
 				TRY {
 					auto chunkTable = LoadChunkTable(*directoryFile);
-					auto chunk = FindChunk(_directoryFileName.c_str(), chunkTable, ChunkType_ArchiveDirectory, 0);
+					auto chunk = FindChunk(_directoryFileName.c_str(), chunkTable, ChunkType_ArchiveDirectory, ArchiveHeaderChunkVersion);
 
 					directoryFile->Seek(chunk._fileOffset);
 					directoryFile->Read(&dirHdr, sizeof(dirHdr), 1);
 
+					collections.resize(dirHdr._collectionCount);
+					directoryFile->Read(collections.data(), sizeof(CollectionDirectoryBlock), dirHdr._collectionCount);
 					blocks.resize(dirHdr._blockCount);
-					directoryFile->Read(AsPointer(blocks.begin()), sizeof(ArchiveDirectoryBlock), dirHdr._blockCount);
+					directoryFile->Read(blocks.data(), sizeof(ArtifactDirectoryBlock), dirHdr._blockCount);
 					flattenedSpanningHeap = std::make_unique<uint8[]>(dirHdr._spanningHeapSize);
 					directoryFile->Read(flattenedSpanningHeap.get(), 1, dirHdr._spanningHeapSize);
 					directoryFileOpened = true;
@@ -284,13 +340,36 @@ namespace Assets
 				directoryFile = MainFileSystem::OpenFileInterface(_directoryFileName.c_str(), "wb");
 			}
 
+			// Merge in new collection data
+			{
+				std::vector<CollectionDirectoryBlock> newCollectionBlocks;
+				newCollectionBlocks.reserve(_pendingCommits.size());
+				for (const auto&i:_pendingCommits) {
+					assert(i._state != AssetState::Pending);
+					newCollectionBlocks.push_back(CollectionDirectoryBlock{i._objectId, (unsigned)i._state});
+				}
+				std::sort(newCollectionBlocks.begin(), newCollectionBlocks.end(), CompareCollectionDirectoryBlock());
+				#if defined(_DEBUG)
+					auto uniquei = std::unique(newCollectionBlocks.begin(), newCollectionBlocks.end(), [](const auto& lhs, const auto& rhs) { return lhs._objectId == rhs._objectId; });
+					assert(uniquei == newCollectionBlocks.end());
+				#endif
+				auto oldi = collections.begin();
+				for (auto newi = newCollectionBlocks.begin(); newi != newCollectionBlocks.end(); ++newi) {
+					while (oldi != collections.end() && oldi->_objectId < newi->_objectId) ++oldi;
+					if (oldi != collections.end() && oldi->_objectId == newi->_objectId) {
+						oldi->_state = newi->_state;
+					} else
+						oldi = collections.insert(oldi, *newi);
+				}
+			}
+
 			SpanningHeap<uint32> spanningHeap(flattenedSpanningHeap.get(), dirHdr._spanningHeapSize);
 			for (auto i=_pendingCommits.begin(); i!=_pendingCommits.end(); ++i) {
 				i->_pendingCommitPtr = ~unsigned(0x0);
 
 				// find an existing blocks with the same id. We'll deallocate all of these from the 
 				// spanning heap, to free up some space
-				auto range = std::equal_range(blocks.cbegin(), blocks.cend(), i->_objectId, CompareArchiveDirectoryBlock{});
+				auto range = std::equal_range(blocks.cbegin(), blocks.cend(), i->_objectId, CompareArtifactDirectoryBlock{});
 				for (auto b=range.first; b!=range.second; ++b)
 						// todo -- Is it useful to just reuse the same block here?
 					spanningHeap.Deallocate(b->_start, b->_size);
@@ -330,12 +409,12 @@ namespace Assets
 						}
 					#endif
 
-					auto b = std::lower_bound(blocks.begin(), blocks.end(), i->_objectId, CompareArchiveDirectoryBlock{});
+					auto b = std::lower_bound(blocks.begin(), blocks.end(), i->_objectId, CompareArtifactDirectoryBlock{});
 					assert(b==blocks.cend() || b->_objectId != i->_objectId);
 					unsigned artifactIterator = i->_pendingCommitPtr;
 					for (const auto&a:i->_data)
 						if (IsBinaryBlock(a._type) && a._data) {
-							ArchiveDirectoryBlock newBlock = { i->_objectId, a._type, a._version, artifactIterator, (unsigned)a._data->size() };
+							ArtifactDirectoryBlock newBlock = { i->_objectId, a._type, a._version, artifactIterator, (unsigned)a._data->size() };
 							b=blocks.insert(b, newBlock);
 							artifactIterator += CeilToMultiplePow2(a._data->size(), 8);
 						}
@@ -381,11 +460,12 @@ namespace Assets
 
 				auto flattenedHeap = spanningHeap.Flatten();
 			
-				ChunkHeader chunkHeader(
-					ChunkType_ArchiveDirectory, 0, "ArchiveCache", unsigned(sizeof(DirectoryChunk) + blocks.size() * sizeof(ArchiveDirectoryBlock) + flattenedHeap.second));
+				size_t chunkSize = sizeof(DirectoryChunk) + collections.size() * sizeof(CollectionDirectoryBlock) + blocks.size() * sizeof(ArtifactDirectoryBlock) + flattenedHeap.second;
+				ChunkHeader chunkHeader(ChunkType_ArchiveDirectory, ArchiveHeaderChunkVersion, "ArchiveCache", unsigned(chunkSize));
 				chunkHeader._fileOffset = sizeof(ChunkFileHeader) + sizeof(ChunkHeader);
 
 				DirectoryChunk chunkData;
+				chunkData._collectionCount = (unsigned)collections.size();
 				chunkData._blockCount = (unsigned)blocks.size();
 				chunkData._spanningHeapSize = (unsigned)flattenedHeap.second;
 
@@ -397,7 +477,8 @@ namespace Assets
 				directoryFile->Write(&fileHeader, sizeof(fileHeader), 1);
 				directoryFile->Write(&chunkHeader, sizeof(chunkHeader), 1);
 				directoryFile->Write(&chunkData, sizeof(chunkData), 1);
-				directoryFile->Write(AsPointer(blocks.begin()), sizeof(ArchiveDirectoryBlock), blocks.size());
+				directoryFile->Write(collections.data(), sizeof(CollectionDirectoryBlock), collections.size());
+				directoryFile->Write(blocks.data(), sizeof(ArtifactDirectoryBlock), blocks.size());
 				directoryFile->Write(flattenedHeap.first.get(), 1, flattenedHeap.second);
 			}
 		}
@@ -519,19 +600,20 @@ namespace Assets
 			// We need to open the file and get metrics information
 			// for the blocks contained within
 		////////////////////////////////////////////////////////////////////////////////////
-		std::vector<ArchiveDirectoryBlock> fileBlocks;
+		std::vector<ArtifactDirectoryBlock> fileBlocks;
 		TRY {
 			auto directoryFile = MainFileSystem::OpenFileInterface(_directoryFileName.c_str(), "rb");
 
 			auto chunkTable = LoadChunkTable(*directoryFile);
-			auto chunk = FindChunk(_directoryFileName.c_str(), chunkTable, ChunkType_ArchiveDirectory, 0);
+			auto chunk = FindChunk(_directoryFileName.c_str(), chunkTable, ChunkType_ArchiveDirectory, ArchiveHeaderChunkVersion);
 
 			directoryFile->Seek(chunk._fileOffset);
 			DirectoryChunk dirHdr;
 			directoryFile->Read(&dirHdr, sizeof(dirHdr), 1);
 
 			fileBlocks.resize(dirHdr._blockCount);
-			directoryFile->Read(AsPointer(fileBlocks.begin()), sizeof(ArchiveDirectoryBlock), dirHdr._blockCount);
+			directoryFile->Seek(dirHdr._collectionCount * sizeof(CollectionDirectoryBlock), OSServices::FileSeekAnchor::Current);
+			directoryFile->Read(fileBlocks.data(), sizeof(ArtifactDirectoryBlock), dirHdr._blockCount);
 		} CATCH (...) {
 		} CATCH_END
 
@@ -561,7 +643,7 @@ namespace Assets
 			metrics._offset = b->_start;
 
 			for (const auto&i:MakeIteratorRange(b, e))
-				metrics._size = i._size;
+				metrics._size += i._size;
 
 			auto s = std::find_if(
 				attachedStrings.cbegin(), attachedStrings.cend(), 
@@ -647,13 +729,13 @@ namespace Assets
 				if (i == pendingCommit._data.end())
 					Throw(Exceptions::ConstructionError(
 						Exceptions::ConstructionError::Reason::MissingFile,
-						GetDependencyValidation(),
+						GetDependencyValidation_AlreadyLocked(),
 						StringMeld<128>() << "Missing chunk (" << r->_name << ")"));
 
 				if (r->_expectedVersion != ~0u && (i->_version != r->_expectedVersion))
 					Throw(::Assets::Exceptions::ConstructionError(
 						Exceptions::ConstructionError::Reason::UnsupportedVersion,
-						GetDependencyValidation(),
+						GetDependencyValidation_AlreadyLocked(),
 						StringMeld<256>() 
 							<< "Data chunk is incorrect version for chunk (" 
 							<< r->_name << ") expected: " << r->_expectedVersion << ", got: " << i->_version));
@@ -675,11 +757,11 @@ namespace Assets
 			std::vector<ArtifactRequestResult> result;
 			result.reserve(requests.size());
 
-			const auto* blocks = _archiveCache->GetBlockList();
+			const auto* blocks = _archiveCache->GetArtifactBlockList();
 			if (!blocks)
 				Throw(std::runtime_error("Resolve failed because the archive block list could not be generated"));
 
-			auto range = std::equal_range(blocks->begin(), blocks->end(), _objectId, CompareArchiveDirectoryBlock{});
+			auto range = std::equal_range(blocks->begin(), blocks->end(), _objectId, CompareArtifactDirectoryBlock{});
 			if (range.first == range.second)
 				Throw(std::runtime_error("Could not find any blocks associated with the given request"));
 
@@ -696,13 +778,13 @@ namespace Assets
 				if (i == range.second)
 					Throw(Exceptions::ConstructionError(
 						Exceptions::ConstructionError::Reason::MissingFile,
-						GetDependencyValidation(),
+						GetDependencyValidation_AlreadyLocked(),
 						StringMeld<128>() << "Missing chunk (" << r->_name << ")"));
 
 				if (r->_expectedVersion != ~0u && (i->_version != r->_expectedVersion))
 					Throw(::Assets::Exceptions::ConstructionError(
 						Exceptions::ConstructionError::Reason::UnsupportedVersion,
-						GetDependencyValidation(),
+						GetDependencyValidation_AlreadyLocked(),
 						StringMeld<256>() 
 							<< "Data chunk is incorrect version for chunk (" 
 							<< r->_name << ") expected: " << r->_expectedVersion << ", got: " << i->_version));
@@ -750,22 +832,37 @@ namespace Assets
 			return result;
 		}
 
-		DepValPtr 							GetDependencyValidation() const
+		DepValPtr GetDependencyValidation() const
 		{
 			ScopedLock(_archiveCache->_pendingCommitsLock);
+			return GetDependencyValidation_AlreadyLocked();
+		}
+
+		DepValPtr GetDependencyValidation_AlreadyLocked() const
+		{
 			VerifyChangeId_AlreadyLocked(*_archiveCache, _objectId, _changeId);
 
 			auto i = std::lower_bound(_archiveCache->_pendingCommits.begin(), _archiveCache->_pendingCommits.end(), _objectId, ComparePendingCommit());
 			if (i!=_archiveCache->_pendingCommits.end() && i->_objectId == _objectId)
 				return AsDepVal(MakeIteratorRange(i->_deps));
 
+			// If the item doesn't exist in the archive at all (either because the item is missing or the whole archive is
+			// missing), we will return nullptr
+			const auto* collections = _archiveCache->GetCollectionBlockList();
+			if (!collections)
+				return nullptr;
+
+			auto collectioni = std::lower_bound(collections->begin(), collections->end(), _objectId, CompareCollectionDirectoryBlock{});
+			if (collectioni == collections->end() || collectioni->_objectId != _objectId)
+				return nullptr;
+
 			auto* depTable = _archiveCache->GetDependencyTable();
 			if (!depTable) return nullptr;
 
 			auto result = std::make_shared<::Assets::DependencyValidation>();
-			auto range = EqualRange(*depTable, _objectId);
-			for (auto r=range.first; r!=range.second; ++r)
-				if (!TryRegisterDependency(result, r->second, "ArchivedAsset"))
+			auto depRange = EqualRange(*depTable, _objectId);
+			for (auto r=depRange.first; r!=depRange.second; ++r)
+				if (!IntermediatesStore::TryRegisterDependency(result, r->second, "ArchivedAsset"))
 					return nullptr;
 
 			return result;
@@ -778,7 +875,21 @@ namespace Assets
 
 		AssetState							GetAssetState() const
 		{
-			return AssetState::Ready;
+			ScopedLock(_archiveCache->_pendingCommitsLock);
+			auto i = std::lower_bound(_archiveCache->_pendingCommits.begin(), _archiveCache->_pendingCommits.end(), _objectId, ComparePendingCommit());
+			if (i!=_archiveCache->_pendingCommits.end() && i->_objectId == _objectId)
+				return i->_state;
+
+			const auto* collections = _archiveCache->GetCollectionBlockList();
+			if (!collections)
+				return AssetState::Invalid;
+
+			auto collectioni = std::lower_bound(collections->begin(), collections->end(), _objectId, CompareCollectionDirectoryBlock{});
+			if (collectioni == collections->end() || collectioni->_objectId != _objectId)
+				return AssetState::Invalid;
+
+			assert(collectioni->_state == (unsigned)AssetState::Ready || collectioni->_state == (unsigned)AssetState::Invalid);
+			return (AssetState)collectioni->_state;
 		}
 			
 		ArchiveCache* _archiveCache = nullptr;
@@ -810,6 +921,7 @@ namespace Assets
 	, _buildVersionString(versionDesc._versionString)
 	, _buildDateString(versionDesc._buildDateString)
 	, _cachedBlockListValid(false)
+	, _cachedCollectionBlockListValid(false)
 	, _cachedDependencyTableValid(false)
 	{
 		_directoryFileName = _mainFileName + ".dir";

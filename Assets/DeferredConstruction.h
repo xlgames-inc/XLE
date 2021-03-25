@@ -226,7 +226,7 @@ namespace Assets
 	}
 
 	template<
-		typename AssetType, typename... Params, 
+		typename AssetType,
 		typename std::enable_if_t<Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer && !Internal::AssetTraits<AssetType>::HasCompileProcessType && !Internal::HasConstructToFutureOverride<AssetType, StringSection<ResChar>>::value>* =nullptr>
 		void AutoConstructAssetToFuture(AssetFuture<AssetType>& future, StringSection<ResChar> initializer)
 	{
@@ -239,7 +239,7 @@ namespace Assets
 	}
 
 	template<
-		typename AssetType, typename... Params, 
+		typename AssetType,
 		typename std::enable_if_t<Internal::AssetTraits<AssetType>::HasChunkRequests && !Internal::AssetTraits<AssetType>::HasCompileProcessType && !Internal::HasConstructToFutureOverride<AssetType, StringSection<ResChar>>::value>* =nullptr>
 		void AutoConstructAssetToFuture(AssetFuture<AssetType>& future, StringSection<ResChar> initializer)
 	{

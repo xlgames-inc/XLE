@@ -28,7 +28,7 @@ namespace Assets
             uint64_t typeCode, InitializerPack&&);
         void StallOnPendingOperations(bool cancelAll);
 		
-		struct SplitArchiveName { std::string _archive; uint64_t _entryId = 0ull; };
+		struct SplitArchiveName { std::string _archive; uint64_t _entryId = 0ull; std::string _descriptiveName; };
 		using CompileOperationDelegate = std::function<std::shared_ptr<ICompileOperation>(const InitializerPack&)>;
 		using ArchiveNameDelegate = std::function<SplitArchiveName(const InitializerPack&)>;
 
@@ -64,6 +64,8 @@ namespace Assets
 		std::vector<std::pair<std::string, std::string>> GetExtensionsForType(uint64_t typeCode);
 
 		//
+
+		void FlushCachedMarkers();
 		
 		IntermediateCompilers(
 			const std::shared_ptr<IntermediatesStore>& store);

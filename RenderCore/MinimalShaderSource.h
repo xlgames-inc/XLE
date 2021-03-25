@@ -36,11 +36,17 @@ namespace RenderCore
 	public:
 		ShaderByteCodeBlob CompileFromFile(
 			const ILowLevelCompiler::ResId& resId, 
-			StringSection<> definesTable) const;
+			StringSection<> definesTable) const override;
 			
 		ShaderByteCodeBlob CompileFromMemory(
 			StringSection<> shaderInMemory, StringSection<> entryPoint, 
-			StringSection<> shaderModel, StringSection<> definesTable) const;
+			StringSection<> shaderModel, StringSection<> definesTable) const override;
+
+		ILowLevelCompiler::ResId MakeResId(
+            StringSection<> initializer) const override;
+
+		std::string GenerateMetrics(
+        	IteratorRange<const void*> byteCodeBlob) const override;
 
 		MinimalShaderSource(
 			const std::shared_ptr<ILowLevelCompiler>& compiler,

@@ -20,7 +20,8 @@
 
 namespace Assets
 {
-	class ArchiveDirectoryBlock;
+	class ArtifactDirectoryBlock;
+	class CollectionDirectoryBlock;
 
 	class ArchiveCache
 	{
@@ -29,6 +30,7 @@ namespace Assets
 			uint64_t objectId,
 			const std::string& attachedStringName,
 			IteratorRange<const ICompileOperation::SerializedArtifact*> artifacts,
+			::Assets::AssetState state,
 			IteratorRange<const DependentFileState*> dependentFiles,
 			std::function<void()>&& onFlush = {});
 		std::shared_ptr<IArtifactCollection> TryOpenFromCache(uint64_t id);
@@ -71,9 +73,13 @@ namespace Assets
 
 		std::string _buildVersionString, _buildDateString;
 
-		mutable std::vector<ArchiveDirectoryBlock> _cachedBlockList;
+		mutable std::vector<ArtifactDirectoryBlock> _cachedBlockList;
 		mutable bool _cachedBlockListValid;
-		const std::vector<ArchiveDirectoryBlock>* GetBlockList() const;
+		const std::vector<ArtifactDirectoryBlock>* GetArtifactBlockList() const;
+
+		mutable std::vector<CollectionDirectoryBlock> _cachedCollectionBlockList;
+		mutable bool _cachedCollectionBlockListValid;
+		const std::vector<CollectionDirectoryBlock>* GetCollectionBlockList() const;
 
 		using DependencyTable = std::vector<std::pair<uint64_t, DependentFileState>>;
 		mutable DependencyTable _cachedDependencyTable;

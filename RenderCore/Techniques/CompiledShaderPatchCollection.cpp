@@ -358,7 +358,7 @@ namespace RenderCore { namespace Techniques
 			[shaderSource](const ::Assets::InitializerPack& initializers) {
 				return std::make_shared<ShaderGraphCompileOperation>(
 					*shaderSource,
-					ShaderService::MakeResId(initializers.GetInitializer<std::string>(0)),
+					shaderSource->MakeResId(initializers.GetInitializer<std::string>(0)),
 					initializers.GetInitializer<std::string>(1),
 					*initializers.GetInitializer<std::shared_ptr<CompiledShaderPatchCollection>>(2),
 					MakeIteratorRange(initializers.GetInitializer<std::vector<uint64_t>>(3))
