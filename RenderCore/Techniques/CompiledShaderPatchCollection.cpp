@@ -15,6 +15,7 @@
 #include "../../Assets/DepVal.h"
 #include "../../Assets/Assets.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/Streams/PathUtils.h"
 
 namespace RenderCore { namespace Techniques
 {
@@ -363,7 +364,34 @@ namespace RenderCore { namespace Techniques
 					*initializers.GetInitializer<std::shared_ptr<CompiledShaderPatchCollection>>(2),
 					MakeIteratorRange(initializers.GetInitializer<std::vector<uint64_t>>(3))
 				);
-			});
+			},
+			[shaderSource](const ::Assets::InitializerPack& initializers) {
+				auto res = shaderSource->MakeResId(initializers.GetInitializer<std::string>(0));
+				auto definesTable = initializers.GetInitializer<std::string>(1);
+				auto& patchCollection = *initializers.GetInitializer<std::shared_ptr<CompiledShaderPatchCollection>>(2);
+				const auto& patchFunctions = initializers.GetInitializer<std::vector<uint64_t>>(3);
+
+				auto splitFN = MakeFileNameSplitter(res._filename);
+				auto entryId = HashCombine(HashCombine(HashCombine(Hash64(res._entryPoint), Hash64(definesTable)), Hash64(res._shaderModel)), Hash64(splitFN.Extension()));
+				entryId = HashCombine(patchCollection.GetGUID(), entryId);
+				for (const auto&p:patchFunctions)
+					entryId = HashCombine(p, entryId);
+
+				StringMeld<MaxPath> archiveName;
+				StringMeld<MaxPath> descriptiveName;
+				bool compressedFN = true;
+				if (compressedFN) {
+					// shader model & extension already considered in entry id; we just need to look at the directory and filename here
+					archiveName << splitFN.File() << "-" << std::hex << HashFilenameAndPath(splitFN.DriveAndPath());
+					descriptiveName << res._filename << ":" << res._entryPoint << "[" << definesTable << "]" << res._shaderModel;
+				} else {
+					archiveName << res._filename;
+					descriptiveName << res._entryPoint << "[" << definesTable << "]" << res._shaderModel;
+				}
+
+				return ::Assets::IntermediateCompilers::SplitArchiveName { archiveName.AsString(), entryId, descriptiveName.AsString() };
+			}
+			);
 
 		uint64_t outputAssetTypes[] = { CompileProcess_InstantiateShaderGraph };
 		intermediateCompilers.AssociateRequest(

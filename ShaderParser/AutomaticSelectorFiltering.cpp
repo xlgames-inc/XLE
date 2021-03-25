@@ -14,6 +14,7 @@
 #include "../Utility/Streams/OutputStreamFormatter.h"
 #include "../Utility/Streams/StreamTypes.h"
 #include "../Utility/Streams/SerializationUtils.h"
+#include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Conversion.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/FastParseValue.h"
@@ -361,7 +362,17 @@ namespace ShaderSourceParser
 			nullptr,
 			[](auto initializers) {
 				return std::make_shared<ShaderSelectorFilteringCompileOperation>(initializers);
-			});
+			},
+			[](const ::Assets::InitializerPack& initializers) {
+				::Assets::IntermediateCompilers::SplitArchiveName result;
+				auto fn = initializers.GetInitializer<std::string>(0);
+				auto splitFN = MakeFileNameSplitter(fn);
+				result._entryId = Hash64(fn);
+				result._archive = "filtering";
+				result._descriptiveName = fn;
+				return result;
+			}
+			);
 
 		uint64_t outputAssetTypes[] = { SelectorFilteringRules::CompileProcessType };
 		intermediateCompilers.AssociateRequest(
