@@ -160,6 +160,7 @@ namespace OSServices
 	const char* GetCommandLine();
     using ModuleId = size_t;
     ModuleId GetCurrentModuleId();
+    FileTime GetModuleFileTime();
     
     void DeleteFile(const utf8 path[]);
     void MoveFile(const utf8 destination[], const utf8 source[]);

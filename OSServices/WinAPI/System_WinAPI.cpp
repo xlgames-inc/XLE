@@ -19,6 +19,7 @@
 
 #include <psapi.h>
 #include <shellapi.h>
+#include <ImageHlp.h>
 
 namespace OSServices
 {
@@ -205,6 +206,28 @@ uint32_t XlWaitForMultipleSyncObjects(uint32_t waitCount, XlHandle waitObjects[]
 void GetProcessPath(utf8 dst[], size_t bufferCount)    { GetModuleFileNameA(NULL, (char*)dst, (DWORD)bufferCount); }
 void ChDir(const utf8 path[])                          { SetCurrentDirectoryA((const char*)path); }
 void DeleteFile(const utf8 path[]) { auto result = ::DeleteFileA((char*)path); (void)result; }
+
+static uint64 AsUInt64(FILETIME ft) { return (uint64(ft.dwHighDateTime) << 32ull) | uint64(ft.dwLowDateTime); }
+
+FileTime GetModuleFileTime()
+{
+    char path[MaxPath];
+    GetModuleFileNameA(NULL, path, MaxPath);
+
+    LOADED_IMAGE loadedImage;
+    XlZeroMemory(loadedImage);
+    bool succeeded = MapAndLoad(path, nullptr, &loadedImage, FALSE, TRUE);
+    if (!succeeded)
+        return 0;
+
+    // we only get the low 32 bits of the timestamp from this -- 
+    FileTime result = loadedImage.FileHeader->FileHeader.TimeDateStamp;
+
+    succeeded = UnMapAndLoad(&loadedImage);
+    assert(succeeded);
+
+    return result;
+}
 
 // void GetProcessPath(ucs2 dst[], size_t bufferCount)    { GetModuleFileNameW(NULL, (wchar_t*)dst, (DWORD)bufferCount); }
 // void ChDir(const ucs2 path[])                          { SetCurrentDirectoryW((const wchar_t*)path); }

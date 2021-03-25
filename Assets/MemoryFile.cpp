@@ -25,11 +25,12 @@ namespace Assets
 		size_t			GetSize() const never_throws override;
 		FileDesc		GetDesc() const never_throws override;
 
-		MemoryFile(const Blob& blob);
+		MemoryFile(const Blob& blob, OSServices::FileTime modificationTime = 0);
 		~MemoryFile();
 	private:
 		Blob			_blob;
 		mutable size_t	_ptr;
+		OSServices::FileTime _modificationTime;
 	};
 
 	size_t			MemoryFile::Write(const void * source, size_t size, size_t count) never_throws
@@ -90,13 +91,14 @@ namespace Assets
 			{
 				"<<in memory>>", {},
 				FileDesc::State::Normal,
-				0, uint64_t(_blob ? _blob->size() : 0)
+				_modificationTime, uint64_t(_blob ? _blob->size() : 0)
 			};
 	}
 
-	MemoryFile::MemoryFile(const Blob& blob)
+	MemoryFile::MemoryFile(const Blob& blob, OSServices::FileTime modificationTime)
 	: _blob(blob)
 	, _ptr(0)
+	, _modificationTime(modificationTime)
 	{}
 
 	MemoryFile::~MemoryFile()
@@ -121,11 +123,12 @@ namespace Assets
 		size_t			GetSize() const never_throws override;
 		FileDesc		GetDesc() const never_throws override;
 
-		MemoryFileStatic(IteratorRange<const void*> data);
+		MemoryFileStatic(IteratorRange<const void*> data, OSServices::FileTime modificationTime = 0);
 		~MemoryFileStatic();
 	private:
 		IteratorRange<const void*> _data;
 		mutable size_t	_ptr;
+		OSServices::FileTime _modificationTime;
 	};
 
 	size_t			MemoryFileStatic::Write(const void * source, size_t size, size_t count) never_throws
@@ -181,13 +184,14 @@ namespace Assets
 			{
 				"<<in memory>>", {},
 				FileDesc::State::Normal,
-				0, uint64_t(_data.size())
+				_modificationTime, uint64_t(_data.size())
 			};
 	}
 
-	MemoryFileStatic::MemoryFileStatic(IteratorRange<const void*> data)
+	MemoryFileStatic::MemoryFileStatic(IteratorRange<const void*> data, OSServices::FileTime modificationTime)
 	: _data(data)
 	, _ptr(0)
+	, _modificationTime(modificationTime)
 	{}
 
 	MemoryFileStatic::~MemoryFileStatic()
@@ -456,6 +460,8 @@ namespace Assets
 		{
 			size_t _fileIdx;
 		};
+
+		OSServices::FileTime _modificationTime;
 	};
 
 	auto FileSystem_Memory::TryTranslate(Marker& result, StringSection<utf8> filename) -> TranslateResult
@@ -523,7 +529,7 @@ namespace Assets
 
 			auto i = _staticFilesAndContents.begin();
 			std::advance(i, idx);
-			result = CreateMemoryFile(i->second);
+			result = std::make_unique<MemoryFileStatic>(i->second, _modificationTime);
 			return IOReason::Success;
 		} else {
 			auto idx = m._fileIdx >> size_t(1);
@@ -532,7 +538,7 @@ namespace Assets
 
 			auto i = _filesAndContents.begin();
 			std::advance(i, idx);
-			result = CreateMemoryFile(i->second);
+			result = std::make_unique<MemoryFile>(i->second, _modificationTime);
 			return IOReason::Success;
 		}
 	}
@@ -668,7 +674,7 @@ namespace Assets
 				{
 					name, name,
 					FileDesc::State::Normal,
-					0, (uint64_t)i->second.size()
+					_modificationTime, (uint64_t)i->second.size()
 				};
 		} else {
 			auto idx = m._fileIdx >> size_t(1);
@@ -683,7 +689,7 @@ namespace Assets
 				{
 					name, name,
 					FileDesc::State::Normal,
-					0, (uint64_t)i->second->size()
+					_modificationTime, (uint64_t)i->second->size()
 				};
 		}
 	}
@@ -694,6 +700,7 @@ namespace Assets
 		const FilenameRules& filenameRules, FileSystemMemoryFlags::BitField flags)
 	: _filenameRules(filenameRules)
 	, _flags(flags)
+	, _modificationTime(0)
 	{
 		_filesAndContents.reserve(filesAndContents.size());
 		for (const auto&i:filesAndContents) {
@@ -710,6 +717,9 @@ namespace Assets
 			assert(i2 == _staticFilesAndContents.end() || i2->first != fnHash);
 			_staticFilesAndContents.insert(i2, {fnHash, i.second});
 		}
+
+		if (flags & FileSystemMemoryFlags::UseModuleModificationTime)
+			_modificationTime = OSServices::GetModuleFileTime();
 	}
 
 	FileSystem_Memory::~FileSystem_Memory() {}

@@ -32,7 +32,8 @@ namespace Assets
 	{
 		enum Flags
 		{
-			EnableChangeMonitoring = 1<<0
+			EnableChangeMonitoring = 1<<0,
+			UseModuleModificationTime = 1<<1
 		};
 		using BitField = unsigned;
 	}

@@ -31,6 +31,8 @@ namespace UnitTests
 		filesAndContents.reserve(dimof(s_embeddedResourceList));
 		for (const auto& s:s_embeddedResourceList)
 			filesAndContents.insert(std::make_pair(s.first, s.second));
-		return ::Assets::CreateFileSystem_Memory(filesAndContents, FilenameRules { '/', true }, ::Assets::FileSystemMemoryFlags::EnableChangeMonitoring);
+		return ::Assets::CreateFileSystem_Memory(
+			filesAndContents, FilenameRules { '/', true }, 
+			::Assets::FileSystemMemoryFlags::EnableChangeMonitoring | ::Assets::FileSystemMemoryFlags::UseModuleModificationTime);
 	}
 }

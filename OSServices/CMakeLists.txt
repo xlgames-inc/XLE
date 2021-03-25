@@ -23,7 +23,7 @@ xle_configure_library(OSServices)
 target_link_libraries(OSServices PRIVATE ForeignMisc Utility)
 
 if (WIN32)
-    target_link_libraries(OSServices PRIVATE wsock32.lib ws2_32.lib)
+    target_link_libraries(OSServices PRIVATE wsock32.lib ws2_32.lib imagehlp.lib)
 elseif (NOT APPLE)
     target_link_libraries(OSServices PRIVATE pthread)    
 endif ()
