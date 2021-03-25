@@ -17,6 +17,7 @@
 #include "../Assets/DepVal.h"
 #include "../Assets/AssetSetManager.h"
 #include "../Assets/CompileAndAsyncManager.h"
+#include "../Assets/IntermediatesStore.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
 #include "../OSServices/RawFS.h"
 #include "../OSServices/FileSystemMonitor.h"
@@ -240,6 +241,12 @@ namespace ConsoleRig
 
     void GlobalServices::DetachCurrentModule()
     {
+        // hack -- MainRig_Detach() will cause MainFileSystem to be shut down on this
+        //          module, which is a problem if the intermediates store tries to
+        //          access it during shutdown. We can work around it by flushing
+        //          early (which isn't necessarily a bad idea, anyway)
+        if (_pimpl->_compileAndAsyncManager)
+            _pimpl->_compileAndAsyncManager->GetIntermediateStore()->FlushToDisk();
         MainRig_Detach();
         assert(s_instance == this);
         s_instance = nullptr;
