@@ -642,7 +642,7 @@ namespace RenderCore { namespace Techniques
 			defaultAspect = TextureViewDesc::Aspect::Stencil;
 		}
 		auto completeView = CompleteTextureViewDesc(attach->_desc, window, defaultAspect);
-		return _pimpl->_srvPool.GetTextureView(attach->_resource, BindFlag::ShaderResource, completeView);
+		return _pimpl->_srvPool.GetTextureView(attach->_resource, BindFlag::ShaderResource, completeView).get();
 	}
 
     static bool DimsEqual(const AttachmentDesc& lhs, const AttachmentDesc& rhs, const FrameBufferProperties& props)

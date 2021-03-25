@@ -594,13 +594,15 @@ namespace RenderCore { namespace Metal_Vulkan
 			// Note that we can't support TextureViewDesc properly here, because we don't support 
 			// the same resource being used with more than one view
 			auto resource = namedResources.GetResource(a.first, fbAttachments[a.first]._desc);
-			auto* rtv = viewPool.GetTextureView(resource, AsBindFlag(a.second), TextureViewDesc{});
-			rawViews[rawViewCount++] = checked_cast<ResourceView*>(rtv)->GetImageView();
+			auto rtv = viewPool.GetTextureView(resource, AsBindFlag(a.second), TextureViewDesc{});
+			rawViews[rawViewCount++] = checked_cast<ResourceView*>(rtv.get())->GetImageView();
 
 			ClearValue defaultClearValue = MakeClearValue(0.f, 0.f, 0.f, 1.f);
 			if (a.second & Internal::AttachmentUsageType::DepthStencil)
 				defaultClearValue = MakeClearValue(1.0f, 0);
 			_clearValuesOrdering.push_back({a.first, defaultClearValue});
+
+			_retainedViews.push_back(std::move(rtv));
         }
 
         VkFramebufferCreateInfo fb_info = {};

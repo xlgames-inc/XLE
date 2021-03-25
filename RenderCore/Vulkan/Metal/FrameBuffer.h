@@ -11,6 +11,8 @@
 #include "../../FrameBufferDesc.h"
 #include <memory>
 
+namespace RenderCore { class IResourceView; }
+
 namespace RenderCore { namespace Metal_Vulkan
 {
     class ObjectFactory;
@@ -44,6 +46,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		unsigned _subpassCount;
         VectorPattern<int, 2> _defaultOffset;
         VectorPattern<unsigned, 2> _defaultExtent;
+        std::vector<std::shared_ptr<IResourceView>> _retainedViews;
 
         friend void BeginRenderPass(DeviceContext&, FrameBuffer&, IteratorRange<const ClearValue*>);
 	};

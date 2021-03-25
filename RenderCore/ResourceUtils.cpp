@@ -331,16 +331,16 @@ namespace RenderCore
 		return Hash64(&viewDesc, PtrAdd(&viewDesc, sizeof(TextureViewDesc)));
 	}
 
-	IResourceView* ViewPool::GetTextureView(const std::shared_ptr<IResource>& resource, BindFlag::Enum usage, const TextureViewDesc& viewDesc)
+	const std::shared_ptr<IResourceView>& ViewPool::GetTextureView(const std::shared_ptr<IResource>& resource, BindFlag::Enum usage, const TextureViewDesc& viewDesc)
 	{
 		uint64_t hash = HashCombine(resource->GetGUID(), CalculateHash(viewDesc) ^ usage);
 		auto i = LowerBound(_views, hash);
 		if (i != _views.end() && i->first == hash)
-			return i->second._view.get();
+			return i->second._view;
 
         auto newView = resource->CreateTextureView(usage, viewDesc);
 		i = _views.emplace(i, std::make_pair(hash, Entry{ resource, std::move(newView) }));
-		return i->second._view.get();
+		return i->second._view;
 	}
 
 	void ViewPool::Erase(IResource& res)

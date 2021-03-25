@@ -72,7 +72,7 @@ namespace RenderCore
 	class ViewPool
 	{
 	public:
-		IResourceView* GetTextureView(const std::shared_ptr<IResource>& resource, BindFlag::Enum usage, const TextureViewDesc& viewDesc);
+		const std::shared_ptr<IResourceView>& GetTextureView(const std::shared_ptr<IResource>& resource, BindFlag::Enum usage, const TextureViewDesc& viewDesc);
 		void Erase(IResource& res);
         void Reset();
 
