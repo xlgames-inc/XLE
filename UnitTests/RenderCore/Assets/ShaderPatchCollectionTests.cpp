@@ -197,7 +197,7 @@ namespace UnitTests
 		}
 	};
 
-	static RenderCore::Techniques::MaterialDescriptorSetLayout MakeMaterialDescriptorSetLayout()
+	static RenderCore::Techniques::DescriptorSetLayoutAndBinding MakeMaterialDescriptorSetLayout()
 	{
 		auto layout = std::make_shared<RenderCore::Assets::PredefinedDescriptorSetLayout>();
 		layout->_slots = {
@@ -219,7 +219,7 @@ namespace UnitTests
 
 		};
 
-		return RenderCore::Techniques::MaterialDescriptorSetLayout { layout, 1 };
+		return RenderCore::Techniques::DescriptorSetLayoutAndBinding { layout, 1 };
 	}
 
 	TEST_CASE( "ShaderPatchCollection", "[rendercore_techniques]" )
@@ -229,7 +229,7 @@ namespace UnitTests
 		auto mnt1 = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData, s_defaultFilenameRules, ::Assets::FileSystemMemoryFlags::EnableChangeMonitoring));
 		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
 		auto filteringRegistration = ShaderSourceParser::RegisterShaderSelectorFilteringCompiler(compilers);
-		RenderCore::Techniques::MaterialDescriptorSetLayout matDescSetLayout = MakeMaterialDescriptorSetLayout();
+		RenderCore::Techniques::DescriptorSetLayoutAndBinding matDescSetLayout = MakeMaterialDescriptorSetLayout();
 
 		SECTION( "DeserializeShaderPatchCollection" )
 		{

@@ -101,7 +101,7 @@ static const char* s_basicTexturingGraph = R"--(
 	}
 )--";
 
-static const char s_techniqueBasicTexturing[] = R"--(
+static const char s_patchCollectionBasicTexturing[] = R"--(
 	main=~
 		ut-data/basicTexturingGraph.graph::Bind_PerPixel
 )--";
@@ -463,7 +463,7 @@ namespace UnitTests
 				"temporary-out");
 			UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 			
-			auto patches = GetPatchCollectionFromText(s_techniqueBasicTexturing);
+			auto patches = GetPatchCollectionFromText(s_patchCollectionBasicTexturing);
 
 			ParameterBox constantBindings;
 			constantBindings.SetParameter("Multiplier", Float3{1.0f, 0.5f, 0.0f});
@@ -580,7 +580,7 @@ namespace UnitTests
 				ParameterBox {},
 				fbHelper.GetDesc());
 
-			auto patches = GetPatchCollectionFromText(s_techniqueBasicTexturing);
+			auto patches = GetPatchCollectionFromText(s_patchCollectionBasicTexturing);
 			RenderCore::Assets::RenderStateSet doubledSidedStateSet;
 			doubledSidedStateSet._doubleSided = true;
 			doubledSidedStateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::DoubleSided;

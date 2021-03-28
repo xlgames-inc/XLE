@@ -420,7 +420,7 @@ namespace UnitTests
 		return result;
 	}
 
-	static RenderCore::Techniques::MaterialDescriptorSetLayout MakeMaterialDescriptorSetLayout()
+	static RenderCore::Techniques::DescriptorSetLayoutAndBinding MakeMaterialDescriptorSetLayout()
 	{
 		auto layout = std::make_shared<RenderCore::Assets::PredefinedDescriptorSetLayout>();
 		layout->_slots = {
@@ -441,7 +441,7 @@ namespace UnitTests
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Sampler }
 		};
 
-		return RenderCore::Techniques::MaterialDescriptorSetLayout { layout, 1 };
+		return RenderCore::Techniques::DescriptorSetLayoutAndBinding { layout, 1 };
 	}
 
 	TEST_CASE( "TechniqueDelegates-LegacyTechnique", "[rendercore_techniques]" )

@@ -153,8 +153,9 @@ namespace RenderCore { namespace Techniques
 			RenderCore::IThreadContext& threadContext,
 			IteratorRange<const Float4x4*> skeletonMachineOutput);
 
-		ConstantBufferView WriteBuffer(ParsingContext& context, const void* objectContext) override;
-        IteratorRange<const ConstantBufferElementDesc*> GetLayout() const override;
+		void WriteImmediateData(ParsingContext& context, const void* objectContext, IteratorRange<void*> dst) override;
+        size_t GetSize() override;
+		IteratorRange<const ConstantBufferElementDesc*> GetLayout() override;
 
 		RendererSkeletonInterface(
 			const std::shared_ptr<RenderCore::Assets::ModelScaffold>& scaffoldActual, 

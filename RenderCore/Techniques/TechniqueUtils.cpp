@@ -198,7 +198,12 @@ namespace RenderCore { namespace Techniques
         return det > 0.0f;
     }
 
-	IteratorRange<const ConstantBufferElementDesc*> IUniformBufferDelegate::GetLayout() const { return {}; }
+	IteratorRange<const ConstantBufferElementDesc*> IUniformBufferDelegate::GetLayout() { return {}; }
+
+    void IShaderResourceDelegate::WriteResourceViews(ParsingContext& context, const void* objectContext, uint64_t bindingFlags, IteratorRange<IResourceView**> dst) {}
+    void IShaderResourceDelegate::WriteSamplers(ParsingContext& context, const void* objectContext, uint64_t bindingFlags, IteratorRange<ISampler**> dst) {}
+    void IShaderResourceDelegate::WriteImmediateData(ParsingContext& context, const void* objectContext, unsigned idx, IteratorRange<void*> dst) {}
+    size_t IShaderResourceDelegate::GetImmediateDataSize(ParsingContext& context, const void* objectContext, unsigned idx) { return 0; }
 
 	IUniformBufferDelegate::~IUniformBufferDelegate() {}
 	IShaderResourceDelegate::~IShaderResourceDelegate() {}

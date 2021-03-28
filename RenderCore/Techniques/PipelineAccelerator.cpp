@@ -65,7 +65,7 @@ namespace RenderCore { namespace Techniques
 			const SequencerConfig& cfg,
 			const ParameterBox& globalSelectors,
 			const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
-			const MaterialDescriptorSetLayout& matDescSetLayout,
+			const DescriptorSetLayoutAndBinding& matDescSetLayout,
 			const std::shared_ptr<SharedPools>& sharedPools);
 
 		Pipeline& PipelineForCfgId(SequencerConfigId cfgId);
@@ -187,7 +187,7 @@ namespace RenderCore { namespace Techniques
 		const SequencerConfig& cfg,
 		const ParameterBox& globalSelectors,
 		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
-		const MaterialDescriptorSetLayout& matDescSetLayout,
+		const DescriptorSetLayoutAndBinding& matDescSetLayout,
 		const std::shared_ptr<SharedPools>& sharedPools) -> Pipeline
 	{
 		Pipeline result;
@@ -387,8 +387,11 @@ namespace RenderCore { namespace Techniques
 
 		const std::shared_ptr<IDevice>& GetDevice() const override;
 		const std::shared_ptr<ICompiledPipelineLayout>& GetPipelineLayout() const override;
+		
+		const DescriptorSetLayoutAndBinding& GetMaterialDescriptorSetLayout() const override;
+		const DescriptorSetLayoutAndBinding& GetSequencerDescriptorSetLayout() const override;
 
-		PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout, PipelineAcceleratorPoolFlags::BitField flags, const MaterialDescriptorSetLayout& matDescSetLayout);
+		PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout, PipelineAcceleratorPoolFlags::BitField flags, const DescriptorSetLayoutAndBinding& matDescSetLayout, const DescriptorSetLayoutAndBinding& sequencerDescSetLayout);
 		~PipelineAcceleratorPool();
 		PipelineAcceleratorPool(const PipelineAcceleratorPool&) = delete;
 		PipelineAcceleratorPool& operator=(const PipelineAcceleratorPool&) = delete;
@@ -413,7 +416,8 @@ namespace RenderCore { namespace Techniques
 		const std::shared_ptr<ISampler>& GetMetalSampler(const SamplerDesc& desc);
 
 		std::shared_ptr<ICompiledPipelineLayout> _pipelineLayout;
-		MaterialDescriptorSetLayout _matDescSetLayout;
+		DescriptorSetLayoutAndBinding _matDescSetLayout;
+		DescriptorSetLayoutAndBinding _sequencerDescSetLayout;
 		std::shared_ptr<SharedPools> _sharedPools;
 		PipelineAcceleratorPoolFlags::BitField _flags;
 	};
@@ -782,10 +786,62 @@ namespace RenderCore { namespace Techniques
 	const std::shared_ptr<IDevice>& PipelineAcceleratorPool::GetDevice() const { return _device; }
 	const std::shared_ptr<ICompiledPipelineLayout>& PipelineAcceleratorPool::GetPipelineLayout() const { return _pipelineLayout; }
 
+	const DescriptorSetLayoutAndBinding& PipelineAcceleratorPool::GetMaterialDescriptorSetLayout() const { return _matDescSetLayout; }
+	const DescriptorSetLayoutAndBinding& PipelineAcceleratorPool::GetSequencerDescriptorSetLayout() const { return _sequencerDescSetLayout; }
+
 	static unsigned s_nextPipelineAcceleratorPoolGUID = 1;
 
-	PipelineAcceleratorPool::PipelineAcceleratorPool(const std::shared_ptr<IDevice>& device, const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout, PipelineAcceleratorPoolFlags::BitField flags, const MaterialDescriptorSetLayout& matDescSetLayout)
+	static void CheckDescSetLayout(
+		const DescriptorSetLayoutAndBinding& matDescSetLayout,
+		const PipelineLayoutInitializer& pipelineLayoutDesc,
+		const char descSetName[])
+	{
+		if (matDescSetLayout.GetSlotIndex() >= pipelineLayoutDesc.GetDescriptorSets().size())
+			Throw(std::runtime_error("Invalid slot index (" + std::to_string(matDescSetLayout.GetSlotIndex()) + " for " + descSetName + " during pipeline accelerator pool construction"));
+
+		const auto& matchingDesc = pipelineLayoutDesc.GetDescriptorSets()[matDescSetLayout.GetSlotIndex()]._signature;
+		const auto& layout = *matDescSetLayout.GetLayout();
+		// It's ok if the pipeline layout has more slots than the _matDescSetLayout version; just not the other way around
+		// we just have the verify that the types match up for the slots that are there
+		if (matchingDesc._slots.size() < layout._slots.size())
+			Throw(std::runtime_error(std::string{"Pipeline layout does not match the provided "} + descSetName + " layout. There are too few slots in the pipeline layout"));
+
+		for (unsigned s=0; s<layout._slots.size(); ++s) {
+			auto expectedCount = layout._slots[s]._arrayElementCount ?: 1;
+			if (matchingDesc._slots[s]._type != layout._slots[s]._type || matchingDesc._slots[s]._count != expectedCount)
+				Throw(std::runtime_error(std::string{"Pipeline layout does not match the provided "} + descSetName + " layout. Slot type does not match for slot (" + std::to_string(s) + ")"));
+		}
+	}
+
+	static DescriptorSetLayoutAndBinding ExtractDescriptorSetLayoutAndBinding(
+		const PipelineLayoutInitializer& pipelineLayoutDesc,
+		const char bindingName[])
+	{
+		auto i = std::find_if(
+			pipelineLayoutDesc.GetDescriptorSets().begin(), pipelineLayoutDesc.GetDescriptorSets().end(),
+			[bindingName](const auto& c) { return c._name == bindingName; });
+		if (i != pipelineLayoutDesc.GetDescriptorSets().end()) {
+			auto extractedLayout = std::make_shared<RenderCore::Assets::PredefinedDescriptorSetLayout>();
+			extractedLayout->_slots.reserve(i->_signature._slots.size());
+			for (const auto& slot:i->_signature._slots)
+				extractedLayout->_slots.push_back(
+					RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot{
+						std::string{},
+						slot._type,
+						(slot._count == 1) ? 0u : slot._count});
+			return DescriptorSetLayoutAndBinding { extractedLayout, (unsigned)std::distance(pipelineLayoutDesc.GetDescriptorSets().begin(), i) };
+		}
+		return {};
+	}
+
+	PipelineAcceleratorPool::PipelineAcceleratorPool(
+		const std::shared_ptr<IDevice>& device,
+		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
+		PipelineAcceleratorPoolFlags::BitField flags, 
+		const DescriptorSetLayoutAndBinding& matDescSetLayout,
+		const DescriptorSetLayoutAndBinding& sequencerDescSetLayout)
 	: _matDescSetLayout(matDescSetLayout)
+	, _sequencerDescSetLayout(sequencerDescSetLayout)
 	{
 		_guid = s_nextPipelineAcceleratorPoolGUID++;
 		_device = device;
@@ -793,62 +849,42 @@ namespace RenderCore { namespace Techniques
 		_flags = flags;
 		_sharedPools = std::make_shared<SharedPools>();
 
-		// The _matDescSetLayout must agree with what we find the pipeline layout
 		auto pipelineLayoutDesc = _pipelineLayout->GetInitializer();
 		if (_matDescSetLayout.GetLayout()) {
-			if (_matDescSetLayout.GetSlotIndex() >= pipelineLayoutDesc.GetDescriptorSets().size())
-				Throw(std::runtime_error("Invalid slot index (" + std::to_string(_matDescSetLayout.GetSlotIndex()) + " for material descriptor set during pipeline accelerator pool construction"));
-
-			const auto& matchingDesc = pipelineLayoutDesc.GetDescriptorSets()[_matDescSetLayout.GetSlotIndex()]._signature;
-			const auto& layout = *_matDescSetLayout.GetLayout();
-			// It's ok if the pipeline layout has more slots than the _matDescSetLayout version; just not the other way around
-			// we just have the verify that the types match up for the slots that are there
-			if (matchingDesc._slots.size() < layout._slots.size())
-				Throw(std::runtime_error("Pipeline layout does not match the provided material descriptor set layout. There are too few slots in the pipeline layout"));
-
-			for (unsigned s=0; s<layout._slots.size(); ++s) {
-				auto expectedCount = layout._slots[s]._arrayElementCount ?: 1;
-				if (matchingDesc._slots[s]._type != layout._slots[s]._type || matchingDesc._slots[s]._count != expectedCount)
-					Throw(std::runtime_error("Pipeline layout does not match the provided material descriptor set layout. Slot type does not match for slot (" + std::to_string(s) + ")"));
-			}
+			// The _matDescSetLayout must agree with what we find the pipeline layout
+			CheckDescSetLayout(_matDescSetLayout, pipelineLayoutDesc, "material descriptor set");
 		} else {
 			// Even when there's no explicitly provided material desc layout, we can extract what we need from the pipeline layout
-			auto i = std::find_if(
-				pipelineLayoutDesc.GetDescriptorSets().begin(), pipelineLayoutDesc.GetDescriptorSets().end(),
-				[](const auto& c) { return c._name == "Material"; });
-			if (i != pipelineLayoutDesc.GetDescriptorSets().end()) {
-				auto extractedLayout = std::make_shared<RenderCore::Assets::PredefinedDescriptorSetLayout>();
-				extractedLayout->_slots.reserve(i->_signature._slots.size());
-				for (const auto& slot:i->_signature._slots)
-					extractedLayout->_slots.push_back(
-						RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot{
-							std::string{},
-							slot._type,
-							(slot._count == 1) ? 0u : slot._count});
-				_matDescSetLayout = MaterialDescriptorSetLayout { extractedLayout, (unsigned)std::distance(pipelineLayoutDesc.GetDescriptorSets().begin(), i) };
-			}
+			_matDescSetLayout = ExtractDescriptorSetLayoutAndBinding(pipelineLayoutDesc, "Material");
+		}
+
+		if (_sequencerDescSetLayout.GetLayout()) {
+			// The _matDescSetLayout must agree with what we find the pipeline layout
+			CheckDescSetLayout(_sequencerDescSetLayout, pipelineLayoutDesc, "sequencer descriptor set");
+		} else {
+			// Even when there's no explicitly provided material desc layout, we can extract what we need from the pipeline layout
+			_sequencerDescSetLayout = ExtractDescriptorSetLayoutAndBinding(pipelineLayoutDesc, "Sequencer");
 		}
 	}
 
 	PipelineAcceleratorPool::~PipelineAcceleratorPool() {}
-
-
 	IPipelineAcceleratorPool::~IPipelineAcceleratorPool() {}
 
 	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool(
 		const std::shared_ptr<IDevice>& device, 
 		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
 		PipelineAcceleratorPoolFlags::BitField flags,
-		const MaterialDescriptorSetLayout& matDescSetLayout)
+		const DescriptorSetLayoutAndBinding& matDescSetLayout,
+		const DescriptorSetLayoutAndBinding& sequencerDescSetLayout)
 	{
-		return std::make_shared<PipelineAcceleratorPool>(device, pipelineLayout, flags, matDescSetLayout);
+		return std::make_shared<PipelineAcceleratorPool>(device, pipelineLayout, flags, matDescSetLayout, sequencerDescSetLayout);
 	}
 
 	namespace Internal
 	{
-		const MaterialDescriptorSetLayout& GetDefaultMaterialDescriptorSetLayout()
+		const DescriptorSetLayoutAndBinding& GetDefaultDescriptorSetLayoutAndBinding()
 		{
-			static MaterialDescriptorSetLayout s_result;
+			static DescriptorSetLayoutAndBinding s_result;
 			return s_result;
 		}
 	}

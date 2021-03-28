@@ -22,7 +22,7 @@ namespace ShaderSourceParser { class InstantiationRequest; class GenerateFunctio
 
 namespace RenderCore { namespace Techniques
 {
-	class MaterialDescriptorSetLayout
+	class DescriptorSetLayoutAndBinding
 	{
 	public:
 		const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& GetLayout() const { return _layout; }
@@ -31,11 +31,11 @@ namespace RenderCore { namespace Techniques
 		uint64_t GetHash() const { return _hash; }
 		::Assets::DepValPtr GetDependencyValidation() const { return _layout ? _layout->GetDependencyValidation() : nullptr; }
 
-		MaterialDescriptorSetLayout(
+		DescriptorSetLayoutAndBinding(
 			const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& layout,
 			unsigned slotIdx);
-		MaterialDescriptorSetLayout();
-		~MaterialDescriptorSetLayout();
+		DescriptorSetLayoutAndBinding();
+		~DescriptorSetLayoutAndBinding();
 
 	private:
 		std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout> _layout;
@@ -96,10 +96,10 @@ namespace RenderCore { namespace Techniques
 
 		CompiledShaderPatchCollection(
 			const RenderCore::Assets::ShaderPatchCollection& src,
-			const MaterialDescriptorSetLayout& pipelineLayout);
+			const DescriptorSetLayoutAndBinding& materialDescSetLayout);
 		CompiledShaderPatchCollection(
 			const ShaderSourceParser::InstantiatedShader& instantiatedShader,
-			const MaterialDescriptorSetLayout& pipelineLayout);
+			const DescriptorSetLayoutAndBinding& materialDescSetLayout);
 		CompiledShaderPatchCollection();
 		~CompiledShaderPatchCollection();
 	private:
@@ -107,11 +107,11 @@ namespace RenderCore { namespace Techniques
 		Interface _interface;
 		RenderCore::Assets::ShaderPatchCollection _src;
 		std::string _savedInstantiation;
-		MaterialDescriptorSetLayout _pipelineLayout;
+		DescriptorSetLayoutAndBinding _materialDescSetLayout;
 
 		void BuildFromInstantiatedShader(
 			const ShaderSourceParser::InstantiatedShader& inst,
-			const MaterialDescriptorSetLayout& pipelineLayout);
+			const DescriptorSetLayoutAndBinding& pipelineLayout);
 	};
 
 	inline bool CompiledShaderPatchCollection::Interface::HasPatchType(uint64_t implementing) const

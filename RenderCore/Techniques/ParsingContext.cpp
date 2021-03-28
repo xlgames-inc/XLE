@@ -122,6 +122,26 @@ namespace RenderCore { namespace Techniques
 			_uniformDelegates.end());
 	}
 
+	void ParsingContext::AddShaderResourceDelegate(const std::shared_ptr<IShaderResourceDelegate>& dele)
+	{
+		#if defined(_DEBUG)
+			auto i = std::find_if(
+				_shaderResourceDelegates.begin(), _shaderResourceDelegates.end(),
+				[&dele](const std::shared_ptr<IShaderResourceDelegate>& p) { return p.get() == dele.get(); });
+			assert(i == _shaderResourceDelegates.end());
+		#endif
+		_shaderResourceDelegates.push_back(dele);
+	}
+
+	void ParsingContext::RemoveShaderResourceDelegate(IShaderResourceDelegate& dele)
+	{
+		_shaderResourceDelegates.erase(
+			std::remove_if(
+				_shaderResourceDelegates.begin(), _shaderResourceDelegates.end(),
+				[&dele](const std::shared_ptr<IShaderResourceDelegate>& p) { return p.get() == &dele; }),
+			_shaderResourceDelegates.end());
+	}
+
     ParsingContext::ParsingContext(const TechniqueContext& techniqueContext, AttachmentPool* namedResources, FrameBufferPool* frameBufferPool)
     {
         _techniqueContext = std::make_unique<TechniqueContext>(techniqueContext);

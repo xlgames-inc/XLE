@@ -6,7 +6,6 @@
 
 #include "../Assets/MaterialScaffold.h"		// used by DrawableMaterial below
 #include "../IDevice.h"
-#include "../Metal/Forward.h"
 #include "../../Utility/VariantUtils.h"
 #include "../../Utility/IteratorUtils.h"
 #include <vector>
@@ -23,9 +22,9 @@ namespace RenderCore { namespace Techniques
 	class IUniformBufferDelegate;
 	class IShaderResourceDelegate;
 	class PipelineAccelerator;
+	class IPipelineAcceleratorPool;
 	class DescriptorSetAccelerator;
 	class SequencerConfig;
-	class CompiledShaderPatchCollection;
 
 	class SequencerContext
 	{
@@ -64,25 +63,26 @@ namespace RenderCore { namespace Techniques
 	{
 	public:
 		RenderCore::Assets::MaterialScaffoldMaterial _material;
-		std::shared_ptr<CompiledShaderPatchCollection> _patchCollection;
-	}
-	;
+		std::shared_ptr<RenderCore::Assets::ShaderPatchCollection> _patchCollection;
+	};
+
 	class Drawable
 	{
 	public:
         std::shared_ptr<PipelineAccelerator>		_pipeline;
 		std::shared_ptr<DescriptorSetAccelerator>	_descriptorSet;
         std::shared_ptr<DrawableGeo>				_geo;
+		std::shared_ptr<UniformsStreamInterface>  	_looseUniformsInterface;
 
 		class DrawFunctionContext
 		{
 		public:
-			Metal::DeviceContext*			_metalContext;
-			const Metal::GraphicsPipeline*	_pipeline;
-			const Metal::BoundUniforms*		_boundUniforms;
+			void		ApplyLooseUniforms(const UniformsStream&) const;
+			void 		ApplyDescriptorSets(IteratorRange<const IDescriptorSet* const*>) const;
 
-			void		ApplyUniforms(const UniformsStream&) const;
-			uint64_t	UniformBindingBitField() const;
+			uint64_t 	GetBoundLooseImmediateDatas() const;
+			uint64_t 	GetBoundLooseResources() const;
+			uint64_t 	GetBoundLooseSamplers() const;
 
 			void        Draw(unsigned vertexCount, unsigned startVertexLocation=0) const;
 			void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0) const;
@@ -91,13 +91,8 @@ namespace RenderCore { namespace Techniques
 			void        DrawAuto() const;
 		};
 
-        typedef void (ExecuteDrawFn)(
-			ParsingContext& parserContext,
-			const DrawFunctionContext& drawFnContext,
-            const Drawable&);
-        ExecuteDrawFn*						_drawFn;
-
-        std::shared_ptr<UniformsStreamInterface>  _uniformsInterface;
+        typedef void (ExecuteDrawFn)(ParsingContext&, const DrawFunctionContext&, const Drawable&);
+        ExecuteDrawFn*	_drawFn;
 	};
 
 	class DrawablesPacket
@@ -120,7 +115,8 @@ namespace RenderCore { namespace Techniques
 
 	void Draw(
 		IThreadContext& context,
-        Techniques::ParsingContext& parserContext,
+        ParsingContext& parserContext,
+		const IPipelineAcceleratorPool& pipelineAccelerators,
 		const SequencerContext& sequencerTechnique,
 		const DrawablesPacket& drawablePkt);
 

@@ -16,14 +16,18 @@
 namespace RenderCore { namespace Techniques
 {
 
-    ConstantBufferView GlobalCBDelegate::WriteBuffer(ParsingContext& context, const void* objectContext)
+    void GlobalCBDelegate::WriteImmediateData(ParsingContext& context, const void* objectContext, IteratorRange<void*> dst)
 	{
 		// return context.GetGlobalCB(_cbIndex);
 		assert(0);
-		return {};
 	}
 
-    IteratorRange<const ConstantBufferElementDesc*> GlobalCBDelegate::GetLayout() const
+	size_t GlobalCBDelegate::GetSize()
+	{
+		return 0;
+	}
+
+    IteratorRange<const ConstantBufferElementDesc*> GlobalCBDelegate::GetLayout()
 	{
 		return {};
 	}

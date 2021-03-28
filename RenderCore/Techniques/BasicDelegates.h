@@ -13,8 +13,9 @@ namespace RenderCore { namespace Techniques
 	class GlobalCBDelegate : public IUniformBufferDelegate
     {
     public:
-        ConstantBufferView WriteBuffer(ParsingContext& context, const void* objectContext);
-        IteratorRange<const ConstantBufferElementDesc*> GetLayout() const;
+        void WriteImmediateData(ParsingContext& context, const void* objectContext, IteratorRange<void*> dst) override;
+        size_t GetSize() override;
+        IteratorRange<const ConstantBufferElementDesc*> GetLayout() override;
 		GlobalCBDelegate(unsigned cbIndex = 0) : _cbIndex(cbIndex) {}
 	private:
 		unsigned _cbIndex = 0;

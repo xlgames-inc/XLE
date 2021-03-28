@@ -13,8 +13,6 @@
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/StringUtils.h"
 
-namespace RenderCore { class IResource; class ConstantBufferView; }
-namespace RenderCore { namespace Assets { class RenderStateSet; } }
 namespace Utility { class ParameterBox; }
 
 namespace RenderCore { namespace Techniques 
@@ -24,21 +22,22 @@ namespace RenderCore { namespace Techniques
     class IUniformBufferDelegate
     {
     public:
-        virtual ConstantBufferView WriteBuffer(ParsingContext& context, const void* objectContext) = 0;
-        virtual IteratorRange<const ConstantBufferElementDesc*> GetLayout() const;
+        virtual void WriteImmediateData(ParsingContext& context, const void* objectContext, IteratorRange<void*> dst) = 0;
+        virtual size_t GetSize() = 0;
+        virtual IteratorRange<const ConstantBufferElementDesc*> GetLayout();
         virtual ~IUniformBufferDelegate();
     };
 
     class IShaderResourceDelegate
     {
     public:
-        using SRV = IResourceView;
-        using SamplerState = ISampler;
-        virtual void GetShaderResources(
-			ParsingContext& context, const void* objectContext,
-			IteratorRange<SRV*> dstSRVs,
-			IteratorRange<SamplerState*> dstSamplers) const = 0;
-        virtual IteratorRange<const uint64_t*> GetBindings() const = 0;
+        virtual const UniformsStreamInterface& GetInterface() = 0;
+
+        virtual void WriteResourceViews(ParsingContext& context, const void* objectContext, uint64_t bindingFlags, IteratorRange<IResourceView**> dst);
+        virtual void WriteSamplers(ParsingContext& context, const void* objectContext, uint64_t bindingFlags, IteratorRange<ISampler**> dst);
+        virtual void WriteImmediateData(ParsingContext& context, const void* objectContext, unsigned idx, IteratorRange<void*> dst);
+        virtual size_t GetImmediateDataSize(ParsingContext& context, const void* objectContext, unsigned idx);
+        
         virtual ~IShaderResourceDelegate();
     };
 

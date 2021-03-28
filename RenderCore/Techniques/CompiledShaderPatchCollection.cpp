@@ -21,9 +21,9 @@ namespace RenderCore { namespace Techniques
 {
 	CompiledShaderPatchCollection::CompiledShaderPatchCollection(
 		const RenderCore::Assets::ShaderPatchCollection& src,
-		const MaterialDescriptorSetLayout& pipelineLayout)
+		const DescriptorSetLayoutAndBinding& materialDescSetLayout)
 	: _src(src)
-	, _pipelineLayout(pipelineLayout)
+	, _materialDescSetLayout(materialDescSetLayout)
 	{
 		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		_guid = src.GetHash();
@@ -38,26 +38,26 @@ namespace RenderCore { namespace Techniques
 
 			ShaderSourceParser::GenerateFunctionOptions generateOptions;
 			generateOptions._shaderLanguage = GetDefaultShaderLanguage();
-			generateOptions._pipelineLayoutMaterialDescriptorSet = pipelineLayout.GetLayout().get();
-			generateOptions._materialDescriptorSetIndex = pipelineLayout.GetSlotIndex();
+			generateOptions._pipelineLayoutMaterialDescriptorSet = materialDescSetLayout.GetLayout().get();
+			generateOptions._materialDescriptorSetIndex = materialDescSetLayout.GetSlotIndex();
 			auto inst = ShaderSourceParser::InstantiateShader(MakeIteratorRange(finalInstRequests), generateOptions);
-			BuildFromInstantiatedShader(inst, pipelineLayout);
+			BuildFromInstantiatedShader(inst, materialDescSetLayout);
 		}
 	}
 
 	CompiledShaderPatchCollection::CompiledShaderPatchCollection(
 		const ShaderSourceParser::InstantiatedShader& inst,
-		const MaterialDescriptorSetLayout& pipelineLayout)
-	: _pipelineLayout(pipelineLayout)
+		const DescriptorSetLayoutAndBinding& materialDescSetLayout)
+	: _materialDescSetLayout(materialDescSetLayout)
 	{
 		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		_guid = 0;
-		BuildFromInstantiatedShader(inst, pipelineLayout);
+		BuildFromInstantiatedShader(inst, materialDescSetLayout);
 	}
 
 	void CompiledShaderPatchCollection::BuildFromInstantiatedShader(
 		const ShaderSourceParser::InstantiatedShader& inst,
-		const MaterialDescriptorSetLayout& pipelineLayout)
+		const DescriptorSetLayoutAndBinding& materialDescSetLayout)
 	{
 			// Note -- we can build the patches interface here, because we assume that this will not
 			//		even change with selectors
@@ -83,7 +83,7 @@ namespace RenderCore { namespace Techniques
 		}
 
 		_interface._descriptorSet = inst._descriptorSet;
-		_interface._materialDescriptorSetSlotIndex = pipelineLayout.GetSlotIndex();
+		_interface._materialDescriptorSetSlotIndex = materialDescSetLayout.GetSlotIndex();
 
 		for (const auto&d:inst._depVals)
 			if (d)
@@ -147,13 +147,13 @@ namespace RenderCore { namespace Techniques
 		}
 
 		generateOptions._shaderLanguage = GetDefaultShaderLanguage();
-		generateOptions._pipelineLayoutMaterialDescriptorSet = _pipelineLayout.GetLayout().get();
-		generateOptions._materialDescriptorSetIndex = _pipelineLayout.GetSlotIndex();
+		generateOptions._pipelineLayoutMaterialDescriptorSet = _materialDescSetLayout.GetLayout().get();
+		generateOptions._materialDescriptorSetIndex = _materialDescSetLayout.GetSlotIndex();
 		auto inst = ShaderSourceParser::InstantiateShader(MakeIteratorRange(finalInstRequests), generateOptions);
 		return Merge(inst._sourceFragments);
 	}
 
-	MaterialDescriptorSetLayout::MaterialDescriptorSetLayout(
+	DescriptorSetLayoutAndBinding::DescriptorSetLayoutAndBinding(
 		const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& layout,
 		unsigned slotIdx)
 	: _layout(layout), _slotIdx(slotIdx)
@@ -165,13 +165,13 @@ namespace RenderCore { namespace Techniques
 		}
 	}
 
-	MaterialDescriptorSetLayout::MaterialDescriptorSetLayout()
+	DescriptorSetLayoutAndBinding::DescriptorSetLayoutAndBinding()
 	{
 		_hash = 0;
 		_slotIdx = ~0u;
 	}
 
-	MaterialDescriptorSetLayout::~MaterialDescriptorSetLayout()
+	DescriptorSetLayoutAndBinding::~DescriptorSetLayoutAndBinding()
 	{}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

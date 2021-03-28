@@ -29,7 +29,7 @@ namespace RenderCore { namespace Techniques
 	class DescriptorSetBindingInfo;
 	class SequencerConfig;
 	class ITechniqueDelegate;
-	class MaterialDescriptorSetLayout;
+	class DescriptorSetLayoutAndBinding;
 
 	// Switching this to a virtual interface style class in order to better support multiple DLLs/modules
 	// For many objects like the SimpleModelRenderer, the pipeline accelerator pools is one of the main
@@ -70,6 +70,9 @@ namespace RenderCore { namespace Techniques
 		T1(Type) void   SetGlobalSelector(StringSection<> name, Type value);
 		virtual void	RemoveGlobalSelector(StringSection<> name) = 0;
 
+		virtual const DescriptorSetLayoutAndBinding& GetMaterialDescriptorSetLayout() const = 0;
+		virtual const DescriptorSetLayoutAndBinding& GetSequencerDescriptorSetLayout() const = 0;
+
 		virtual void	RebuildAllOutOfDatePipelines() = 0;
 
 		virtual const std::shared_ptr<IDevice>& GetDevice() const = 0;
@@ -91,7 +94,7 @@ namespace RenderCore { namespace Techniques
         SetGlobalSelector(name, MakeOpaqueIteratorRange(value), insertType);
 	}
 
-	namespace Internal { const MaterialDescriptorSetLayout& GetDefaultMaterialDescriptorSetLayout(); }
+	namespace Internal { const DescriptorSetLayoutAndBinding& GetDefaultDescriptorSetLayoutAndBinding(); }
 
 	namespace PipelineAcceleratorPoolFlags
 	{
@@ -103,6 +106,7 @@ namespace RenderCore { namespace Techniques
 		const std::shared_ptr<IDevice>&,
 		const std::shared_ptr<ICompiledPipelineLayout>&,
 		PipelineAcceleratorPoolFlags::BitField flags = 0,
-		const MaterialDescriptorSetLayout& = Internal::GetDefaultMaterialDescriptorSetLayout());
+		const DescriptorSetLayoutAndBinding& matDescSetLayout = Internal::GetDefaultDescriptorSetLayoutAndBinding(),
+		const DescriptorSetLayoutAndBinding& sequencerDescSetLayout = Internal::GetDefaultDescriptorSetLayoutAndBinding());
 }}
 

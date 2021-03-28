@@ -24,6 +24,7 @@ namespace RenderCore { namespace Techniques
 {
     class TechniqueContext;
 	class IUniformBufferDelegate;
+    class IShaderResourceDelegate;
     class AttachmentPool;
 	class FrameBufferPool;
 	class IPipelineAcceleratorPool;
@@ -51,12 +52,15 @@ namespace RenderCore { namespace Techniques
 		ParameterBox&			GetSubframeShaderSelectors()		{ return _subframeShaderSelectors; }
 		// UniformsStream			GetGlobalUniformsStream() const;
         
-		RenderCore::Techniques::IPipelineAcceleratorPool* _pipelineAcceleratorPool = nullptr;
+		// RenderCore::Techniques::IPipelineAcceleratorPool* _pipelineAcceleratorPool = nullptr;
 
 		void AddUniformDelegate(uint64_t binding, const std::shared_ptr<IUniformBufferDelegate>&);
-		void RemoveUniformDelegate(uint64_t binding);
 		void RemoveUniformDelegate(IUniformBufferDelegate&);
-		IteratorRange<const std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>*> GetUniformDelegates() { return MakeIteratorRange(_uniformDelegates); }
+        void RemoveUniformDelegate(uint64_t binding);
+        void AddShaderResourceDelegate(const std::shared_ptr<IShaderResourceDelegate>&);
+		void RemoveShaderResourceDelegate(IShaderResourceDelegate&);
+		auto GetUniformDelegates() const { return MakeIteratorRange(_uniformDelegates); }
+        auto GetShaderResourceDelegates() const { return MakeIteratorRange(_shaderResourceDelegates); }
 
         AttachmentPool& GetNamedResources() { assert(_namedResources); return *_namedResources; }
 		FrameBufferPool& GetFrameBufferPool() { assert(_frameBufferPool); return *_frameBufferPool; }
@@ -109,6 +113,7 @@ namespace RenderCore { namespace Techniques
 		FrameBufferPool*	_frameBufferPool;
 
 		std::vector<std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>> _uniformDelegates;
+        std::vector<std::shared_ptr<IShaderResourceDelegate>> _shaderResourceDelegates;
     };
 
     /// <summary>Utility macros for catching asset exceptions</summary>
