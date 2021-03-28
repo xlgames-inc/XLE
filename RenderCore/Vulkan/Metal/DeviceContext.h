@@ -39,7 +39,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class GraphicsPipeline : public VulkanUniquePtr<VkPipeline>
 	{
 	public:
-		uint64_t GetGUID() const;
+		uint64_t GetInterfaceBindingGUID() const;
 
 		// --------------- Vulkan specific interface --------------- 
 		ShaderProgram _shader;
@@ -51,7 +51,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ComputePipeline : public VulkanUniquePtr<VkPipeline>
 	{
 	public:
-		uint64_t GetGUID() const;
+		uint64_t GetInterfaceBindingGUID() const;
 
 		// --------------- Vulkan specific interface --------------- 
 		ComputeShader _shader;

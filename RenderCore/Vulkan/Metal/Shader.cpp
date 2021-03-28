@@ -33,21 +33,28 @@ namespace RenderCore { namespace Metal_Vulkan
     {
 		_pipelineLayout = checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout);
 		_validationCallback = std::make_shared<::Assets::DependencyValidation>();
+		_interfaceBindingHash = DefaultSeed64;
 
 		if (vs.GetStage() != ShaderStage::Null) {
 			assert(vs.GetStage() == ShaderStage::Vertex);
-            _modules[(unsigned)ShaderStage::Vertex] = factory.CreateShaderModule(vs.GetByteCode());
+			auto byteCode = vs.GetByteCode();
+            _modules[(unsigned)ShaderStage::Vertex] = factory.CreateShaderModule(byteCode);
 			_compiledCode[(unsigned)ShaderStage::Vertex] = vs;
 			assert(_modules[(unsigned)ShaderStage::Vertex]);
 			::Assets::RegisterAssetDependency(_validationCallback, vs.GetDependencyValidation());
+
+			_interfaceBindingHash = Hash64(byteCode.begin(), byteCode.end(), _interfaceBindingHash);
 		}
 
 		if (ps.GetStage() != ShaderStage::Null) {
 			assert(ps.GetStage() == ShaderStage::Pixel);
-            _modules[(unsigned)ShaderStage::Pixel] = factory.CreateShaderModule(ps.GetByteCode());
+            auto byteCode = ps.GetByteCode();
+			_modules[(unsigned)ShaderStage::Pixel] = factory.CreateShaderModule(byteCode);
 			_compiledCode[(unsigned)ShaderStage::Pixel] = ps;
 			assert(_modules[(unsigned)ShaderStage::Pixel]);
 			::Assets::RegisterAssetDependency(_validationCallback, ps.GetDependencyValidation());
+
+			_interfaceBindingHash = Hash64(byteCode.begin(), byteCode.end(), _interfaceBindingHash);
 		}
 
 		// auto& globals = Internal::VulkanGlobalsTemp::GetInstance();
@@ -65,10 +72,13 @@ namespace RenderCore { namespace Metal_Vulkan
     {
 		if (gs.GetStage() != ShaderStage::Null) {
 			assert(gs.GetStage() == ShaderStage::Geometry);
-            _modules[(unsigned)ShaderStage::Geometry] = factory.CreateShaderModule(gs.GetByteCode());
+			auto byteCode = gs.GetByteCode();
+            _modules[(unsigned)ShaderStage::Geometry] = factory.CreateShaderModule(byteCode);
 			_compiledCode[(unsigned)ShaderStage::Geometry] = gs;
 			assert(_modules[(unsigned)ShaderStage::Geometry]);
 			::Assets::RegisterAssetDependency(_validationCallback, gs.GetDependencyValidation());
+
+			_interfaceBindingHash = Hash64(byteCode.begin(), byteCode.end(), _interfaceBindingHash);
 		}
     }
 
@@ -84,18 +94,24 @@ namespace RenderCore { namespace Metal_Vulkan
     {
 		if (hs.GetStage() != ShaderStage::Null) {
 			assert(hs.GetStage() == ShaderStage::Hull);
-            _modules[(unsigned)ShaderStage::Hull] = factory.CreateShaderModule(hs.GetByteCode());
+			auto byteCode = hs.GetByteCode();
+            _modules[(unsigned)ShaderStage::Hull] = factory.CreateShaderModule(byteCode);
 			_compiledCode[(unsigned)ShaderStage::Hull] = hs;
 			assert(_modules[(unsigned)ShaderStage::Hull]);
 			::Assets::RegisterAssetDependency(_validationCallback, hs.GetDependencyValidation());
+
+			_interfaceBindingHash = Hash64(byteCode.begin(), byteCode.end(), _interfaceBindingHash);
 		}
 
 		if (ds.GetStage() != ShaderStage::Null) {
 			assert(ds.GetStage() == ShaderStage::Domain);
-            _modules[(unsigned)ShaderStage::Domain] = factory.CreateShaderModule(ds.GetByteCode());
+			auto byteCode = ds.GetByteCode();
+            _modules[(unsigned)ShaderStage::Domain] = factory.CreateShaderModule(byteCode);
 			_compiledCode[(unsigned)ShaderStage::Domain] = ds;
 			assert(_modules[(unsigned)ShaderStage::Domain]);
 			::Assets::RegisterAssetDependency(_validationCallback, ds.GetDependencyValidation());
+
+			_interfaceBindingHash = Hash64(byteCode.begin(), byteCode.end(), _interfaceBindingHash);
 		}
     }
 
@@ -131,10 +147,13 @@ namespace RenderCore { namespace Metal_Vulkan
     : _compiledCode(compiledShader)
     {
 		_pipelineLayout = checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout);
+		_interfaceBindingHash = 0;
 
 		if (compiledShader.GetStage() != ShaderStage::Null) {
 			assert(compiledShader.GetStage() == ShaderStage::Compute);
-            _module = factory.CreateShaderModule(compiledShader.GetByteCode());
+			auto byteCode = compiledShader.GetByteCode();
+            _module = factory.CreateShaderModule(byteCode);
+			_interfaceBindingHash = Hash64(byteCode.begin(), byteCode.end());
 		}
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();

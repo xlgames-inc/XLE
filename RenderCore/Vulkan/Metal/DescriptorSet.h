@@ -5,6 +5,7 @@
 #pragma once
 
 #include "VulkanCore.h"
+#include "Resource.h"
 #include "../../IDevice.h"
 #include "../../UniformsStream.h"
 #include "../../../Utility/StringUtils.h"
@@ -15,7 +16,7 @@
 #include <string>
 #include <vector>
 
-namespace RenderCore { class CompiledShaderByteCode; class UniformsStream; enum class PipelineType; class ConstantBufferView; struct DescriptorSlot; class LegacyRegisterBindingDesc; class IResource; }
+namespace RenderCore { class CompiledShaderByteCode; class UniformsStream; enum class PipelineType; struct DescriptorSlot; class LegacyRegisterBindingDesc; class IResource; }
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -148,6 +149,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	private:
 		VulkanUniquePtr<VkDescriptorSet> _underlying;
 		std::shared_ptr<CompiledDescriptorSetLayout> _layout;
+		Resource _associatedLinearBufferData;
 		#if defined(VULKAN_VERBOSE_DEBUG)
 			DescriptorSetDebugInfo _description;
 		#endif

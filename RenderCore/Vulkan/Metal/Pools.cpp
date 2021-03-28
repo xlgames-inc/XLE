@@ -432,10 +432,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		const std::shared_ptr<IAsyncTracker>& asyncTracker) 
 	{
 		_pimpl = std::make_unique<Pimpl>(factory, asyncTracker);
-
-		VkPhysicalDeviceProperties physDevProps = {};
-		vkGetPhysicalDeviceProperties(factory.GetPhysicalDevice(), &physDevProps);
-		_pimpl->_cb._alignment = std::max(1u, (unsigned)physDevProps.limits.minUniformBufferOffsetAlignment);
+		_pimpl->_cb._alignment = std::max(1u, (unsigned)factory.GetPhysicalDeviceProperties().limits.minUniformBufferOffsetAlignment);
 	}
 	
 	TemporaryBufferSpace::~TemporaryBufferSpace() {}

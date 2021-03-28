@@ -315,10 +315,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		return *this;
 	}
 
-	uint64_t GraphicsPipeline::GetGUID() const
+	uint64_t GraphicsPipeline::GetInterfaceBindingGUID() const
 	{
-		assert(0);
-		return 0;
+		return _shader.GetInterfaceBindingGUID();
 	}
 
 	GraphicsPipeline::GraphicsPipeline(VulkanUniquePtr<VkPipeline>&& pipeline)
@@ -326,10 +325,9 @@ namespace RenderCore { namespace Metal_Vulkan
 	{}
 	GraphicsPipeline::~GraphicsPipeline() {}
 
-	uint64_t ComputePipeline::GetGUID() const
+	uint64_t ComputePipeline::GetInterfaceBindingGUID() const
 	{
-		assert(0);
-		return 0;
+		return _shader.GetInterfaceBindingGUID();
 	}
 
 	ComputePipeline::ComputePipeline(VulkanUniquePtr<VkPipeline>&& pipeline)

@@ -11,7 +11,8 @@
 #include "../../ShaderService.h"
 #include "../../../Assets/AssetsCore.h"
 
-namespace RenderCore { 
+namespace RenderCore
+{
 	class CompiledShaderByteCode; class IDevice; 
 	class ICompiledPipelineLayout; class LegacyRegisterBindingDesc; 
 	class VulkanCompilerConfiguration;
@@ -60,9 +61,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		static const unsigned s_maxShaderStages = 5;
 
         bool DynamicLinkingEnabled() const;
-
-		// void Apply(GraphicsPipelineBuilder& pipeline) const;
-		// void Apply(GraphicsPipelineBuilder& pipeline, const BoundClassInterfaces&) const;
+		uint64_t GetInterfaceBindingGUID() const { return _interfaceBindingHash; }
 
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
 
@@ -97,13 +96,12 @@ namespace RenderCore { namespace Metal_Vulkan
 			StringSection<::Assets::ResChar> dsName,
 			StringSection<::Assets::ResChar> definesTable);
 
-		// std::shared_ptr<PartialPipelineDescriptorsLayout> _pipelineLayoutConfig;
-
     protected:
 		CompiledShaderByteCode _compiledCode[s_maxShaderStages];
 		VulkanSharedPtr<VkShaderModule> _modules[s_maxShaderStages];
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
 		std::shared_ptr<CompiledPipelineLayout> _pipelineLayout;
+		uint64_t _interfaceBindingHash;
     };
 
 	using DeepShaderProgram = ShaderProgram;
@@ -130,6 +128,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		ComputeShader(const ComputeShader&) = default;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
+		uint64_t GetInterfaceBindingGUID() const { return _interfaceBindingHash; }
 
 		// Legacy asset based API --
 		static void ConstructToFuture(
@@ -138,13 +137,12 @@ namespace RenderCore { namespace Metal_Vulkan
 			StringSection<::Assets::ResChar> codeName,
 			StringSection<::Assets::ResChar> definesTable = {});
 
-		// std::shared_ptr<PartialPipelineDescriptorsLayout> _pipelineLayoutConfig;
-
     private:
         std::shared_ptr<::Assets::DependencyValidation>		_validationCallback;
 		VulkanSharedPtr<VkShaderModule>						_module;
 		CompiledShaderByteCode								_compiledCode;
 		std::shared_ptr<CompiledPipelineLayout> 			_pipelineLayout;
+		uint64_t _interfaceBindingHash;
     };
 
 	namespace Internal

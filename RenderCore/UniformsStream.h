@@ -12,7 +12,6 @@
 namespace RenderCore 
 {
 	class MiniInputElementDesc;
-	class ConstantBufferView;
 	class IResourceView;
 	class ISampler;
 	enum class Format;
@@ -55,6 +54,7 @@ namespace RenderCore
 		std::vector<uint64_t> _resourceViewBindings;
 		std::vector<uint64_t> _immediateDataBindings;
 		std::vector<uint64_t> _samplerBindings;
+		std::vector<uint64_t> _fixedDescriptorSetBindings;
 
 		struct ExplicitCBLayout
 		{
@@ -64,11 +64,12 @@ namespace RenderCore
 
 		struct FixedDescriptorSetBinding
 		{
-			unsigned _inputSlot;
-			uint64_t _hashName;
-			const DescriptorSetSignature* _signature;
+			const DescriptorSetSignature* _signature = nullptr;
 		};
-		std::vector<FixedDescriptorSetBinding> _fixedDescriptorSetBindings;
+		std::vector<std::pair<uint64_t, FixedDescriptorSetBinding>> _descriptorSetLayouts;
+
+		IteratorRange<const ConstantBufferElementDesc*> GetCBLayoutElements(uint64_t hashName) const;
+		const DescriptorSetSignature* GetDescriptorSetSignature(uint64_t hashName) const;
 
 	private:
 		mutable uint64_t _hash;
@@ -106,7 +107,7 @@ namespace RenderCore
 	class DescriptorSetInitializer
 	{
 	public:
-		enum class BindType { ResourceView, Sampler, Empty };
+		enum class BindType { ResourceView, Sampler, ImmediateData, Empty };
 		struct BindTypeAndIdx { BindType _type = BindType::Empty; unsigned _uniformsStreamIdx = ~0u; };
 		IteratorRange<const BindTypeAndIdx*> _slotBindings;
 		UniformsStream _bindItems;

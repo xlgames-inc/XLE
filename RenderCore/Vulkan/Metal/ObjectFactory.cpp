@@ -420,20 +420,22 @@ namespace RenderCore { namespace Metal_Vulkan
     #endif
 
     ObjectFactory::ObjectFactory(ObjectFactory&& moveFrom) never_throws
-    : _memProps(std::move(moveFrom._memProps))
-    , _physDev(std::move(moveFrom._physDev))
+    : _physDev(std::move(moveFrom._physDev))
 	, _device(std::move(moveFrom._device))
     , _destruction(std::move(moveFrom._destruction))
 	, _immediateDestruction(std::move(moveFrom._immediateDestruction))
+    , _memProps(std::move(moveFrom._memProps))
+    , _physDevProperties(std::move(moveFrom._physDevProperties))
     {}
 
 	ObjectFactory& ObjectFactory::operator=(ObjectFactory&& moveFrom) never_throws
     {
-        _memProps = std::move(moveFrom._memProps);
         _physDev = std::move(moveFrom._physDev);
 		_device = std::move(moveFrom._device);
         _destruction = std::move(moveFrom._destruction);
 		_immediateDestruction = std::move(moveFrom._immediateDestruction);
+        _memProps = std::move(moveFrom._memProps);
+        _physDevProperties = std::move(moveFrom._physDevProperties);
         return *this;
     }
 
@@ -442,6 +444,10 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         _memProps = std::make_unique<VkPhysicalDeviceMemoryProperties>(VkPhysicalDeviceMemoryProperties{});
         vkGetPhysicalDeviceMemoryProperties(physDev, _memProps.get());
+
+        _physDevProperties = std::make_unique<VkPhysicalDeviceProperties>(VkPhysicalDeviceProperties{});
+        vkGetPhysicalDeviceProperties(physDev, _physDevProperties.get());
+
 		_immediateDestruction = CreateImmediateDestroyer(_device);
 		_destruction = _immediateDestruction;
     }

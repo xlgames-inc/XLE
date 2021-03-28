@@ -132,6 +132,7 @@ namespace RenderCore { namespace Metal_Vulkan
             VkFlags memoryTypeBits, 
             VkMemoryPropertyFlags requirementsMask = 0) const;
 		VkFormatProperties GetFormatProperties(VkFormat_ fmt) const;
+        const VkPhysicalDeviceProperties& GetPhysicalDeviceProperties() const { return *_physDevProperties; }
 
 		std::shared_ptr<IDestructionQueue> CreateMarkerTrackingDestroyer(const std::shared_ptr<IAsyncTracker>&);
 
@@ -153,12 +154,14 @@ namespace RenderCore { namespace Metal_Vulkan
 		ObjectFactory& operator=(ObjectFactory&&) never_throws;
 
 	private:
-		std::unique_ptr<VkPhysicalDeviceMemoryProperties> _memProps;
         VkPhysicalDevice            _physDev;
 		VulkanSharedPtr<VkDevice>   _device;
 
 		std::shared_ptr<IDestructionQueue> _immediateDestruction; 
 		std::shared_ptr<IDestructionQueue> _destruction;
+
+        std::unique_ptr<VkPhysicalDeviceMemoryProperties> _memProps;
+        std::unique_ptr<VkPhysicalDeviceProperties> _physDevProperties;
 	};
 
 	ObjectFactory& GetObjectFactory(IDevice& device);

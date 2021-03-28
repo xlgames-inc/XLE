@@ -14,6 +14,7 @@
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../Utility/ArithmeticUtils.h"
 #include "../../../Utility/StreamUtils.h"
+#include "../../../Utility/BitUtils.h"
 #include "../../../Core/Prefix.h"
 #include <sstream>
 
@@ -678,6 +679,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		_underlying = globalPools._longTermDescriptorPool.Allocate(GetUnderlyingLayout());
 
 		uint64_t writtenMask = 0ull;
+		size_t linearBufferIterator = 0;
+		unsigned offsetMultiple = std::max(1u, (unsigned)factory.GetPhysicalDeviceProperties().limits.minUniformBufferOffsetAlignment);
 		ProgressiveDescriptorSetBuilder builder { _layout->GetDescriptorSlots() };
 		for (unsigned c=0; c<binds.size(); ++c) {
 			if (binds[c]._type == DescriptorSetInitializer::BindType::ResourceView) {
@@ -686,9 +689,42 @@ namespace RenderCore { namespace Metal_Vulkan
 			} else if (binds[c]._type == DescriptorSetInitializer::BindType::Sampler) {
 				builder.Bind(c, checked_cast<const SamplerState*>(uniforms._samplers[binds[c]._uniformsStreamIdx])->GetUnderlying());
 				writtenMask |= 1ull<<uint64_t(c);
+			} else if (binds[c]._type == DescriptorSetInitializer::BindType::ImmediateData) {
+				// Only constant buffers are supported for immediate data; partially for consistency
+				// across APIs.
+				// to support different descriptor types, we'd need to change the offset alignment
+				// values and change the bind flag used to create the buffer
+				assert(layout->GetDescriptorSlots()[c]._type == DescriptorType::ConstantBuffer);
+				auto size = uniforms._immediateData[binds[c]._uniformsStreamIdx].size();
+				linearBufferIterator += CeilToMultiple(size, offsetMultiple);
+				writtenMask |= 1ull<<uint64_t(c);
 			} else {
 				assert(binds[c]._type == DescriptorSetInitializer::BindType::Empty);
 			}
+		}
+
+		if (linearBufferIterator != 0) {
+			auto linearBufferSize = linearBufferIterator;
+			linearBufferIterator = 0;
+			std::vector<uint8_t> initData(linearBufferSize, 0);
+			for (unsigned c=0; c<binds.size(); ++c)
+				if (binds[c]._type == DescriptorSetInitializer::BindType::ImmediateData) {
+					auto size = uniforms._immediateData[binds[c]._uniformsStreamIdx].size();
+					auto range = MakeIteratorRange(initData.begin() + linearBufferIterator, initData.begin() + linearBufferIterator + size);
+					std::memcpy(AsPointer(range.begin()), uniforms._immediateData[binds[c]._uniformsStreamIdx].begin(), size);
+					linearBufferIterator += CeilToMultiple(size, offsetMultiple);
+				}
+			assert(linearBufferIterator == linearBufferSize);
+			auto desc = CreateDesc(BindFlag::ConstantBuffer, 0, GPUAccess::Read, LinearBufferDesc::Create(linearBufferSize), "descriptor-set-bound-data");
+			_associatedLinearBufferData = Resource(factory, desc, MakeIteratorRange(initData).Cast<const void*>());
+
+			linearBufferIterator = 0;
+			for (unsigned c=0; c<binds.size(); ++c)
+				if (binds[c]._type == DescriptorSetInitializer::BindType::ImmediateData) {
+					auto size = uniforms._immediateData[binds[c]._uniformsStreamIdx].size();
+					builder.Bind(c, VkDescriptorBufferInfo{_associatedLinearBufferData.GetBuffer(), linearBufferIterator, size}, "descriptor-set-bound-data");
+					linearBufferIterator += CeilToMultiple(size, offsetMultiple);
+				}
 		}
 
 		uint64_t signatureMask = (1ull<<uint64_t(layout->GetDescriptorSlots().size()))-1;

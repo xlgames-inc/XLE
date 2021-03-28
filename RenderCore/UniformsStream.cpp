@@ -62,11 +62,37 @@ namespace RenderCore
 
 	void UniformsStreamInterface::BindFixedDescriptorSet(unsigned slot, uint64_t hashName, const DescriptorSetSignature* signature)
 	{
-		FixedDescriptorSetBinding binding;
-		binding._inputSlot = slot;
-		binding._hashName = hashName;
-		binding._signature = signature;
-		_fixedDescriptorSetBindings.push_back(binding);
+		if (_fixedDescriptorSetBindings.size() <= slot)
+			_fixedDescriptorSetBindings.resize(slot+1);
+
+		_fixedDescriptorSetBindings[slot] = hashName;
+		_hash = 0;
+
+		if (signature) {
+			#if defined(_DEBUG)
+				auto i = std::find_if(_descriptorSetLayouts.begin(), _descriptorSetLayouts.end(), [hashName](auto& c) { return c.first == hashName; });
+				assert(i == _descriptorSetLayouts.end());
+			#endif
+			FixedDescriptorSetBinding lyt;
+			lyt._signature = signature;
+			_descriptorSetLayouts.push_back(std::make_pair(hashName, std::move(lyt)));
+		}
+	}
+
+	IteratorRange<const ConstantBufferElementDesc*> UniformsStreamInterface::GetCBLayoutElements(uint64_t hashName) const
+	{
+		for (const auto&cb:_cbLayouts)
+			if (cb.first == hashName)
+				return MakeIteratorRange(cb.second._elements);
+		return {};
+	}
+
+	const DescriptorSetSignature* UniformsStreamInterface::GetDescriptorSetSignature(uint64_t hashName) const
+	{
+		for (const auto&descSet:_descriptorSetLayouts)
+			if (descSet.first == hashName)
+				return descSet.second._signature;
+		return nullptr;
 	}
 
 	uint64_t UniformsStreamInterface::GetHash() const
