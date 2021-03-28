@@ -266,35 +266,69 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
-	enum class UniformStreamType { ResourceView, ImmediateData, Sampler, Dummy };
+	enum class UniformStreamType { ResourceView, ImmediateData, Sampler, Dummy, None };
+
+	static std::tuple<UniformStreamType, unsigned, unsigned> FindBinding(
+		IteratorRange<const UniformsStreamInterface* const*> looseUniforms,
+		uint64_t bindingName)
+	{
+		for (signed groupIdx = (signed)looseUniforms.size()-1; groupIdx>=0; --groupIdx) {
+			const auto& group = looseUniforms[groupIdx];
+			auto srv = std::find(group->_resourceViewBindings.begin(), group->_resourceViewBindings.end(), bindingName);
+			if (srv != group->_resourceViewBindings.end()) {
+				auto inputSlot = (unsigned)std::distance(group->_resourceViewBindings.begin(), srv);
+				return std::make_tuple(UniformStreamType::ResourceView, groupIdx, inputSlot);
+			}
+
+			auto imData = std::find(group->_immediateDataBindings.begin(), group->_immediateDataBindings.end(), bindingName);
+			if (imData != group->_immediateDataBindings.end()) {
+				auto inputSlot = (unsigned)std::distance(group->_immediateDataBindings.begin(), imData);
+				return std::make_tuple(UniformStreamType::ImmediateData, groupIdx, inputSlot);
+			}
+
+			auto sampler = std::find(group->_samplerBindings.begin(), group->_samplerBindings.end(), bindingName);
+			if (sampler != group->_samplerBindings.end()) {
+				auto inputSlot = (unsigned)std::distance(group->_samplerBindings.begin(), sampler);
+				return std::make_tuple(UniformStreamType::Sampler, groupIdx, inputSlot);
+			}
+		}
+
+		return std::make_tuple(UniformStreamType::None, ~0u, ~0u);
+	}
 
 	class BoundUniforms::ConstructionHelper
 	{
 	public:
-		std::map<unsigned, std::pair<unsigned, const RenderCore::DescriptorSetSignature*>> _fixedDescriptorSets;
-		const UniformsStreamInterface* _looseUniforms;
+		std::map<unsigned, std::tuple<unsigned, unsigned, const DescriptorSetSignature*>> _fixedDescriptorSets;
+		IteratorRange<const UniformsStreamInterface* const*> _looseUniforms;
 		const CompiledPipelineLayout* _pipelineLayout;
-			
-		std::vector<AdaptiveSetBindingRules> _adaptiveSetRules;
-		std::vector<PushConstantBindingRules> _pushConstantsRules;
-		std::vector<FixedDescriptorSetBindingRules> _fixedDescriptorSetRules;
 
-		uint64_t _boundLooseUniformBuffers = 0;
-		uint64_t _boundLooseResources = 0;
-		uint64_t _boundLooseSamplerStates = 0;
+		struct GroupRules
+		{
+			std::vector<AdaptiveSetBindingRules> _adaptiveSetRules;
+			std::vector<PushConstantBindingRules> _pushConstantsRules;
+			std::vector<FixedDescriptorSetBindingRules> _fixedDescriptorSetRules;
+
+			uint64_t _boundLooseUniformBuffers = 0;
+			uint64_t _boundLooseResources = 0;
+			uint64_t _boundLooseSamplerStates = 0;
+		};
+		GroupRules _group[4];
 
 		void AddLooseUniformBinding(
 			UniformStreamType uniformStreamType,
 			unsigned outputDescriptorSet, unsigned outputDescriptorSetSlot,
-			unsigned inputUniformStreamIdx, uint32_t shaderStageMask)
+			unsigned groupIdx, unsigned inputUniformStreamIdx, uint32_t shaderStageMask)
 		{
+			assert(groupIdx < 4);
+			auto& groupRules = _group[groupIdx];
 			auto adaptiveSet = std::find_if(
-				_adaptiveSetRules.begin(), _adaptiveSetRules.end(),
+				groupRules._adaptiveSetRules.begin(), groupRules._adaptiveSetRules.end(),
 				[outputDescriptorSet](const auto& c) { return c._descriptorSetIdx == outputDescriptorSet; });
-			if (adaptiveSet == _adaptiveSetRules.end()) {
-				_adaptiveSetRules.push_back(
+			if (adaptiveSet == groupRules._adaptiveSetRules.end()) {
+				groupRules._adaptiveSetRules.push_back(
 					AdaptiveSetBindingRules { outputDescriptorSet, shaderStageMask, _pipelineLayout->GetDescriptorSetLayout(outputDescriptorSet) });
-				adaptiveSet = _adaptiveSetRules.end()-1;
+				adaptiveSet = groupRules._adaptiveSetRules.end()-1;
 				auto bindings = _pipelineLayout->GetDescriptorSetLayout(outputDescriptorSet)->GetDescriptorSlots();
 				adaptiveSet->_sig = std::vector<DescriptorSlot> { bindings.begin(), bindings.end() };
 				adaptiveSet->_shaderUsageMask = (1ull << uint64_t(outputDescriptorSetSlot));
@@ -307,14 +341,14 @@ namespace RenderCore { namespace Metal_Vulkan
 				std::vector<LooseUniformBind>* binds;
 				if (uniformStreamType == UniformStreamType::ImmediateData) {
 					binds = &adaptiveSet->_immediateDataBinds;
-					_boundLooseUniformBuffers |= (1ull << uint64_t(inputUniformStreamIdx));
+					groupRules._boundLooseUniformBuffers |= (1ull << uint64_t(inputUniformStreamIdx));
 				} else if (uniformStreamType == UniformStreamType::ResourceView) {
 					binds = &adaptiveSet->_resourceViewBinds;
-					_boundLooseResources |= (1ull << uint64_t(inputUniformStreamIdx));
+					groupRules._boundLooseResources |= (1ull << uint64_t(inputUniformStreamIdx));
 				} else {
 					assert(uniformStreamType == UniformStreamType::Sampler);
 					binds = &adaptiveSet->_samplerBinds;
-					_boundLooseSamplerStates |= (1ull << uint64_t(inputUniformStreamIdx));
+					groupRules._boundLooseSamplerStates |= (1ull << uint64_t(inputUniformStreamIdx));
 				}
 
 				auto existing = std::find_if(
@@ -331,6 +365,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		void BindReflection(const SPIRVReflection& reflection, uint32_t shaderStageMask)
 		{
+			assert(_looseUniforms.size() <= 4);
+
 			// We'll need an input value for every binding in the shader reflection
 			for (const auto&v:reflection._variables) {
 				auto reflectionVariable = GetReflectionVariableInformation(reflection, v.first);
@@ -348,87 +384,83 @@ namespace RenderCore { namespace Metal_Vulkan
 
 						auto descSetSigBindings = _pipelineLayout->GetDescriptorSetLayout(reflectionVariable._binding._descriptorSet)->GetDescriptorSlots();
 
-						auto srv = std::find(_looseUniforms->_resourceViewBindings.begin(), _looseUniforms->_resourceViewBindings.end(), hashName);
-						if (srv != _looseUniforms->_resourceViewBindings.end()) {
+						unsigned inputSlot = ~0u, groupIdx = ~0u;
+						UniformStreamType bindingType = UniformStreamType::None;
+						std::tie(bindingType, groupIdx, inputSlot) = FindBinding(_looseUniforms, hashName);
 
+						if (bindingType == UniformStreamType::ResourceView) {
 							// We matched this shader input to a SRV in the loose uniforms input
 							// We also need to find this in the descriptor set.
 							// Since this is an adaptive descriptor set, we don't have to worry about the name
 							// assigned to the particular slot. We just need to know the that type is what
 							// we expect
 
-							/*if (descSetSig._layout->_slots[b.second._bindingPoint]._type != RenderCore::DescriptorSetSignature::SlotType::Texture)
-								Throw(std::runtime_error(""));*/
-
 							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || (descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::Texture && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessTexture && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::ConstantBuffer && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessBuffer))
 								Throw(std::runtime_error(""));
 
-							auto inputSlot = std::distance(_looseUniforms->_resourceViewBindings.begin(), srv);
 							AddLooseUniformBinding(
 								UniformStreamType::ResourceView,
 								reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
-								inputSlot, shaderStageMask);
+								groupIdx, inputSlot, shaderStageMask);
+
+						} else if (bindingType == UniformStreamType::ImmediateData) {
+							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || (descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::ConstantBuffer && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessBuffer))
+								Throw(std::runtime_error(""));
+
+							AddLooseUniformBinding(
+								UniformStreamType::ImmediateData,
+								reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
+								groupIdx, inputSlot, shaderStageMask);
+
+						} else if (bindingType == UniformStreamType::Sampler) {
+							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::Sampler)
+								Throw(std::runtime_error(""));
+
+							if (reflectionVariable._slotType != DescriptorType::Sampler)
+								Throw(std::runtime_error(""));
+
+							AddLooseUniformBinding(
+								UniformStreamType::Sampler,
+								reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
+								groupIdx, inputSlot, shaderStageMask);
 
 						} else {
-							auto cb = std::find(_looseUniforms->_immediateDataBindings.begin(), _looseUniforms->_immediateDataBindings.end(), hashName);
-							if (cb != _looseUniforms->_immediateDataBindings.end()) {
-								if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || (descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::ConstantBuffer && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessBuffer))
-									Throw(std::runtime_error(""));
-
-								auto inputSlot = std::distance(_looseUniforms->_immediateDataBindings.begin(), cb);
-								AddLooseUniformBinding(
-									UniformStreamType::ImmediateData,
-									reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
-									inputSlot, shaderStageMask);
-
-							} else {
-								auto ss = std::find(_looseUniforms->_samplerBindings.begin(), _looseUniforms->_samplerBindings.end(), hashName);
-								if (ss != _looseUniforms->_samplerBindings.end()) {
-									if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::Sampler)
-										Throw(std::runtime_error(""));
-
-									if (reflectionVariable._slotType != DescriptorType::Sampler)
-										Throw(std::runtime_error(""));
-
-									auto inputSlot = std::distance(_looseUniforms->_samplerBindings.begin(), ss);
-									AddLooseUniformBinding(
-										UniformStreamType::Sampler,
-										reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
-										inputSlot, shaderStageMask);
-
-								} else {
-									// no binding found -- just mark it as an input variable we need, it will get filled in with a default binding
-									AddLooseUniformBinding(
-										UniformStreamType::Dummy,
-										reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
-										~0u, shaderStageMask);
-								}
-							}
+							// no binding found -- just mark it as an input variable we need, it will get filled in with a default binding
+							groupIdx = 0;
+							AddLooseUniformBinding(
+								UniformStreamType::Dummy,
+								reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
+								groupIdx, ~0u, shaderStageMask);
 						}
 					} else {
 
 						// There is a fixed descriptor set assigned that covers this input
 						// Compare the slot within the fixed descriptor set to what the shader wants as input
 
-						if (fixedDescSet->second.second) {
-							if (reflectionVariable._binding._bindingPoint >= fixedDescSet->second.second->_slots.size())
+						auto* signature = std::get<2>(fixedDescSet->second);
+						if (signature) {
+							if (reflectionVariable._binding._bindingPoint >= signature->_slots.size())
 								Throw(std::runtime_error(""));
 							
-							auto& descSetSlot = fixedDescSet->second.second->_slots[reflectionVariable._binding._bindingPoint];
+							auto& descSetSlot = signature->_slots[reflectionVariable._binding._bindingPoint];
 							if (reflectionVariable._slotType != descSetSlot._type)
 								Throw(std::runtime_error(""));		// types should agree
 						}
 
-						auto inputSlot = fixedDescSet->second.first;
+						auto groupIdx = std::get<0>(fixedDescSet->second);
+						auto inputSlot = std::get<1>(fixedDescSet->second);
+
+						// We might have an existing registration for this binding; in which case we
+						// just have to update the shader stage mask
 						auto existing = std::find_if(
-							_fixedDescriptorSetRules.begin(), _fixedDescriptorSetRules.end(),
+							_group[groupIdx]._fixedDescriptorSetRules.begin(), _group[groupIdx]._fixedDescriptorSetRules.end(),
 							[inputSlot](const auto& c) { return c._inputSlot == inputSlot; });
-						if (existing != _fixedDescriptorSetRules.end()) {
+						if (existing != _group[groupIdx]._fixedDescriptorSetRules.end()) {
 							if (existing->_outputSlot != reflectionVariable._binding._descriptorSet)
 								Throw(std::runtime_error(""));		// attempting the bind the same fixed descriptor set to multiple output slots
 							existing->_shaderStageMask |= shaderStageMask;
 						} else {
-							_fixedDescriptorSetRules.push_back(
+							_group[groupIdx]._fixedDescriptorSetRules.push_back(
 								FixedDescriptorSetBindingRules {
 									inputSlot, reflectionVariable._binding._descriptorSet, shaderStageMask
 								});
@@ -450,27 +482,30 @@ namespace RenderCore { namespace Metal_Vulkan
 					// from a prebuilt descriptor set. Furthermore, they must be a "immediateData"
 					// type of input
 
-					auto cb = std::find(_looseUniforms->_immediateDataBindings.begin(), _looseUniforms->_immediateDataBindings.end(), hashName);
-					if (cb != _looseUniforms->_immediateDataBindings.end()) {
-
-						auto existing = std::find_if(
-							_pushConstantsRules.begin(), _pushConstantsRules.end(),
-							[shaderStageMask](const auto& c) { return c._shaderStageBind == shaderStageMask; });
-						if (existing != _pushConstantsRules.end())
-							Throw(std::runtime_error(""));		// we can only have one push constants per shader stage
-						auto inputSlot = (unsigned)std::distance(_looseUniforms->_immediateDataBindings.begin(), cb);
-						auto& pipelineRange = _pipelineLayout->GetPushConstantsRange(pipelineLayoutIdx);
-						_pushConstantsRules.push_back({shaderStageMask, pipelineRange.offset, pipelineRange.size, inputSlot});
-
-					} else {
+					unsigned inputSlot = ~0u, groupIdx = ~0u;
+					UniformStreamType bindingType = UniformStreamType::None;
+					std::tie(bindingType, groupIdx, inputSlot) = FindBinding(_looseUniforms, hashName);
+					if (bindingType == UniformStreamType::None)
 						Throw(std::runtime_error(""));		// missing push constants input
+					if (bindingType != UniformStreamType::ImmediateData)
+						Throw(std::runtime_error(""));		// Must bind immediate data to push constants (not a fixed constant buffer)
+
+					for (const auto&group:_group) {
+						auto existing = std::find_if(
+							group._pushConstantsRules.begin(), group._pushConstantsRules.end(),
+							[shaderStageMask](const auto& c) { return c._shaderStageBind == shaderStageMask; });
+						if (existing != group._pushConstantsRules.end())
+							Throw(std::runtime_error(""));		// we can only have one push constants per shader stage
 					}
+
+					auto& pipelineRange = _pipelineLayout->GetPushConstantsRange(pipelineLayoutIdx);
+					_group[groupIdx]._pushConstantsRules.push_back({shaderStageMask, pipelineRange.offset, pipelineRange.size, inputSlot});
 				}
 			}
 		}
 	};
 
-	void BoundUniforms::UnbindLooseUniforms(DeviceContext& context, GraphicsEncoder& encoder)
+	void BoundUniforms::UnbindLooseUniforms(DeviceContext& context, GraphicsEncoder& encoder, unsigned groupIdx) const
 	{
 		assert(0);		// todo -- unimplemented
 	}
@@ -501,34 +536,34 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	BoundUniforms::BoundUniforms(
 		const ShaderProgram& shader,
-		const UniformsStreamInterface& interf)
+		const UniformsStreamInterface& group0,
+		const UniformsStreamInterface& group1,
+		const UniformsStreamInterface& group2,
+		const UniformsStreamInterface& group3)
 	{
 		_pipelineType = PipelineType::Graphics;
+
+		const UniformsStreamInterface* groups[] = { &group0, &group1, &group2, &group3 };
 
 		// We need to map on the input descriptor set bindings to the slots understood
 		// by the shader's pipeline layout
 		auto& pipelineLayout = shader.GetPipelineLayout();
 		ConstructionHelper helper;
-		helper._looseUniforms = &interf;
+		helper._looseUniforms = MakeIteratorRange(groups);
 		helper._pipelineLayout = &pipelineLayout;
 		
-		for (unsigned dIdx=0; dIdx<interf._fixedDescriptorSetBindings.size(); ++dIdx) {
-			const auto& d = interf._fixedDescriptorSetBindings[dIdx];
+		for (unsigned c=0; c<pipelineLayout.GetDescriptorSetCount(); ++c) {
 			bool foundMapping = false;
-			for (unsigned c=0; c<pipelineLayout.GetDescriptorSetCount(); ++c) {
-				auto hashName = pipelineLayout.GetDescriptorSetBindingNames()[c];
-				if (hashName == d._hashName) {
-					// todo -- we should check compatibility between the given descriptor set and the pipeline layout
-					helper._fixedDescriptorSets.insert({c, std::make_pair(d._inputSlot, d._signature)});
-					foundMapping = true;
-					break;
+			for (signed gIdx=3; gIdx>=0 && !foundMapping; --gIdx) {
+				for (unsigned dIdx=0; dIdx<groups[gIdx]->_fixedDescriptorSetBindings.size() && !foundMapping; ++dIdx) {
+					auto bindName = groups[gIdx]->_fixedDescriptorSetBindings[dIdx];
+					if (pipelineLayout.GetDescriptorSetBindingNames()[c] == bindName) {
+						// todo -- we should check compatibility between the given descriptor set and the pipeline layout
+						helper._fixedDescriptorSets.insert({c, std::make_tuple(gIdx, dIdx, groups[gIdx]->GetDescriptorSetSignature(bindName))});
+						foundMapping = true;
+					}
 				}
 			}
-			#if defined(_DEBUG)
-				if (!foundMapping) {
-					std::cout << "Could not find descriptor set in pipeline layout (hash code: " << std::hex << d._hashName << std::dec << "). Ignoring" << std::endl;
-				}
-			#endif
 		}
 
 		for (unsigned stage=0; stage<ShaderProgram::s_maxShaderStages; ++stage) {
@@ -538,18 +573,23 @@ namespace RenderCore { namespace Metal_Vulkan
 			}
 		}
 
-		_adaptiveSetRules = std::move(helper._adaptiveSetRules);
-		_fixedDescriptorSetRules = std::move(helper._fixedDescriptorSetRules);
-		_pushConstantsRules = std::move(helper._pushConstantsRules);
-		_boundLooseUniformBuffers = helper._boundLooseUniformBuffers;
-		_boundLooseResources = helper._boundLooseResources;
-		_boundLooseSamplerStates = helper._boundLooseSamplerStates;
+		for (unsigned c=0; c<4; ++c) {
+			_group[c]._adaptiveSetRules = std::move(helper._group[c]._adaptiveSetRules);
+			_group[c]._fixedDescriptorSetRules = std::move(helper._group[c]._fixedDescriptorSetRules);
+			_group[c]._pushConstantsRules = std::move(helper._group[c]._pushConstantsRules);
+			_group[c]._boundLooseImmediateDatas = helper._group[c]._boundLooseUniformBuffers;
+			_group[c]._boundLooseResources = helper._group[c]._boundLooseResources;
+			_group[c]._boundLooseSamplerStates = helper._group[c]._boundLooseSamplerStates;
+		}
 	}
 
 	BoundUniforms::BoundUniforms(
 		const GraphicsPipeline& pipeline,
-		const UniformsStreamInterface& interf)
-	: BoundUniforms(pipeline._shader, interf) {}
+		const UniformsStreamInterface& group0,
+		const UniformsStreamInterface& group1,
+		const UniformsStreamInterface& group2,
+		const UniformsStreamInterface& group3)
+	: BoundUniforms(pipeline._shader, group0, group1, group2, group3) {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -639,9 +679,11 @@ namespace RenderCore { namespace Metal_Vulkan
 	void BoundUniforms::ApplyLooseUniforms(
 		DeviceContext& context,
 		GraphicsEncoder& encoder,
-		const UniformsStream& stream) const
+		const UniformsStream& stream,
+		unsigned groupIdx) const
 	{
-		for (const auto& adaptiveSet:_adaptiveSetRules) {
+		assert(groupIdx < dimof(_group));
+		for (const auto& adaptiveSet:_group[groupIdx]._adaptiveSetRules) {
 
 			// Descriptor sets can't be written to again after they've been bound to a command buffer (unless we're
 			// sure that all of the commands have already been completed).
@@ -716,7 +758,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				context.GetTemporaryBufferSpace().WriteBarrier(context);
 		}
 
-		for (const auto&pushConstants:_pushConstantsRules) {
+		for (const auto&pushConstants:_group[groupIdx]._pushConstantsRules) {
 			auto cb = stream._immediateData[pushConstants._inputCBSlot];
 			assert(cb.size() == pushConstants._size);
 			encoder.PushConstants(pushConstants._shaderStageBind, pushConstants._offset, cb);
@@ -726,9 +768,11 @@ namespace RenderCore { namespace Metal_Vulkan
 	void BoundUniforms::ApplyDescriptorSets(
 		DeviceContext& context,
 		GraphicsEncoder& encoder,
-		IteratorRange<const IDescriptorSet* const*> descriptorSets)
+		IteratorRange<const IDescriptorSet* const*> descriptorSets,
+		unsigned groupIdx) const
 	{
-		for (const auto& fixedSet:_fixedDescriptorSetRules) {
+		assert(groupIdx < dimof(_group));
+		for (const auto& fixedSet:_group[groupIdx]._fixedDescriptorSetRules) {
 			auto* descSet = checked_cast<const CompiledDescriptorSet*>(descriptorSets[fixedSet._inputSlot]);
 			encoder.BindDescriptorSet(
 				fixedSet._outputSlot, descSet->GetUnderlying()

@@ -22,6 +22,7 @@ namespace RenderCore
 	class IResource;
 	class IDescriptorSet;
 	template <typename Type, int Count> class ResourceList;
+	class ConstantBufferView;
 }
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -84,30 +85,44 @@ namespace RenderCore { namespace Metal_Vulkan
 		void ApplyLooseUniforms(
 			DeviceContext& context,
 			GraphicsEncoder& encoder,
-			const UniformsStream& stream) const;
-		void UnbindLooseUniforms(DeviceContext& context, GraphicsEncoder& encoder);
+			const UniformsStream& group,
+			unsigned groupIdx = 0) const;
+		void UnbindLooseUniforms(DeviceContext& context, GraphicsEncoder& encoder, unsigned groupIdx=0) const;
 
 		void ApplyDescriptorSets(
 			DeviceContext& context,
 			GraphicsEncoder& encoder,
-			IteratorRange<const IDescriptorSet* const*> descriptorSets);
+			IteratorRange<const IDescriptorSet* const*> descriptorSets,
+			unsigned groupIdx = 0) const;
 
-		uint64_t GetBoundLooseConstantBuffers() const { return _boundLooseUniformBuffers; }
-		uint64_t GetBoundLooseResources() const { return _boundLooseResources; }
-		uint64_t GetBoundLooseSamplers() const { return _boundLooseSamplerStates; }
+		uint64_t GetBoundLooseImmediateDatas(unsigned groupIdx = 0) const;
+		uint64_t GetBoundLooseResources(unsigned groupIdx = 0) const;
+		uint64_t GetBoundLooseSamplers(unsigned groupIdx = 0) const;
 
 		BoundUniforms(
 			const ShaderProgram& shader,
-			const UniformsStreamInterface& interf);
+			const UniformsStreamInterface& group0,
+			const UniformsStreamInterface& group1 = {},
+			const UniformsStreamInterface& group2 = {},
+			const UniformsStreamInterface& group3 = {});
 		BoundUniforms(
 			const ComputeShader& shader,
-			const UniformsStreamInterface& interf);
+			const UniformsStreamInterface& group0,
+			const UniformsStreamInterface& group1 = {},
+			const UniformsStreamInterface& group2 = {},
+			const UniformsStreamInterface& group3 = {});
 		BoundUniforms(
 			const GraphicsPipeline& shader,
-			const UniformsStreamInterface& interf);
+			const UniformsStreamInterface& group0,
+			const UniformsStreamInterface& group1 = {},
+			const UniformsStreamInterface& group2 = {},
+			const UniformsStreamInterface& group3 = {});
 		BoundUniforms(
 			const ComputePipeline& shader,
-			const UniformsStreamInterface& interf);
+			const UniformsStreamInterface& group0,
+			const UniformsStreamInterface& group1 = {},
+			const UniformsStreamInterface& group2 = {},
+			const UniformsStreamInterface& group3 = {});
 		BoundUniforms();
 		~BoundUniforms();
 		BoundUniforms(const BoundUniforms&) = default;
@@ -131,7 +146,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			std::vector<DescriptorSlot> _sig;
 			uint64_t _shaderUsageMask = 0ull;
 		};
-		std::vector<AdaptiveSetBindingRules> _adaptiveSetRules;
 
 		struct PushConstantBindingRules
 		{
@@ -139,7 +153,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			unsigned	_offset, _size;
 			unsigned	_inputCBSlot;
 		};
-		std::vector<PushConstantBindingRules> _pushConstantsRules;
 
 		struct FixedDescriptorSetBindingRules
 		{
@@ -147,12 +160,19 @@ namespace RenderCore { namespace Metal_Vulkan
 			uint32_t _outputSlot;
 			uint32_t _shaderStageMask;
 		};
-		std::vector<FixedDescriptorSetBindingRules> _fixedDescriptorSetRules;
-		
+
+		struct GroupRules
+		{
+			std::vector<AdaptiveSetBindingRules> _adaptiveSetRules;
+			std::vector<PushConstantBindingRules> _pushConstantsRules;
+			std::vector<FixedDescriptorSetBindingRules> _fixedDescriptorSetRules;
+			
+			uint64_t _boundLooseImmediateDatas = 0ull;
+			uint64_t _boundLooseResources = 0ull;
+			uint64_t _boundLooseSamplerStates = 0ull;
+		};
+		GroupRules _group[4];
 		PipelineType _pipelineType;
-		uint64_t _boundLooseUniformBuffers;
-		uint64_t _boundLooseResources;
-		uint64_t _boundLooseSamplerStates;
 
 		class ConstructionHelper;
 		class BindingHelper;
@@ -161,6 +181,10 @@ namespace RenderCore { namespace Metal_Vulkan
 			std::string _debuggingDescription;
 		#endif
 	};
+
+	inline uint64_t BoundUniforms::GetBoundLooseImmediateDatas(unsigned groupIdx) const { assert(groupIdx < dimof(_group)); return _group[groupIdx]._boundLooseImmediateDatas; }
+	inline uint64_t BoundUniforms::GetBoundLooseResources(unsigned groupIdx) const { assert(groupIdx < dimof(_group)); return _group[groupIdx]._boundLooseResources; }
+	inline uint64_t BoundUniforms::GetBoundLooseSamplers(unsigned groupIdx) const { assert(groupIdx < dimof(_group)); return _group[groupIdx]._boundLooseSamplerStates; }
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
