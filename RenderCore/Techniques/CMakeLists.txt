@@ -16,7 +16,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         RenderStateResolver.cpp
         ShaderVariationSet.cpp
         SimpleModelDeform.cpp
-        # SimpleModelRenderer.cpp
+        SimpleModelRenderer.cpp
         SkinDeformer.cpp
         TechniqueDelegates.cpp
         Techniques.cpp

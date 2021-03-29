@@ -45,7 +45,5 @@ namespace RenderCore { namespace Techniques {
 			IteratorRange<const InputElementDesc*> inputLayout,
 			Topology topology = Topology::TriangleList);
 
-	const RenderCore::Assets::PredefinedDescriptorSetLayout& GetFallbackMaterialDescriptorSetLayout();
-
 }}
 

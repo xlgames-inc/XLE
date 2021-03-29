@@ -39,9 +39,11 @@
 namespace RenderCore { namespace Techniques 
 {
 	static IResourcePtr LoadVertexBuffer(
+		IDevice& device,
         const RenderCore::Assets::ModelScaffold& scaffold,
         const RenderCore::Assets::VertexData& vb);
 	static IResourcePtr LoadIndexBuffer(
+		IDevice& device,
         const RenderCore::Assets::ModelScaffold& scaffold,
         const RenderCore::Assets::IndexData& ib);
 
@@ -69,20 +71,24 @@ namespace RenderCore { namespace Techniques
 		const Techniques::Drawable::DrawFunctionContext& drawFnContext,
         const SimpleModelDrawable& drawable)
 	{
-		ConstantBufferView cbvs[6];
-		auto bindingField = drawFnContext.UniformBindingBitField();
-		cbvs[0] = {
-			Techniques::MakeLocalTransformPacket(
-				drawable._objectToWorld, 
-				ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld))};
-		if (bindingField & (1<<1)) {
-			cbvs[1] = MakeSharedPkt(DrawCallProperties{drawable._materialGuid, drawable._drawCallIdx});
-		}
+		IteratorRange<const void*> cbvs[6];
+		auto bindingField = drawFnContext.GetBoundLooseImmediateDatas();
+		auto localTransformPacket = Techniques::MakeLocalTransformPacket(
+			drawable._objectToWorld, 
+			ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
+		DrawCallProperties drawCallProps{drawable._materialGuid, drawable._drawCallIdx};
+		cbvs[0] = MakeOpaqueIteratorRange(localTransformPacket);
+		if (bindingField & (1<<1))
+			cbvs[1] = MakeOpaqueIteratorRange(drawCallProps);
+		assert(drawable._extraUniformBufferDelegates.empty());
+		/*
 		assert(dimof(cbvs) >= 2 + drawable._extraUniformBufferDelegates.size());
 		for (unsigned c=0; c<drawable._extraUniformBufferDelegates.size(); ++c)
 			if (bindingField & ((c+2)<<1))
-				cbvs[c+2] = drawable._extraUniformBufferDelegates[c]->WriteBuffer(parserContext, nullptr);
-		drawFnContext.ApplyUniforms(UniformsStream{MakeIteratorRange(cbvs)});
+				cbvs[c+2] = drawable._extraUniformBufferDelegates[c]->WriteBuffer(parserContext, nullptr);*/
+		UniformsStream us;
+		us._immediateData = MakeIteratorRange(cbvs);
+		drawFnContext.ApplyLooseUniforms(us);
 
         drawFnContext.DrawIndexed(
 			drawable._drawCall._indexCount, drawable._drawCall._firstIndex, drawable._drawCall._firstVertex);
@@ -122,10 +128,10 @@ namespace RenderCore { namespace Techniques
 				auto& drawable = *drawables[compiledGeoCall._batchFilter]++;
 				drawable._geo = _geos[geoCall._geoId];
 				drawable._pipeline = compiledGeoCall._pipelineAccelerator;
-				drawable._descriptorSet = compiledGeoCall._compiledDescriptorSet->TryActualize();
+				drawable._descriptorSet = compiledGeoCall._descriptorSetAccelerator;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
 				drawable._drawCall = drawCall;
-				drawable._uniformsInterface = _usi;
+				drawable._looseUniformsInterface = _usi;
 				drawable._materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
 				drawable._drawCallIdx = drawCallCounter;
 				drawable._extraUniformBufferDelegates = _extraUniformBufferDelegates;
@@ -158,10 +164,10 @@ namespace RenderCore { namespace Techniques
 				auto& drawable = *drawables[compiledGeoCall._batchFilter]++;
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
 				drawable._pipeline = compiledGeoCall._pipelineAccelerator;
-				drawable._descriptorSet = compiledGeoCall._compiledDescriptorSet->TryActualize();
+				drawable._descriptorSet = compiledGeoCall._descriptorSetAccelerator;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
 				drawable._drawCall = drawCall;
-				drawable._uniformsInterface = _usi;
+				drawable._looseUniformsInterface = _usi;
 				drawable._materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
 				drawable._drawCallIdx = drawCallCounter;
 				drawable._extraUniformBufferDelegates = _extraUniformBufferDelegates;
@@ -187,7 +193,7 @@ namespace RenderCore { namespace Techniques
 		const Techniques::Drawable::DrawFunctionContext& drawFnContext,
         const SimpleModelDrawable_Delegate& drawable)
 	{
-		bool delegateResult = drawable._delegate->OnDraw(*drawFnContext._metalContext, parserContext, drawable, drawable._materialGuid, drawable._drawCallIdx);
+		bool delegateResult = drawable._delegate->OnDraw(drawFnContext, parserContext, drawable, drawable._materialGuid, drawable._drawCallIdx);
 		if (delegateResult)
 			DrawFn_SimpleModelStatic(parserContext, drawFnContext, drawable);
 	}
@@ -232,10 +238,10 @@ namespace RenderCore { namespace Techniques
 				auto& drawable = *drawables[compiledGeoCall._batchFilter]++;
 				drawable._geo = _geos[geoCall._geoId];
 				drawable._pipeline = compiledGeoCall._pipelineAccelerator;
-				drawable._descriptorSet = compiledGeoCall._compiledDescriptorSet->TryActualize();
+				drawable._descriptorSet = compiledGeoCall._descriptorSetAccelerator;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
-				drawable._uniformsInterface = _usi;
+				drawable._looseUniformsInterface = _usi;
 				drawable._materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
 				drawable._drawCallIdx = drawCallCounter;
 				drawable._delegate = delegate;
@@ -268,10 +274,10 @@ namespace RenderCore { namespace Techniques
 				auto& drawable = *drawables[compiledGeoCall._batchFilter]++;
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
 				drawable._pipeline = compiledGeoCall._pipelineAccelerator;
-				drawable._descriptorSet = compiledGeoCall._compiledDescriptorSet->TryActualize();
+				drawable._descriptorSet = compiledGeoCall._descriptorSetAccelerator;
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
-				drawable._uniformsInterface = _usi;
+				drawable._looseUniformsInterface = _usi;
 				drawable._materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
 				drawable._drawCallIdx = drawCallCounter;
 				drawable._delegate = delegate;
@@ -321,12 +327,12 @@ namespace RenderCore { namespace Techniques
 			for (unsigned c=0; c<d._inputElements.size(); ++c) {
 				if (d._inputElements[c]._vbIdx == VB_StaticData) {
 					inputElementRanges[c] = MakeVertexIteratorRangeConst(
-						MakeIteratorRange(PtrAdd(staticDataPartRange.begin(), d._inputElements[c]._offset), staticDataPartRange.end()),
+						MakeIteratorRange(PtrAdd(AsPointer(staticDataPartRange.begin()), d._inputElements[c]._offset), AsPointer(staticDataPartRange.end())),
 						d._inputElements[c]._stride, d._inputElements[c]._format);
 				} else {
 					assert(d._inputElements[c]._vbIdx == VB_TemporaryDeform);
 					inputElementRanges[c] = MakeVertexIteratorRangeConst(
-						MakeIteratorRange(PtrAdd(temporaryDeformRange.begin(), d._inputElements[c]._offset), temporaryDeformRange.end()),
+						MakeIteratorRange(PtrAdd(AsPointer(temporaryDeformRange.begin()), d._inputElements[c]._offset), AsPointer(temporaryDeformRange.end())),
 						d._inputElements[c]._stride, d._inputElements[c]._format);
 				}
 			}
@@ -344,7 +350,7 @@ namespace RenderCore { namespace Techniques
 				} else {
 					assert(d._outputElements[c]._vbIdx == VB_TemporaryDeform);
 					outputElementRanges[c] = MakeVertexIteratorRangeConst(
-						MakeIteratorRange(PtrAdd(temporaryDeformRange.begin(), d._outputElements[c]._offset), temporaryDeformRange.end()),
+						MakeIteratorRange(PtrAdd(AsPointer(temporaryDeformRange.begin()), d._outputElements[c]._offset), AsPointer(temporaryDeformRange.end())),
 						d._outputElements[c]._stride, d._outputElements[c]._format);
 				}
 			}
@@ -360,10 +366,11 @@ namespace RenderCore { namespace Techniques
 	IDeformOperation& SimpleModelRenderer::DeformOperation(unsigned idx) { return *_deformOps[idx]._deformOp; } 
 
 	static Techniques::DrawableGeo::VertexStream MakeVertexStream(
+		IDevice& device,
 		const RenderCore::Assets::ModelScaffold& modelScaffold,
 		const RenderCore::Assets::VertexData& vertices)
 	{
-		return Techniques::DrawableGeo::VertexStream { LoadVertexBuffer(modelScaffold, vertices ) };
+		return Techniques::DrawableGeo::VertexStream { LoadVertexBuffer(device, modelScaffold, vertices ) };
 	}
 
 	const ::Assets::DepValPtr& SimpleModelRenderer::GetDependencyValidation() const { return _depVal; }
@@ -769,19 +776,15 @@ namespace RenderCore { namespace Techniques
 
 		struct WorkingMaterial
 		{
-			std::shared_ptr<Techniques::CompiledShaderPatchCollection> _compiledPatchCollection;
-			::Assets::FuturePtr<Techniques::DescriptorSetAccelerator> _compiledDescriptorSet;
+			std::shared_ptr<RenderCore::Assets::ShaderPatchCollection> _patchCollection;
+			std::shared_ptr<Techniques::DescriptorSetAccelerator> _descriptorSetAccelerator;
 			std::vector<std::string> _descriptorSetResources;
 		};
 		std::vector<std::pair<uint64_t, WorkingMaterial>> drawableMaterials;
 
-		std::vector<InputElementDesc> MakeInputElements(const RenderCore::Assets::RawGeometry& geo)
-		{
-			std::vector<InputElementDesc> result;
-		}
-
 		template<typename RawGeoType>
 			GeoCall MakeGeoCall(
+				Techniques::IPipelineAcceleratorPool& acceleratorPool,
 				uint64_t materialGuid,
 				const RawGeoType& rawGeo,
 				const Internal::NascentDeformStream& deformStream)
@@ -795,32 +798,24 @@ namespace RenderCore { namespace Techniques
 
 			auto i = LowerBound(drawableMaterials, materialGuid);
 			if (i != drawableMaterials.end() && i->first == materialGuid) {
-				resultGeoCall._compiledDescriptorSet = i->second._compiledDescriptorSet;
+				resultGeoCall._descriptorSetAccelerator = i->second._descriptorSetAccelerator;
 			} else {
-				auto* patchCollection = _materialScaffold->GetShaderPatchCollection(mat->_patchCollection);
+				auto patchCollection = _materialScaffold->GetShaderPatchCollection(mat->_patchCollection);
 				assert(patchCollection);
-				auto compiledPatchCollection = ::Assets::ActualizePtr<Techniques::CompiledShaderPatchCollection>(*patchCollection);
-				_depVals.insert(compiledPatchCollection->GetDependencyValidation());
+				_depVals.insert(patchCollection->GetDependencyValidation());
 
-				const auto* matDescriptorSet = compiledPatchCollection->GetInterface().GetMaterialDescriptorSet().get();
-				if (!matDescriptorSet) {
-					// If we don't have a material descriptor set in the patch collection, and no
-					// patches -- then let's try falling back to a default built-in descriptor set
-					matDescriptorSet = &GetFallbackMaterialDescriptorSetLayout();
-					_depVals.insert(matDescriptorSet->GetDependencyValidation());
-				}
-
-				resultGeoCall._compiledDescriptorSet = Techniques::MakeDescriptorSetAccelerator(
-					mat->_constants, mat->_bindings,
-					*matDescriptorSet,
-					_materialScaffoldName);
+				IteratorRange<const std::pair<uint64_t, SamplerDesc>*> samplerBindings {};
+				resultGeoCall._descriptorSetAccelerator = acceleratorPool.CreateDescriptorSetAccelerator(
+					patchCollection,
+					mat->_matParams, mat->_constants, mat->_bindings,
+					samplerBindings);
 
 				// Collect up the list of resources in the descriptor set -- we'll use this to filter the "RES_HAS_" selectors
 				std::vector<std::string> resourceNames;
-				for (const auto&r:matDescriptorSet->_resources)
-					resourceNames.push_back(r._name);
+				for (const auto&r:mat->_bindings)
+					resourceNames.push_back(r.Name().AsString());
 
-				i = drawableMaterials.insert(i, std::make_pair(materialGuid, WorkingMaterial{compiledPatchCollection, resultGeoCall._compiledDescriptorSet, std::move(resourceNames)}));
+				i = drawableMaterials.insert(i, std::make_pair(materialGuid, WorkingMaterial{patchCollection, resultGeoCall._descriptorSetAccelerator, std::move(resourceNames)}));
 			}
 
 			// Figure out the topology from from the rawGeo. We can't mix topology across the one geo call; all draw calls
@@ -842,7 +837,7 @@ namespace RenderCore { namespace Techniques
 
 			resultGeoCall._pipelineAccelerator =
 				_pipelineAcceleratorPool->CreatePipelineAccelerator(
-					i->second._compiledPatchCollection,
+					i->second._patchCollection,
 					matSelectors,
 					MakeIteratorRange(inputElements),
 					topology,
@@ -912,7 +907,7 @@ namespace RenderCore { namespace Techniques
 
 			// Build the main non-deformed vertex stream
 			auto drawableGeo = std::make_shared<Techniques::DrawableGeo>();
-			drawableGeo->_vertexStreams[0] = MakeVertexStream(*modelScaffold, rg._vb);
+			drawableGeo->_vertexStreams[0] = MakeVertexStream(*pipelineAcceleratorPool->GetDevice(), *modelScaffold, rg._vb);
 			drawableGeo->_vertexStreamCount = 1;
 
 			// Attach those vertex streams that come from the deform operation
@@ -926,7 +921,7 @@ namespace RenderCore { namespace Techniques
 				deformStaticLoadDataRequests.end(),
 				deform._staticDataLoadRequests.begin(), deform._staticDataLoadRequests.end());
 
-			drawableGeo->_ib = LoadIndexBuffer(*modelScaffold, rg._ib);
+			drawableGeo->_ib = LoadIndexBuffer(*pipelineAcceleratorPool->GetDevice(), *modelScaffold, rg._ib);
 			drawableGeo->_ibFormat = rg._ib._format;
 			_geos.push_back(std::move(drawableGeo));
 			geoDeformStreams.push_back(std::move(deform));
@@ -945,8 +940,8 @@ namespace RenderCore { namespace Techniques
 
 			// Build the main non-deformed vertex stream
 			auto drawableGeo = std::make_shared<Techniques::DrawableGeo>();
-			drawableGeo->_vertexStreams[0] = MakeVertexStream(*modelScaffold, rg._vb);
-			drawableGeo->_vertexStreams[1] = MakeVertexStream(*modelScaffold, rg._animatedVertexElements);
+			drawableGeo->_vertexStreams[0] = MakeVertexStream(*pipelineAcceleratorPool->GetDevice(), *modelScaffold, rg._vb);
+			drawableGeo->_vertexStreams[1] = MakeVertexStream(*pipelineAcceleratorPool->GetDevice(), *modelScaffold, rg._animatedVertexElements);
 			drawableGeo->_vertexStreamCount = 2;
 
 			// Attach those vertex streams that come from the deform operation
@@ -960,7 +955,7 @@ namespace RenderCore { namespace Techniques
 				deformStaticLoadDataRequests.end(),
 				deform._staticDataLoadRequests.begin(), deform._staticDataLoadRequests.end());
 
-			drawableGeo->_ib = LoadIndexBuffer(*modelScaffold, rg._ib);
+			drawableGeo->_ib = LoadIndexBuffer(*pipelineAcceleratorPool->GetDevice(), *modelScaffold, rg._ib);
 			drawableGeo->_ibFormat = rg._ib._format;
 			_boundSkinnedControllers.push_back(std::move(drawableGeo));
 			skinControllerDeformStreams.push_back(std::move(deform));
@@ -978,7 +973,7 @@ namespace RenderCore { namespace Techniques
 			// here (since many draw calls will share the same materials, etc). We should avoid unnecessary
 			// duplication of objects and construction work
             for (unsigned d = 0; d < unsigned(geoCall._materialCount); ++d) {
-				_geoCalls.emplace_back(geoCallBuilder.MakeGeoCall(geoCall._materialGuids[d], rawGeo, deform));
+				_geoCalls.emplace_back(geoCallBuilder.MakeGeoCall(*pipelineAcceleratorPool, geoCall._materialGuids[d], rawGeo, deform));
 			}
 		}
 
@@ -990,7 +985,7 @@ namespace RenderCore { namespace Techniques
 			// here (since many draw calls will share the same materials, etc). We should avoid unnecessary
 			// duplication of objects and construction work
 			for (unsigned d = 0; d < unsigned(geoCall._materialCount); ++d) {
-				_boundSkinnedControllerGeoCalls.emplace_back(geoCallBuilder.MakeGeoCall(geoCall._materialGuids[d], rawGeo, deform));
+				_boundSkinnedControllerGeoCalls.emplace_back(geoCallBuilder.MakeGeoCall(*pipelineAcceleratorPool, geoCall._materialGuids[d], rawGeo, deform));
 			}
 		}
 
@@ -1026,12 +1021,12 @@ namespace RenderCore { namespace Techniques
 		}
 
 		_usi = std::make_shared<UniformsStreamInterface>();
-		_usi->BindConstantBuffer(0, {Techniques::ObjectCB::LocalTransform});
-		_usi->BindConstantBuffer(1, {Techniques::ObjectCB::DrawCallProperties});
+		_usi->BindImmediateData(0, Techniques::ObjectCB::LocalTransform);
+		_usi->BindImmediateData(1, Techniques::ObjectCB::DrawCallProperties);
 
 		unsigned c=2;
 		for (const auto&u:uniformBufferDelegates) {
-			_usi->BindConstantBuffer(c++, {u.first, u.second->GetLayout()});
+			_usi->BindImmediateData(c++, u.first, u.second->GetLayout());
 		}
 
 		// Check to make sure we've got a skeleton binding for each referenced geo call to world referenced
@@ -1138,30 +1133,34 @@ namespace RenderCore { namespace Techniques
 	}
 
 	static IResourcePtr LoadVertexBuffer(
+		IDevice& device,
         const RenderCore::Assets::ModelScaffold& scaffold,
         const RenderCore::Assets::VertexData& vb)
     {
         auto buffer = std::make_unique<uint8[]>(vb._size);
 		{
             auto inputFile = scaffold.OpenLargeBlocks();
-            inputFile->Seek(vb._offset, Utility::FileSeekAnchor::Current);
+            inputFile->Seek(vb._offset, OSServices::FileSeekAnchor::Current);
             inputFile->Read(buffer.get(), vb._size, 1);
         }
 		return CreateStaticVertexBuffer(
+			device,
 			MakeIteratorRange(buffer.get(), PtrAdd(buffer.get(), vb._size)));
     }
 
     static IResourcePtr LoadIndexBuffer(
+		IDevice& device,
         const RenderCore::Assets::ModelScaffold& scaffold,
         const RenderCore::Assets::IndexData& ib)
     {
         auto buffer = std::make_unique<uint8[]>(ib._size);
         {
             auto inputFile = scaffold.OpenLargeBlocks();
-            inputFile->Seek(ib._offset, Utility::FileSeekAnchor::Current);
+            inputFile->Seek(ib._offset, OSServices::FileSeekAnchor::Current);
             inputFile->Read(buffer.get(), ib._size, 1);
         }
 		return CreateStaticIndexBuffer(
+			device,
 			MakeIteratorRange(buffer.get(), PtrAdd(buffer.get(), ib._size)));
     }
 
@@ -1170,34 +1169,30 @@ namespace RenderCore { namespace Techniques
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void RendererSkeletonInterface::FeedInSkeletonMachineResults(
-		RenderCore::IThreadContext& threadContext,
 		IteratorRange<const Float4x4*> skeletonMachineOutput)
 	{
-		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
 		for (auto& section:_sections) {
-			Metal::ResourceMap map(metalContext, *(Metal::Resource*)section._cb.get(), Metal::ResourceMap::Mode::WriteDiscardPrevious);
-			auto dst = map.GetData().Cast<Float3x4*>();
 			for (unsigned j=0; j<section._sectionMatrixToMachineOutput.size(); ++j) {
-				assert(j < dst.size());
+				assert(j < section._cbData.size());
 				auto machineOutput = section._sectionMatrixToMachineOutput[j];
 				if (machineOutput != ~unsigned(0x0)) {
 					auto finalMatrix = Combine(section._bindShapeByInverseBind[j], skeletonMachineOutput[machineOutput]);
-					dst[j] = AsFloat3x4(finalMatrix);
+					section._cbData[j] = AsFloat3x4(finalMatrix);
 				} else {
-					dst[j] = Identity<Float3x4>();
+					section._cbData[j] = Identity<Float3x4>();
 				}
 			}
 		}
 	}
 
-	ConstantBufferView RendererSkeletonInterface::WriteBuffer(ParsingContext& context, const void* objectContext)
+	void RendererSkeletonInterface::WriteImmediateData(ParsingContext& context, const void* objectContext, IteratorRange<void*> dst)
 	{
-		return _sections[0]._cb;
+		std::memcpy(dst.begin(), _sections[0]._cbData.data(), std::min(dst.size(), _sections[0]._cbData.size() * sizeof(Float3x4)));
 	}
 
-    IteratorRange<const ConstantBufferElementDesc*> RendererSkeletonInterface::GetLayout() const
+	size_t RendererSkeletonInterface::GetSize()
 	{
-		return {};
+		return _sections[0]._cbData.size() * sizeof(Float3x4);
 	}
 
 	RendererSkeletonInterface::RendererSkeletonInterface(
@@ -1222,26 +1217,16 @@ namespace RenderCore { namespace Techniques
 				Section finalSection;
 				finalSection._sectionMatrixToMachineOutput.reserve(section._jointMatrixCount);
 				finalSection._bindShapeByInverseBind = std::vector<Float4x4>(section._bindShapeByInverseBindMatrices.begin(), section._bindShapeByInverseBindMatrices.end());
-				std::vector<Float3x4> initialTransforms(section._jointMatrixCount);
+				finalSection._cbData = std::vector<Float3x4>(section._jointMatrixCount);
 				for (unsigned j=0; j<section._jointMatrixCount; ++j) {
 					auto machineOutput = binding.ModelJointToMachineOutput(section._jointMatrices[j]);
 					finalSection._sectionMatrixToMachineOutput.push_back(machineOutput);
 					if (machineOutput != ~unsigned(0x0)) {
-						initialTransforms[j] = AsFloat3x4(Combine(finalSection._bindShapeByInverseBind[j], defaultTransforms[machineOutput]));
+						finalSection._cbData[j] = AsFloat3x4(Combine(finalSection._bindShapeByInverseBind[j], defaultTransforms[machineOutput]));
 					} else {
-						initialTransforms[j] = Identity<Float3x4>();
+						finalSection._cbData[j] = Identity<Float3x4>();
 					}
 				}
-				
-				finalSection._cb = device.CreateResource(
-					CreateDesc(
-						BindFlag::ConstantBuffer,
-						CPUAccess::WriteDynamic, GPUAccess::Read,
-						LinearBufferDesc{unsigned(sizeof(Float3x4)*section._jointMatrixCount)},
-						"SkinningMatrices"),
-					[&initialTransforms](SubResourceId) -> SubResourceInitData {
-						return MakeIteratorRange(initialTransforms);
-					});
 				_sections.emplace_back(std::move(finalSection));
 			}
 		}

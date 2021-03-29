@@ -5,6 +5,7 @@
 #pragma once
 
 #include "DrawableDelegates.h"					// for IUniformBufferDelegate
+#include "Drawables.h"							// for DrawFunctionContext
 #include "../Assets/ModelImmutableData.h"		// for SkeletonBinding
 #include "../Metal/Forward.h"
 #include "../../Math/Matrix.h"
@@ -38,7 +39,7 @@ namespace RenderCore { namespace Techniques
 	{
 	public:
 		virtual bool OnDraw(
-			Metal::DeviceContext&, ParsingContext&,
+			const Drawable::DrawFunctionContext&, ParsingContext&,
 			const Drawable&,
 			uint64_t materialGuid, unsigned drawCallIdx) = 0;
 		virtual ~IPreDrawDelegate();
@@ -118,7 +119,7 @@ namespace RenderCore { namespace Techniques
 		struct GeoCall
 		{
 			std::shared_ptr<PipelineAccelerator> _pipelineAccelerator;
-			::Assets::FuturePtr<DescriptorSetAccelerator> _compiledDescriptorSet;
+			std::shared_ptr<DescriptorSetAccelerator> _descriptorSetAccelerator;
 			unsigned _batchFilter;
 		};
 
@@ -150,7 +151,6 @@ namespace RenderCore { namespace Techniques
 	{
 	public:
 		void FeedInSkeletonMachineResults(
-			RenderCore::IThreadContext& threadContext,
 			IteratorRange<const Float4x4*> skeletonMachineOutput);
 
 		void WriteImmediateData(ParsingContext& context, const void* objectContext, IteratorRange<void*> dst) override;
@@ -176,7 +176,7 @@ namespace RenderCore { namespace Techniques
 		{
 			std::vector<unsigned> _sectionMatrixToMachineOutput;
 			std::vector<Float4x4> _bindShapeByInverseBind;
-			std::shared_ptr<IResource> _cb;
+			std::vector<Float3x4> _cbData;
 		};
 		std::vector<Section> _sections;
 	};

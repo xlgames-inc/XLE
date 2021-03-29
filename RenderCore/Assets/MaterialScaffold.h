@@ -178,7 +178,7 @@ namespace RenderCore { namespace Assets
         const Material*					GetMaterial(MaterialGuid guid) const;
         StringSection<>					GetMaterialName(MaterialGuid guid) const;
 
-		const ShaderPatchCollection*	GetShaderPatchCollection(uint64_t hash) const;
+		std::shared_ptr<ShaderPatchCollection> GetShaderPatchCollection(uint64_t hash) const;
 
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 
@@ -194,7 +194,7 @@ namespace RenderCore { namespace Assets
         std::unique_ptr<uint8[], PODAlignedDeletor>	_rawMemoryBlock;
 		::Assets::DepValPtr _depVal;
 
-		std::vector<ShaderPatchCollection> _patchCollections;
+		std::vector<std::shared_ptr<ShaderPatchCollection>> _patchCollections;
     };
 
 	static constexpr uint64 ChunkType_ResolvedMat = ConstHash64<'ResM', 'at'>::Value;

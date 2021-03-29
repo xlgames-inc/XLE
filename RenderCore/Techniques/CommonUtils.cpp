@@ -95,11 +95,6 @@ namespace RenderCore { namespace Techniques
 		return future;
 	}
 
-	const RenderCore::Assets::PredefinedDescriptorSetLayout& GetFallbackMaterialDescriptorSetLayout()
-	{
-		return ::Assets::Legacy::GetAsset<RenderCore::Assets::PredefinedDescriptorSetLayout>(ILLUM_LEGACY_DS);
-	}
-
 	std::pair<std::shared_ptr<PipelineAccelerator>, ::Assets::FuturePtr<DescriptorSetAccelerator>>
 		CreatePipelineAccelerator(
 			IPipelineAcceleratorPool& pool,

@@ -204,6 +204,7 @@ namespace RenderCore { namespace Assets
 	{
 		auto result = intermediateCompilers.RegisterCompiler(
 			"material-scaffold-compiler",
+			"material-scaffold-compiler",
 			ConsoleRig::GetLibVersionDesc(),
 			nullptr,
 			[](auto initializers) {

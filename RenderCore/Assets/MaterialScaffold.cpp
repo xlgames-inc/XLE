@@ -45,12 +45,14 @@ namespace RenderCore { namespace Assets
 		return {};
 	}
 
-	const ShaderPatchCollection*	MaterialScaffold::GetShaderPatchCollection(uint64_t hash) const
+	std::shared_ptr<ShaderPatchCollection> MaterialScaffold::GetShaderPatchCollection(uint64_t hash) const
 	{
-		auto i = std::lower_bound(_patchCollections.begin(), _patchCollections.end(), hash);
-		if (i != _patchCollections.end() && i->GetHash() == hash)
-			return AsPointer(i);
-		return nullptr;
+		auto i = std::find_if(
+			_patchCollections.begin(), _patchCollections.end(), 
+			[hash](const auto& c) { return c->GetHash() == hash; });
+		if (i != _patchCollections.end())
+			return *i;
+		return {};
 	}
 
 	const ::Assets::ArtifactRequest MaterialScaffold::ChunkRequests[]
@@ -73,7 +75,10 @@ namespace RenderCore { namespace Assets
 
 		InputStreamFormatter<utf8> formatter(
 			StringSection<utf8>{(const utf8*)chunks[1]._buffer.get(), (const utf8*)PtrAdd(chunks[1]._buffer.get(), chunks[1]._bufferSize)});
-		_patchCollections = DeserializeShaderPatchCollectionSet(formatter, {}, depVal);
+		auto patchCollections = DeserializeShaderPatchCollectionSet(formatter, {}, depVal);
+		_patchCollections.reserve(patchCollections.size());
+		for (const auto&p:patchCollections)
+			_patchCollections.push_back(std::make_shared<ShaderPatchCollection>(p));
 	}
 
 	MaterialScaffold::MaterialScaffold(MaterialScaffold&& moveFrom) never_throws

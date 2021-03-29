@@ -26,7 +26,6 @@
 
 namespace RenderCore { namespace Techniques
 {
-
 	static std::shared_ptr<IDescriptorSet> CreateSequencerDescriptorSet(
 		IDevice& device,
 		ParsingContext& parsingContext,
@@ -399,28 +398,6 @@ namespace RenderCore { namespace Techniques
 			result._slots.push_back(DescriptorSlot{s._type, s._arrayElementCount ? s._arrayElementCount : 1});
 		return result;
 	}
-
-	/*void SetupDefaultUniforms(
-		Techniques::ParsingContext& parserContext,
-		UniformsStreamInterface& sequencerInterface,
-		std::vector<ConstantBufferView>& sequencerCbvs,
-		unsigned& cbSlot)
-	{
-		auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
-		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c) {
-			auto bindingName = techUSI._cbBindings[c]._hashName;
-			RenderCore::Techniques::GlobalCBDelegate delegate{c};
-			sequencerInterface.BindConstantBuffer(cbSlot++, {bindingName, delegate.GetLayout()});
-			sequencerCbvs.push_back(delegate.WriteBuffer(parserContext, nullptr));
-		}
-
-		for (const auto& d:parserContext.GetUniformDelegates()) {
-			auto bindingName = d.first;
-			auto& delegate = *d.second;
-			sequencerInterface.BindConstantBuffer(cbSlot++, {bindingName, delegate.GetLayout()});
-			sequencerCbvs.push_back(delegate.WriteBuffer(parserContext, nullptr));
-		}
-	}*/
 
 	void Drawable::DrawFunctionContext::ApplyLooseUniforms(const UniformsStream& stream) const
 	{
