@@ -99,7 +99,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	#if defined(VULKAN_VERBOSE_DEBUG)
 		class DescriptorSetDebugInfo;
 		std::ostream& WriteDescriptorSet(
-			std::ostream&& stream,
+			std::ostream& stream,
 			const DescriptorSetDebugInfo& bindingDescription,
 			IteratorRange<const DescriptorSlot*> signature,
 			const std::string& descriptorSetName,

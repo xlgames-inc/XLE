@@ -192,6 +192,12 @@ namespace OSServices
                 if (*i == '\\' || *i == '/') pastLastSlash = i+1;
             return pastLastSlash;
         }
+
+        template<typename T> struct LogItemContainer
+        {
+            ::std::basic_ostream<typename T::char_type, typename T::traits_type> _strm;
+            template<typename X> LogItemContainer(X* x) : _strm(x) {}
+        };
     }
 
 #if defined(OSSERVICES_ENABLE_LOG)
@@ -200,7 +206,8 @@ namespace OSServices
 	#else
 		#define MakeSourceLocation (::OSServices::SourceLocation {::OSServices::Internal::JustFilename(__FILE__), __LINE__, __FUNCTION__})
 	#endif
-    #define Log(X) ::std::basic_ostream<typename std::remove_reference<decltype(X)>::type::char_type, typename std::remove_reference<decltype(X)>::type::traits_type>(&X) << MakeSourceLocation
+    // Use of std::make_unique<> here removes the "rvalue" flag from the temporary basic_ostream (at the cost of an extra allocation)
+    #define Log(X) (std::make_unique<OSServices::Internal::LogItemContainer<std::remove_reference_t<decltype(X)>>>(&X)->_strm << MakeSourceLocation)
 #else
     // DavidJ -- HACK -- we need to disable the warning "dangling-else" for this construct
     //      unfortunately, it has to be done globally because this evaluates to a macro

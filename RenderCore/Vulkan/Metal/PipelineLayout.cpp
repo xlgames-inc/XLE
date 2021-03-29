@@ -210,14 +210,14 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	#if defined(VULKAN_VERBOSE_DEBUG)
 		void CompiledPipelineLayout::WriteDebugInfo(
-			std::ostream&& output,
+			std::ostream& output,
 			IteratorRange<const CompiledShaderByteCode**> shaders,
 			IteratorRange<const DescriptorSetDebugInfo*> descriptorSets)
 		{
 			Log(Verbose) << "-------------Descriptors------------" << std::endl;
 			for (unsigned descSetIdx=0; descSetIdx<s_maxDescriptorSetCount; ++descSetIdx) {
 				WriteDescriptorSet(
-					std::move(output),
+					output,
 					(descSetIdx < descriptorSets.size()) ? descriptorSets[descSetIdx] : _blankDescriptorSetsDebugInfo[descSetIdx],
 					(descSetIdx < _descriptorSetCount) ? _descriptorSetLayouts[descSetIdx]->GetDescriptorSlots() : IteratorRange<const DescriptorSlot*>{},
 					(descSetIdx < _descriptorSetCount) ? _descriptorSetStringNames[descSetIdx] : "<<unbound>>",

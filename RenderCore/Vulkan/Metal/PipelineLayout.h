@@ -55,7 +55,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		#if defined(VULKAN_VERBOSE_DEBUG)
 			const DescriptorSetDebugInfo& GetBlankDescriptorSetDebugInfo(DescriptorSetIndex) const;
 			void WriteDebugInfo(
-				std::ostream&& output,
+				std::ostream& output,
 				IteratorRange<const CompiledShaderByteCode**> shaders,
 				IteratorRange<const DescriptorSetDebugInfo*> descriptorSets);
 		#endif

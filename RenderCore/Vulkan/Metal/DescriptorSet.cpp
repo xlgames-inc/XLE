@@ -497,7 +497,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		static const std::string s_columnHeader3 = "Legacy Binding";
 
 		std::ostream& WriteDescriptorSet(
-			std::ostream&& stream,
+			std::ostream& stream,
 			const DescriptorSetDebugInfo& bindingDescription,
 			IteratorRange<const DescriptorSlot*> signature,
 			const std::string& descriptorSetName,
