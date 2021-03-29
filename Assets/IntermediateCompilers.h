@@ -39,6 +39,7 @@ namespace Assets
 		};
 		CompilerRegistration RegisterCompiler(
 			const std::string& name,										///< string name for the compiler, usually something user-presentable
+			const std::string& shortName,									///< shortened name, for the intermediate assets store
 			ConsoleRig::LibVersionDesc srcVersion,							///< version information for the module (propagated onto any assets written to disk)
 			const std::shared_ptr<DependencyValidation>& compilerDepVal,	///< dependency validation for the compiler shared library itself. Can trigger recompiles if the compiler changes
 			CompileOperationDelegate&& delegate,							///< delegate that can create the ICompileOperation for a given asset

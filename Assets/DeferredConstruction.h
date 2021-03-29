@@ -76,6 +76,29 @@ namespace Assets
 		} CATCH_END
 	}
 
+	template<typename AssetType, typename std::enable_if_t<!Internal::AssetTraits<AssetType>::HasChunkRequests>* =nullptr>
+		void AutoConstructToFuture(AssetFuture<AssetType>& future, const IArtifactCollection& artifactCollection, uint64_t compileTypeCode = AssetType::CompileProcessType)
+	{
+		ArtifactRequest request { "default-blob", compileTypeCode, ~0u, ArtifactRequest::DataType::SharedBlob };
+		auto reqRes = artifactCollection.ResolveRequests(MakeIteratorRange(&request, &request+1));
+		if (!reqRes.empty()) {
+			AutoConstructToFutureDirect(
+				future,
+				reqRes[0]._sharedBlob, 
+				artifactCollection.GetDependencyValidation(),
+				artifactCollection.GetRequestParameters());
+		} else {
+			future.SetInvalidAsset(artifactCollection.GetDependencyValidation(), AsBlob("Default compilation result chunk not found"));
+		}
+	}
+
+	template<typename AssetType, typename std::enable_if_t<Internal::AssetTraits<AssetType>::HasChunkRequests>* =nullptr>
+		void AutoConstructToFuture(AssetFuture<AssetType>& future, const IArtifactCollection& artifactCollection, uint64_t compileTypeCode = AssetType::CompileProcessType)
+	{
+		auto chunks = artifactCollection.ResolveRequests(MakeIteratorRange(AssetType::ChunkRequests));
+		AutoConstructToFutureDirect(future, MakeIteratorRange(chunks), artifactCollection.GetDependencyValidation());
+	}
+
 	template<typename AssetType>
 		void AutoConstructToFuture(AssetFuture<AssetType>& future, const std::shared_ptr<ArtifactCollectionFuture>& pendingCompile, uint64_t compileTypeCode = AssetType::CompileProcessType)
 	{
@@ -97,17 +120,7 @@ namespace Assets
 				}
 
 				assert(state == AssetState::Ready);
-				ArtifactRequest request { "", compileTypeCode, ~0u, ArtifactRequest::DataType::SharedBlob };
-				auto reqRes = artifactCollection->ResolveRequests(MakeIteratorRange(&request, &request+1));
-				if (!reqRes.empty()) {
-					AutoConstructToFutureDirect(
-						thatFuture,
-						reqRes[0]._sharedBlob, 
-						artifactCollection->GetDependencyValidation(),
-						artifactCollection->GetRequestParameters());
-				} else {
-					thatFuture.SetInvalidAsset(artifactCollection->GetDependencyValidation(), {});
-				}
+				AutoConstructToFuture(thatFuture, *artifactCollection, compileTypeCode);
 				return false;
 			});
 	}
@@ -132,7 +145,6 @@ namespace Assets
 				future.SetInvalidAsset(nullptr, AsBlob("No compiler found for asset " + debugLabel));
 				return;
 			}
-			// std::basic_string<ResChar> init0 = initializers[0].AsString();
 
 			// Attempt to load the existing asset immediately. In some cases we should fall back to a recompile (such as, if the
 			// version number is bad). We could attempt to push this into a background thread, also
@@ -140,14 +152,7 @@ namespace Assets
 			auto existingArtifact = marker->GetExistingAsset();
 			if (existingArtifact && existingArtifact->GetDependencyValidation() && existingArtifact->GetDependencyValidation()->GetValidationIndex()==0) {
 				bool doRecompile = false;
-				ArtifactRequest request { "", compileTypeCode, ~0u, ArtifactRequest::DataType::SharedBlob };
-				auto reqRes = existingArtifact->ResolveRequests(MakeIteratorRange(&request, &request+1));
-				if (!reqRes.empty()) {
-					auto asset = AutoConstructAsset<AssetType>(reqRes[0]._sharedBlob, existingArtifact->GetDependencyValidation(), existingArtifact->GetRequestParameters());
-					future.SetAsset(std::move(asset), {});
-				} else {
-					future.SetInvalidAsset(existingArtifact->GetDependencyValidation(), {});
-				}
+				AutoConstructToFuture(future, *existingArtifact, compileTypeCode);
 				if (!doRecompile) return;
 			}
 		

@@ -139,7 +139,7 @@ namespace Assets
 	{
 		auto result = input.AsString();
 		for (auto&b:result)
-			if (b == ':' || b == '*') b = '-';
+			if (b == ':' || b == '*' || b == '/' || b == '\\') b = '-';
 		return result;
 	}
 
@@ -481,13 +481,17 @@ namespace Assets
 			return nullptr;
 
 		// Try to find an artifact named with the type "ChunkType_Log"
-		ArtifactRequest requests[] = {
-			ArtifactRequest { nullptr, ChunkType_Log, 0, ArtifactRequest::DataType::SharedBlob }
-		};
-		auto resRequests = _artifactCollection->ResolveRequests(MakeIteratorRange(requests));
-		if (resRequests.empty())
+		TRY {
+			ArtifactRequest requests[] = {
+				ArtifactRequest { "log", ChunkType_Log, 0, ArtifactRequest::DataType::SharedBlob }
+			};
+			auto resRequests = _artifactCollection->ResolveRequests(MakeIteratorRange(requests));
+			if (resRequests.empty())
+				return nullptr;
+			return resRequests[0]._sharedBlob;
+		} CATCH (...) {
 			return nullptr;
-		return resRequests[0]._sharedBlob;
+		} CATCH_END
 	}
 
 	ArtifactCollectionFuture::ArtifactCollectionFuture() {}

@@ -183,6 +183,14 @@ namespace Assets
 		return MakeArtifactCollection(finalProductsFile, depVal, storeRefCounts, hashCode);
 	}
 
+	static std::string MakeSafeName(StringSection<> input)
+	{
+		auto result = input.AsString();
+		for (auto&b:result)
+			if (b == ':' || b == '*' || b == '/' || b == '\\') b = '-';
+		return result;
+	}
+
 	void LooseFilesStorage::StoreCompileProducts(
 		StringSection<> archivableName,
 		IteratorRange<const ICompileOperation::SerializedArtifact*> artifacts,
@@ -209,7 +217,7 @@ namespace Assets
 			if (a._type == ChunkType_Metrics) {
 				std::string metricsName;
 				if (!a._name.empty()) {
-					metricsName = productsName + "-" + a._name + ".metrics";
+					metricsName = productsName + "-" + MakeSafeName(a._name) + ".metrics";
 				} else 
 					metricsName = productsName + ".metrics";
 				auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".staging", "wb", 0);
@@ -219,7 +227,7 @@ namespace Assets
 			} else if (a._type == ChunkType_Log) {
 				std::string metricsName;
 				if (!a._name.empty()) {
-					metricsName = productsName + "-" + a._name + ".log";
+					metricsName = productsName + "-" + MakeSafeName(a._name) + ".log";
 				} else 
 					metricsName = productsName + ".log";
 				auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".staging", "wb", 0);

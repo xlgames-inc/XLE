@@ -147,6 +147,7 @@ namespace UnitTests
 			uint64_t outputTypes[] = { Type_UnitTestArtifact };
 			auto registration = compilers->RegisterCompiler(
 				"UnitTestCompiler",
+				"UnitTestCompiler",
 				ConsoleRig::GetLibVersionDesc(),
 				nullptr,
 				[](auto initializers) {
@@ -245,6 +246,7 @@ namespace UnitTests
 			uint64_t outputTypes[] = { Type_UnitTestArtifact };
 			auto registration = compilers->RegisterCompiler(
 				"UnitTestCompiler",
+				"UnitTestCompiler",
 				ConsoleRig::GetLibVersionDesc(),
 				nullptr,
 				[](auto initializers) {
@@ -294,6 +296,7 @@ namespace UnitTests
 
 		uint64_t outputTypes[] = { Type_UnitTestArtifact };
 		auto registration = compilers->RegisterCompiler(
+			"UnitTestCompiler",
 			"UnitTestCompiler",
 			ConsoleRig::GetLibVersionDesc(),
 			nullptr,

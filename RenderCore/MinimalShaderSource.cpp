@@ -208,6 +208,7 @@ namespace RenderCore
 	{
 		auto result = intermediateCompilers.RegisterCompiler(
 			"shader-compiler",
+			"shader-compiler",
 			ConsoleRig::GetLibVersionDesc(),
 			nullptr,
 			[shaderSource](const ::Assets::InitializerPack& initializers) {

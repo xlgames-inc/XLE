@@ -354,6 +354,7 @@ namespace RenderCore { namespace Techniques
 	{
 		auto result = intermediateCompilers.RegisterCompiler(
 			"shader-graph-compiler",
+			"shader-graph-compiler",
 			ConsoleRig::GetLibVersionDesc(),
 			nullptr,
 			[shaderSource](const ::Assets::InitializerPack& initializers) {

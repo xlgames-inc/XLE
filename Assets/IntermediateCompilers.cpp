@@ -294,6 +294,7 @@ namespace Assets
 
 	auto IntermediateCompilers::RegisterCompiler(
 		const std::string& name,
+		const std::string& shortName,
 		ConsoleRig::LibVersionDesc srcVersion,
 		const DepValPtr& compilerDepVal,
 		CompileOperationDelegate&& delegate,
@@ -309,7 +310,7 @@ namespace Assets
 		registration->_archiveNameDelegate = std::move(archiveNameDelegate);
 		registration->_compilerLibraryDepVal = compilerDepVal;
 		if (_pimpl->_store)
-			registration->_storeGroupId = _pimpl->_store->RegisterCompileProductsGroup(MakeStringSection(name), srcVersion, !!registration->_archiveNameDelegate);
+			registration->_storeGroupId = _pimpl->_store->RegisterCompileProductsGroup(MakeStringSection(shortName), srcVersion, !!registration->_archiveNameDelegate);
 		_pimpl->_delegates.push_back(std::make_pair(result, std::move(registration)));
 		return { result };
 	}
@@ -419,6 +420,7 @@ namespace Assets
 			std::vector<uint64_t> _assetTypes; 
 			std::string _identifierFilter; 
 			std::string _name;
+			std::string _shortName;
 			std::string _extensionsForOpenDlg;
 		};
 		std::vector<Kind> _kinds;
@@ -444,6 +446,7 @@ namespace Assets
 						std::vector<uint64_t>{kind._assetTypes.begin(), kind._assetTypes.end()},
 						kind._regexFilter,
 						kind._name,
+						kind._shortName,
 						kind._extensionsForOpenDlg});
 				}
 			}
@@ -497,7 +500,8 @@ namespace Assets
 					auto compilerDepVal = std::make_shared<DependencyValidation>();
 					RegisterFileDependency(compilerDepVal, MakeStringSection(c));
 					auto registrationId = compilerManager.RegisterCompiler(
-						kind._name + " (" + c + ")",
+						kind._name + " (" + MakeSplitPath(c).Simplify().Rebuild() + ")",
+						kind._shortName,
 						srcVersion,
 						compilerDepVal,
 						[lib, fn](auto initializers) {

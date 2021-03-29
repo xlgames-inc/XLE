@@ -6,6 +6,7 @@
 
 #include "ICompileOperation.h"
 #include "IntermediateCompilers.h"
+#include "../Assets/AssetUtils.h"
 #include "../Utility/StringUtils.h"
 #include <vector>
 
@@ -22,9 +23,10 @@ namespace Assets
 		{
 		public:
 			IteratorRange<const uint64_t*>	_assetTypes;
-			std::string						_regexFilter = nullptr;
-			std::string						_name = nullptr;
-			std::string						_extensionsForOpenDlg = nullptr;		// comma separated list of extensions for file-open-dialog scenarios
+			std::string						_regexFilter = {};
+			std::string						_name = {};
+			std::string						_shortName = {};
+			std::string						_extensionsForOpenDlg = {};		// comma separated list of extensions for file-open-dialog scenarios
 		};
 		virtual unsigned			FileKindCount() const = 0;
 		virtual FileKind			GetFileKind(unsigned index) const = 0;

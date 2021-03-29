@@ -358,6 +358,7 @@ namespace ShaderSourceParser
 	{
 		auto result = intermediateCompilers.RegisterCompiler(
 			"shader-selector-filtering-compiler",
+			"shader-selector-filtering-compiler",
 			ConsoleRig::GetLibVersionDesc(),
 			nullptr,
 			[](auto initializers) {

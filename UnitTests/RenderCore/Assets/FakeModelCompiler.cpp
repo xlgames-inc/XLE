@@ -244,6 +244,7 @@ namespace UnitTests
 	{
 		auto result = intermediateCompilers.RegisterCompiler(
 			"fake-model-scaffold-compiler",
+			"fake-model-scaffold-compiler",
 			ConsoleRig::GetLibVersionDesc(),
 			nullptr,
 			BeginFakeModelCompilation);
