@@ -13,6 +13,8 @@
 #include "../../../RenderCore/Techniques/TextureLoaders.h"
 #include "../../../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../../../RenderCore/Techniques/ParsingContext.h"
+#include "../../../RenderCore/Techniques/SimpleModelRenderer.h"
+#include "../../../RenderCore/Assets/MaterialCompiler.h"
 #include "../../../RenderCore/MinimalShaderSource.h"
 #include "../../../RenderCore/Format.h"
 #include "../../../BufferUploads/IBufferUploads.h"
@@ -23,6 +25,7 @@
 #include "../../../Assets/MemoryFile.h"
 #include "../../../Assets/AssetSetManager.h"
 #include "../../../Assets/CompileAndAsyncManager.h"
+#include "../../../Assets/CompilerLibrary.h"
 #include "../../../Assets/Assets.h"
 #include "../../../Math/MathSerialization.h"
 #include "../../../Math/Transformations.h"
@@ -85,7 +88,8 @@ namespace UnitTests
 		return std::make_shared<RenderCore::Assets::ShaderPatchCollection>(formattr, ::Assets::DirectorySearchRules{}, std::make_shared<::Assets::DependencyValidation>());
 	}
 
-	static void StallForDescriptorSet(RenderCore::IThreadContext& threadContext, ::Assets::AssetFuture<RenderCore::IDescriptorSet>& descriptorSetFuture)
+	template<typename Type>
+		static void StallForDescriptorSet(RenderCore::IThreadContext& threadContext, ::Assets::AssetFuture<Type>& descriptorSetFuture)
 	{
 		// If we're running buffer uploads in single thread mode, we need to pump it while
 		// waiting for the descriptor set
@@ -214,7 +218,7 @@ namespace UnitTests
 
 	static unsigned s_sphereVertexCount = 0;
 
-	TEST_CASE( "Drawables-BasicSphereWithMaterials", "[rendercore_techniques]" )
+	TEST_CASE( "Drawables-RenderImages", "[rendercore_techniques]" )
 	{
 		using namespace RenderCore;
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
@@ -252,16 +256,17 @@ namespace UnitTests
 			"temporary-out");
 		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 		
-		auto sphereGeo = ToolsRig::BuildGeodesicSphere();
-		auto sphereVb = testHelper->CreateVB(sphereGeo);
-		auto drawableGeo = std::make_shared<Techniques::DrawableGeo>();
-		drawableGeo->_vertexStreams[0]._resource = sphereVb;
-		drawableGeo->_vertexStreamCount = 1;
-		s_sphereVertexCount = sphereGeo.size();
-
 		/////////////////////////////////////////////////////////////////
 
+		SECTION("Draw Basic Sphere")
 		{
+			auto sphereGeo = ToolsRig::BuildGeodesicSphere();
+			auto sphereVb = testHelper->CreateVB(sphereGeo);
+			auto drawableGeo = std::make_shared<Techniques::DrawableGeo>();
+			drawableGeo->_vertexStreams[0]._resource = sphereVb;
+			drawableGeo->_vertexStreamCount = 1;
+			s_sphereVertexCount = sphereGeo.size();
+
 			auto patches = GetPatchCollectionFromText(s_patchCollectionBasicTexturing);
 
 			ParameterBox constantBindings;
@@ -320,9 +325,70 @@ namespace UnitTests
 					sequencerContext,
 					pkt);
 			}
-			fbHelper.SaveImage(*threadContext, "drawables-test");
-			Techniques::Services::GetBufferUploads().Update(*threadContext);
-			std::this_thread::sleep_for(16ms);
+			fbHelper.SaveImage(*threadContext, "drawables-render-sphere");
+		}
+
+		SECTION("Draw model file")
+		{
+			testHelper->BeginFrameCapture();
+
+			auto matRegistration = RenderCore::Assets::RegisterMaterialCompiler(compilers);
+			auto discoveredCompilations = ::Assets::DiscoverCompileOperations(compilers, "../ColladaConversion/*.dll");
+			REQUIRE(!discoveredCompilations.empty());
+
+			auto techniqueSetFile = ::Assets::MakeAsset<Techniques::TechniqueSetFile>("ut-data/basic.tech");
+			auto cfgId = pipelineAcceleratorPool->CreateSequencerConfig(
+				Techniques::CreateTechniqueDelegate_Deferred(techniqueSetFile, Techniques::MakeTechniqueSharedResources(*testHelper->_device)),
+				ParameterBox {},
+				fbHelper.GetDesc());
+
+			auto renderer = ::Assets::MakeAsset<Techniques::SimpleModelRenderer>(
+				pipelineAcceleratorPool,
+				"xleres/DefaultResources/materialsphere.dae",
+				"xleres/DefaultResources/materialsphere.material");
+			StallForDescriptorSet(*threadContext, *renderer);
+			INFO(::Assets::AsString(renderer->GetActualizationLog()));
+			REQUIRE(renderer->GetAssetState() == ::Assets::AssetState::Ready);
+
+			Techniques::DrawablesPacket pkts[(unsigned)Techniques::BatchFilter::Max];
+			Techniques::DrawablesPacket* drawablePktsPtrs[] = { &pkts[0], &pkts[1], &pkts[2], &pkts[3] };
+			static_assert(dimof(pkts) == dimof(drawablePktsPtrs));
+			renderer->Actualize()->BuildDrawables(MakeIteratorRange(drawablePktsPtrs));
+				
+			auto globalDelegate = std::make_shared<UnitTestGlobalUniforms>(targetDesc);
+
+			for (unsigned c=0; c<32; ++c) {
+				{
+					auto rpi = fbHelper.BeginRenderPass(*threadContext);
+					Techniques::TechniqueContext techContext;
+					Techniques::ParsingContext parsingContext{techContext};
+					parsingContext.AddShaderResourceDelegate(globalDelegate);
+					Techniques::SequencerContext sequencerContext;
+					sequencerContext._sequencerConfig = cfgId.get();
+					
+					auto* d = (Techniques::Drawable*)pkts[0]._drawables.begin().get();
+					auto future = pipelineAcceleratorPool->GetPipeline(*d->_pipeline, *cfgId);
+					future->StallWhilePending();
+					INFO(::Assets::AsString(future->GetActualizationLog()));
+					REQUIRE(future->GetAssetState() == ::Assets::AssetState::Ready);
+
+					for (const auto&pkt:pkts)
+						Techniques::Draw(
+							*threadContext,
+							parsingContext, 
+							*pipelineAcceleratorPool,
+							sequencerContext,
+							pkt);
+				}
+				fbHelper.SaveImage(*threadContext, "drawables-render-model");
+				std::this_thread::sleep_for(16ms);
+			}
+
+			for (const auto&compiler:discoveredCompilations)
+				compilers.DeregisterCompiler(compiler);
+			compilers.DeregisterCompiler(matRegistration._registrationId);
+
+			testHelper->EndFrameCapture();
 		}
 
 		/////////////////////////////////////////////////////////////////

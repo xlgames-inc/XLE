@@ -185,6 +185,9 @@ namespace UnitTests
 			auto scaffold = scaffoldFuture->Actualize();
 			auto& cmdStream = scaffold->CommandStream();
 			REQUIRE(cmdStream.GetGeoCallCount() != 0);
+
+			for (const auto&compiler:discoveredCompilations)
+				compilers.DeregisterCompiler(compiler);
 		}
 
 		::Assets::MainFileSystem::GetMountingTree()->Unmount(xlresmnt);

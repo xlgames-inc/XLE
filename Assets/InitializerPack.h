@@ -66,7 +66,7 @@ namespace Assets
 			uint64_t HashParam_Chain(const T& p, uint64_t seed) 
 			{
 				auto i = p.begin(), end=p.end();
-				if (i == end) return 0;
+				if (i == end) return seed;
 				auto res = seed;
 				for (;i!=end; ++i)
 					res = HashParam_Chain(*i, res);

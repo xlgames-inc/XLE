@@ -42,6 +42,11 @@ namespace RenderCore { namespace Techniques
 			generateOptions._materialDescriptorSetIndex = materialDescSetLayout.GetSlotIndex();
 			auto inst = ShaderSourceParser::InstantiateShader(MakeIteratorRange(finalInstRequests), generateOptions);
 			BuildFromInstantiatedShader(inst, materialDescSetLayout);
+		} else {
+			// If we have no patches, then we also have no custom material descriptor set layout.
+			// We just default to match the pipeline layout
+			_interface._descriptorSet = materialDescSetLayout.GetLayout();
+			_interface._materialDescriptorSetSlotIndex = materialDescSetLayout.GetSlotIndex();
 		}
 	}
 

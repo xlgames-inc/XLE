@@ -25,6 +25,8 @@
 
 namespace RenderCore { namespace Assets
 {
+	static const auto ChunkType_Log = ConstHash64<'Log'>::Value;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	static void AddDep(
@@ -47,6 +49,10 @@ namespace RenderCore { namespace Assets
 
 		std::vector<TargetDesc> GetTargets() const
 		{
+			if (_compilationException)
+				return { 
+					TargetDesc { ChunkType_Log, "compilation-exception" }
+				};
 			if (_serializedArtifacts.empty()) return {};
 			return {
 				TargetDesc { _serializedArtifacts[0]._type, _serializedArtifacts[0]._name.c_str() }
@@ -81,7 +87,8 @@ namespace RenderCore { namespace Assets
 					Throw(::Assets::Exceptions::ConstructionError(
 						::Assets::Exceptions::ConstructionError::Reason::FormatNotUnderstood,
 						modelMatFuture->GetDependencyValidation(),
-						"Failed while loading material information from source model (%s)", sourceModel.c_str()));
+						"Failed while loading material information from source model (%s) with msg (%s)", sourceModel.c_str(), 
+							::Assets::AsString(modelMatFuture->GetActualizationLog()).c_str()));
 				}
 
 				auto modelMat = modelMatFuture->Actualize();

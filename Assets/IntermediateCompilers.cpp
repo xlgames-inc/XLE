@@ -61,7 +61,7 @@ namespace Assets
         std::shared_ptr<ArtifactCollectionFuture> InvokeCompile();
 
         Marker(
-            InitializerPack&& requestName, uint64_t typeCode,
+            InitializerPack&& requestName,
             std::shared_ptr<ExtensionAndDelegate> delegate,
 			std::shared_ptr<IntermediatesStore> intermediateStore);
         ~Marker();
@@ -70,11 +70,10 @@ namespace Assets
         std::weak_ptr<ExtensionAndDelegate> _delegate;
 		std::shared_ptr<IntermediatesStore> _intermediateStore;
         InitializerPack _initializers;
-        uint64_t _typeCode;
 
 		static void PerformCompile(
 			const ExtensionAndDelegate& delegate,
-			uint64_t typeCode, const InitializerPack& initializers,
+			const InitializerPack& initializers,
 			ArtifactCollectionFuture& compileMarker,
 			IntermediatesStore* destinationStore);
     };
@@ -98,7 +97,7 @@ namespace Assets
 
 	void IntermediateCompilers::Marker::PerformCompile(
 		const ExtensionAndDelegate& delegate,
-		uint64_t typeCode, const InitializerPack& initializers, 
+		const InitializerPack& initializers, 
 		ArtifactCollectionFuture& compileMarker,
 		IntermediatesStore* destinationStore)
     {
@@ -115,30 +114,20 @@ namespace Assets
 
 			deps = model->GetDependencies();
 
-			std::shared_ptr<IArtifactCollection> resultantArtifacts;
 			std::vector<ICompileOperation::SerializedArtifact> artifactsForStore;
 
 			auto targets = model->GetTargets();
 			for (unsigned t=0; t<targets.size(); ++t) {
 				const auto& target = targets[t];
-
-				// If we have a destination store, we're going to run every compile operation
-				// Otherwise, we only need to find the one with the correct asset type
-				if (!destinationStore && target._type != typeCode)
-					continue;
-
 				auto chunks = model->SerializeTarget(t);
-
-				// Note that the resultant artifacts only contains results from this 
-				// one serialized target
-				if (target._type == typeCode && !resultantArtifacts)
-					resultantArtifacts = std::make_shared<BlobArtifactCollection>(
-						MakeIteratorRange(chunks), 
-						::Assets::MakeDepVal(MakeIteratorRange(deps), delegate._compilerLibraryDepVal));
-
-				if (destinationStore)
-					artifactsForStore.insert(artifactsForStore.begin(), chunks.begin(), chunks.end());
+				artifactsForStore.reserve(artifactsForStore.size() + chunks.size());
+				for (auto&c:chunks)
+					artifactsForStore.push_back(std::move(c));
 			}
+
+			auto resultantArtifacts = std::make_shared<BlobArtifactCollection>(
+				MakeIteratorRange(artifactsForStore), 
+				::Assets::MakeDepVal(MakeIteratorRange(deps), delegate._compilerLibraryDepVal));
 
 			// Write out the intermediate file that lists the products of this compile operation
 			if (destinationStore && !artifactsForStore.empty()) {
@@ -225,21 +214,21 @@ namespace Assets
 			std::shared_ptr<IntermediatesStore> store = _intermediateStore;
 			QueueCompileOperation(
 				backgroundOp,
-				[weakDelegate, store, typeCode = _typeCode, inits=_initializers](ArtifactCollectionFuture& op) {
+				[weakDelegate, store, inits=_initializers](ArtifactCollectionFuture& op) {
 				auto d = weakDelegate.lock();
 				if (!d) {
 					op.SetState(AssetState::Invalid);
 					return;
 				}
 
-				PerformCompile(*d, typeCode, inits, op, store.get());
+				PerformCompile(*d, inits, op, store.get());
 			});
 		} else {
 			auto d = _delegate.lock();
 			if (!d) {
 				backgroundOp->SetState(AssetState::Invalid);
 			} else {
-				PerformCompile(*d, _typeCode, _initializers, *backgroundOp, _intermediateStore.get());
+				PerformCompile(*d, _initializers, *backgroundOp, _intermediateStore.get());
 			}
 		}
         
@@ -248,11 +237,10 @@ namespace Assets
     }
 
 	IntermediateCompilers::Marker::Marker(
-        InitializerPack&& initializers, uint64_t typeCode,
+        InitializerPack&& initializers,
         std::shared_ptr<ExtensionAndDelegate> delegate,
 		std::shared_ptr<IntermediatesStore> intermediateStore)
     : _delegate(std::move(delegate)), _intermediateStore(std::move(intermediateStore))
-	, _typeCode(typeCode)
 	, _initializers(std::move(initializers))
     {
 	}
@@ -264,6 +252,9 @@ namespace Assets
         InitializerPack&& initializers)
     {
 		ScopedLock(_pimpl->_delegatesLock);
+		// We need to decide whether the "typeCode" should be part of the requestHashCode
+		// If it's not; then the typeCode can't impact the behaviour of the marker itself
+		// (because we treat any markers with the same hash code as equivalent)
 		uint64_t requestHashCode = initializers.ArchivableHash();
 		auto existing = _pimpl->_markers.find(requestHashCode);
 		if (existing != _pimpl->_markers.end())
@@ -279,9 +270,7 @@ namespace Assets
 				// find the associated delegate and use that
 				for (const auto&d:_pimpl->_delegates) {
 					if (d.first != a.first) continue;
-					auto result = std::make_shared<Marker>(
-						std::move(initializers), 
-						typeCode, d.second, _pimpl->_store);
+					auto result = std::make_shared<Marker>(std::move(initializers), d.second, _pimpl->_store);
 					_pimpl->_markers.insert(std::make_pair(requestHashCode, result));
 					return result;
 				}
