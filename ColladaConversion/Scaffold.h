@@ -10,7 +10,7 @@
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 #include "../Utility/Streams/XmlStreamFormatter.h"
-#include "../Utility/Streams/StreamDom.h"
+#include "../Utility/Streams/StreamDOM.h"
 #include <vector>
 #include <memory>
 #include <functional>

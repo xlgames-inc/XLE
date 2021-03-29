@@ -7,6 +7,7 @@
 #include "ScaffoldParsingUtil.h"
 #include "../Utility/ArithmeticUtils.h"
 #include "../Math/XLEMath.h"
+#include <iostream>
 
 namespace ColladaConversion
 {
@@ -23,26 +24,12 @@ namespace ColladaConversion
         if ((section._end - section._start) < ptrdiff_t(matchLen)) return false;
         return Is(XmlInputStreamFormatter<utf8>::InteriorSection(section._end - matchLen, section._end), match);
     }
-
-    template<typename CharType>
-        __forceinline bool IsWhitespace(CharType chr)
-    {
-        return chr == 0x20 || chr == 0x9 || chr == 0xD || chr == 0xA;
-    }
 }
 
-
-namespace std   // adding these to std is awkward, but it's the only way to make sure easylogging++ can see them
+namespace Utility
 {
-    std::ostream& operator<<(std::ostream& os, const StreamLocation& loc) 
+    std::ostream& SerializationOperator(std::ostream& os, const StreamLocation& loc)
     {
-        os << "Line: " << loc._lineIndex << ", Char: " << loc._charIndex;
-        return os;
-    }
-
-    std::ostream& operator<<(std::ostream& os, XmlInputStreamFormatter<utf8>::InteriorSection section)
-    {
-        os << ColladaConversion::AsString(section);
-        return os;
+        return os << "Line: " << loc._lineIndex << ", Char: " << loc._charIndex;
     }
 }

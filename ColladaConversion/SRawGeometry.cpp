@@ -17,11 +17,12 @@
 #include "../RenderCore/GeoProc/GeoProcUtil.h"
 #include "../RenderCore/GeoProc/MeshDatabase.h"
 #include "../RenderCore/Assets/AssetUtils.h"
-#include "../RenderCore/Types.h"      // for Topology...!
+#include "../RenderCore/StateDesc.h"      // for Topology...!
 #include "../RenderCore/Format.h"
 #include "../OSServices/Log.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/IteratorUtils.h"
+#include "../Utility/StringFormat.h"
 #include <map>
 #include <set>
 
@@ -903,12 +904,12 @@ namespace ColladaConversion
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename Type>
-        DynamicArray<Type> AsScalarArray(const DataFlow::Source& source, const utf8 paramName[])
+        std::vector<Type> AsScalarArray(const DataFlow::Source& source, const utf8 paramName[])
     {
         auto* accessor = source.FindAccessorForTechnique();
         if (!accessor) {
             Log(Warning) << "Expecting common access in <source> at " << source.GetLocation() << std::endl;
-            return DynamicArray<Type>();
+            return {};
         }
 
         const DataFlow::Accessor::Param* param = nullptr;
@@ -923,7 +924,7 @@ namespace ColladaConversion
         }
         if (!param) {
             Log(Warning) << "Expecting parameter with name " << paramName << " in <source> at " << source.GetLocation() << std::endl;
-            return DynamicArray<Type>();
+            return {};
         }
 
         auto offset = accessor->GetOffset() + param->_offset;
@@ -931,10 +932,10 @@ namespace ColladaConversion
         auto count = accessor->GetCount();
         if ((offset + (count-1) * stride + 1) > source.GetCount()) {
             Log(Warning) << "Source array is too short for accessor in <source> at " << source.GetLocation() << std::endl;
-            return DynamicArray<Type>();
+            return {};
         }
 
-        DynamicArray<Type> result(std::make_unique<Type[]>(count), count);
+        std::vector<Type> result(count);
         unsigned elementIndex = 0;
         unsigned lastWrittenPlusOne = 0;
 
@@ -962,7 +963,7 @@ namespace ColladaConversion
         for (unsigned c=lastWrittenPlusOne; c<count; ++c)
             result[c] = Type(0);
 
-        return std::move(result);
+        return result;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -988,7 +989,7 @@ namespace ColladaConversion
         mutable utf8 const* _vcountI;
         mutable utf8 const* _vI;
 
-        DynamicArray<float> _rawWeights;
+        std::vector<float> _rawWeights;
 
         unsigned _jointIndexOffset;
         unsigned _weightIndexOffset;

@@ -211,15 +211,22 @@ namespace RenderCore { namespace Assets
 
 	inline void SerializationOperator(
 		::Assets::NascentBlockSerializer& outputSerializer,
-		const RenderCore::Assets::GeoInputAssembly& ia)
+		const VertexElement& ia)
 	{
-		outputSerializer.SerializeRaw(ia._elements);
+		outputSerializer.SerializeRaw(ia);
+	}
+    
+    inline void SerializationOperator(
+		::Assets::NascentBlockSerializer& outputSerializer,
+		const GeoInputAssembly& ia)
+	{
+		SerializationOperator(outputSerializer, ia._elements);
 		SerializationOperator(outputSerializer, ia._vertexStride);
 	}
 
 	inline void SerializationOperator(
 		::Assets::NascentBlockSerializer& outputSerializer,
-		const RenderCore::Assets::IndexData& indexData)
+		const IndexData& indexData)
 	{
 		SerializationOperator(outputSerializer, (unsigned&)indexData._format);
 		SerializationOperator(outputSerializer, indexData._offset);
@@ -228,7 +235,7 @@ namespace RenderCore { namespace Assets
 
 	inline void SerializationOperator(
 		::Assets::NascentBlockSerializer& outputSerializer,
-		const RenderCore::Assets::VertexData& vertexData)
+		const VertexData& vertexData)
 	{
 		SerializationOperator(outputSerializer, vertexData._ia);
 		SerializationOperator(outputSerializer, vertexData._offset);
@@ -237,7 +244,7 @@ namespace RenderCore { namespace Assets
 
 	inline void SerializationOperator(
 		::Assets::NascentBlockSerializer& outputSerializer,
-		const RenderCore::Assets::DrawCallDesc& drawCall)
+		const DrawCallDesc& drawCall)
 	{
 		outputSerializer.SerializeValue(drawCall._firstIndex);
 		outputSerializer.SerializeValue(drawCall._indexCount);

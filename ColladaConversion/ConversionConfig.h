@@ -15,7 +15,7 @@ namespace Assets { class DependencyValidation; }
 
 namespace Utility
 {
-	template<typename Type> class DocElementIterator;
+	template<typename Type> class StreamDOMElement;
 	template<typename Type> class InputStreamFormatter;
 }
 
@@ -29,7 +29,7 @@ namespace ColladaConversion
 		String AsNative(StringSection<utf8> input) const;
 		bool IsSuppressed(StringSection<utf8> input) const;
 
-		BindingConfig(const DocElementIterator<InputStreamFormatter<utf8>>& source);
+		BindingConfig(const Utility::StreamDOMElement<InputStreamFormatter<utf8>>& source);
 		BindingConfig();
 		~BindingConfig();
 	private:

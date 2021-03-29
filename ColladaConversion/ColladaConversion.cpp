@@ -22,11 +22,14 @@
 #include "../RenderCore/Assets/RawMaterial.h"
 #include "../Assets/ICompileOperation.h"
 #include "../Assets/IFileSystem.h"
+#include "../Assets/InitializerPack.h"
 
 #include "../OSServices/Log.h"
 #include "../Utility/Streams/StreamTypes.h"
 #include "../Utility/Streams/PathUtils.h"
+#include "../Utility/Streams/OutputStreamFormatter.h"
 #include "../Utility/PtrUtils.h"
+#include "../Core/SelectConfiguration.h"
 
 #include <memory>
 #include <map>
@@ -47,7 +50,7 @@ namespace ColladaConversion
         std::string _name;
 		::Assets::rstring _rootNode;
 		ImportConfiguration _cfg;
-        MemoryMappedFile _fileData;
+        OSServices::MemoryMappedFile _fileData;
         std::shared_ptr<DocumentScaffold> _doc;
         ::ColladaConversion::URIResolveContext _resolveContext;
 		std::vector<TargetDesc> _targets;
@@ -460,7 +463,7 @@ namespace ColladaConversion
 			if (i == compiledEffects.end() || !(i->first == NascentObjectGuid { effect._id, effect._fileHash }))
                 continue;
 
-            auto ele = formatter.BeginElement(m->_name.AsString());
+            auto ele = formatter.BeginKeyedElement(m->_name.AsString());
             SerializationOperator(formatter, i->second);
             formatter.EndElement(ele);
         }
@@ -561,7 +564,7 @@ namespace ColladaConversion
 		result->_cfg = ImportConfiguration("colladaimport.cfg");
 		result->_fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(MakeStringSection(filePath), 0, "r", OSServices::FileShareMode::Read);
 		XmlInputStreamFormatter<utf8> formatter(
-			MemoryMappedInputStream(result->_fileData.GetData()));
+			MakeStringSection((const char*)result->_fileData.GetData().begin(), (const char*)result->_fileData.GetData().end()));
 		formatter._allowCharacterData = true;
 
 		result->_name = identifier.AsString();
@@ -607,14 +610,14 @@ namespace ColladaConversion
 				sourceFiles.push_back(std::make_pair(filePath, MakeFileNameSplitter(filePath).File().AsString()));
 		} else {
 			auto cfgFileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(identifier, 0, "r", OSServices::FileShareMode::Read);
-			InputStreamFormatter<utf8> formatter { MemoryMappedInputStream{cfgFileData.GetData()} };
+			InputStreamFormatter<utf8> formatter { 
+				MakeStringSection((const char*)cfgFileData.GetData().begin(), (const char*)cfgFileData.GetData().end()) };
 			auto searchRules = ::Assets::DefaultDirectorySearchRules(identifier);
 			for (;;) {
-				StringSection<utf8> name, value;
 				auto next = formatter.PeekNext();
-				if (next == InputStreamFormatter<utf8>::Blob::AttributeName) {
-					if (!formatter.TryAttribute(name, value))
-						Throw(FormatException("Malformed attribute", formatter.GetLocation()));
+				if (next == FormatterBlob::KeyedItem) {
+					auto name = RequireKeyedItem(formatter);
+					auto value = RequireValue(formatter);
 					char foundFile[MaxPath];
 					searchRules.ResolveFile(foundFile, value);
 					sourceFiles.push_back(std::make_pair(foundFile, name.AsString()));
@@ -640,7 +643,7 @@ namespace ColladaConversion
 			subResult._cfg = cfg;
 			subResult._fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(MakeStringSection(filePath.first), 0, "r", OSServices::FileShareMode::Read);
 			XmlInputStreamFormatter<utf8> formatter(
-				MemoryMappedInputStream(subResult._fileData.GetData()));
+				MakeStringSection((const char*)subResult._fileData.GetData().begin(), (const char*)subResult._fileData.GetData().end()));
 			formatter._allowCharacterData = true;
 
 			subResult._name = identifier.AsString();
@@ -658,9 +661,16 @@ namespace ColladaConversion
 		return result;
 	}
 
-	std::shared_ptr<::Assets::ICompileOperation> CreateCompileOperation(StringSection<> identifier)
+#if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
+	std::shared_ptr<::Assets::ICompileOperation> CreateCompileOperation(const ::Assets::InitializerPack& initPack)
 	{
 #pragma comment(linker, "/EXPORT:CreateCompileOperation=" __FUNCDNAME__)
+#else
+	dll_export std::shared_ptr<::Assets::ICompileOperation> CreateCompileOperation(const ::Assets::InitializerPack&) asm("CreateCompileOperation");
+	std::shared_ptr<::Assets::ICompileOperation> CreateCompileOperation(const ::Assets::InitializerPack& initPack)
+	{
+#endif
+		auto identifier = initPack.GetInitializer<std::string>(0);
 		auto splitter = MakeFileNameSplitter(identifier);
 		if (XlEqStringI(splitter.FileAndExtension(), "alldae")) {
 			return CreateMergedAnimSetCompileOperation(splitter.DriveAndPath(), true);

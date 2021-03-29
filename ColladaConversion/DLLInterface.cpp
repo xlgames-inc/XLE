@@ -4,11 +4,13 @@
 
 #include "ColladaConversion.h"
 #include "../Assets/ICompileOperation.h"
+#include "../Assets/CompilerLibrary.h"
 #include "../ConsoleRig/AttachableLibrary.h"
 #include "../ConsoleRig/AttachablePtr.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../OSServices/Log.h"
 #include "../Utility/IteratorUtils.h"
+#include "../Core/SelectConfiguration.h"
 
 namespace ColladaConversion
 {
@@ -19,30 +21,35 @@ namespace ColladaConversion
 	class CompilerDesc : public ::Assets::ICompilerDesc
 	{
 	public:
-		const char*			Description() const { return "Compiler and converter for Collada asset files"; }
+		std::string			Description() const override { return "Compiler and converter for Collada asset files"; }
 
-		virtual unsigned	FileKindCount() const { return 3; }
-		virtual FileKind	GetFileKind(unsigned index) const
+		unsigned	FileKindCount() const override { return 3; }
+		FileKind	GetFileKind(unsigned index) const override
 		{
 			assert(index == 0 || index == 1 || index == 2);
 			if (index == 0)
-				return FileKind { MakeIteratorRange(s_knownAssetTypes), R"(.*\.dae)", "Collada XML asset", "dae" };
+				return FileKind { MakeIteratorRange(s_knownAssetTypes), R"(.*\.dae)", "Collada XML asset", "dae", "dae" };
 
 			if (index == 1)
-				return FileKind { MakeIteratorRange(s_animSetAssetTypes), R"(.*\.daelst)", "Animation List", "daelst" };
+				return FileKind { MakeIteratorRange(s_animSetAssetTypes), R"(.*\.daelst)", "Animation List", "daelst", "daelst" };
 
-			return FileKind { MakeIteratorRange(s_animSetAssetTypes), R"(.*[\\/]alldae)", "All collada animations in a directory", "folder" };
+			return FileKind { MakeIteratorRange(s_animSetAssetTypes), R"(.*[\\/]alldae)", "All collada animations in a directory", "dae-folder", "folder" };
 		}
 
 		CompilerDesc() {}
 		~CompilerDesc() {}
 	};
 
+#if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
 	std::shared_ptr<::Assets::ICompilerDesc> GetCompilerDesc() 
 	{
 #pragma comment(linker, "/EXPORT:GetCompilerDesc=" __FUNCDNAME__)
 		return std::make_shared<CompilerDesc>();
 	}
+#else
+	dll_export std::shared_ptr<::Assets::ICompilerDesc> GetCompilerDesc() asm("GetCompilerDesc");
+	std::shared_ptr<::Assets::ICompilerDesc> GetCompilerDesc() { return std::make_shared<CompilerDesc>(); }
+#endif
 
 }
 
@@ -58,16 +65,12 @@ extern "C"
 
 	dll_export void AttachLibrary(ConsoleRig::CrossModule& crossModule)
 	{
-		ConsoleRig::CrossModule::SetInstance(crossModule);
-		s_attachRef = ConsoleRig::GetAttachablePtr<ConsoleRig::GlobalServices>();
 		auto versionDesc = ConsoleRig::GetLibVersionDesc();
 		Log(Verbose) << "Attached Collada Compiler DLL: {" << versionDesc._versionString << "} -- {" << versionDesc._buildDateString << "}" << std::endl;
 	}
 
 	dll_export void DetachLibrary()
 	{
-		s_attachRef.reset();
-		ConsoleRig::CrossModule::ReleaseInstance();
 	}
 
 }

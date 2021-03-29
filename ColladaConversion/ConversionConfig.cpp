@@ -24,12 +24,12 @@ namespace ColladaConversion
             size_t fileSize = 0;
             auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(filename, &fileSize);
             InputStreamFormatter<utf8> formatter(
-                MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
+                MakeStringSection((const char*)sourceFile.get(), (const char*)PtrAdd(sourceFile.get(), fileSize)));
             StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
 
-            _resourceBindings = BindingConfig(doc.Element("Resources"));
-            _constantsBindings = BindingConfig(doc.Element("Constants"));
-            _vertexSemanticBindings = BindingConfig(doc.Element("VertexSemantics"));
+            _resourceBindings = BindingConfig(doc.RootElement().Element("Resources"));
+            _constantsBindings = BindingConfig(doc.RootElement().Element("Constants"));
+            _vertexSemanticBindings = BindingConfig(doc.RootElement().Element("VertexSemantics"));
 
         } CATCH(...) {
             Log(Warning) << "Problem while loading configuration file (" << filename << "). Using defaults." << std::endl;
@@ -42,21 +42,18 @@ namespace ColladaConversion
     ImportConfiguration::~ImportConfiguration()
     {}
 
-    BindingConfig::BindingConfig(const DocElementIterator<InputStreamFormatter<utf8>>& source)
+    BindingConfig::BindingConfig(const Utility::StreamDOMElement<InputStreamFormatter<utf8>>& source)
     {
         auto bindingRenames = source.Element("Rename");
         if (bindingRenames) {
-            auto child = bindingRenames.FirstAttribute();
-            for (; child; child = child.Next())
-                if (child)
-                    _exportNameToBinding.push_back(
-                        std::make_pair(child.Name().AsString(), child.Value().AsString()));
+            for (auto child:bindingRenames.attributes())
+                _exportNameToBinding.push_back(
+                    std::make_pair(child.Name().AsString(), child.Value().AsString()));
         }
 
         auto bindingSuppress = source.Element("Suppress");
         if (bindingSuppress) {
-            auto child = bindingSuppress.FirstAttribute();
-            for (; child; child = child.Next())
+            for (auto child:bindingSuppress.attributes())
                 _bindingSuppressed.push_back(child.Name().AsString());
         }
     }

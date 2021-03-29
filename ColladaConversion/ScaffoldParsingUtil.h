@@ -31,7 +31,12 @@ namespace ColladaConversion
         return table[0].first;  // first one is the default
     }
 
-    template<typename CharType> bool IsWhitespace(CharType chr);
+    template<typename CharType>
+        bool IsWhitespace(CharType chr)
+    {
+        return chr == 0x20 || chr == 0x9 || chr == 0xD || chr == 0xA;
+    }
+    
     template<typename Type>
         auto ParseXMLList(Type dest[], unsigned destCount, XmlInputStreamFormatter<utf8>::InteriorSection section, unsigned* outEleCount = nullptr) 
             -> decltype(XmlInputStreamFormatter<utf8>::InteriorSection::_start)
@@ -77,7 +82,7 @@ namespace ColladaConversion
     template<typename Section>
         static std::string AsString(const Section& section)
     {
-        using CharType = std::remove_const<std::remove_reference<decltype(*section._start)>::type>::type;
+        using CharType = std::remove_const_t<std::remove_reference_t<decltype(*section._start)>>;
         return Conversion::Convert<std::string>(
             std::basic_string<CharType>(section._start, section._end));
     }
@@ -99,8 +104,8 @@ namespace ColladaConversion
     }
 }
 
-namespace std   // adding these to std is awkward, but it's the only way to make sure easylogging++ can see them
+namespace Utility
 {
-    std::ostream& operator<<(std::ostream& os, const StreamLocation& loc);
-    std::ostream& operator<<(std::ostream& os, XmlInputStreamFormatter<utf8>::InteriorSection section);
+    std::ostream& SerializationOperator(std::ostream& os, const StreamLocation& loc);
 }
+

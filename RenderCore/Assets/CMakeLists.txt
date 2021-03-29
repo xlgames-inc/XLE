@@ -50,7 +50,7 @@ set(Headers
 
 add_library(RenderCoreAssets STATIC ${Src} ${Headers})
 xle_configure_library(RenderCoreAssets)
-target_link_libraries(RenderCoreAssets PUBLIC RenderCore ConsoleRig Assets Math OSServices Utility ForeignMisc)
+target_link_libraries(RenderCoreAssets PUBLIC ShaderParser RenderCore ConsoleRig Assets Math OSServices Utility ForeignMisc)
 
 add_library(RenderCoreAssetsServices STATIC "Services.cpp")
 xle_configure_library(RenderCoreAssetsServices)

@@ -9,6 +9,7 @@
 #include "ConversionConfig.h"
 #include "../RenderCore/Assets/RawMaterial.h"
 #include "../OSServices/Log.h"
+#include "../Math/MathSerialization.h"
 #include "../Utility/Conversion.h"
 #include "../Utility/Streams/PathUtils.h"
 #include <string>
@@ -81,10 +82,9 @@ namespace ColladaConversion
         const URIResolveContext& pubEles,
         const ImportConfiguration& cfg, const std::string& effectName)
     {
-        auto extraValues = extra.Element("technique");
+        auto extraValues = extra.RootElement().Element("technique");
         if (extraValues) {
-            auto techValue = extraValues.FirstChild();
-            for (;techValue; techValue=techValue.NextSibling()) {
+            for (auto techValue:extraValues.children()) {
                 auto n = techValue.Name();
                 if (cfg.GetResourceBindings().IsSuppressed(n)) continue;
 

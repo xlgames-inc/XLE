@@ -19,6 +19,8 @@ add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../ShaderParser ShaderParser)
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../BufferUploads BufferUploads)
 #add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../FixedFunctionModel FixedFunctionModel)
 
+add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../ColladaConversion ColladaConversion)
+
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../Foreign ForeignMisc)
 # add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../Foreign/freetype2 freetype2)
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../Foreign/tiny-process-library tiny-process-library)

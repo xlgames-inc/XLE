@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -14,9 +12,12 @@
 #include "../Utility/ParameterBox.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/IteratorUtils.h"
+#include "../Utility/StringFormat.h"
+#include "../Utility/Streams/SerializationUtils.h"
 #include "../OSServices/Log.h"
 #include <queue>
 #include <cctype>
+#include <sstream>
 
 namespace ColladaConversion
 {
@@ -50,74 +51,77 @@ namespace ColladaConversion
         }
     }
 
-    static void SkipAllAttributes(Formatter& formatter)
+    static void SkipAllKeyedItems(Formatter& formatter)
     {
-        while (formatter.PeekNext() == Formatter::Blob::AttributeName) {
-            Formatter::InteriorSection name, value;
-            formatter.TryAttribute(name, value);
+        while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+            auto name = RequireKeyedItem(formatter);
+            auto next = formatter.PeekNext();
+            if (next == FormatterBlob::Value) {
+                RequireValue(formatter);
+            } else if (next == FormatterBlob::BeginElement) {
+                RequireBeginElement(formatter);
+                SkipElement(formatter);
+                RequireEndElement(formatter);
+            } else {
+                Throw(FormatException("Expected either value or element", formatter.GetLocation()));
+            }
         }
     }
 
     static Section ExtractSingleAttribute(Formatter& formatter, const Formatter::value_type attribName[])
     {
-        Section result;
-
-        for (;;) {
+        while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+            auto name = RequireKeyedItem(formatter);
             switch (formatter.PeekNext()) {
             case Formatter::Blob::BeginElement:
+                RequireBeginElement(formatter);
+                SkipElement(formatter);
+                RequireEndElement(formatter);
+                break;
+
+            case Formatter::Blob::Value:
                 {
-                    Formatter::InteriorSection eleName;
-                    formatter.TryBeginElement(eleName);
-                    SkipElement(formatter);
-                    if (!formatter.TryEndElement())
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
-                    continue;
+                    auto value = RequireValue(formatter);
+                    if (Is(name, attribName)) return value;
+                    break;
                 }
 
-            case Formatter::Blob::AttributeName:
-                {
-                    Formatter::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-                    if (Is(name, attribName)) result = value;
-                    continue;
-                }
+            default:
+                Throw(FormatException("Expected either value or element", formatter.GetLocation()));
             }
-
-            break;
         }
 
-        return result;
+        return {};
     }
 
     using RootElementParser = void (DocumentScaffold::*)(XmlInputStreamFormatter<utf8>&);
 
     #define ON_ELEMENT                                              \
-        for (;;) {                                                  \
-            switch (formatter.PeekNext()) {                         \
-            case Formatter::Blob::BeginElement:                     \
+        while (formatter.PeekNext() == FormatterBlob::KeyedItem) {                         \
+            auto name = RequireKeyedItem(formatter);        \
+            switch (formatter.PeekNext()) {                     \
+            case FormatterBlob::BeginElement:                     \
                 {                                                   \
-                    Formatter::InteriorSection eleName;             \
-                    formatter.TryBeginElement(eleName);             \
+                    auto eleName = name;        \
+                    RequireBeginElement(formatter);             \
         /**/
 
     #define ON_ATTRIBUTE                                            \
-                    if (!formatter.TryEndElement())                 \
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));       \
-                    continue;                                       \
+                    RequireEndElement(formatter);                 \
+                    break;                                       \
                 }                                                   \
                                                                     \
-            case Formatter::Blob::AttributeName:                    \
+            case FormatterBlob::Value:                    \
                 {                                                   \
-                    Formatter::InteriorSection name, value;         \
-                    formatter.TryAttribute(name, value);            \
+                    auto value = RequireValue(formatter);       \
         /**/
 
     #define PARSE_END                                               \
-                    continue;                                       \
-                }                                                   \
-            }                                                       \
-                                                                    \
-            break;                                                  \
+                    break;                                       \
+                }                           \
+            default:                        \
+                Throw(FormatException("Expected either value or element", formatter.GetLocation()));        \
+            }                                                   \
         }                                                           \
         /**/
 
@@ -133,13 +137,12 @@ namespace ColladaConversion
         std::make_pair("scene", &DocumentScaffold::Parse_Scene)
     };
 
-
     static bool TryParseAssetDescElement(AssetDesc&desc, Formatter& formatter, Formatter::InteriorSection eleName)
     {
-        if (Is(eleName, "unit"))) {
+        if (Is(eleName, "unit")) {
             // Utility::StreamDOM<Formatter> doc(formatter);
             // _metersPerUnit = doc("meter"), _metersPerUnit);
-            auto meter = ExtractSingleAttribute(formatter, "meter"));
+            auto meter = ExtractSingleAttribute(formatter, "meter");
             desc._metersPerUnit = Parse(meter, desc._metersPerUnit);
             return true;
         } else if (Is(eleName, "up_axis")) {
@@ -172,65 +175,58 @@ namespace ColladaConversion
         ON_ATTRIBUTE
         PARSE_END
     }
-    
-
 
     void DocumentScaffold::Parse(Formatter& formatter)
     {
         Formatter::InteriorSection rootEle;
-        if (!formatter.TryBeginElement(rootEle) || !Is(rootEle, "COLLADA"))
+        if (!formatter.TryKeyedItem(rootEle) || !Is(rootEle, "COLLADA"))
             Throw(FormatException("Expecting root COLLADA element", formatter.GetLocation()));
+        RequireBeginElement(formatter);
         
-        for (;;) {
+        while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+            auto name = RequireKeyedItem(formatter);
             switch (formatter.PeekNext()) {
-            case Formatter::Blob::BeginElement:
+            case FormatterBlob::BeginElement:
                 {
-                    Formatter::InteriorSection ele;
-                    formatter.TryBeginElement(ele);
+                    RequireBeginElement(formatter);
 
-                    if (Is(ele, "asset")) {
+                    if (Is(name, "asset")) {
                         _rootAsset = AssetDesc(formatter);
                     } else {
                         bool found = false;
                         for (unsigned c=0; c<dimof(s_rootElements); ++c)
-                            if (Is(ele, s_rootElements[c].first)) {
+                            if (Is(name, s_rootElements[c].first)) {
                                 (this->*(s_rootElements[c].second))(formatter);
                                 found = true;
                                 break;
                             }
 
                         if (!found)
-                            found = TryParseAssetDescElement(_rootAsset, formatter, ele);
+                            found = TryParseAssetDescElement(_rootAsset, formatter, name);
 
                         if (!found) {
-                            Log(Warning) << "Skipping element " << ele << " at " << formatter.GetLocation() << std::endl;
+                            Log(Warning) << "Skipping element " << name << " at " << formatter.GetLocation() << std::endl;
                             SkipElement(formatter);
                         }
                     }
 
-                    if (!formatter.TryEndElement())
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
-
-                    continue;
+                    RequireEndElement(formatter);
+                    break;
                 }
 
-            case Formatter::Blob::EndElement:
-                break; // hit the end of file
-
-            case Formatter::Blob::AttributeName:
+            case FormatterBlob::Value:
                 {
                     // we should scan for collada version here
-                    Formatter::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-                    continue;
+                    RequireValue(formatter);
+                    break;
                 }
 
             default:
                 Throw(FormatException("Unexpected blob", formatter.GetLocation()));
             }
-
-            break;
         }
+
+        RequireEndElement(formatter);
     }
 
     ParameterSet::SamplerParameter::SamplerParameter()
@@ -337,7 +333,7 @@ namespace ColladaConversion
 
         ON_ELEMENT
             if (Is(eleName, "init_from")) {
-                SkipAllAttributes(formatter);
+                SkipAllKeyedItems(formatter);
                 formatter.TryCharacterData(_initFrom);
             } else {
                 Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
@@ -488,22 +484,21 @@ namespace ColladaConversion
     {
         _type = Type::None;
 
+        auto eleName = RequireKeyedItem(formatter);
         // there can be attributes in the containing element -- which should should skip now
-        {
-            Formatter::InteriorSection name, value;
-            while (formatter.TryAttribute(name, value)) {}
+        while (formatter.PeekNext() == FormatterBlob::Value) {
+            RequireValue(formatter);
+            eleName = RequireKeyedItem(formatter);
         }
 
         // We should find exactly one element, which should be
         // of "color", "param", "texture" or "float" type
-        Formatter::InteriorSection eleName; 
-        if (!formatter.TryBeginElement(eleName))
-            Throw(FormatException("Expecting element for technique value", formatter.GetLocation()));
+        RequireBeginElement(formatter);
         
         if (Is(eleName, "float")) {
 
                 // skip all attributes (sometimes get "sid" tags)
-            SkipAllAttributes(formatter);
+            SkipAllKeyedItems(formatter);
 
             _value[0] = ReadCDataAsValue(formatter, _value[0]);
             _type = Type::Float;
@@ -511,7 +506,7 @@ namespace ColladaConversion
         } else if (Is(eleName, "color")) {
 
                 // skip all attributes (sometimes get "sid" tags)
-            SkipAllAttributes(formatter);
+            SkipAllKeyedItems(formatter);
 
             Formatter::InteriorSection cdata; 
             if (formatter.TryCharacterData(cdata)) {
@@ -524,50 +519,47 @@ namespace ColladaConversion
 
                 // <texture> can contain <extra> -- so we need
                 // to do a full parse
-            for (;;) {
-                auto next = formatter.PeekNext();
-                switch (next) {
-                case Formatter::Blob::BeginElement:
+            while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+                auto name = RequireKeyedItem(formatter);
+                switch (formatter.PeekNext()) {
+                case FormatterBlob::BeginElement:
                     {
-                        Formatter::InteriorSection name;
-                        formatter.TryBeginElement(name);
+                        RequireBeginElement(formatter);
                         Log(Warning) << "Skipping (" << name << ") in technique <texture> at " << formatter.GetLocation() << std::endl;
                         SkipElement(formatter);
-                        formatter.TryEndElement();
-                        continue;
+                        RequireEndElement(formatter);
+                        break;
                     }
 
-                case Formatter::Blob::AttributeName:
+                case FormatterBlob::Value:
                     {
-                        Formatter::InteriorSection name, value; 
-                        formatter.TryAttribute(name, value);
+                        auto value = RequireValue(formatter);
                         if (Is(name, "texture")) _reference = value;
                         else if (Is(name, "texcoord")) _texCoord = value;
                         else Log(Warning) << "Unknown attribute for texture (" << name << ") at " << formatter.GetLocation() << std::endl;
-                        continue;
+                        break;
                     }
 
-                default: break;
+                default:
+                    Throw(FormatException("Expecting either value or element", formatter.GetLocation()));
                 }
-                break;
             }
             _type = Type::Texture;
 
         } else if (Is(eleName, "param")) {
 
-            Formatter::InteriorSection name, value; 
-            if (!formatter.TryAttribute(name, value) || !Is(name, "ref")) {
+            Formatter::InteriorSection name;
+            if (!formatter.TryKeyedItem(name) || !Is(name, "ref")) {
                 Log(Warning) << "Expecting ref attribute in param technique value at " << formatter.GetLocation() << std::endl;
             } else {
-                _reference = value;
+                _reference = RequireValue(formatter);
                 _type = Type::Param;
             }
 
         } else 
             Throw(FormatException("Expect either float, color, param or texture element", formatter.GetLocation()));
 
-        if (!formatter.TryEndElement())
-            Throw(FormatException("Expecting end element", formatter.GetLocation()));
+        RequireEndElement(formatter);
     }
 
     void Effect::Profile::ParseShaderType(Formatter& formatter)
@@ -703,15 +695,16 @@ namespace ColladaConversion
                     Param newParam;
                     newParam._offset = workingParamOffset++;
 
-                    Formatter::InteriorSection name, value;
-                    while (formatter.TryAttribute(name, value)) {
+                    while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+                        auto name = RequireKeyedItem(formatter);
                         if (Is(name, "name")) {
-                            newParam._name = value;
+                            newParam._name = RequireValue(formatter);
                         } else if (Is(name, "type")) {
-                            newParam._type = value;
+                            newParam._type = RequireValue(formatter);
                         } else if (Is(name, "semantic")) {
-                            newParam._semantic = value;
-                        }
+                            newParam._semantic = RequireValue(formatter);
+                        } else 
+                            SkipValueOrElement(formatter);
                     }
 
                         // Do not record <param>s without names -- those are only used to skip over a slots
@@ -758,7 +751,7 @@ namespace ColladaConversion
         }
 
         Accessor::Accessor(Accessor&& moveFrom) never_throws
-        : _paramsOverflow(std::move(_paramsOverflow))
+        : _paramsOverflow(std::move(moveFrom._paramsOverflow))
         {
             _source = moveFrom._source;
             _count = moveFrom._count;
@@ -816,15 +809,17 @@ namespace ColladaConversion
                         // attributes. Given that the source is XML, the attributes
                         // will always come first.
                     {
-                        while (formatter.PeekNext() == Formatter::Blob::AttributeName) {
-                            Section name, value;
-                            formatter.TryAttribute(name, value);
-
+                        while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+                            auto name = RequireKeyedItem(formatter);
                             if (Is(name, "count")) {
+                                auto value = RequireValue(formatter);
                                 _arrayCount = Parse(value, 0u);
                             } else if (Is(name, "id")) {
-                                _arrayId = value;
-                            } // "name also valid
+                                _arrayId = RequireValue(formatter);
+                            } else {
+                                // "name also valid
+                                SkipValueOrElement(formatter);
+                            }
                         }
                     }
 
@@ -935,16 +930,20 @@ namespace ColladaConversion
             : Input()
         {
                 // inputs should have only attributes
-            Formatter::InteriorSection name, value;
-            while (formatter.TryAttribute(name, value)) {
+            while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+                auto name = RequireKeyedItem(formatter);
                 if (Is(name, "offset")) {
+                    auto value = RequireValue(formatter);
                     _indexInPrimitive = Parse(value, _indexInPrimitive);
                 } else if (Is(name, "semantic")) {
-                    _semantic = value;
+                    _semantic = RequireValue(formatter);
                 } else if (Is(name, "source")) {
-                    _source = value;
+                    _source = RequireValue(formatter);
                 } else if (Is(name, "set")) {
+                    auto value = RequireValue(formatter);
                     _semanticIndex = Parse(value, _semanticIndex);
+                } else {
+                    SkipValueOrElement(formatter);
                 }
             }
         }
@@ -955,11 +954,14 @@ namespace ColladaConversion
         {
                 // inputs should have only attributes
             Formatter::InteriorSection name, value;
-            while (formatter.TryAttribute(name, value)) {
+            while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+                auto name = RequireKeyedItem(formatter);
                 if (Is(name, "semantic")) {
-                    _semantic = value;
+                    _semantic = RequireValue(formatter);
                 } else if (Is(name, "source")) {
-                    _source = value;
+                    _source = RequireValue(formatter);
+                } else {
+                    SkipValueOrElement(formatter);
                 }
             }
         }
@@ -1188,7 +1190,7 @@ namespace ColladaConversion
 
         ON_ELEMENT
             if (Is(eleName, "bind_shape_matrix")) {
-                SkipAllAttributes(formatter);
+                SkipAllKeyedItems(formatter);
                 formatter.TryCharacterData(_bindShapeMatrix);
             } else if (Is(eleName, "source")) {
                 pub.Add(DataFlow::Source(formatter));
@@ -1212,10 +1214,10 @@ namespace ColladaConversion
     {
         ON_ELEMENT
             if (Is(eleName, "vcount")) {
-                SkipAllAttributes(formatter);
+                SkipAllKeyedItems(formatter);
                 formatter.TryCharacterData(_influenceCountPerVertex);
             } else if (Is(eleName, "v")) {
-                SkipAllAttributes(formatter);
+                SkipAllKeyedItems(formatter);
                 formatter.TryCharacterData(_influences);
             } else if (Is(eleName, "input")) {
                 _influenceInputs.push_back(DataFlow::Input(formatter));
@@ -1281,65 +1283,63 @@ namespace ColladaConversion
         bool inController = false;
             
         for (;;) {
-            switch (formatter.PeekNext()) {
-            case Formatter::Blob::BeginElement:
-                {
-                    Section eleName;
-                    formatter.TryBeginElement(eleName);
+            if (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+                auto name = RequireKeyedItem(formatter);
 
-                    bool eatEndElement = true;
+                switch (formatter.PeekNext()) {
+                case FormatterBlob::BeginElement:
+                    {
+                        RequireBeginElement(formatter);
+                        bool eatEndElement = true;
 
-                    if (!inController) {
-                        if (Is(eleName, "controller")) {
-                            inController = true;
-                            eatEndElement = false;
+                        if (!inController) {
+                            if (Is(name, "controller")) {
+                                inController = true;
+                                eatEndElement = false;
+                            } else {
+                                Log(Warning) << "Skipping element " << name << " at " << formatter.GetLocation() << std::endl;
+                                SkipElement(formatter);    // <asset> and <extra> possible
+                            }
                         } else {
-                            Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
-                            SkipElement(formatter);    // <asset> and <extra> possible
+                            if (Is(name, "skin")) {
+                                _skinControllers.push_back(SkinController(formatter, controllerId, controllerName, *this));
+                            } else if (Is(name, "morph")) {
+                                Log(Warning) << "<morph> controllers not supported" << std::endl;
+                                SkipElement(formatter);
+                            } else {
+                                Log(Warning) << "Skipping element " << name << " at " << formatter.GetLocation() << std::endl;
+                                SkipElement(formatter);    // <asset> and <extra> possible
+                            }
                         }
-                    } else {
-                        if (Is(eleName, "skin")) {
-                            _skinControllers.push_back(SkinController(formatter, controllerId, controllerName, *this));
-                        } else if (Is(eleName, "morph")) {
-                            Log(Warning) << "<morph> controllers not supported" << std::endl;
-                            SkipElement(formatter);
-                        } else {
-                            Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
-                            SkipElement(formatter);    // <asset> and <extra> possible
-                        }
+
+                        if (eatEndElement && !formatter.TryEndElement())
+                            Throw(FormatException("Expecting end element", formatter.GetLocation()));
+
+                        break;
                     }
 
-                    if (eatEndElement && !formatter.TryEndElement())
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
+                case FormatterBlob::Value:
+                    {
+                        auto value = RequireValue(formatter);
+                        if (inController) {
+                            if (Is(name, "id")) controllerId = value;
+                            else if (Is(name, "name")) controllerName = value;
+                        }
+                        break;
+                    }
 
-                    continue;
+                default:
+                    Throw(FormatException("Expected value or element", formatter.GetLocation()));
                 }
-
-            case Formatter::Blob::EndElement:
-                if (!inController) break;
-                formatter.TryEndElement();
+            } else if (formatter.PeekNext() == FormatterBlob::EndElement) {
+                if (!inController) return;
+                RequireEndElement(formatter);
                 inController = false;
-                continue;
-
-            case Formatter::Blob::AttributeName:
-                {
-                    Section name, value;
-                    formatter.TryAttribute(name, value);
-
-                    if (inController) {
-                        if (Is(name, "id")) controllerId = value;
-                        else if (Is(name, "name")) controllerName = value;
-                    }
-
-                    continue;
-                }
+            } else {
+                return;
             }
-
-            break;
         }
     }
-
-    
 
     Material::Material(Formatter& formatter)
     {
@@ -1394,7 +1394,7 @@ namespace ColladaConversion
     {
         ON_ELEMENT
             if (Is(eleName, "init_from")) {
-                SkipAllAttributes(formatter);
+                SkipAllKeyedItems(formatter);
                 formatter.TryCharacterData(_initFrom);
             } else {
                 Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
@@ -1483,10 +1483,13 @@ namespace ColladaConversion
 
         RawOperation newOp;
 
-        while (formatter.PeekNext() == Formatter::Blob::AttributeName) {
-            Section attribName, attribValue;
-            formatter.TryAttribute(attribName, attribValue);
-            if (Is(attribName, "sid")) newOp._sid = attribValue;
+        while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+            auto attribName = RequireKeyedItem(formatter);
+            if (Is(attribName, "sid")) {
+                newOp._sid = RequireValue(formatter);
+            } else {
+                SkipValueOrElement(formatter);
+            }
         }
 
         Section cdata;
@@ -1736,8 +1739,8 @@ namespace ColladaConversion
         ON_ELEMENT
             if (Is(eleName, "bind_material")) {
                 ParseBindMaterial(formatter);
-            } else if (eleName, "skeleton") {
-                SkipAllAttributes(formatter);
+            } else if (Is(eleName, "skeleton")) {
+                SkipAllKeyedItems(formatter);
                 formatter.TryCharacterData(_skeleton);
             } else {
                 Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
@@ -1795,121 +1798,123 @@ namespace ColladaConversion
         _nodes.push_back(RawNode());
 
         for (;;) {
-            switch (formatter.PeekNext()) {
-            case Formatter::Blob::BeginElement:
-                {
-                    Formatter::InteriorSection eleName;
-                    formatter.TryBeginElement(eleName);
+            if (formatter.PeekNext() == FormatterBlob::KeyedItem) {
+                auto name = RequireKeyedItem(formatter);
+                switch (formatter.PeekNext()) {
+                case FormatterBlob::BeginElement:
+                    {
+                        RequireBeginElement(formatter);
 
-                    bool eatEndElement = true;
-                    if (Is(eleName, "node")) {
+                        bool eatEndElement = true;
+                        if (Is(name, "node")) {
 
-                            // create a new node, and add it to 
-                            // our working tree...
+                                // create a new node, and add it to 
+                                // our working tree...
 
-                        RawNode newNode;
-                        auto newNodeIndex = IndexIntoNodes(_nodes.size());
-                        assert(!workingNodes.empty());
+                            RawNode newNode;
+                            auto newNodeIndex = IndexIntoNodes(_nodes.size());
+                            assert(!workingNodes.empty());
 
-                        newNode._parent = workingNodes.top();
-                        auto lastChildOfParent = _nodes[workingNodes.top()]._firstChild;
-                        if (lastChildOfParent != IndexIntoNodes_Invalid) {
+                            newNode._parent = workingNodes.top();
+                            auto lastChildOfParent = _nodes[workingNodes.top()]._firstChild;
+                            if (lastChildOfParent != IndexIntoNodes_Invalid) {
 
-                            for (;;) {
-                                auto& sib = _nodes[lastChildOfParent];
-                                if (sib._nextSibling == IndexIntoNodes_Invalid) {
-                                    sib._nextSibling = newNodeIndex;
-                                    break;
+                                for (;;) {
+                                    auto& sib = _nodes[lastChildOfParent];
+                                    if (sib._nextSibling == IndexIntoNodes_Invalid) {
+                                        sib._nextSibling = newNodeIndex;
+                                        break;
+                                    }
+                                    lastChildOfParent = sib._nextSibling;
                                 }
-                                lastChildOfParent = sib._nextSibling;
+
+                            } else {
+                                _nodes[workingNodes.top()]._firstChild = newNodeIndex;
                             }
 
-                        } else {
-                            _nodes[workingNodes.top()]._firstChild = newNodeIndex;
-                        }
+                            workingNodes.push(newNodeIndex);
+                            _nodes.emplace_back(std::move(newNode));
+                            eatEndElement = false;
 
-                        workingNodes.push(newNodeIndex);
-                        _nodes.emplace_back(std::move(newNode));
-                        eatEndElement = false;
+                        } else if (Is(name, "instance_geometry")) {
 
-                    } else if (Is(eleName, "instance_geometry")) {
+                                // <instance_geometry> should contain a reference to the particular geometry
+                                // as well as material binding information.
+                                // each <instance_geometry> belongs inside of a 
+                            assert(!workingNodes.empty());
+                            _geoInstances.push_back(std::make_pair(workingNodes.top(), InstanceGeometry(formatter)));
 
-                            // <instance_geometry> should contain a reference to the particular geometry
-                            // as well as material binding information.
-                            // each <instance_geometry> belongs inside of a 
-                        assert(!workingNodes.empty());
-                        _geoInstances.push_back(std::make_pair(workingNodes.top(), InstanceGeometry(formatter)));
+                        } else if (Is(name, "instance_controller")) {
 
-                    } else if (Is(eleName, "instance_controller")) {
+                                // <instance_geometry> should contain a reference to the particular geometry
+                                // as well as material binding information.
+                                // each <instance_geometry> belongs inside of a 
+                            assert(!workingNodes.empty());
+                            _controllerInstances.push_back(std::make_pair(workingNodes.top(), InstanceController(formatter)));
 
-                            // <instance_geometry> should contain a reference to the particular geometry
-                            // as well as material binding information.
-                            // each <instance_geometry> belongs inside of a 
-                        assert(!workingNodes.empty());
-                        _controllerInstances.push_back(std::make_pair(workingNodes.top(), InstanceController(formatter)));
+                        } else if (TransformationSet::IsTransform(name)) {
 
-                    } else if (TransformationSet::IsTransform(eleName)) {
-
-                        assert(!workingNodes.empty());
-                        auto& node = _nodes[workingNodes.top()];
-                        node._transformChain = _transformSet.ParseTransform(
-                            formatter, eleName, node._transformChain);
-
-                    } else if (Is(eleName, "extra")) {
-
-                        assert(!workingNodes.empty());
-                        if (workingNodes.size() > 1) {
+                            assert(!workingNodes.empty());
                             auto& node = _nodes[workingNodes.top()];
-                            node._extra = SubDoc(formatter);
+                            node._transformChain = _transformSet.ParseTransform(
+                                formatter, name, node._transformChain);
+
+                        } else if (Is(name, "extra")) {
+
+                            assert(!workingNodes.empty());
+                            if (workingNodes.size() > 1) {
+                                auto& node = _nodes[workingNodes.top()];
+                                node._extra = SubDoc(formatter);
+                            } else {
+                                _extra = SubDoc(formatter);
+                            }
+                        
                         } else {
-                            _extra = SubDoc(formatter);
+
+                                // "asset" and "evaluate_scene" are also valid, but uninteresting
+                            Log(Warning) << "Skipping element " << name << " at " << formatter.GetLocation() << std::endl;
+                            SkipElement(formatter);
+
                         }
-                    
-                    } else {
 
-                            // "asset" and "evaluate_scene" are also valid, but uninteresting
-                        Log(Warning) << "Skipping element " << eleName << " at " << formatter.GetLocation() << std::endl;
-                        SkipElement(formatter);
+                        if (eatEndElement && !formatter.TryEndElement())
+                            Throw(FormatException("Expecting end element", formatter.GetLocation()));
 
+                        break;
                     }
 
-                    if (eatEndElement && !formatter.TryEndElement())
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
+                case FormatterBlob::Value:
+                    {
+                        auto value = RequireValue(formatter);
 
-                    continue;
+                        if (workingNodes.size() > 1) {
+
+                                // this is actually an attribute inside of a node item
+                            auto& node = _nodes[workingNodes.top()];
+                            if (Is(name, "id")) node._id = value;
+                            else if (Is(name, "sid")) node._sid = value;
+                            else if (Is(name, "name")) node._name = value;
+
+                        } else {
+                            // visual_scene can have "id" and "name"
+                            if (Is(name, "id")) _id = value;
+                            if (Is(name, "name")) _name = value;
+                        }
+
+                        break;
+                    }
+
+                default:
+                    Throw(FormatException("Expecting value or element", formatter.GetLocation()));
                 }
-
-            case Formatter::Blob::EndElement:
+            } else if (formatter.PeekNext() == Formatter::Blob::EndElement) {
                     // size 1 means only the "virtual" root node is there
-                if (workingNodes.size() == 1) break;
-                formatter.TryEndElement();
+                if (workingNodes.size() == 1) return;
+                RequireEndElement(formatter);
                 workingNodes.pop();
-                continue;
-
-            case Formatter::Blob::AttributeName:
-                {
-                    Formatter::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-
-                    if (workingNodes.size() > 1) {
-
-                            // this is actually an attribute inside of a node item
-                        auto& node = _nodes[workingNodes.top()];
-                        if (Is(name, "id")) node._id = value;
-                        else if (Is(name, "sid")) node._sid = value;
-                        else if (Is(name, "name")) node._name = value;
-
-                    } else {
-                        // visual_scene can have "id" and "name"
-                        if (Is(name, "id")) _id = value;
-                        if (Is(name, "name")) _name = value;
-                    }
-
-                    continue;
-                }
+            } else {
+                return;
             }
-
-            break;
         }
     }
 

@@ -4,9 +4,11 @@
 
 #include "FakeModelCompiler.h"
 #include "../../UnitTestHelper.h"
+#include "../../EmbeddedRes.h"
 #include "../../../RenderCore/Assets/MaterialCompiler.h"
 #include "../../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../../RenderCore/Assets/ModelScaffold.h"
+#include "../../../RenderCore/Assets/ModelImmutableData.h"
 #include "../../../RenderCore/Assets/RawMaterial.h"
 #include "../../../Assets/IntermediatesStore.h"
 #include "../../../Assets/IntermediateCompilers.h"
@@ -16,6 +18,7 @@
 #include "../../../Assets/AssetTraits.h"
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/CompileAndAsyncManager.h"
+#include "../../../Assets/CompilerLibrary.h"
 #include "../../../Assets/Assets.h"
 #include "../../../Math/Vector.h"
 #include "../../../Math/MathSerialization.h"
@@ -135,6 +138,7 @@ namespace UnitTests
 			REQUIRE(compile != nullptr);
 
 			compile->StallWhilePending();
+			INFO(::Assets::AsString(compile->GetErrorMessage()));
 			REQUIRE(compile->GetAssetState() == ::Assets::AssetState::Ready);
 
 			auto finalScaffold = ::Assets::AutoConstructAsset<RenderCore::Assets::ModelScaffold>(
@@ -159,6 +163,31 @@ namespace UnitTests
 		}
 
 		compilers.DeregisterCompiler(modelRegistration._registrationId);
+	}
+
+
+	TEST_CASE( "RenderCoreCompilation-CompileFromDLL", "[rendercore_assets]" )
+	{
+		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
+		auto xlresmnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", UnitTests::CreateEmbeddedResFileSystem());
+		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+
+		{
+			auto discoveredCompilations = ::Assets::DiscoverCompileOperations(compilers, "../ColladaConversion/*.dll");
+			REQUIRE(!discoveredCompilations.empty());
+
+			const char* testModelFile = "xleres/DefaultResources/materialsphere.dae";
+			auto scaffoldFuture = ::Assets::MakeAsset<RenderCore::Assets::ModelScaffold>(testModelFile);
+			scaffoldFuture->StallWhilePending();
+			INFO(::Assets::AsString(scaffoldFuture->GetActualizationLog()));
+			REQUIRE(scaffoldFuture->GetAssetState() == ::Assets::AssetState::Ready);
+
+			auto scaffold = scaffoldFuture->Actualize();
+			auto& cmdStream = scaffold->CommandStream();
+			REQUIRE(cmdStream.GetGeoCallCount() != 0);
+		}
+
+		::Assets::MainFileSystem::GetMountingTree()->Unmount(xlresmnt);
 	}
 
 }

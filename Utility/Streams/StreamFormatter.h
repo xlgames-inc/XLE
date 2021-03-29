@@ -139,6 +139,12 @@ namespace Utility
 						"Malformed value while skipping forward", formatter.GetLocation()));
 				break;
 
+			case FormatterBlob::CharacterData:
+				if (!formatter.TryCharacterData(dummy0))
+					Throw(FormatException(
+						"Malformed value while skipping forward", formatter.GetLocation()));
+				break;
+
 			default:
 				Throw(FormatException(
 					"Unexpected blob or end of stream hit while skipping forward", formatter.GetLocation()));

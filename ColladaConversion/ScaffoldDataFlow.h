@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../Utility/Streams/XmlStreamFormatter.h"
-#include "../Utility/Streams/StreamDom.h"
+#include "../Utility/Streams/StreamDOM.h"
 #include <vector>
 
 namespace ColladaConversion 
