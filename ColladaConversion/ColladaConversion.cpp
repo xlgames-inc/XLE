@@ -23,6 +23,7 @@
 #include "../Assets/ICompileOperation.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/InitializerPack.h"
+#include "../Assets/IntermediatesStore.h"
 
 #include "../OSServices/Log.h"
 #include "../Utility/Streams/StreamTypes.h"
@@ -558,8 +559,8 @@ namespace ColladaConversion
 		auto split = MakeFileNameSplitter(identifier);
 		auto filePath = split.AllExceptParameters().AsString();
 
-		result->_dependencies.push_back({ MakeStringSection("colladaimport.cfg"), ::Assets::MainFileSystem::TryGetDesc("colladaimport.cfg")._modificationTime });
-		result->_dependencies.push_back({ filePath, ::Assets::MainFileSystem::TryGetDesc(filePath)._modificationTime });
+		result->_dependencies.push_back(::Assets::IntermediatesStore::GetDependentFileState("colladaimport.cfg"));
+		result->_dependencies.push_back(::Assets::IntermediatesStore::GetDependentFileState(filePath));
 
 		result->_cfg = ImportConfiguration("colladaimport.cfg");
 		result->_fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(MakeStringSection(filePath), 0, "r", OSServices::FileShareMode::Read);
@@ -630,14 +631,12 @@ namespace ColladaConversion
 		}
 
 		std::shared_ptr<MergedAnimCompileOp> result = std::make_shared<MergedAnimCompileOp>();
-		::Assets::DependentFileState cfgDep { MakeStringSection("colladaimport.cfg"), ::Assets::MainFileSystem::TryGetDesc("colladaimport.cfg")._modificationTime };
-		result->_dependencies.push_back(cfgDep);
+		result->_dependencies.push_back(::Assets::IntermediatesStore::GetDependentFileState("colladaimport.cfg"));
 
 		ImportConfiguration cfg("colladaimport.cfg");
 
 		for (const auto&filePath:sourceFiles) {
-			::Assets::DependentFileState subFileDep { filePath.first, ::Assets::MainFileSystem::TryGetDesc(filePath.first)._modificationTime };
-			result->_dependencies.push_back(subFileDep);
+			result->_dependencies.push_back(::Assets::IntermediatesStore::GetDependentFileState(filePath.first));
 
 			ColladaCompileOp subResult;
 			subResult._cfg = cfg;

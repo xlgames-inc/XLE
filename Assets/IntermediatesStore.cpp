@@ -166,7 +166,9 @@ namespace Assets
 		void OnChange()
 		{
 				// on change, update the modification time record
-			_state._timeMarker = MainFileSystem::TryGetDesc(_state._filename)._modificationTime;
+			auto fileDesc = MainFileSystem::TryGetDesc(_state._filename);
+			_state._timeMarker = fileDesc._modificationTime;
+			_state._status = (fileDesc._state == FileDesc::State::DoesNotExist) ? DependentFileState::Status::DoesNotExist : DependentFileState::Status::Normal;
 			DependencyValidation::OnChange();
 		}
 
@@ -196,7 +198,10 @@ namespace Assets
 		// file's current modification time.
 		auto newRecord = std::make_shared<RetainedFileRecord>(filename);
 		RegisterFileDependency(newRecord, filename);
-		newRecord->_state._timeMarker = MainFileSystem::TryGetDesc(filename)._modificationTime;
+		auto fileDesc = MainFileSystem::TryGetDesc(filename);
+		assert(fileDesc._state != FileDesc::State::Invalid);
+		newRecord->_state._timeMarker = fileDesc._modificationTime;
+		newRecord->_state._status = (fileDesc._state == FileDesc::State::DoesNotExist) ? DependentFileState::Status::DoesNotExist : DependentFileState::Status::Normal;
 
 		{
 			ScopedLock(RetainedRecordsLock);
@@ -225,15 +230,28 @@ namespace Assets
 			return false;
 		}
 
-		if (!record->_state._timeMarker) {
-			Log(Verbose)
-				<< "Asset (" << assetName
-				<< ") is invalidated because of missing dependency (" << fileState._filename << ")" << std::endl;
-			return false;
-		} else if (record->_state._timeMarker != fileState._timeMarker) {
-			Log(Verbose)
-				<< "Asset (" << assetName
-				<< ") is invalidated because of file data on dependency (" << fileState._filename << ")" << std::endl;
+		if (record->_state._status == fileState._status) {
+			// If the status on both is "DoesNotExist", then we do not consider this as invalidating the asset
+			if (fileState._status != DependentFileState::Status::DoesNotExist && record->_state._timeMarker != fileState._timeMarker) {
+				Log(Verbose)
+					<< "Asset (" << assetName
+					<< ") is invalidated because of file data on dependency (" << fileState._filename << ")" << std::endl;
+				return false;
+			}
+		} else {
+			if (record->_state._status == DependentFileState::Status::DoesNotExist && fileState._status != DependentFileState::Status::DoesNotExist) {
+				Log(Verbose)
+					<< "Asset (" << assetName
+					<< ") is invalidated because of missing dependency (" << fileState._filename << ")" << std::endl;
+			} else if (record->_state._status != DependentFileState::Status::DoesNotExist && fileState._status == DependentFileState::Status::DoesNotExist) {
+				Log(Verbose)
+					<< "Asset (" << assetName
+					<< ") is invalidated because dependency (" << fileState._filename << ") was not present previously, but now exists" << std::endl;
+			} else {
+				Log(Verbose)
+					<< "Asset (" << assetName
+					<< ") is invalidated because dependency (" << fileState._filename << ") state does not match expected" << std::endl;
+			}
 			return false;
 		}
 

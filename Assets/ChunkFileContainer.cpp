@@ -85,6 +85,7 @@ namespace Assets
                 if (r._dataType == ArtifactRequest::DataType::BlockSerializer)
                     Block_Initialize(chunkResult._buffer.get());
             } else if (r._dataType == ArtifactRequest::DataType::ReopenFunction) {
+                assert(!_filename.empty());
 				auto offset = i->_fileOffset;
 				auto blobCopy = _blob;
 				auto filenameCopy = _filename;

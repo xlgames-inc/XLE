@@ -60,16 +60,16 @@ namespace Assets
     {
     public:
         std::basic_string<ResChar> _filename;
-        uint64 _timeMarker;
+        uint64_t _timeMarker;
 
-        enum class Status { Normal, Shadowed };
+        enum class Status { Normal, Shadowed, DoesNotExist };
         Status _status;
 
         DependentFileState() : _timeMarker(0ull), _status(Status::Normal) {}
-        DependentFileState(StringSection<ResChar> filename, uint64 timeMarker)
-        : _filename(filename.AsString()), _timeMarker(timeMarker), _status(Status::Normal) {}
-		DependentFileState(const std::basic_string<ResChar>& filename, uint64 timeMarker)
-		: _filename(filename), _timeMarker(timeMarker), _status(Status::Normal) {}
+        DependentFileState(StringSection<ResChar> filename, uint64_t timeMarker, Status status=Status::Normal)
+        : _filename(filename.AsString()), _timeMarker(timeMarker), _status(status) {}
+		DependentFileState(const std::basic_string<ResChar>& filename, uint64_t timeMarker, Status status=Status::Normal)
+		: _filename(filename), _timeMarker(timeMarker), _status(status) {}
 
 		friend bool operator<(const DependentFileState& lhs, const DependentFileState& rhs)
 		{

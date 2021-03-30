@@ -71,9 +71,19 @@ namespace Assets
 		{
 			auto ele = formatter.BeginKeyedElement("Dependencies");
 			for (const auto&product:compileProducts._dependencies) {
-				formatter.WriteKeyedValue(
-					MakeStringSection(product._filename), 
-					MakeStringSection(std::to_string(product._timeMarker)));
+				if (product._status == DependentFileState::Status::DoesNotExist) {
+					formatter.WriteKeyedValue(
+						MakeStringSection(product._filename), 
+						"doesnotexist");
+				} else if (product._status == DependentFileState::Status::Shadowed) {
+					formatter.WriteKeyedValue(
+						MakeStringSection(product._filename), 
+						"shadowed");
+				} else {
+					formatter.WriteKeyedValue(
+						MakeStringSection(product._filename), 
+						MakeStringSection(std::to_string(product._timeMarker)));
+				}
 			}
 			formatter.EndElement(ele);
 		}
@@ -98,10 +108,18 @@ namespace Assets
 			StringSection<utf8> name, value;
 			if (!formatter.TryKeyedItem(name) || !formatter.TryValue(value))
 				Throw(Utility::FormatException("Poorly formed attribute in CompileProductsFile", formatter.GetLocation()));
-			result._dependencies.push_back(DependentFileState {
-				name.AsString(),
-				Conversion::Convert<uint64_t>(value)
-			});
+			if (XlEqString(value, "doesnotexist")) {
+				result._dependencies.push_back(DependentFileState {
+					name.AsString(),
+					0, DependentFileState::Status::DoesNotExist
+				});
+			} else if (XlEqString(value, "shadowed")) {
+			} else {
+				result._dependencies.push_back(DependentFileState {
+					name.AsString(),
+					Conversion::Convert<uint64_t>(value)
+				});
+			}
 		}
 	}
 
@@ -200,10 +218,12 @@ namespace Assets
 		CompileProductsFile compileProductsFile;
 		compileProductsFile._state = state;
 
+		compileProductsFile._dependencies.reserve(dependencies.size());
 		for (const auto& s:dependencies) {
-			auto filename = MakeSplitPath(s._filename).Simplify().Rebuild();
-			assert(!filename.empty());
-			compileProductsFile._dependencies.push_back({filename, s._timeMarker});
+			auto adjustedDep = s;
+			adjustedDep._filename = MakeSplitPath(s._filename).Simplify().Rebuild();
+			assert(!adjustedDep._filename.empty());
+			compileProductsFile._dependencies.push_back(adjustedDep);
 		}
 
 		auto productsName = MakeProductsFileName(archivableName);
@@ -309,7 +329,7 @@ namespace Assets
 				if (prod._type == ChunkType_Multi) {
 					// open with no sharing
 					auto mainChunkFile = MainFileSystem::OpenFileInterface(prod._intermediateArtifact, "rb", 0);
-					ChunkFileContainer temp;
+					ChunkFileContainer temp(prod._intermediateArtifact);
 					return temp.ResolveRequests(*mainChunkFile, requests);
 				}
 			return {};
