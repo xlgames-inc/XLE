@@ -6,6 +6,7 @@
 
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/UTFUtils.h"
+#include "../Utility/StringFormat.h"
 #include <string>
 #include <sstream>
 #include <any>
@@ -133,25 +134,40 @@ namespace Assets
 
 		template<typename Type>
 			static decltype(std::declval<std::ostream&>() << std::declval<const Type&>())
-				StreamWithHashFallback(std::ostream& str, const Type& value) { return str << value; }
+				StreamWithHashFallback(std::ostream& str, const Type& value, bool allowFilesystemCharacters)
+			{
+				if (allowFilesystemCharacters) {
+					return str << value; 
+				} else {
+					// Unfortunately we can't filter the text passed through a stream
+					// easily without using some temporary buffer. Boost seems to have some
+					// classes to do this, but that seems like it's unlikely to reach the 
+					// standard library
+					StringMeld<256> temp;
+					temp << value;
+					for (auto& chr:temp.AsIteratorRange())
+						if (chr == '/' || chr == '\\') chr = '-';
+					return str << temp.AsStringSection();
+				}
+			}
 
 		template<typename Type>
-			std::enable_if_t<!decltype(IsStreamable<Type>(0))::value, std::ostream>& StreamWithHashFallback(std::ostream& str, const Type& value)
+			std::enable_if_t<!decltype(IsStreamable<Type>(0))::value, std::ostream>& StreamWithHashFallback(std::ostream& str, const Type& value, bool allowFilesystemCharacters)
 			{
 				return str << HashParam_Single(value);
 			}
 
 		template<typename Type>
-			std::ostream& StreamWithHashFallback(std::ostream& str, const std::shared_ptr<Type>& value)
+			std::ostream& StreamWithHashFallback(std::ostream& str, const std::shared_ptr<Type>& value, bool allowFilesystemCharacters)
 			{
 				return str << HashParam_Single(value);
 			}
 
 		template <typename Object>
-			inline void StreamDashSeparated(std::basic_stringstream<char>& result, const Object& obj)
+			inline void StreamDashSeparated(std::basic_stringstream<char>& result, const Object& obj, bool allowFilesystemCharacters)
 		{
 			result << "-";
-			StreamWithHashFallback(result, obj);
+			StreamWithHashFallback(result, obj, allowFilesystemCharacters);
 		}
 
 		template <typename P0, typename... Params>
@@ -159,7 +175,7 @@ namespace Assets
 		{
 			std::basic_stringstream<char> result;
 			result << p0;
-			int dummy[] = { 0, (StreamDashSeparated(result, initialisers), 0)... };
+			int dummy[] = { 0, (StreamDashSeparated(result, initialisers, false), 0)... };
 			(void)dummy;
 			return result.str();
 		}
@@ -174,7 +190,7 @@ namespace Assets
 			if (idx != 0) str << "-";
 			using TT = std::tuple<Args...>;
 			const auto& value = std::any_cast<const std::tuple_element_t<idx, TT>&>(variantPack[idx]);
-			StreamWithHashFallback(str, value);
+			StreamWithHashFallback(str, value, idx == 0);		// filesystem characters (ie directory separators) only allowed on the first initializer
 			if constexpr ((idx+1) != sizeof...(Args)) {
 				return MakeArchivableName_Pack<idx+1, Args...>(str, variantPack);
 			} else

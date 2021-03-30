@@ -11,7 +11,8 @@
 #include "../Core/Types.h"
 #include "Detail/API.h"
 #include "MemoryUtils.h"
-#include "StringUtils.h"        // just for StringSection
+#include "StringUtils.h"
+#include "IteratorUtils.h"
 #include <string>
 #include <streambuf>
 #include <ostream>
@@ -110,6 +111,7 @@ namespace Utility
         {
             return std::basic_string<CharType>((const CharType*)_buffer.begin(), (const CharType*)_buffer.end());
         }
+        IteratorRange<CharType*> AsIteratorRange() { return MakeIteratorRange((CharType*)_buffer.begin(), (CharType*)_buffer.end()); }
         operator StringSection<CharType>() const { return AsStringSection(); }
 
     protected:
@@ -211,6 +213,7 @@ namespace Utility
             const CharType* get() const         { return (const CharType*)_buffer.Begin(); }
             StringSection<CharType> AsStringSection() const { return MakeStringSection(get()); }
             std::basic_string<CharType> AsString() const { return AsStringSection().AsString(); }
+            IteratorRange<CharType*> AsIteratorRange() { return MakeIteratorRange(get(), XlStringEnd(get())); }
 
             StringMeldInPlace(CharType* bufferStart, CharType* bufferEnd)
             : _stream(&_buffer)
