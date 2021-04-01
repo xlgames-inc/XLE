@@ -44,17 +44,21 @@ namespace UnitTests
 		}
 
 		static unsigned s_serializeTargetCount;
+		static unsigned s_constructionCount;
 
 		virtual std::vector<SerializedArtifact>	SerializeTarget(unsigned idx) override
 		{
 			assert(idx == 0);
 			++s_serializeTargetCount;
 
+			if (_initializer == "unit-test-asset-throw-from-serialize-target")
+				Throw(std::runtime_error("Throw from serialize target requested"));
+
 			// Blobs written here will become chunks in the output file
 			std::vector<SerializedArtifact> result;
 			{
 				SerializedArtifact opRes;
-				opRes._type = Type_UnitTestArtifact;
+				opRes._chunkTypeCode = Type_UnitTestArtifact;
 				opRes._version = 1;
 				opRes._name = "unitary-artifact";
 				opRes._data = ::Assets::AsBlob("This is file data from TestCompileOperation for " + _initializer);
@@ -62,7 +66,7 @@ namespace UnitTests
 			}
 			{
 				SerializedArtifact opRes;
-				opRes._type = Type_UnitTestExtraArtifact;
+				opRes._chunkTypeCode = Type_UnitTestExtraArtifact;
 				opRes._version = 1;
 				opRes._name = "unitary-artifact-extra";
 				opRes._data = ::Assets::AsBlob("This is extra file data");
@@ -74,7 +78,7 @@ namespace UnitTests
 			// store and is mostly used for debugging purposes
 			{
 				SerializedArtifact opRes;
-				opRes._type = ConstHash64<'Metr', 'ics'>::Value;
+				opRes._chunkTypeCode = ConstHash64<'Metr', 'ics'>::Value;
 				opRes._version = 1;
 				opRes._name = "unitary-artifact-metrics";
 				opRes._data = ::Assets::AsBlob("This is file data from TestCompileOperation for " + _initializer);
@@ -85,13 +89,23 @@ namespace UnitTests
 
 		virtual std::vector<::Assets::DependentFileState> GetDependencies() const override
 		{
-			return {};
+			// We can declare a non-existant file as one of our dependencies. This is like saying that 
+			// the compile would be invalidated if this file appeared at a later time
+			return {
+				::Assets::DependentFileState{MakeStringSection("fake-file-state"), 0, ::Assets::DependentFileState::Status::DoesNotExist}
+			};
 		}
 
-		TestCompileOperation(::Assets::InitializerPack& initializer) : _initializer(initializer.GetInitializer<std::string>(0)) {}
+		TestCompileOperation(::Assets::InitializerPack& initializer) : _initializer(initializer.GetInitializer<std::string>(0)) 
+		{
+			++s_constructionCount;
+			if (_initializer == "unit-test-asset-throw-from-constructor")
+				Throw(std::runtime_error("Throw from constructor requested"));
+		}
 	};
 
 	unsigned TestCompileOperation::s_serializeTargetCount = 0;
+	unsigned TestCompileOperation::s_constructionCount = 0;
 
 	class TestChunkRequestsAsset
 	{
@@ -162,7 +176,7 @@ namespace UnitTests
 
 			auto marker = compilers->Prepare(Type_UnitTestArtifact, ::Assets::InitializerPack { "unit-test-asset-one" });
 			REQUIRE(marker != nullptr);
-			REQUIRE(marker->GetExistingAsset() == nullptr);
+			REQUIRE(marker->GetExistingAsset(Type_UnitTestArtifact) == nullptr);
 
 			auto compile = marker->InvokeCompile();
 			REQUIRE(compile != nullptr);
@@ -185,7 +199,7 @@ namespace UnitTests
 						::Assets::ArtifactRequest::DataType::SharedBlob
 					}
 				};
-				auto artifacts = compile->GetArtifactCollection()->ResolveRequests(MakeIteratorRange(requests));
+				auto artifacts = compile->GetArtifactCollection(Type_UnitTestArtifact)->ResolveRequests(MakeIteratorRange(requests));
 				REQUIRE(artifacts.size() == 2);
 				REQUIRE(::Assets::AsString(artifacts[0]._sharedBlob) == "This is file data from TestCompileOperation for unit-test-asset-one");
 				REQUIRE(::Assets::AsString(artifacts[1]._sharedBlob) == "This is extra file data");
@@ -194,7 +208,7 @@ namespace UnitTests
 				// Resolve artifacts implicitly via calling ::Assets::AutoConstructAsset
 				// The ChunkRequests array within TestChunkRequestsAsset is used to bind input artifacts
 				//
-				auto implicitlyConstructed = ::Assets::AutoConstructAsset<TestChunkRequestsAsset>(*compile->GetArtifactCollection());
+				auto implicitlyConstructed = ::Assets::AutoConstructAsset<TestChunkRequestsAsset>(*compile->GetArtifactCollection(Type_UnitTestArtifact));
 				REQUIRE(implicitlyConstructed->_data0 == "This is file data from TestCompileOperation for unit-test-asset-one");
 				REQUIRE(implicitlyConstructed->_data1 == "This is extra file data");
 			}
@@ -210,7 +224,7 @@ namespace UnitTests
 							::Assets::ArtifactRequest::DataType::SharedBlob
 						}
 					};
-					compile->GetArtifactCollection()->ResolveRequests(MakeIteratorRange(requests));
+					compile->GetArtifactCollection(Type_UnitTestArtifact)->ResolveRequests(MakeIteratorRange(requests));
 				}());
 				REQUIRE_THROWS([&]() {
 					// Fails because the type code requested doesn't match (note name ignored)
@@ -220,7 +234,7 @@ namespace UnitTests
 							::Assets::ArtifactRequest::DataType::SharedBlob
 						}
 					};
-					compile->GetArtifactCollection()->ResolveRequests(MakeIteratorRange(requests));
+					compile->GetArtifactCollection(Type_UnitTestArtifact)->ResolveRequests(MakeIteratorRange(requests));
 				}());
 				REQUIRE_THROWS([&]() {
 					// Fails because the same type code is repeated multiple times in the request
@@ -234,7 +248,7 @@ namespace UnitTests
 							::Assets::ArtifactRequest::DataType::SharedBlob
 						}
 					};
-					compile->GetArtifactCollection()->ResolveRequests(MakeIteratorRange(requests));
+					compile->GetArtifactCollection(Type_UnitTestArtifact)->ResolveRequests(MakeIteratorRange(requests));
 				}());
 			}
 
@@ -272,6 +286,26 @@ namespace UnitTests
 		}
 	}
 
+	static ::Assets::IntermediateCompilers::CompilerRegistration RegisterUnitTestCompiler(::Assets::IntermediateCompilers& compilers)
+	{
+		uint64_t outputTypes[] = { Type_UnitTestArtifact };
+		auto registration = compilers.RegisterCompiler(
+			"UnitTestCompiler",
+			"UnitTestCompiler",
+			ConsoleRig::GetLibVersionDesc(),
+			nullptr,
+			[](auto initializers) {
+				assert(!initializers.IsEmpty());
+				return std::make_shared<TestCompileOperation>(initializers);
+			});
+
+		compilers.AssociateRequest(
+			registration._registrationId,
+			MakeIteratorRange(outputTypes),
+			"unit-test-asset-.*");
+		return registration;
+	}
+
 	TEST_CASE( "AssetCompilers-IntermediatesStore", "[assets]" )
 	{
 		// note -- consider decoupling Assets::IntermediatesStore from the main file system, so
@@ -293,22 +327,7 @@ namespace UnitTests
 			ConsoleRig::GetLibVersionDesc()._versionString,
 			GetConfigString());
 		auto compilers = std::make_shared<::Assets::IntermediateCompilers>(intermediateStore);
-
-		uint64_t outputTypes[] = { Type_UnitTestArtifact };
-		auto registration = compilers->RegisterCompiler(
-			"UnitTestCompiler",
-			"UnitTestCompiler",
-			ConsoleRig::GetLibVersionDesc(),
-			nullptr,
-			[](auto initializers) {
-				assert(!initializers.IsEmpty());
-				return std::make_shared<TestCompileOperation>(initializers);
-			});
-
-		compilers->AssociateRequest(
-			registration._registrationId,
-			MakeIteratorRange(outputTypes),
-			"unit-test-asset-.*");
+		auto registration = RegisterUnitTestCompiler(*compilers);
 
 		::Assets::ArtifactRequest requests[] {
 			::Assets::ArtifactRequest {
@@ -328,7 +347,7 @@ namespace UnitTests
 			auto initializer = "unit-test-asset-one";
 			auto marker = compilers->Prepare(Type_UnitTestArtifact, ::Assets::InitializerPack { initializer } );
 			REQUIRE(marker != nullptr);
-			REQUIRE(marker->GetExistingAsset() == nullptr);
+			REQUIRE(marker->GetExistingAsset(Type_UnitTestArtifact) == nullptr);
 
 			auto compile = marker->InvokeCompile();
 			REQUIRE(compile != nullptr);
@@ -336,14 +355,14 @@ namespace UnitTests
 			compile->StallWhilePending();
 			REQUIRE(compile->GetAssetState() == ::Assets::AssetState::Ready);
 			
-			auto artifacts = compile->GetArtifactCollection()->ResolveRequests(MakeIteratorRange(requests));
+			auto artifacts = compile->GetArtifactCollection(Type_UnitTestArtifact)->ResolveRequests(MakeIteratorRange(requests));
 			REQUIRE(artifacts.size() == 2);
 			REQUIRE(::Assets::AsString(artifacts[0]._sharedBlob) == "This is file data from TestCompileOperation for unit-test-asset-one");
 			REQUIRE(::Assets::AsString(artifacts[1]._sharedBlob) == "This is extra file data");
 			REQUIRE(TestCompileOperation::s_serializeTargetCount == initialSerializeTargetCount+1);
 
 			// Now GetExistingAsset() on the same marker should give us something immediately
-			auto existingAsset = marker->GetExistingAsset();
+			auto existingAsset = marker->GetExistingAsset(Type_UnitTestArtifact);
 			REQUIRE(existingAsset != nullptr);
 			REQUIRE(existingAsset->GetDependencyValidation()->GetValidationIndex() == 0);	// still clean
 			artifacts = existingAsset->ResolveRequests(MakeIteratorRange(requests));
@@ -356,7 +375,7 @@ namespace UnitTests
 			marker = nullptr;
 			marker = compilers->Prepare(Type_UnitTestArtifact, ::Assets::InitializerPack { initializer } );
 			REQUIRE(marker != nullptr);
-			existingAsset = marker->GetExistingAsset();
+			existingAsset = marker->GetExistingAsset(Type_UnitTestArtifact);
 			REQUIRE(existingAsset != nullptr);
 			REQUIRE(existingAsset->GetDependencyValidation()->GetValidationIndex() == 0);	// still clean
 			artifacts = existingAsset->ResolveRequests(MakeIteratorRange(requests));
@@ -368,6 +387,103 @@ namespace UnitTests
 		compilers->DeregisterCompiler(registration._registrationId);
 	}
 
+	TEST_CASE( "AssetCompilers-HandlingCompilationFailures", "[assets]" )
+	{
+		UnitTest_SetWorkingDirectory();
+		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
+		::Assets::MainFileSystem::GetMountingTree()->SetAbsolutePathMode(Assets::MountingTree::AbsolutePathMode::RawOS);
+
+		auto tempDirPath = std::filesystem::temp_directory_path() / "xle-unit-tests";
+		std::filesystem::remove_all(tempDirPath);	// ensure we're starting from an empty temporary directory
+		std::filesystem::create_directories(tempDirPath);
+
+		auto intermediateStore = std::make_shared<::Assets::IntermediatesStore>(
+			tempDirPath.string().c_str(),
+			ConsoleRig::GetLibVersionDesc()._versionString,
+			GetConfigString());
+		auto compilers = std::make_shared<::Assets::IntermediateCompilers>(intermediateStore);
+		auto registration = RegisterUnitTestCompiler(*compilers);
+
+		SECTION("Exceptions from ICompileOperation")
+		{
+			{
+				auto marker = compilers->Prepare(Type_UnitTestArtifact, ::Assets::InitializerPack { "unit-test-asset-throw-from-constructor" } );
+				REQUIRE(marker != nullptr);
+				REQUIRE(marker->GetExistingAsset(Type_UnitTestArtifact) == nullptr);
+
+				// If the ICompileOperation throws from a constructor, then GetArtifactCollection
+				// will throw when we try to access it. This is because the compiler infrastructure
+				// gets no information about the compile targets, etc, when the ICompileOperation
+				// constructor can not be completed
+				auto compile = marker->InvokeCompile();
+				REQUIRE(compile != nullptr);
+				compile->StallWhilePending();
+				REQUIRE(compile->GetAssetState() == ::Assets::AssetState::Invalid);
+				REQUIRE_THROWS(compile->GetArtifactCollection(Type_UnitTestArtifact));
+			}
+
+			{
+				auto marker = compilers->Prepare(Type_UnitTestArtifact, ::Assets::InitializerPack { "unit-test-asset-throw-from-serialize-target" } );
+				REQUIRE(marker != nullptr);
+				REQUIRE(marker->GetExistingAsset(Type_UnitTestArtifact) == nullptr);
+
+				// Note that the future gets set to "ready" state, but the ArtifactCollection gets "invalid" state in this case. This is because
+				// the future can contain multiple ArtifactCollection, which can each have separate states
+				auto compile = marker->InvokeCompile();
+				REQUIRE(compile != nullptr);
+				compile->StallWhilePending();
+				REQUIRE(compile->GetAssetState() == ::Assets::AssetState::Ready);
+				REQUIRE(compile->GetArtifactCollection(Type_UnitTestArtifact)->GetAssetState() == ::Assets::AssetState::Invalid);
+				auto log = ::Assets::AsString(::Assets::GetErrorMessage(*compile->GetArtifactCollection(Type_UnitTestArtifact)));
+				REQUIRE(XlFindString(MakeStringSection(log), "Throw from serialize target requested"));
+				REQUIRE(compile->GetArtifactCollection(Type_UnitTestArtifact)->GetDependencyValidation() != nullptr);
+			}
+		}
+
+		SECTION("Retrieve exception information from intermediates store")
+		{
+			// Trigger a failed compilation as before, but this time do
+			// it twice, to ensure that the second time also gets the same result
+			auto initialCompileCount = TestCompileOperation::s_constructionCount;
+			for (unsigned c=0; c<2; ++c) {
+				auto marker = compilers->Prepare(Type_UnitTestArtifact, ::Assets::InitializerPack { "unit-test-asset-throw-from-serialize-target" } );
+				auto existing = marker->GetExistingAsset(Type_UnitTestArtifact);
+				if (existing && existing->GetDependencyValidation()->GetValidationIndex() == 0) {
+					REQUIRE(existing->GetAssetState() == ::Assets::AssetState::Invalid);
+					auto log = ::Assets::AsString(::Assets::GetErrorMessage(*existing));
+					REQUIRE(XlFindString(MakeStringSection(log), "Throw from serialize target requested"));
+					continue;	
+				}
+				auto compile = marker->InvokeCompile();
+				compile->StallWhilePending();
+				REQUIRE(compile->GetAssetState() == ::Assets::AssetState::Ready);
+				REQUIRE(compile->GetArtifactCollection(Type_UnitTestArtifact)->GetAssetState() == ::Assets::AssetState::Invalid);
+				auto log = ::Assets::AsString(::Assets::GetErrorMessage(*compile->GetArtifactCollection(Type_UnitTestArtifact)));
+				REQUIRE(XlFindString(MakeStringSection(log), "Throw from serialize target requested"));
+			}
+			REQUIRE(TestCompileOperation::s_constructionCount == initialCompileCount+1);
+
+			// reboot the compilers system entirely to ensure all internal caches are destroyed
+			intermediateStore->FlushToDisk();
+			compilers->DeregisterCompiler(registration._registrationId);
+			compilers.reset();
+			compilers = std::make_shared<::Assets::IntermediateCompilers>(intermediateStore);
+			registration = RegisterUnitTestCompiler(*compilers);
+
+			auto marker = compilers->Prepare(Type_UnitTestArtifact, ::Assets::InitializerPack { "unit-test-asset-throw-from-serialize-target" } );
+			auto existing = marker->GetExistingAsset(Type_UnitTestArtifact);
+			REQUIRE(existing);
+			REQUIRE(existing->GetDependencyValidation()->GetValidationIndex() == 0);
+			REQUIRE(existing->GetAssetState() == ::Assets::AssetState::Invalid);
+			auto log = ::Assets::AsString(::Assets::GetErrorMessage(*existing));
+			REQUIRE(XlFindString(MakeStringSection(log), "Throw from serialize target requested"));
+
+			// still expecting no new compiles started. We should be getting this error log from the intermediates store
+			REQUIRE(TestCompileOperation::s_constructionCount == initialCompileCount+1);
+		}
+
+		compilers->DeregisterCompiler(registration._registrationId);
+	}
 
 	struct TypeWithComplexMembers
 	{

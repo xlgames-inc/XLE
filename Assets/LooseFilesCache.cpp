@@ -234,7 +234,7 @@ namespace Assets
 		// However, some special artifacts (eg, metric files), can become separate files
 		std::vector<ICompileOperation::SerializedArtifact> chunksInMainFile;
 		for (const auto&a:artifacts)
-			if (a._type == ChunkType_Metrics) {
+			if (a._chunkTypeCode == ChunkType_Metrics) {
 				std::string metricsName;
 				if (!a._name.empty()) {
 					metricsName = productsName + "-" + MakeSafeName(a._name) + ".metrics";
@@ -242,9 +242,9 @@ namespace Assets
 					metricsName = productsName + ".metrics";
 				auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".staging", "wb", 0);
 				outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
-				compileProductsFile._compileProducts.push_back({a._type, metricsName});
+				compileProductsFile._compileProducts.push_back({a._chunkTypeCode, metricsName});
 				renameOps.push_back({metricsName + ".staging", metricsName});
-			} else if (a._type == ChunkType_Log) {
+			} else if (a._chunkTypeCode == ChunkType_Log) {
 				std::string metricsName;
 				if (!a._name.empty()) {
 					metricsName = productsName + "-" + MakeSafeName(a._name) + ".log";
@@ -252,7 +252,7 @@ namespace Assets
 					metricsName = productsName + ".log";
 				auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".staging", "wb", 0);
 				outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
-				compileProductsFile._compileProducts.push_back({a._type, metricsName});
+				compileProductsFile._compileProducts.push_back({a._chunkTypeCode, metricsName});
 				renameOps.push_back({metricsName + ".staging", metricsName});
 			} else {
 				chunksInMainFile.push_back(a);
@@ -324,15 +324,48 @@ namespace Assets
 	public:
 		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const override
 		{
-			// look for the main chunk file in the compile products -- we'll use this for resolving requests
-			for (const auto&prod:_productsFile._compileProducts)
-				if (prod._type == ChunkType_Multi) {
-					// open with no sharing
-					auto mainChunkFile = MainFileSystem::OpenFileInterface(prod._intermediateArtifact, "rb", 0);
-					ChunkFileContainer temp(prod._intermediateArtifact);
-					return temp.ResolveRequests(*mainChunkFile, requests);
+			std::vector<ArtifactRequestResult> result;
+			result.resize(requests.size());
+
+			std::vector<ArtifactRequest> requestsForMulti;
+			std::vector<unsigned> requestsForMultiMapping;
+			requestsForMulti.reserve(requests.size());
+			requestsForMultiMapping.reserve(requests.size());
+
+			// Look for exact matches in the compile products list. This is required for retrieving "log"
+			// files. Though we only do this with "sharedblob" types
+			for (size_t r=0; r<requests.size(); ++r) {
+				bool foundExactMatch = false;
+				if (requests[r]._dataType == ArtifactRequest::DataType::SharedBlob)
+					for (const auto&prod:_productsFile._compileProducts)
+						if (prod._type == requests[r]._chunkTypeCode) {
+							auto fileData = TryLoadFileAsBlob(prod._intermediateArtifact);
+							result[r] = {nullptr, 0, fileData, nullptr};
+							foundExactMatch = true;
+							break;
+						}
+
+				if (!foundExactMatch) {
+					requestsForMultiMapping.push_back((unsigned)r);
+					requestsForMulti.push_back(requests[r]);
 				}
-			return {};
+			}
+
+			// look for the main chunk file in the compile products -- we'll use this for resolving the remaining requests
+			if (!requestsForMulti.empty()) {
+				for (const auto&prod:_productsFile._compileProducts)
+					if (prod._type == ChunkType_Multi) {
+						// open with no sharing
+						auto mainChunkFile = MainFileSystem::OpenFileInterface(prod._intermediateArtifact, "rb", 0);
+						ChunkFileContainer temp(prod._intermediateArtifact);
+						auto fromMulti = temp.ResolveRequests(*mainChunkFile, MakeIteratorRange(requestsForMulti));
+						for (size_t c=0; c<fromMulti.size(); ++c)
+							result[requestsForMultiMapping[c]] = std::move(fromMulti[c]);
+						break;
+					}
+			}
+				
+			return result;
 		}
 
 		DepValPtr GetDependencyValidation() const override { return _depVal; }

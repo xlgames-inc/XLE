@@ -123,6 +123,7 @@ namespace UnitTests
 			archive->Commit(
 				objectOneId, "Object",
 				MakeIteratorRange(s_artifactsObj1),
+				::Assets::AssetState::Ready,
 				MakeIteratorRange(s_depFileStatesObj1));
 
 			auto artifactCollection = archive->TryOpenFromCache(objectOneId);
@@ -156,6 +157,7 @@ namespace UnitTests
 			archive->Commit(
 				objectTwoId, "ObjectTwo",
 				MakeIteratorRange(s_artifactsObj2),
+				::Assets::AssetState::Ready,
 				MakeIteratorRange(s_depFileStatesObj2));
 
 			artifactCollection = archive->TryOpenFromCache(objectTwoId);
@@ -166,6 +168,7 @@ namespace UnitTests
 			archive->Commit(
 				objectTwoId, "ObjectTwo",
 				MakeIteratorRange(s_artifactsObj2Replacement),
+				::Assets::AssetState::Ready,
 				MakeIteratorRange(s_depFileStatesObj2));
 
 			REQUIRE_THROWS(
@@ -201,6 +204,7 @@ namespace UnitTests
 			archive->Commit(
 				objectOneId, "Object",
 				MakeIteratorRange(s_artifactsObj1),
+				::Assets::AssetState::Ready,
 				{});
 		}
 

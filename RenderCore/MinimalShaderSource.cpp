@@ -221,12 +221,14 @@ namespace RenderCore
 					definesTable
 				);
 			},
-			[shaderSource](const ::Assets::InitializerPack& initializers) {
+			[shaderSource](::Assets::TargetCode targetCode, const ::Assets::InitializerPack& initializers) {
 				auto res = shaderSource->MakeResId(initializers.GetInitializer<std::string>(0));
 				std::string definesTable;
 				if (initializers.GetCount() > 1)
 					definesTable = initializers.GetInitializer<std::string>(1);
 
+				// we don't encode the targetCode, because we assume it's always the same
+				assert(targetCode == CompiledShaderByteCode::CompileProcessType);
 				auto splitFN = MakeFileNameSplitter(res._filename);
 				auto entryId = HashCombine(HashCombine(HashCombine(Hash64(res._entryPoint), Hash64(definesTable)), Hash64(res._shaderModel)), Hash64(splitFN.Extension()));
 

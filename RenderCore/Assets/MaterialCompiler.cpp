@@ -55,7 +55,7 @@ namespace RenderCore { namespace Assets
 				};
 			if (_serializedArtifacts.empty()) return {};
 			return {
-				TargetDesc { _serializedArtifacts[0]._type, _serializedArtifacts[0]._name.c_str() }
+				TargetDesc { _serializedArtifacts[0]._chunkTypeCode, _serializedArtifacts[0]._name.c_str() }
 			};
 		}
 		std::vector<SerializedArtifact>	SerializeTarget(unsigned idx)
@@ -224,112 +224,6 @@ namespace RenderCore { namespace Assets
 			MakeIteratorRange(outputAssetTypes));
 		return result;
 	}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-	class MatCompilerMarker : public ::Assets::IIntermediateCompileMarker
-	{
-	public:
-		std::shared_ptr<::Assets::IArtifactCollection> GetExistingAsset() const;
-		std::shared_ptr<::Assets::ArtifactCollectionFuture> InvokeCompile() const;
-		StringSection<::Assets::ResChar> Initializer() const;
-
-		MatCompilerMarker(
-			::Assets::rstring materialFilename, ::Assets::rstring modelFilename,
-			const ::Assets::IntermediatesStore& store);
-		~MatCompilerMarker();
-	private:
-		::Assets::rstring _materialFilename, _modelFilename;
-		const ::Assets::IntermediatesStore* _store;
-
-		void GetIntermediateName(::Assets::ResChar destination[], size_t destinationCount) const;
-	};
-
-	void MatCompilerMarker::GetIntermediateName(::Assets::ResChar destination[], size_t destinationCount) const
-	{
-		_store->MakeIntermediateName(destination, (unsigned)destinationCount, MakeStringSection(_materialFilename));
-		StringMeldAppend(destination, &destination[destinationCount])
-			<< "-" << MakeFileNameSplitter(_modelFilename).FileAndExtension().AsString() << "-resmat";
-	}
-
-	std::shared_ptr<::Assets::IArtifactCollection> MatCompilerMarker::GetExistingAsset() const
-	{
-		::Assets::ResChar intermediateName[MaxPath];
-		GetIntermediateName(intermediateName, dimof(intermediateName));
-		auto depVal = _store->MakeDependencyValidation(intermediateName);
-		return std::make_shared<::Assets::ChunkFileArtifactCollection>(intermediateName, depVal);
-	}
-
-	std::shared_ptr<::Assets::ArtifactCollectionFuture> MatCompilerMarker::InvokeCompile() const
-	{
-		using namespace ::Assets;
-		StringMeld<256,ResChar> debugInitializer;
-		debugInitializer<< _materialFilename << "(material scaffold)";
-
-		auto backgroundOp = std::make_shared<::Assets::ArtifactCollectionFuture>();
-		backgroundOp->SetInitializer(debugInitializer);
-
-		::Assets::ResChar intermediateName[MaxPath];
-		GetIntermediateName(intermediateName, dimof(intermediateName));
-
-		::Assets::rstring destinationFile = intermediateName;
-		auto materialFilename = _materialFilename;
-		auto modelFilename = _modelFilename;
-		auto* store = _store;
-		QueueCompileOperation(
-			backgroundOp,
-			[materialFilename, modelFilename, destinationFile, store](::Assets::ArtifactCollectionFuture& op) {
-				CompileMaterialScaffold(
-					MakeStringSection(materialFilename), MakeStringSection(modelFilename), MakeStringSection(destinationFile),
-					op, *store);
-			});
-
-		return backgroundOp;
-	}
-
-	StringSection<::Assets::ResChar> MatCompilerMarker::Initializer() const
-	{
-		return MakeStringSection(_materialFilename);
-	}
-
-	MatCompilerMarker::MatCompilerMarker(
-		::Assets::rstring materialFilename, ::Assets::rstring modelFilename,
-		const ::Assets::IntermediatesStore& store)
-	: _materialFilename(materialFilename), _modelFilename(modelFilename), _store(&store) {}
-	MatCompilerMarker::~MatCompilerMarker() {}
-
-	std::shared_ptr<::Assets::IIntermediateCompileMarker> MaterialScaffoldCompiler::Prepare(
-		uint64 typeCode, 
-		const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
-	{
-		if (typeCode != RenderCore::Assets::MaterialScaffold::CompileProcessType) return nullptr;
-
-		if (initializerCount != 2 || initializers[0].IsEmpty() || initializers[1].IsEmpty())
-			Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in MaterialScaffoldCompiler. Material filename first, then model filename"));
-
-		const auto materialFilename = initializers[0], modelFilename = initializers[1];
-		return std::make_shared<MatCompilerMarker>(materialFilename.AsString(), modelFilename.AsString(), *::Assets::Services::GetAsyncMan().GetIntermediateStore());
-	}
-
-	std::vector<uint64_t> MaterialScaffoldCompiler::GetTypesForAsset(const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
-	{
-		return {};
-	}
-
-	std::vector<std::pair<std::string, std::string>> MaterialScaffoldCompiler::GetExtensionsForType(uint64_t typeCode)
-	{
-		return {};
-	}
-
-	void MaterialScaffoldCompiler::StallOnPendingOperations(bool cancelAll) {}
-
-	MaterialScaffoldCompiler::MaterialScaffoldCompiler()
-	{}
-
-	MaterialScaffoldCompiler::~MaterialScaffoldCompiler()
-	{}
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

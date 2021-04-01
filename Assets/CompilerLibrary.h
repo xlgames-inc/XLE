@@ -22,11 +22,11 @@ namespace Assets
 		class FileKind
 		{
 		public:
-			IteratorRange<const uint64_t*>	_assetTypes;
-			std::string						_regexFilter = {};
-			std::string						_name = {};
-			std::string						_shortName = {};
-			std::string						_extensionsForOpenDlg = {};		// comma separated list of extensions for file-open-dialog scenarios
+			IteratorRange<const TargetCode*> _targetCodes;
+			std::string		_regexFilter = {};
+			std::string		_name = {};
+			std::string		_shortName = {};
+			std::string		_extensionsForOpenDlg = {};		// comma separated list of extensions for file-open-dialog scenarios
 		};
 		virtual unsigned			FileKindCount() const = 0;
 		virtual FileKind			GetFileKind(unsigned index) const = 0;

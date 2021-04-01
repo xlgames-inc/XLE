@@ -33,11 +33,11 @@ namespace UnitTests
 			if (idx >= _targets.size())
 				return {};
 
-			if (_targets[idx]._type == Type_Model)
+			if (_targets[idx]._targetCode == Type_Model)
 				return SerializeModel();
-			else if (_targets[idx]._type == Type_RawMat)
+			else if (_targets[idx]._targetCode == Type_RawMat)
 				return SerializeRawMat();
-			else if (_targets[idx]._type == Type_Skeleton)
+			else if (_targets[idx]._targetCode == Type_Skeleton)
 				return SerializeSkeleton();
 
 			return {};

@@ -311,7 +311,7 @@ namespace UnitTests
 			REQUIRE(compiledFromFile != nullptr);
 			compiledFromFile->StallWhilePending();
 			REQUIRE(compiledFromFile->GetAssetState() == ::Assets::AssetState::Ready);
-			auto artifacts = compiledFromFile->GetArtifactCollection();
+			auto artifacts = compiledFromFile->GetArtifactCollection(CompileProcess_InstantiateShaderGraph);
 			REQUIRE(artifacts != nullptr);
 			REQUIRE(artifacts->GetDependencyValidation() != nullptr);
 			REQUIRE(artifacts->GetAssetState() == ::Assets::AssetState::Ready);

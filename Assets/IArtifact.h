@@ -21,7 +21,7 @@ namespace Assets
     {
     public:
 		const char*		_name;		// for debugging purposes, to make it easier to track requests
-        uint64_t 		_type;
+        uint64_t 		_chunkTypeCode;
         unsigned        _expectedVersion;
         
         enum class DataType
@@ -52,6 +52,8 @@ namespace Assets
 		virtual ~IArtifactCollection();
 	};
 
+	Blob GetErrorMessage(IArtifactCollection&);
+
     /// <summary>Records the state of a resource being compiled</summary>
     /// When a resource compile operation begins, we need some generic way
     /// to test it's state. We also need some breadcrumbs to find the final 
@@ -69,8 +71,7 @@ namespace Assets
     class ArtifactCollectionFuture : public GenericFuture
     {
     public:
-		const std::shared_ptr<IArtifactCollection>& GetArtifactCollection();
-		Blob GetErrorMessage();
+		const std::shared_ptr<IArtifactCollection>& GetArtifactCollection(TargetCode);
 
         ArtifactCollectionFuture();
         ~ArtifactCollectionFuture();
@@ -80,11 +81,12 @@ namespace Assets
 		ArtifactCollectionFuture(const ArtifactCollectionFuture&) = delete;
 		ArtifactCollectionFuture& operator=(const ArtifactCollectionFuture&) = delete;
 
-		void SetArtifactCollection(
-			const std::shared_ptr<IArtifactCollection>& artifacts);
+		void SetArtifactCollections(IteratorRange<const std::pair<TargetCode, std::shared_ptr<IArtifactCollection>>*> artifacts);
+		void StoreException(const std::exception_ptr&);
 
 	private:
-		std::shared_ptr<IArtifactCollection> _artifactCollection;
+		std::vector<std::pair<TargetCode, std::shared_ptr<IArtifactCollection>>> _artifactCollections;
+		std::exception_ptr _capturedException;
     };
 
 	void QueueCompileOperation(
@@ -120,12 +122,14 @@ namespace Assets
 		AssetState GetAssetState() const override;
 		BlobArtifactCollection(
 			IteratorRange<const ICompileOperation::SerializedArtifact*> chunks, 
+			AssetState state,
 			const DepValPtr& depVal, 
 			const std::string& collectionName = {},
 			const std::string& requestParams = {});
 		~BlobArtifactCollection();
 	private:
 		std::vector<ICompileOperation::SerializedArtifact> _chunks;
+		AssetState _state;
 		DepValPtr _depVal;
 		std::string _collectionName;
 		std::string _requestParams;

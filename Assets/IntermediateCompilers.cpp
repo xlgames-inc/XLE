@@ -25,10 +25,12 @@
 
 namespace Assets 
 {
+	static const auto ChunkType_Log = ConstHash64<'Log'>::Value;
+
 	struct ExtensionAndDelegate
 	{
 		std::string _name;
-		ConsoleRig::LibVersionDesc _srcVersion;
+		ConsoleRig::LibVersionDesc _srcVersion = {nullptr, nullptr};
 		IntermediateCompilers::CompileOperationDelegate _delegate;
 		IntermediateCompilers::ArchiveNameDelegate _archiveNameDelegate;
 		DepValPtr _compilerLibraryDepVal;
@@ -37,7 +39,7 @@ namespace Assets
 
 	struct DelegateAssociation
 	{
-		std::vector<uint64_t> _assetTypes;
+		std::vector<uint64_t> _targetCodes;
 		std::regex _regexFilter;
 	};
 
@@ -57,8 +59,8 @@ namespace Assets
     {
     public:
 		using IdentifiersList = IteratorRange<const StringSection<>*>;
-        std::shared_ptr<IArtifactCollection> GetExistingAsset() const;
-        std::shared_ptr<ArtifactCollectionFuture> InvokeCompile();
+        std::shared_ptr<IArtifactCollection> GetExistingAsset(TargetCode) const override;
+        std::shared_ptr<ArtifactCollectionFuture> InvokeCompile() override;
 
         Marker(
             InitializerPack&& requestName,
@@ -78,7 +80,7 @@ namespace Assets
 			IntermediatesStore* destinationStore);
     };
 
-    std::shared_ptr<IArtifactCollection> IntermediateCompilers::Marker::GetExistingAsset() const
+    std::shared_ptr<IArtifactCollection> IntermediateCompilers::Marker::GetExistingAsset(TargetCode targetCode) const
     {
         if (!_intermediateStore) return nullptr;
 
@@ -87,12 +89,14 @@ namespace Assets
 			return nullptr;
 
 		if (d->_archiveNameDelegate) {
-			auto archiveEntry = d->_archiveNameDelegate(_initializers);
+			auto archiveEntry = d->_archiveNameDelegate(targetCode, _initializers);
 			if (!archiveEntry._archive.empty())
 				return _intermediateStore->RetrieveCompileProducts(archiveEntry._archive, archiveEntry._entryId, d->_storeGroupId);
 		}
 
-		return _intermediateStore->RetrieveCompileProducts(_initializers.ArchivableName(), d->_storeGroupId);
+		StringMeld<MaxPath> nameWithTargetCode;
+		nameWithTargetCode << _initializers.ArchivableName() << "-" << std::hex << targetCode;
+		return _intermediateStore->RetrieveCompileProducts(nameWithTargetCode.AsStringSection(), d->_storeGroupId);
     }
 
 	void IntermediateCompilers::Marker::PerformCompile(
@@ -113,56 +117,80 @@ namespace Assets
 				Throw(std::runtime_error("Compiler library returned null to compile request on " + initializers.ArchivableName()));
 
 			deps = model->GetDependencies();
+			std::vector<std::pair<TargetCode, std::shared_ptr<IArtifactCollection>>> finalCollections;
 
-			std::vector<ICompileOperation::SerializedArtifact> artifactsForStore;
+			// ICompileOperations can have multiple "targets", and then those targets can have multiple
+			// chunks within them. Each target should generally maps onto a single "asset" 
+			// (with separate "state" values, etc). But an asset can be constructed from multiple chunks
+
+			// note that there's a problem here -- if we've compiled a particular operation and it produced
+			// a specific target; and then later on we compile again but this time the operation does not
+			// produce that same output target, then the target remains in the cache and will not be removed
 
 			auto targets = model->GetTargets();
+			finalCollections.reserve(targets.size());
 			for (unsigned t=0; t<targets.size(); ++t) {
 				const auto& target = targets[t];
-				auto chunks = model->SerializeTarget(t);
-				artifactsForStore.reserve(artifactsForStore.size() + chunks.size());
-				for (auto&c:chunks)
-					artifactsForStore.push_back(std::move(c));
-			}
 
-			auto resultantArtifacts = std::make_shared<BlobArtifactCollection>(
-				MakeIteratorRange(artifactsForStore), 
-				::Assets::MakeDepVal(MakeIteratorRange(deps), delegate._compilerLibraryDepVal));
+				std::vector<ICompileOperation::SerializedArtifact> serializedArtifacts;
+				AssetState state = AssetState::Pending;
 
-			// Write out the intermediate file that lists the products of this compile operation
-			if (destinationStore && !artifactsForStore.empty()) {
-				bool storedInArchive = false;
-				if (delegate._archiveNameDelegate) {
-					auto archiveEntry = delegate._archiveNameDelegate(initializers);
-					if (!archiveEntry._archive.empty()) {
+				TRY {
+					serializedArtifacts = model->SerializeTarget(t);
+					state = AssetState::Ready;
+
+					// If we produced no artifacts, or if we produced only one and it's a "log" -- then we consider
+					// this target to be invalid
+					if (serializedArtifacts.empty() || (serializedArtifacts.size() == 1 && serializedArtifacts[0]._chunkTypeCode == ChunkType_Log))
+						state = AssetState::Invalid;
+				} CATCH(const std::exception& e) {
+					serializedArtifacts.push_back({ChunkType_Log, 0, "compiler-exception", AsBlob(e)});
+					state = AssetState::Invalid;
+				} CATCH(...) {
+					serializedArtifacts.push_back({ChunkType_Log, 0, "compiler-exception", AsBlob("Unknown exception thrown from compiler")});
+					state = AssetState::Invalid;
+				} CATCH_END
+
+				auto artifactCollection = std::make_shared<BlobArtifactCollection>(
+					MakeIteratorRange(serializedArtifacts), state,
+					::Assets::MakeDepVal(MakeIteratorRange(deps), delegate._compilerLibraryDepVal));
+
+				finalCollections.push_back(std::make_pair(target._targetCode, artifactCollection));
+
+				// Write out the intermediate file that lists the products of this compile operation
+				if (destinationStore && !serializedArtifacts.empty()) {
+					bool storedInArchive = false;
+					if (delegate._archiveNameDelegate) {
+						auto archiveEntry = delegate._archiveNameDelegate(target._targetCode, initializers);
+						if (!archiveEntry._archive.empty()) {
+							destinationStore->StoreCompileProducts(
+								archiveEntry._archive,
+								archiveEntry._entryId,
+								archiveEntry._descriptiveName,
+								delegate._storeGroupId,
+								MakeIteratorRange(serializedArtifacts),
+								state,
+								MakeIteratorRange(deps));
+							storedInArchive = true;
+						}
+					}
+
+					if (!storedInArchive) {
+						StringMeld<MaxPath> nameWithTargetCode;
+						nameWithTargetCode << initializers.ArchivableName() << "-" << std::hex << target._targetCode;
 						destinationStore->StoreCompileProducts(
-							archiveEntry._archive,
-							archiveEntry._entryId,
-							archiveEntry._descriptiveName,
+							nameWithTargetCode.AsStringSection(),
 							delegate._storeGroupId,
-							MakeIteratorRange(artifactsForStore),
-							::Assets::AssetState::Ready,
+							MakeIteratorRange(serializedArtifacts),
+							state,
 							MakeIteratorRange(deps));
-						storedInArchive = true;
 					}
 				}
-
-				if (!storedInArchive) {
-					destinationStore->StoreCompileProducts(
-						initializers.ArchivableName(),
-						delegate._storeGroupId,
-						MakeIteratorRange(artifactsForStore),
-						::Assets::AssetState::Ready,
-						MakeIteratorRange(deps));
-				}
 			}
+       
+			compileMarker.SetArtifactCollections(MakeIteratorRange(finalCollections));
 
-			if (!resultantArtifacts)
-				Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", firstInitializer.c_str()));
-        
-			compileMarker.SetArtifactCollection(resultantArtifacts);
-
-        } CATCH(const Exceptions::ConstructionError& e) {
+		} CATCH(const Exceptions::ConstructionError& e) {
 			auto depVal = MakeDepVal(MakeIteratorRange(deps), delegate._compilerLibraryDepVal);
 			if (deps.empty())
 				RegisterFileDependency(depVal, MakeFileNameSplitter(firstInitializer).AllExceptParameters());		// fallback case -- compiler might have failed because of bad input file. Interpret the initializer as a filename and create a dep val for it
@@ -248,14 +276,12 @@ namespace Assets
 	IntermediateCompilers::Marker::~Marker() {}
 
     std::shared_ptr<IIntermediateCompileMarker> IntermediateCompilers::Prepare(
-        uint64_t typeCode, 
+        uint64_t targetCode, 
         InitializerPack&& initializers)
     {
 		ScopedLock(_pimpl->_delegatesLock);
-		// We need to decide whether the "typeCode" should be part of the requestHashCode
-		// If it's not; then the typeCode can't impact the behaviour of the marker itself
-		// (because we treat any markers with the same hash code as equivalent)
-		uint64_t requestHashCode = initializers.ArchivableHash();
+		auto initializerArchivableHash = initializers.ArchivableHash();
+		uint64_t requestHashCode = HashCombine(initializerArchivableHash, targetCode);
 		auto existing = _pimpl->_markers.find(requestHashCode);
 		if (existing != _pimpl->_markers.end())
 			return existing->second;
@@ -263,15 +289,16 @@ namespace Assets
 		auto firstInitializer = initializers.GetInitializer<std::string>(0);		// first initializer is assumed to be a string
 
 		for (const auto&a:_pimpl->_requestAssociations) {
-			auto i = std::find(a.second._assetTypes.begin(), a.second._assetTypes.end(), typeCode);
-			if (i == a.second._assetTypes.end())
+			auto i = std::find(a.second._targetCodes.begin(), a.second._targetCodes.end(), targetCode);
+			if (i == a.second._targetCodes.end())
 				continue;
 			if (std::regex_match(firstInitializer.begin(), firstInitializer.end(), a.second._regexFilter)) {
 				// find the associated delegate and use that
 				for (const auto&d:_pimpl->_delegates) {
 					if (d.first != a.first) continue;
 					auto result = std::make_shared<Marker>(std::move(initializers), d.second, _pimpl->_store);
-					_pimpl->_markers.insert(std::make_pair(requestHashCode, result));
+					for (auto markerTargetCode:a.second._targetCodes)
+						_pimpl->_markers.insert(std::make_pair(HashCombine(initializerArchivableHash, markerTargetCode), result));
 					return result;
 				}
 				return nullptr;
@@ -325,13 +352,13 @@ namespace Assets
 	{
 		ScopedLock(_pimpl->_delegatesLock);
 		DelegateAssociation association;
-		association._assetTypes = std::vector<uint64_t>{ outputAssetTypes.begin(), outputAssetTypes.end() };
+		association._targetCodes = std::vector<uint64_t>{ outputAssetTypes.begin(), outputAssetTypes.end() };
 		if (!initializerRegexFilter.empty())
 			association._regexFilter = std::regex{initializerRegexFilter, std::regex_constants::icase};
 		_pimpl->_requestAssociations.insert(std::make_pair(compiler, association));
 	}
 
-	std::vector<std::pair<std::string, std::string>> IntermediateCompilers::GetExtensionsForType(uint64_t typeCode)
+	std::vector<std::pair<std::string, std::string>> IntermediateCompilers::GetExtensionsForTargetCode(TargetCode targetCode)
 	{
 		std::vector<std::pair<std::string, std::string>> ext;
 
@@ -339,7 +366,7 @@ namespace Assets
 		for (const auto&d:_pimpl->_delegates) {
 			auto a = _pimpl->_requestAssociations.equal_range(d.first);
 			for (auto association=a.first; association != a.second; ++association) {
-				if (std::find(association->second._assetTypes.begin(), association->second._assetTypes.end(), typeCode) != association->second._assetTypes.end()) {
+				if (std::find(association->second._targetCodes.begin(), association->second._targetCodes.end(), targetCode) != association->second._targetCodes.end()) {
 					// This compiler can make this type. Let's check what extensions have been registered
 					auto r = _pimpl->_extensionsAndDelegatesMap.equal_range(d.first);
 					for (auto i=r.first; i!=r.second; ++i)
@@ -406,7 +433,7 @@ namespace Assets
 
 		struct Kind 
 		{ 
-			std::vector<uint64_t> _assetTypes; 
+			std::vector<uint64_t> _targetCodes; 
 			std::string _identifierFilter; 
 			std::string _name;
 			std::string _shortName;
@@ -432,7 +459,7 @@ namespace Assets
 				for (unsigned c=0; c<targetCount; ++c) {
 					auto kind = compilerDesc->GetFileKind(c);
 					_kinds.push_back({
-						std::vector<uint64_t>{kind._assetTypes.begin(), kind._assetTypes.end()},
+						std::vector<uint64_t>{kind._targetCodes.begin(), kind._targetCodes.end()},
 						kind._regexFilter,
 						kind._name,
 						kind._shortName,
@@ -500,7 +527,7 @@ namespace Assets
 
 					compilerManager.AssociateRequest(
 						registrationId._registrationId,
-						MakeIteratorRange(kind._assetTypes),
+						MakeIteratorRange(kind._targetCodes),
 						kind._identifierFilter);
 					opsFromThisLibrary.push_back(registrationId._registrationId);
 				}

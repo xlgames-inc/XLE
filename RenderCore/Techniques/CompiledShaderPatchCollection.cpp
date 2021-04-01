@@ -371,12 +371,13 @@ namespace RenderCore { namespace Techniques
 					MakeIteratorRange(initializers.GetInitializer<std::vector<uint64_t>>(3))
 				);
 			},
-			[shaderSource](const ::Assets::InitializerPack& initializers) {
+			[shaderSource](::Assets::TargetCode targetCode, const ::Assets::InitializerPack& initializers) {
 				auto res = shaderSource->MakeResId(initializers.GetInitializer<std::string>(0));
 				auto definesTable = initializers.GetInitializer<std::string>(1);
 				auto& patchCollection = *initializers.GetInitializer<std::shared_ptr<CompiledShaderPatchCollection>>(2);
 				const auto& patchFunctions = initializers.GetInitializer<std::vector<uint64_t>>(3);
 
+				assert(targetCode == CompileProcess_InstantiateShaderGraph);
 				auto splitFN = MakeFileNameSplitter(res._filename);
 				auto entryId = HashCombine(HashCombine(HashCombine(Hash64(res._entryPoint), Hash64(definesTable)), Hash64(res._shaderModel)), Hash64(splitFN.Extension()));
 				entryId = HashCombine(patchCollection.GetGUID(), entryId);

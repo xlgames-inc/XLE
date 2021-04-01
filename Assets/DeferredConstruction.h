@@ -20,7 +20,7 @@ namespace Assets
 
 	namespace Internal 
 	{
-		std::shared_ptr<IIntermediateCompileMarker> BeginCompileOperation(uint64_t typeCode, InitializerPack&&);
+		std::shared_ptr<IIntermediateCompileMarker> BeginCompileOperation(TargetCode targetCode, InitializerPack&&);
 	}
 
 	namespace Internal
@@ -77,9 +77,9 @@ namespace Assets
 	}
 
 	template<typename AssetType, typename std::enable_if_t<!Internal::AssetTraits<AssetType>::HasChunkRequests>* =nullptr>
-		void AutoConstructToFuture(AssetFuture<AssetType>& future, const IArtifactCollection& artifactCollection, uint64_t compileTypeCode = AssetType::CompileProcessType)
+		void AutoConstructToFuture(AssetFuture<AssetType>& future, const IArtifactCollection& artifactCollection, uint64_t defaultChunkRequestCode = AssetType::CompileProcessType)
 	{
-		ArtifactRequest request { "default-blob", compileTypeCode, ~0u, ArtifactRequest::DataType::SharedBlob };
+		ArtifactRequest request { "default-blob", defaultChunkRequestCode, ~0u, ArtifactRequest::DataType::SharedBlob };
 		auto reqRes = artifactCollection.ResolveRequests(MakeIteratorRange(&request, &request+1));
 		if (!reqRes.empty()) {
 			AutoConstructToFutureDirect(
@@ -93,26 +93,26 @@ namespace Assets
 	}
 
 	template<typename AssetType, typename std::enable_if_t<Internal::AssetTraits<AssetType>::HasChunkRequests>* =nullptr>
-		void AutoConstructToFuture(AssetFuture<AssetType>& future, const IArtifactCollection& artifactCollection, uint64_t compileTypeCode = AssetType::CompileProcessType)
+		void AutoConstructToFuture(AssetFuture<AssetType>& future, const IArtifactCollection& artifactCollection, uint64_t defaultChunkRequestCode = AssetType::CompileProcessType)
 	{
 		auto chunks = artifactCollection.ResolveRequests(MakeIteratorRange(AssetType::ChunkRequests));
 		AutoConstructToFutureDirect(future, MakeIteratorRange(chunks), artifactCollection.GetDependencyValidation());
 	}
 
 	template<typename AssetType>
-		void AutoConstructToFuture(AssetFuture<AssetType>& future, const std::shared_ptr<ArtifactCollectionFuture>& pendingCompile, uint64_t compileTypeCode = AssetType::CompileProcessType)
+		void AutoConstructToFuture(AssetFuture<AssetType>& future, const std::shared_ptr<ArtifactCollectionFuture>& pendingCompile, TargetCode targetCode = AssetType::CompileProcessType)
 	{
 		// We must poll the compile operation every frame, and construct the asset when it is ready. Note that we're
 		// still going to end up constructing the asset in the main thread.
 		future.SetPollingFunction(
-			[pendingCompile, compileTypeCode](AssetFuture<AssetType>& thatFuture) -> bool {
+			[pendingCompile, targetCode](AssetFuture<AssetType>& thatFuture) -> bool {
 				auto state = pendingCompile->GetAssetState();
 				if (state == AssetState::Pending) return true;
 				
-				const auto& artifactCollection = pendingCompile->GetArtifactCollection();
+				const auto& artifactCollection = pendingCompile->GetArtifactCollection(targetCode);
 				if (state == AssetState::Invalid || !artifactCollection) {
 					if (artifactCollection) {
-						thatFuture.SetInvalidAsset(artifactCollection->GetDependencyValidation(), pendingCompile->GetErrorMessage());
+						thatFuture.SetInvalidAsset(artifactCollection->GetDependencyValidation(), GetErrorMessage(*artifactCollection));
 					} else {
 						thatFuture.SetInvalidAsset(nullptr, nullptr);
 					}
@@ -120,7 +120,7 @@ namespace Assets
 				}
 
 				assert(state == AssetState::Ready);
-				AutoConstructToFuture(thatFuture, *artifactCollection, compileTypeCode);
+				AutoConstructToFuture(thatFuture, *artifactCollection, targetCode);
 				return false;
 			});
 	}
@@ -128,7 +128,7 @@ namespace Assets
 	template<typename AssetType, typename... Args>
 		static void DefaultCompilerConstruction(
 			AssetFuture<AssetType>& future,
-			uint64_t compileTypeCode, 		// typically AssetType::CompileProcessType,
+			TargetCode targetCode, 		// typically AssetType::CompileProcessType,
 			Args... args)
 	{
 		// Begin a compilation operation via the registered compilers for this type.
@@ -140,24 +140,28 @@ namespace Assets
 		#endif
 
 		TRY { 
-			auto marker = Internal::BeginCompileOperation(compileTypeCode, InitializerPack{std::forward<Args>(args)...});
+			auto marker = Internal::BeginCompileOperation(targetCode, InitializerPack{std::forward<Args>(args)...});
 			if (!marker) {
-				future.SetInvalidAsset(nullptr, AsBlob("No compiler found for asset " + debugLabel));
+				#if defined(_DEBUG)
+					future.SetInvalidAsset(nullptr, AsBlob("No compiler found for asset " + debugLabel));
+				#else
+					future.SetInvalidAsset(nullptr, AsBlob("No compiler found for asset"));
+				#endif
 				return;
 			}
 
 			// Attempt to load the existing asset immediately. In some cases we should fall back to a recompile (such as, if the
 			// version number is bad). We could attempt to push this into a background thread, also
 
-			auto existingArtifact = marker->GetExistingAsset();
+			auto existingArtifact = marker->GetExistingAsset(targetCode);
 			if (existingArtifact && existingArtifact->GetDependencyValidation() && existingArtifact->GetDependencyValidation()->GetValidationIndex()==0) {
 				bool doRecompile = false;
-				AutoConstructToFuture(future, *existingArtifact, compileTypeCode);
+				AutoConstructToFuture(future, *existingArtifact, targetCode);
 				if (!doRecompile) return;
 			}
 		
 			auto pendingCompile = marker->InvokeCompile();
-			AutoConstructToFuture(future, pendingCompile, compileTypeCode);
+			AutoConstructToFuture(future, pendingCompile, targetCode);
 			
 		} CATCH(const Exceptions::ConstructionError& e) {
 			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());

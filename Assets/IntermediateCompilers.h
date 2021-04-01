@@ -20,17 +20,17 @@ namespace Assets
 	class InitializerPack;
 	class IntermediatesStore;
 	class DependencyValidation;
+	using TargetCode = uint64_t;
 
     class IntermediateCompilers
     {
     public:
-        std::shared_ptr<IIntermediateCompileMarker> Prepare(
-            uint64_t typeCode, InitializerPack&&);
+        std::shared_ptr<IIntermediateCompileMarker> Prepare(TargetCode, InitializerPack&&);
         void StallOnPendingOperations(bool cancelAll);
 		
 		struct SplitArchiveName { std::string _archive; uint64_t _entryId = 0ull; std::string _descriptiveName; };
 		using CompileOperationDelegate = std::function<std::shared_ptr<ICompileOperation>(const InitializerPack&)>;
-		using ArchiveNameDelegate = std::function<SplitArchiveName(const InitializerPack&)>;
+		using ArchiveNameDelegate = std::function<SplitArchiveName(TargetCode, const InitializerPack&)>;
 
 		using RegisteredCompilerId = uint64_t;
 		struct  CompilerRegistration
@@ -59,10 +59,10 @@ namespace Assets
 
 		//
 
-		// RegisterExtensions & GetExtensionsForType are both used for FileOpen dialogs in tools
+		// RegisterExtensions & GetExtensionsForTargetCodes are both used for FileOpen dialogs in tools
 		// It's so the tool knows what model formats are available to load (for example)
 		void RegisterExtensions(RegisteredCompilerId associatedCompiler, const std::string& commaSeparatedExtensions);
-		std::vector<std::pair<std::string, std::string>> GetExtensionsForType(uint64_t typeCode);
+		std::vector<std::pair<std::string, std::string>> GetExtensionsForTargetCode(TargetCode typeCode);
 
 		//
 
@@ -87,7 +87,7 @@ namespace Assets
 	class IIntermediateCompileMarker
 	{
 	public:
-		virtual std::shared_ptr<IArtifactCollection> GetExistingAsset() const = 0;
+		virtual std::shared_ptr<IArtifactCollection> GetExistingAsset(TargetCode) const = 0;
 		virtual std::shared_ptr<ArtifactCollectionFuture> InvokeCompile() = 0;
 		virtual ~IIntermediateCompileMarker();
 	};

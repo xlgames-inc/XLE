@@ -13,18 +13,19 @@ namespace Assets
 {
 	class DependentFileState;
 	class InitializerPack;
+	using TargetCode = uint64_t;
 
 	class ICompileOperation
 	{
 	public:
 		struct TargetDesc
 		{
-			uint64_t		_type;
+			TargetCode		_targetCode;
 			const char*		_name;
 		};
 		struct SerializedArtifact
 		{
-			uint64_t		_type;
+			uint64_t		_chunkTypeCode;
 			unsigned		_version;
 			std::string		_name;
 			::Assets::Blob	_data;

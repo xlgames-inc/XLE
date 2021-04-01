@@ -30,7 +30,7 @@ namespace Assets { namespace ChunkFile
     class ChunkHeader
     {
     public:
-        TypeIdentifier  _type;
+        TypeIdentifier  _chunkTypeCode;
         unsigned        _chunkVersion;
         char            _name[32];      // fixed size for serialisation convenience
         SizeType        _fileOffset;
@@ -38,7 +38,7 @@ namespace Assets { namespace ChunkFile
 
         ChunkHeader()
         {
-            _type = TypeIdentifier_Unknown;
+            _chunkTypeCode = TypeIdentifier_Unknown;
             _chunkVersion = 0;
             std::fill(_name, &_name[dimof(_name)], '\0');
             _fileOffset = _size = 0;
@@ -47,7 +47,7 @@ namespace Assets { namespace ChunkFile
         ChunkHeader(TypeIdentifier type, unsigned version, 
                     const char name[], SizeType size = 0)
         {
-            _type = type;
+            _chunkTypeCode = type;
             _chunkVersion = version;
             XlCopyString(_name, name);
             _fileOffset = 0;        // (not yet decided)

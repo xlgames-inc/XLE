@@ -61,7 +61,7 @@ namespace Assets { namespace ChunkFile
     {
         ChunkFile::ChunkHeader scaffoldChunk;
         for (auto i=hdrs.begin(); i!=hdrs.end(); ++i) {
-            if (i->_type == chunkType) {
+            if (i->_chunkTypeCode == chunkType) {
                 scaffoldChunk = *i;
                 break;
             }
@@ -114,7 +114,7 @@ namespace Assets { namespace ChunkFile
         for (const auto& c:chunks)
             if (!predicate || predicate(c)) {
 				ChunkFile::ChunkHeader hdr;
-				hdr._type = c._type;
+				hdr._chunkTypeCode = c._chunkTypeCode;
 				hdr._chunkVersion = c._version;
 				XlCopyString(hdr._name, c._name);
                 hdr._fileOffset = trackingOffset;
@@ -169,7 +169,7 @@ namespace Assets { namespace ChunkFile
                 FinishCurrentChunk();
             }
 
-            _activeChunk._type = type;
+            _activeChunk._chunkTypeCode = type;
             _activeChunk._chunkVersion = version;
             XlCopyString(_activeChunk._name, name);
             _activeChunkStart = _writer.TellP();

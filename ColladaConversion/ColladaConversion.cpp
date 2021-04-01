@@ -534,7 +534,7 @@ namespace ColladaConversion
 	{
 		if (idx >= _targets.size()) return {};
 
-		switch (_targets[idx]._type) {
+		switch (_targets[idx]._targetCode) {
 		case Type_Model:			return SerializeSkin(*this, MakeStringSection(_rootNode).Cast<utf8>());
 		case Type_Skeleton:			return SerializeSkeleton(*this, MakeStringSection(_rootNode).Cast<utf8>());
 		case Type_RawMat:			return SerializeMaterials(*this, MakeStringSection(_rootNode).Cast<utf8>());

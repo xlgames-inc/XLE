@@ -74,11 +74,12 @@ namespace UnitTests
 
 		SECTION("Compile material scaffold")
 		{
+			auto targetCode = RenderCore::Assets::MaterialScaffold::CompileProcessType;
 			auto marker = compilers.Prepare(
-				RenderCore::Assets::MaterialScaffold::CompileProcessType, 
+				targetCode, 
 				::Assets::InitializerPack { "ut-data/test.material", "fake-model" });
 			REQUIRE(marker != nullptr);
-			REQUIRE(marker->GetExistingAsset() == nullptr);
+			REQUIRE(marker->GetExistingAsset(targetCode) == nullptr);
 
 			auto compile = marker->InvokeCompile();
 			REQUIRE(compile != nullptr);
@@ -87,7 +88,7 @@ namespace UnitTests
 			REQUIRE(compile->GetAssetState() == ::Assets::AssetState::Ready);
 
 			auto finalScaffold = ::Assets::AutoConstructAsset<RenderCore::Assets::MaterialScaffold>(
-				*compile->GetArtifactCollection());
+				*compile->GetArtifactCollection(targetCode));
 			(void)finalScaffold;
 
 			// The final values in the material are a combination of values that come from
@@ -128,21 +129,20 @@ namespace UnitTests
 
 		SECTION("ModelScaffold compilation")
 		{
-			auto marker = compilers.Prepare(
-				RenderCore::Assets::ModelScaffold::CompileProcessType, 
-				::Assets::InitializerPack { "fake-model" });
+			auto targetCode = RenderCore::Assets::ModelScaffold::CompileProcessType;
+			auto marker = compilers.Prepare(targetCode, ::Assets::InitializerPack { "fake-model" });
 			REQUIRE(marker != nullptr);
-			REQUIRE(marker->GetExistingAsset() == nullptr);
+			REQUIRE(marker->GetExistingAsset(targetCode) == nullptr);
 
 			auto compile = marker->InvokeCompile();
 			REQUIRE(compile != nullptr);
 
 			compile->StallWhilePending();
-			INFO(::Assets::AsString(compile->GetErrorMessage()));
+			auto collection = compile->GetArtifactCollection(targetCode);
+			INFO(::Assets::AsString(::Assets::GetErrorMessage(*collection)));
 			REQUIRE(compile->GetAssetState() == ::Assets::AssetState::Ready);
 
-			auto finalScaffold = ::Assets::AutoConstructAsset<RenderCore::Assets::ModelScaffold>(
-				*compile->GetArtifactCollection());
+			auto finalScaffold = ::Assets::AutoConstructAsset<RenderCore::Assets::ModelScaffold>(*collection);
 			(void)finalScaffold;
 		}
 

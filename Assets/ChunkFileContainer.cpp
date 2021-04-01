@@ -43,13 +43,13 @@ namespace Assets
             // have all of the chunks we need
         using ChunkHeader = ChunkFile::ChunkHeader;
         for (auto r=requests.begin(); r!=requests.end(); ++r) {
-            auto prevWithSameCode = std::find_if(requests.begin(), r, [r](const auto& t) { return t._type == r->_type; });
+            auto prevWithSameCode = std::find_if(requests.begin(), r, [r](const auto& t) { return t._chunkTypeCode == r->_chunkTypeCode; });
             if (prevWithSameCode != r)
                 Throw(std::runtime_error("Type code is repeated multiple times in call to ResolveRequests"));
 
             auto i = std::find_if(
                 chunks.begin(), chunks.end(), 
-                [r](const ChunkHeader& c) { return c._type == r->_type; });
+                [r](const ChunkHeader& c) { return c._chunkTypeCode == r->_chunkTypeCode; });
             if (i == chunks.end())
                 Throw(Exceptions::ConstructionError(
 					Exceptions::ConstructionError::Reason::MissingFile,
@@ -69,7 +69,7 @@ namespace Assets
         for (const auto& r:requests) {
             auto i = std::find_if(
                 chunks.begin(), chunks.end(), 
-                [&r](const ChunkHeader& c) { return c._type == r._type; });
+                [&r](const ChunkHeader& c) { return c._chunkTypeCode == r._chunkTypeCode; });
             assert(i != chunks.end());
 
             ArtifactRequestResult chunkResult;

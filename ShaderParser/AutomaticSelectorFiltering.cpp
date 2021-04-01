@@ -328,7 +328,7 @@ namespace ShaderSourceParser
 
 			{
 				SerializedArtifact artifact;
-				artifact._type = SelectorFilteringRules::CompileProcessType;
+				artifact._chunkTypeCode = SelectorFilteringRules::CompileProcessType;
 				artifact._name = "filtering-rules";
 				artifact._version = 1;
 				artifact._data = ::Assets::AsBlob(memStream.AsString());
@@ -337,7 +337,7 @@ namespace ShaderSourceParser
 
 			{
 				SerializedArtifact artifact;
-				artifact._type = ChunkType_Metrics;
+				artifact._chunkTypeCode = ChunkType_Metrics;
 				artifact._name = "metrics";
 				artifact._version = 1;
 				std::stringstream str;
@@ -364,7 +364,8 @@ namespace ShaderSourceParser
 			[](auto initializers) {
 				return std::make_shared<ShaderSelectorFilteringCompileOperation>(initializers);
 			},
-			[](const ::Assets::InitializerPack& initializers) {
+			[](::Assets::TargetCode targetCode, const ::Assets::InitializerPack& initializers) {
+				assert(targetCode == SelectorFilteringRules::CompileProcessType);
 				::Assets::IntermediateCompilers::SplitArchiveName result;
 				auto fn = initializers.GetInitializer<std::string>(0);
 				auto splitFN = MakeFileNameSplitter(fn);

@@ -43,7 +43,7 @@ namespace Assets
 	{
 	public:
 		uint64_t _objectId;
-		uint64_t _artifactTypeCode;
+		uint64_t _chunkTypeCode;
 		unsigned _version;
 		unsigned _start, _size;
 	};
@@ -130,7 +130,7 @@ namespace Assets
 		i->_onFlush = std::move(onFlush);
 		i->_totalBinarySize = 0;
 		for (const auto&a:i->_data)
-			if (IsBinaryBlock(a._type) && a._data)
+			if (IsBinaryBlock(a._chunkTypeCode) && a._data)
 				i->_totalBinarySize += CeilToMultiplePow2(a._data->size(), 8);
 
 		auto changeI = LowerBound(_changeIds, objectId);
@@ -417,8 +417,8 @@ namespace Assets
 					assert(b==blocks.cend() || b->_objectId != i->_objectId);
 					unsigned artifactIterator = i->_pendingCommitPtr;
 					for (const auto&a:i->_data)
-						if (IsBinaryBlock(a._type) && a._data) {
-							ArtifactDirectoryBlock newBlock = { i->_objectId, a._type, a._version, artifactIterator, (unsigned)a._data->size() };
+						if (IsBinaryBlock(a._chunkTypeCode) && a._data) {
+							ArtifactDirectoryBlock newBlock = { i->_objectId, a._chunkTypeCode, a._version, artifactIterator, (unsigned)a._data->size() };
 							b=blocks.insert(b, newBlock);
 							artifactIterator += CeilToMultiplePow2(a._data->size(), 8);
 						}
@@ -439,7 +439,7 @@ namespace Assets
 
 					unsigned artifactIterator = i->_pendingCommitPtr;
 					for (const auto&a:i->_data)
-						if (IsBinaryBlock(a._type) && a._data) {
+						if (IsBinaryBlock(a._chunkTypeCode) && a._data) {
 							dataFile.Write(a._data->data(), 1, a._data->size());
 							auto sizeWithPadding = CeilToMultiplePow2(a._data->size(), 8);
 							auto padding = sizeWithPadding - a._data->size();
@@ -504,8 +504,8 @@ namespace Assets
 			for (auto i=_pendingCommits.begin(); i!=_pendingCommits.end(); ++i) {
 				for (const auto&a:i->_data) {
 					std::string attachedStringName;
-					if (a._type == ChunkType_Metrics) attachedStringName = i->_attachedStringName + "-metrics";
-					else if (a._type == ChunkType_Log) attachedStringName = i->_attachedStringName + "-log";
+					if (a._chunkTypeCode == ChunkType_Metrics) attachedStringName = i->_attachedStringName + "-metrics";
+					else if (a._chunkTypeCode == ChunkType_Log) attachedStringName = i->_attachedStringName + "-log";
 					else continue;
 
 					std::string dataAsString {
@@ -729,13 +729,13 @@ namespace Assets
 				// First scan through and check to see if we
 				// have all of the chunks we need
 			for (auto r=requests.begin(); r!=requests.end(); ++r) {
-				auto prevWithSameCode = std::find_if(requests.begin(), r, [r](const auto& t) { return t._type == r->_type; });
+				auto prevWithSameCode = std::find_if(requests.begin(), r, [r](const auto& t) { return t._chunkTypeCode == r->_chunkTypeCode; });
 				if (prevWithSameCode != r)
 					Throw(std::runtime_error("Type code is repeated multiple times in call to ResolveRequests"));
 
 				auto i = std::find_if(
 					pendingCommit._data.begin(), pendingCommit._data.end(), 
-					[&r](const auto& c) { return c._type == r->_type; });
+					[&r](const auto& c) { return c._chunkTypeCode == r->_chunkTypeCode; });
 				if (i == pendingCommit._data.end())
 					Throw(Exceptions::ConstructionError(
 						Exceptions::ConstructionError::Reason::MissingFile,
@@ -754,7 +754,7 @@ namespace Assets
 			for (const auto& r:requests) {
 				auto i = std::find_if(
 					pendingCommit._data.begin(), pendingCommit._data.end(), 
-					[&r](const auto& c) { return c._type == r._type; });
+					[&r](const auto& c) { return c._chunkTypeCode == r._chunkTypeCode; });
 				assert(i != pendingCommit._data.end());
 				result.emplace_back(MakeArtifactRequestResult(r._dataType, i->_data));
 			}
@@ -778,13 +778,13 @@ namespace Assets
 				// First scan through and check to see if we
 				// have all of the chunks we need
 			for (auto r=requests.begin(); r!=requests.end(); ++r) {
-				auto prevWithSameCode = std::find_if(requests.begin(), r, [r](const auto& t) { return t._type == r->_type; });
+				auto prevWithSameCode = std::find_if(requests.begin(), r, [r](const auto& t) { return t._chunkTypeCode == r->_chunkTypeCode; });
 				if (prevWithSameCode != r)
 					Throw(std::runtime_error("Type code is repeated multiple times in call to ResolveRequests"));
 
 				auto i = std::find_if(
 					range.first, range.second, 
-					[&r](const auto& c) { return c._artifactTypeCode == r->_type; });
+					[&r](const auto& c) { return c._chunkTypeCode == r->_chunkTypeCode; });
 				if (i == range.second)
 					Throw(Exceptions::ConstructionError(
 						Exceptions::ConstructionError::Reason::MissingFile,
@@ -803,7 +803,7 @@ namespace Assets
 			auto archiveFile = MainFileSystem::OpenFileInterface(_archiveCache->_mainFileName, "rb");
 
 			for (const auto& r:requests) {
-				auto i = std::find_if(range.first, range.second, [&r](const auto& c) { return c._artifactTypeCode == r._type; });
+				auto i = std::find_if(range.first, range.second, [&r](const auto& c) { return c._chunkTypeCode == r._chunkTypeCode; });
 				assert(i != range.second);
 
 				ArtifactRequestResult chunkResult;

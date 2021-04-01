@@ -9,7 +9,7 @@ set(Src
     BlockSerializer.cpp
     ChunkFileContainer.cpp
     ChunkFile.cpp
-    CompilationThread.cpp
+    ArtifactCollectionFuture.cpp
     CompileAndAsyncManager.cpp
     ConfigFileContainer.cpp
     IntermediatesStore.cpp

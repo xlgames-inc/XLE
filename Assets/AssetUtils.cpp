@@ -663,10 +663,10 @@ namespace Assets
 	namespace Internal
 	{
 		std::shared_ptr<IIntermediateCompileMarker> BeginCompileOperation(
-			uint64_t typeCode, InitializerPack&& initializers)
+			TargetCode targetCode, InitializerPack&& initializers)
 		{
 			auto& compilers = Services::GetAsyncMan().GetIntermediateCompilers();
-			return compilers.Prepare(typeCode, std::move(initializers));
+			return compilers.Prepare(targetCode, std::move(initializers));
 		}
 
         struct ActiveFutureResolutionMoment
