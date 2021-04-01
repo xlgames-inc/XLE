@@ -77,6 +77,7 @@ namespace Assets
 		void FlushToDisk();
 
 		static auto GetDependentFileState(StringSection<> filename) -> DependentFileState;
+		static void ClearDependentFileStateCache();
 		static void ShadowFile(StringSection<> filename);
 		static bool TryRegisterDependency(
 			const std::shared_ptr<DependencyValidation>& target,

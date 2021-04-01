@@ -20,27 +20,6 @@
 
 namespace RenderCore { namespace Techniques 
 {
-
-	void LegacyDescriptorSetAccelerator::Apply(
-		Metal::DeviceContext& devContext,
-		Metal::GraphicsEncoder& encoder,
-		Metal::BoundUniforms& boundUniforms) const
-	{
-		const IResourceView* resourceViews[32];
-		unsigned resourceViewCount = 0;
-
-		for (auto i=_constantBuffers.begin(); i!=_constantBuffers.end(); ++i)
-			resourceViews[resourceViewCount++] = i->get();
-
-		for (auto i=_shaderResources.begin(); i!=_shaderResources.end(); ++i)
-			resourceViews[resourceViewCount++] = (*i)->GetShaderResource().get();
-
-		UniformsStream result;
-		result._resourceViews = MakeIteratorRange(resourceViews, resourceViews+resourceViewCount);
-		
-		boundUniforms.ApplyLooseUniforms(devContext, encoder, result);
-	}
-
 	void ConstructDescriptorSet(
 		::Assets::AssetFuture<RenderCore::IDescriptorSet>& future,
 		const std::shared_ptr<IDevice>& device,

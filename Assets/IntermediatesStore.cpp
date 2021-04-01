@@ -258,6 +258,12 @@ namespace Assets
 		return GetRetainedFileRecord(filename)->_state;
 	}
 
+	void IntermediatesStore::ClearDependentFileStateCache()
+	{
+		ScopedLock(RetainedRecordsLock);
+		RetainedRecords.clear();
+	}
+
 	void IntermediatesStore::ShadowFile(StringSection<ResChar> filename)
 	{
 		auto record = GetRetainedFileRecord(filename);

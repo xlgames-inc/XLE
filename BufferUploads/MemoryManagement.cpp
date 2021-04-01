@@ -245,7 +245,7 @@ namespace BufferUploads
                     if (internalEnd == iEnd) {
                         break;  // it's the end
                     }
-                    currentStart = i->_end;
+                    currentStart = iEnd;
                     if (!newRefCount)
                         continue; // continue to skip the next ++i (because we've just done an erase)
                 } else {

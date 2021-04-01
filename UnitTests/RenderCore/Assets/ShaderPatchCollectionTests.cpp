@@ -331,7 +331,7 @@ namespace UnitTests
 			REQUIRE(compiledCollection.GetInterface().HasPatchType(Hash64("CoordinatesToColor")));
 			const auto& descSet = compiledCollection.GetInterface().GetMaterialDescriptorSet();
 			const auto& slots = descSet._slots;
-			REQUIRE(slots.size() == (size_t)5);
+			REQUIRE(slots.size() == (size_t)matDescSetLayout.GetLayout()->_slots.size());
 			auto material = std::find_if(slots.begin(), slots.end(), [](const auto& t) { return t._name == "MaterialUniforms"; });
 			auto second = std::find_if(slots.begin(), slots.end(), [](const auto& t) { return t._name == "SecondUnifomBuffer"; });
 			REQUIRE(material != slots.end());

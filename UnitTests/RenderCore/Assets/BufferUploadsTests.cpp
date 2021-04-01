@@ -180,13 +180,19 @@ namespace UnitTests
 					break;
 
 				if ((std::chrono::steady_clock::now() - start) > 5s)
-					FAIL("Too much time has passed waiting for buffer uploads transaction to complete");
+					FAIL("Too much time has passed waiting for buffer uploads future to become ready");
 			}
 
 			auto finalLocator = transaction._future.get();
 			REQUIRE(!finalLocator.IsEmpty());
-			while (!bu->IsComplete(finalLocator.GetCompletionCommandList()))
+			REQUIRE(finalLocator.GetCompletionCommandList() != ~0u);
+			start = std::chrono::steady_clock::now();
+			while (!bu->IsComplete(finalLocator.GetCompletionCommandList())) {
 				bu->Update(*metalHelper->_device->GetImmediateContext());
+				std::this_thread::sleep_for(16ms);
+				if ((std::chrono::steady_clock::now() - start) > 5s)
+					FAIL("Too much time has passed waiting for buffer uploads transaction to complete");
+			}
 
 			auto finalResource = finalLocator.AsIndependentResource();
 			REQUIRE(finalResource != nullptr);

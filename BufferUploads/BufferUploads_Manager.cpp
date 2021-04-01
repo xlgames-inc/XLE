@@ -1221,7 +1221,7 @@ namespace BufferUploads
 
         if (resourceCreateStep._initialisationData && !(finalConstruction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful)) {
             if (transaction->_desc._type == ResourceDesc::Type::Texture) {
-                assert(transaction->_desc._bindFlags & BindFlag::TransferDst);    // need TransferDst to recieve staging data
+                assert(finalConstruction._locator.GetContainingResource()->GetDesc()._bindFlags & BindFlag::TransferDst);    // need TransferDst to recieve staging data
                 
                 ResourceDesc stagingDesc;
                 PlatformInterface::StagingToFinalMapping stagingToFinalMapping;

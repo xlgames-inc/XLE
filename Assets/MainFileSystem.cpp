@@ -5,6 +5,7 @@
 #include "IFileSystem.h"
 #include "MountingTree.h"
 #include "AssetUtils.h"
+#include "IntermediatesStore.h"		// for IntermediatesStore::ClearDependentFileStateCache
 #include "../OSServices/Log.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/MemoryUtils.h"
@@ -332,6 +333,7 @@ namespace Assets
 
     void MainFileSystem::Shutdown()
     {
+		IntermediatesStore::ClearDependentFileStateCache();
         Init(nullptr, nullptr);
     }
 

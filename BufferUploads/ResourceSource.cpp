@@ -1044,7 +1044,13 @@ namespace BufferUploads
             if (initPkt) {
                 renderCoreResource = _underlyingDevice->CreateResource(desc, PlatformInterface::AsResourceInitializer(*initPkt));
             } else {
-                renderCoreResource = _underlyingDevice->CreateResource(desc);
+                // If we want to initialize this object, but can't do so via the resource initialization method,
+                // the caller will need to transfer that data via BlitEncoder. Let's jsut make sure the binding flag
+                // is there to support that
+                auto adjustedDesc = desc;
+                if (initialisationData)
+                    adjustedDesc._bindFlags |= BindFlag::TransferDst;
+                renderCoreResource = _underlyingDevice->CreateResource(adjustedDesc);
             }
             result._locator = ResourceLocator{std::move(renderCoreResource)};
             result._flags |= initPkt ? ResourceConstruction::Flags::InitialisationSuccessful : 0;
@@ -1238,7 +1244,7 @@ namespace BufferUploads
     , _pool(std::move(moveFrom._pool))
     , _poolMarker(moveFrom._poolMarker)
     , _managedByPool(moveFrom._managedByPool)
-    , _completionCommandList(moveFrom._completionCommandList)
+    , _completionCommandList(completionCommandList)
     {
         moveFrom._interiorOffset = moveFrom._interiorSize = ~size_t(0);
         moveFrom._poolMarker = ~0ull;

@@ -5,39 +5,16 @@
 #pragma once
 
 #include "../UniformsStream.h"
-#include "../IDevice_Forward.h"
-#include "../Metal/Forward.h"
 #include "../../Assets/AssetFuture.h"
 #include <vector>
 #include <memory>
 
 namespace RenderCore { namespace Assets { class PredefinedDescriptorSetLayout; }}
-namespace RenderCore { class IResource; class IDevice; }
+namespace RenderCore { class IDevice; class IDescriptorSet; }
 namespace Utility { class ParameterBox; }
 
 namespace RenderCore { namespace Techniques 
 {
-	class DeferredShaderResource;
-
-	class LegacyDescriptorSetAccelerator
-	{
-	public:
-		UniformsStreamInterface _usi;
-
-		std::vector<std::shared_ptr<DeferredShaderResource>> _shaderResources;
-		std::vector<std::shared_ptr<ISampler>> _samplerStates;
-		std::vector<std::shared_ptr<IResourceView>> _constantBuffers;
-
-		::Assets::DepValPtr _depVal;
-
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
-
-		void Apply(
-			Metal::DeviceContext& devContext,
-			Metal::GraphicsEncoder& encoder,
-			Metal::BoundUniforms& boundUniforms) const;
-	};
-
 	/// <summary>Describes in string form how a descriptor set was constructed</summary>
 	/// Intended for debugging & unit tests. Don't rely on the output for important functionality
 	/// Since the IDescriptorSet itself is an opaque type, we can't otherwise tell if specific
