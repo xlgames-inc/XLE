@@ -9,9 +9,12 @@
 #include "../IDevice_Forward.h"
 #include "../Init.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/IntermediateCompilers.h"
 #include <memory>
+#include <vector>
 
 namespace RenderCore { class ShaderService; }
+namespace Assets { class IAssetCompiler; }
 
 namespace RenderCore { namespace Assets
 {
@@ -20,7 +23,7 @@ namespace RenderCore { namespace Assets
     public:
         static RenderCore::IDevice& GetDevice() { return *s_instance->_device; }
         static bool HasInstance() { return s_instance != nullptr; }
-        static const ::Assets::DirectorySearchRules& GetTechniqueConfigDirs() { return s_instance->_techConfDirs; }
+        // static const ::Assets::DirectorySearchRules& GetTechniqueConfigDirs() { return s_instance->_techConfDirs; }
 
         void InitModelCompilers();
 		void ShutdownModelCompilers();
@@ -36,10 +39,12 @@ namespace RenderCore { namespace Assets
     protected:
         std::shared_ptr<RenderCore::IDevice> _device;
         std::unique_ptr<ShaderService> _shaderService;
-        ::Assets::DirectorySearchRules _techConfDirs;
+        // ::Assets::DirectorySearchRules _techConfDirs;
+        ::Assets::IntermediateCompilers::RegisteredCompilerId _shaderCompilerRegistration;
         static Services* s_instance;
 
-		// std::shared_ptr<::Assets::IAssetCompiler> _modelCompilers;
+		std::vector<::Assets::IntermediateCompilers::RegisteredCompilerId> _modelCompilers;
+        bool _modelCompilersLoaded = false;
     };
 }}
 

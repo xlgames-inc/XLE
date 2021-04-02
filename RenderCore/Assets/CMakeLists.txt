@@ -1,6 +1,5 @@
 set(Src 
     AssetUtils.cpp  
-    LocalCompiledShaderSource.cpp
     MaterialCompiler.cpp
     MaterialScaffold.cpp
     ModelScaffold.cpp
@@ -12,6 +11,7 @@ set(Src
     ShaderPatchCollection.cpp
     SkinningScaffold.cpp
     TransformationCommands.cpp
+    PipelineConfigurationUtils.cpp
     ../GeoProc/GeometryAlgorithm.cpp
     ../GeoProc/GeoProcUtil.cpp
     ../GeoProc/MeshDatabase.cpp
@@ -24,7 +24,6 @@ set(Src
 	../GeoProc/DequantAnalysisTools.cpp)
 set(Headers
     AssetUtils.h
-    LocalCompiledShaderSource.h
     MaterialCompiler.h
     MaterialScaffold.h
     ModelImmutableData.h
@@ -37,6 +36,7 @@ set(Headers
     ShaderPatchCollection.h
     SkeletonScaffoldInternal.h
     TransformationCommands.h
+    PipelineConfigurationUtils.h
     ../GeoProc/GeometryAlgorithm.h
     ../GeoProc/GeoProcUtil.h
     ../GeoProc/MeshDatabase.h

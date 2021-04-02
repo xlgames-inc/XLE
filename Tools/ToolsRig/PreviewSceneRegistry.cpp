@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PreviewSceneRegistry.h"
+#include "ConsoleRig/AttachablePtr.h"
 
 namespace ToolsRig
 {
@@ -46,19 +47,17 @@ namespace ToolsRig
 				}
 		}
 
-		MainPreviewSceneRegistry::MainPreviewSceneRegistry() {}
-		MainPreviewSceneRegistry::~MainPreviewSceneRegistry() {}
+		MainPreviewSceneRegistry() {}
+		~MainPreviewSceneRegistry() {}
 
 		std::vector<std::pair<RegistrySetId, std::shared_ptr<IPreviewSceneRegistrySet>>> _registrySet;
 		RegistrySetId _nextRegistrySetId = 1;
 	};
 
-	ConsoleRig::AttachablePtr<IPreviewSceneRegistry> GetPreviewSceneRegistry()
+	static ConsoleRig::WeakAttachablePtr<IPreviewSceneRegistry> s_previewSceneRegistry;
+	IPreviewSceneRegistry* GetPreviewSceneRegistry()
 	{
-		auto ptr = ::ConsoleRig::GetAttachablePtr<MainPreviewSceneRegistry>();
-		if (!ptr)
-			ptr = ::ConsoleRig::MakeAttachablePtr<MainPreviewSceneRegistry>();
-		return std::move(*reinterpret_cast<ConsoleRig::AttachablePtr<IPreviewSceneRegistry>*>(&ptr));
+		return s_previewSceneRegistry.lock().get();
 	}
 
 	IPreviewSceneRegistrySet::~IPreviewSceneRegistrySet() {}

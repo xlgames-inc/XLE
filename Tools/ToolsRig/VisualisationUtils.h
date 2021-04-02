@@ -30,7 +30,7 @@ namespace ToolsRig
 	class ChangeEvent
     {
     public:
-        std::vector<std::shared_ptr<Utility::OnChangeCallback>> _callbacks;
+        std::vector<std::shared_ptr<OSServices::OnChangeCallback>> _callbacks;
         void Invoke();
         ~ChangeEvent();
     };
@@ -146,7 +146,7 @@ namespace ToolsRig
 
 		const std::shared_ptr<VisCameraSettings>& GetCamera();
 		void ResetCamera();
-		virtual OverlayState GetOverlayState() const;
+		virtual OverlayState GetOverlayState() const override;
 
         SimpleSceneLayer(const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators);
         ~SimpleSceneLayer();
@@ -172,6 +172,7 @@ namespace ToolsRig
 		const VisOverlaySettings& GetOverlaySettings() const;
 
         VisualisationOverlay(
+            std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
 			const VisOverlaySettings& overlaySettings,
             std::shared_ptr<VisMouseOver> mouseOver);
         ~VisualisationOverlay();

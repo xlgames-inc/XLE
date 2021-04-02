@@ -8,7 +8,7 @@
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
-#include "../../SceneEngine/SceneEngineUtils.h"
+// #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/RenderStep.h"
 #include "../../SceneEngine/RayVsModel.h"
 #include "../../SceneEngine/IntersectionTest.h"
@@ -34,9 +34,9 @@
 #include "../../Math/Transformations.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../OSServices/Log.h"
-#include "../../Utility/TimeUtils.h"
 #include "../../Utility/FunctionUtils.h"
 #include <iomanip>
+#include <chrono>
 
 #pragma warning(disable:4505) // unreferenced local function has been removed
 
@@ -290,8 +290,10 @@ namespace ToolsRig
 
 		if (!_pimpl->_envSettingsErrorMessage.empty()) {
 			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
-			if (!_pimpl->_envSettingsErrorMessage.empty())
-				SceneEngine::DrawString(threadContext, RenderOverlays::GetDefaultFont(), _pimpl->_envSettingsErrorMessage);
+			if (!_pimpl->_envSettingsErrorMessage.empty()) {
+				assert(0);
+				// SceneEngine::DrawString(threadContext, RenderOverlays::GetDefaultFont(), _pimpl->_envSettingsErrorMessage);
+			}
 		}
     }
 
@@ -438,24 +440,25 @@ namespace ToolsRig
 	{
 	public:
 		virtual bool OnDraw( 
-			RenderCore::Metal::DeviceContext& metalContext, RenderCore::Techniques::ParsingContext&,
+			const RenderCore::Techniques::Drawable::DrawFunctionContext& drawContext, RenderCore::Techniques::ParsingContext&,
 			const RenderCore::Techniques::Drawable&,
 			uint64_t materialGuid, unsigned drawCallIdx) override
 		{
 			using namespace RenderCore;
-			metalContext.Bind(_dss, drawCallIdx+1);
+			assert(0);
+			// metalContext.Bind(_dss, drawCallIdx+1);
 			return true;
 		}
 
 		StencilRefDelegate()
-		: _dss(
-			true, true,
-			0xff, 0xff,
-			RenderCore::Metal::StencilMode::AlwaysWrite,
-			RenderCore::Metal::StencilMode::NoEffect)
+		: _dss{
+			RenderCore::CompareOp::LessEqual, true, true,
+			0xff, 0xff, 0x0,
+			RenderCore::StencilDesc::AlwaysWrite,
+			RenderCore::StencilDesc::NoEffect}
 		{}
 	private:
-		RenderCore::Metal::DepthStencilState _dss;
+		RenderCore::DepthStencilDesc _dss;
 	};
 
     class VisualisationOverlay::Pimpl
@@ -465,6 +468,7 @@ namespace ToolsRig
         std::shared_ptr<VisMouseOver> _mouseOver;
 		std::shared_ptr<VisCameraSettings> _cameraSettings;
 		std::shared_ptr<VisAnimationState> _animState;
+		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
 
 		std::shared_ptr<SceneEngine::IScene> _scene;
 
@@ -518,9 +522,11 @@ namespace ToolsRig
 
 		RenderCore::Techniques::SequencerContext sequencerTechnique;
 
+#if 0
 		auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
 		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)
 			sequencerTechnique._sequencerUniforms.emplace_back(std::make_pair(techUSI._cbBindings[c]._hashName, std::make_shared<RenderCore::Techniques::GlobalCBDelegate>(c)));
+#endif
 
 		auto cam = AsCameraDesc(*_pimpl->_cameraSettings);
 		SceneEngine::SceneView sceneView {
@@ -565,7 +571,7 @@ namespace ToolsRig
 
 			if (_pimpl->_settings._drawWireframe) {
 				CATCH_ASSETS_BEGIN
-					auto sequencerConfig = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(visWireframeDelegate, ParameterBox{}, fbDesc);
+					auto sequencerConfig = _pimpl->_pipelineAccelerators->CreateSequencerConfig(visWireframeDelegate, ParameterBox{}, fbDesc);
 					sequencerTechnique._sequencerConfig = sequencerConfig.get();
 					SceneEngine::ExecuteSceneRaw(
 						threadContext, parserContext, 
@@ -577,7 +583,7 @@ namespace ToolsRig
 
 			if (_pimpl->_settings._drawNormals) {
 				CATCH_ASSETS_BEGIN
-					auto sequencerConfig = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(visNormals, ParameterBox{}, fbDesc);
+					auto sequencerConfig = _pimpl->_pipelineAccelerators->CreateSequencerConfig(visNormals, ParameterBox{}, fbDesc);
 					sequencerTechnique._sequencerConfig = sequencerConfig.get();
 					SceneEngine::ExecuteSceneRaw(
 						threadContext, parserContext, 
@@ -605,7 +611,7 @@ namespace ToolsRig
 					oldDelegate = visContent->SetPreDrawDelegate(_pimpl->_stencilPrimeDelegate);
 				CATCH_ASSETS_BEGIN
 					// Prime the stencil buffer with draw call indices
-					auto sequencerCfg = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(primeStencilBuffer, ParameterBox{}, fbDesc);
+					auto sequencerCfg = _pimpl->_pipelineAccelerators->CreateSequencerConfig(primeStencilBuffer, ParameterBox{}, fbDesc);
 					sequencerTechnique._sequencerConfig = sequencerCfg.get();
 					SceneEngine::ExecuteSceneRaw(
 						threadContext, parserContext, 
@@ -722,10 +728,12 @@ namespace ToolsRig
 	}
 
     VisualisationOverlay::VisualisationOverlay(
+		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
 		const VisOverlaySettings& overlaySettings,
         std::shared_ptr<VisMouseOver> mouseOver)
     {
         _pimpl = std::make_unique<Pimpl>();
+		_pimpl->_pipelineAccelerators = pipelineAccelerators;
         _pimpl->_settings = overlaySettings;
         _pimpl->_mouseOver = std::move(mouseOver);
     }
@@ -744,7 +752,6 @@ namespace ToolsRig
 		using namespace RenderCore;
 
 		Techniques::ParsingContext parserContext { techniqueContext };
-		parserContext._pipelineAcceleratorPool = &pipelineAccelerators;
 		
 		SceneEngine::ModelIntersectionStateContext stateContext {
             SceneEngine::ModelIntersectionStateContext::RayTest,
@@ -816,20 +823,20 @@ namespace ToolsRig
 			// after the mouse has come to rest for the timeout period.
 			//
 			// The preferred option may depend on the particular use case.
-			auto time = Millisecond_Now();
-			const auto timePeriod = 200u;
+			auto time = std::chrono::steady_clock::now();
+			const auto timePeriod = std::chrono::milliseconds(200u);
 			_timeoutContext = context;
 			_timeoutMousePosition = evnt._mousePosition;
 			if ((time - _timeOfLastCalculate) < timePeriod) {
 				auto* osRunLoop = PlatformRig::GetOSRunLoop();
 				if (_timeoutEvent == ~0u && osRunLoop) {
-					std::weak_ptr<MouseOverTrackingListener> weakThis = shared_from_this();
+					std::weak_ptr<MouseOverTrackingListener> weakThis = weak_from_this();
 					_timeoutEvent = osRunLoop->ScheduleTimeoutEvent(
 						time + timePeriod,
 						[weakThis]() {
 							auto l = weakThis.lock();
 							if (l) {
-								l->_timeOfLastCalculate = Millisecond_Now();
+								l->_timeOfLastCalculate = std::chrono::steady_clock::now();
 								l->CalculateForMousePosition(
 									l->_timeoutContext,
 									l->_timeoutMousePosition);
@@ -892,7 +899,7 @@ namespace ToolsRig
 		, _pipelineAccelerators(pipelineAccelerators)
         , _camera(camera)
         {}
-        MouseOverTrackingListener::~MouseOverTrackingListener() {}
+        ~MouseOverTrackingListener() {}
 
     protected:
         std::shared_ptr<VisMouseOver> _mouseOver;
@@ -901,7 +908,7 @@ namespace ToolsRig
         std::shared_ptr<VisCameraSettings> _camera;
         
         std::shared_ptr<SceneEngine::IScene> _scene;
-		unsigned _timeOfLastCalculate = 0;
+		std::chrono::time_point<std::chrono::steady_clock> _timeOfLastCalculate;
 
 		PlatformRig::InputContext _timeoutContext;
 		PlatformRig::Coord2 _timeoutMousePosition;
@@ -910,7 +917,7 @@ namespace ToolsRig
 
     auto MouseOverTrackingOverlay::GetInputListener() -> std::shared_ptr<PlatformRig::IInputListener>
     {
-        return _inputListener;
+        return std::static_pointer_cast<PlatformRig::IInputListener>(_inputListener);
     }
 
     void MouseOverTrackingOverlay::Render(

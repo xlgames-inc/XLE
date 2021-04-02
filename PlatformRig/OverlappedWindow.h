@@ -9,6 +9,7 @@
 #include "../Math/Vector.h"
 #include <memory>       // for unique_ptr
 #include <functional>
+#include <chrono>
 
 namespace PlatformRig
 {
@@ -28,7 +29,7 @@ namespace PlatformRig
 		using EventId = unsigned;
 
 		virtual EventId ScheduleTimeoutEvent(
-			unsigned timePoint,		// in milliseconds, matching values returned from Millisecond_Now(),
+			std::chrono::time_point<std::chrono::steady_clock> timePoint,		// in milliseconds, matching values returned from Millisecond_Now(),
 			TimeoutCallback&& callback) = 0;
 		virtual void RemoveEvent(EventId evnts) = 0;
 

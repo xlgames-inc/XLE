@@ -6,7 +6,6 @@
 
 #include "SceneParser.h"
 #include "LightDesc.h"
-#include "Tonemap.h"		// (for LuminanceResult)
 #include "../RenderCore/Techniques/Drawables.h"
 #include "../RenderCore/Techniques/RenderPass.h"
 #include <memory>

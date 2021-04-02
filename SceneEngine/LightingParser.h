@@ -8,10 +8,7 @@
 
 #include "LightDesc.h"		// (required for ShadowGeneratorDesc in SceneTechniqueDesc)
 #include "../RenderCore/IDevice_Forward.h"
-#include "../RenderCore/Metal/Forward.h"
-#include "../RenderCore/Metal/TextureView.h"		// for some ShaderResourceViews in LightingResolveContext
 #include "../RenderCore/ResourceDesc.h"
-#include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../Math/Matrix.h"
 #include "../Math/Vector.h"
 #include "../Utility/IteratorUtils.h"
@@ -162,9 +159,9 @@ namespace SceneEngine
             //  In this way, we can do the resolve for all of these effects in one step
             //  (rather than having to perform a bunch of separate passes)
             //  But it means we need some special case handling for these resources.
-        RenderCore::Metal::ShaderResourceView		_tiledLightingResult;
-        RenderCore::Metal::ShaderResourceView		_ambientOcclusionResult;
-        RenderCore::Metal::ShaderResourceView		_screenSpaceReflectionsResult;
+        std::shared_ptr<RenderCore::IResourceView>		_tiledLightingResult;
+        std::shared_ptr<RenderCore::IResourceView>		_ambientOcclusionResult;
+        std::shared_ptr<RenderCore::IResourceView>		_screenSpaceReflectionsResult;
 
         std::vector<std::function<ResolveFn>>		_queuedResolveFunctions;
 

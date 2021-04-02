@@ -6,9 +6,8 @@
 
 #pragma once
 
+#include "Streams/StreamTypes.h"
 #include "PtrUtils.h"
-#include "../Core/Exceptions.h"
-#include "../Core/Types.h"
 #include "Detail/API.h"
 #include "MemoryUtils.h"
 #include "StringUtils.h"
@@ -64,7 +63,7 @@ namespace Utility
         template<int SizeInBytes, typename CharType=char>
             struct FixedMemoryBuffer : public std::basic_streambuf<CharType>
         {
-            uint8 _buffer[SizeInBytes];
+            uint8_t _buffer[SizeInBytes];
             FixedMemoryBuffer(size_t charSize)
             {
                 this->setp((CharType*)_buffer, (CharType*)PtrAdd(_buffer, sizeof(_buffer) - charSize));
@@ -76,7 +75,7 @@ namespace Utility
         };
 
 		template<typename CharType> struct DemoteCharType { using Value = CharType; };
-		template<> struct DemoteCharType<uint8> { using Value = char; };
+		template<> struct DemoteCharType<uint8_t> { using Value = char; };
 		template<> struct DemoteCharType<uint16> { using Value = wchar_t; };
 		template<> struct DemoteCharType<char16_t> { using Value = wchar_t; };
 		template<> struct DemoteCharType<uint32> { using Value = char; }; 
@@ -158,7 +157,7 @@ namespace Utility
 			class StreamBufInPlace : public std::basic_streambuf<CharType>
         {
         public:
-            StreamBufInPlace(uint8* start, uint8* end, size_t charSize) 
+            StreamBufInPlace(uint8_t* start, uint8_t* end, size_t charSize) 
             { 
                 this->setp((CharType*)start, (CharType*)PtrAdd(end, -ptrdiff_t(charSize)));
                 XlSetMemory(start, 0, end-start);
@@ -175,8 +174,8 @@ namespace Utility
                 return *this;
             }
 
-            uint8* Begin() { return (uint8*)this->pbase(); }
-            const uint8* Begin() const { return (const uint8*)this->pbase(); }
+            uint8_t* Begin() { return (uint8_t*)this->pbase(); }
+            const uint8_t* Begin() const { return (const uint8_t*)this->pbase(); }
         };
 
         template<typename CharType = char>
@@ -217,7 +216,7 @@ namespace Utility
 
             StringMeldInPlace(CharType* bufferStart, CharType* bufferEnd)
             : _stream(&_buffer)
-            , _buffer((uint8*)bufferStart, (uint8*)bufferEnd, sizeof(CharType))
+            , _buffer((uint8_t*)bufferStart, (uint8_t*)bufferEnd, sizeof(CharType))
             {
                 if ((bufferEnd - bufferStart) > 0)
                     ((CharType*)_buffer.Begin())[0] = (CharType)'\0';
@@ -308,4 +307,3 @@ namespace Utility
 }
 
 using namespace Utility;
-

@@ -43,7 +43,7 @@ namespace RenderCore { namespace Assets
             OutType        Calculate(float inputTime) const never_throws;
 
 		RawAnimationCurve(  SerializableVector<float>&&	timeMarkers, 
-                            SerializableVector<uint8>&& keyData,
+                            SerializableVector<uint8_t>&& keyData,
 							const CurveKeyDataDesc&	keyDataDesc,
                             CurveInterpolationType	interpolationType);
         RawAnimationCurve(RawAnimationCurve&& moveFrom) = default;
@@ -54,7 +54,7 @@ namespace RenderCore { namespace Assets
 
     protected:
         SerializableVector<float>	_timeMarkers;
-        SerializableVector<uint8>	_keyData;
+        SerializableVector<uint8_t>	_keyData;
         CurveKeyDataDesc			_keyDataDesc;
 		CurveInterpolationType		_interpolationType;
     };

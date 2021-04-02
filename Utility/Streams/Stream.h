@@ -6,18 +6,12 @@
 
 #pragma once
 
-#include "../../Core/Types.h"
 #include "../StringUtils.h"
 #include "../UTFUtils.h"
-#include "../StringUtils.h"
-#include <memory>
-#include <assert.h>
-
-namespace OSServices { class BasicFile; }
 
 namespace Utility
 {
-    class XL_UTILITY_API OutputStream 
+    class OutputStream 
     {
     public:
         using size_type = size_t;

@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "../ConsoleRig/AttachablePtr.h"
 #include "../Utility/StringUtils.h"
 #include <cstdint>
 #include <memory>
@@ -36,6 +35,6 @@ namespace ToolsRig
 		virtual ~IPreviewSceneRegistry();
 	};
 
-	ConsoleRig::AttachablePtr<IPreviewSceneRegistry> GetPreviewSceneRegistry();
+	IPreviewSceneRegistry* GetPreviewSceneRegistry();
 }
 

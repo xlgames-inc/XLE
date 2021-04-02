@@ -6,12 +6,11 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/Forward.h"
-#include "../RenderCore/Metal/TextureView.h"
 #include "../Math/Vector.h"
+#include <memory>
 
 namespace Utility { class ParameterBox; }
-namespace RenderCore { class IThreadContext; }
+namespace RenderCore { class IThreadContext; class IResourceView; }
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
 namespace RenderCore { class FrameBufferDesc; class FrameBufferProperties; }
 
@@ -23,7 +22,7 @@ namespace SceneEngine
     class LuminanceResult
     {
     public:
-        using SRV = RenderCore::Metal::ShaderResourceView;
+        using SRV = std::shared_ptr<RenderCore::IResourceView>;
         SRV     _propertiesBuffer;
         SRV     _bloomBuffer;
         bool    _isGood;
@@ -42,7 +41,7 @@ namespace SceneEngine
         RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext,
         const ToneMapSettings& settings,
-        const RenderCore::Metal::ShaderResourceView& inputResource,
+        const std::shared_ptr<RenderCore::IResourceView>& inputResource,
         bool doAdapt = true);
 
     void ToneMap_Execute(
@@ -51,7 +50,7 @@ namespace SceneEngine
         const LuminanceResult& luminanceResult,
         const ToneMapSettings& settings,
         bool hardwareSRGBEnabled,
-        const RenderCore::Metal::ShaderResourceView& inputResource);
+        const std::shared_ptr<RenderCore::IResourceView>& inputResource);
 
     class AtmosphereBlurSettings
     {

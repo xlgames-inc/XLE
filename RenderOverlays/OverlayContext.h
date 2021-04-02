@@ -20,6 +20,8 @@
 
 #pragma warning(disable:4324)
 
+namespace RenderCore { class VertexBufferView; }
+
 namespace RenderOverlays
 {
     class ImmediateOverlayContext : public IOverlayContext

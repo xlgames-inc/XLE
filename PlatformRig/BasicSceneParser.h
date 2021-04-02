@@ -7,12 +7,15 @@
 #pragma once
 
 #include "PlatformRigUtil.h"
+#include "../SceneEngine/LightingParser.h"
 #include "../SceneEngine/LightDesc.h"
 #include "../SceneEngine/SceneParser.h"
-#include "../SceneEngine/ToneMap.h"
+#include "../SceneEngine/Tonemap.h"
+#if 0
 #include "../SceneEngine/VolumetricFog.h"
 #include "../SceneEngine/Ocean.h"
 #include "../SceneEngine/DeepOceanSim.h"
+#endif
 
 namespace Utility
 {
@@ -42,9 +45,11 @@ namespace PlatformRig
         };
         std::vector<ShadowProj> _shadowProj;
 
+#if 0
         SceneEngine::VolumetricFogConfig::Renderer _volFogRenderer;
         SceneEngine::OceanLightingSettings _oceanLighting;
         SceneEngine::DeepOceanSimSettings _deepOceanSim;
+#endif
         
         EnvironmentSettings();
         EnvironmentSettings(

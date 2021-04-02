@@ -7,7 +7,6 @@
 #pragma once
 
 #include "../RenderCore/ResourceDesc.h"
-#include "../RenderCore/Metal/Forward.h"
 #include "../Math/Vector.h"
 #include <vector>
 #include <memory>
@@ -32,8 +31,7 @@ namespace SceneEngine
 	class MainTargets
     {
     public:
-        using SRV = RenderCore::Metal::ShaderResourceView;
-        SRV      GetSRV(RenderCore::Techniques::ParsingContext& context, uint64_t semantic, const RenderCore::TextureViewDesc& window = {}) const;
+        std::shared_ptr<RenderCore::IResourceView> GetSRV(RenderCore::Techniques::ParsingContext& context, uint64_t semantic, const RenderCore::TextureViewDesc& window = {}) const;
 		std::shared_ptr<RenderCore::IResource> GetResource(RenderCore::Techniques::ParsingContext& context, uint64_t semantic) const;
 
 		UInt2		GetDimensions(RenderCore::Techniques::ParsingContext& context) const;
