@@ -502,6 +502,7 @@ namespace Assets
 
 					// merge in the new strings
 			for (auto i=_pendingCommits.begin(); i!=_pendingCommits.end(); ++i) {
+				bool hasSomeAttachedStrings = false;
 				for (const auto&a:i->_data) {
 					std::string attachedStringName;
 					if (a._chunkTypeCode == ChunkType_Metrics) attachedStringName = i->_attachedStringName + "-metrics";
@@ -517,6 +518,16 @@ namespace Assets
 						c->second = dataAsString;
 					} else {
 						attachedStrings.insert(c, std::make_pair(attachedStringName, dataAsString));
+					}
+					hasSomeAttachedStrings = true;
+				}
+				if (hasSomeAttachedStrings) {
+					auto idLookup = (StringMeld<128>() << std::hex << i->_objectId).AsString();
+					auto c = LowerBound(attachedStrings, idLookup);
+					if (c!=attachedStrings.end() && c->first == idLookup) {
+						c->second = i->_attachedStringName;
+					} else {
+						attachedStrings.insert(c, std::make_pair(idLookup, i->_attachedStringName));
 					}
 				}
 			}
@@ -772,8 +783,7 @@ namespace Assets
 				Throw(std::runtime_error("Resolve failed because the archive block list could not be generated"));
 
 			auto range = std::equal_range(blocks->begin(), blocks->end(), _objectId, CompareArtifactDirectoryBlock{});
-			if (range.first == range.second)
-				Throw(std::runtime_error("Could not find any blocks associated with the given request"));
+			bool requiresLogOrMetrics = false;
 
 				// First scan through and check to see if we
 				// have all of the chunks we need
@@ -781,6 +791,16 @@ namespace Assets
 				auto prevWithSameCode = std::find_if(requests.begin(), r, [r](const auto& t) { return t._chunkTypeCode == r->_chunkTypeCode; });
 				if (prevWithSameCode != r)
 					Throw(std::runtime_error("Type code is repeated multiple times in call to ResolveRequests"));
+
+				if (r->_chunkTypeCode == ChunkType_Log || r->_chunkTypeCode == ChunkType_Metrics) {
+					if (r->_dataType != ArtifactRequest::DataType::SharedBlob)
+						Throw(std::runtime_error("Attempting to open a log or metrics chunk in non-shared-blob mode. This isn't supported"));
+					requiresLogOrMetrics = true;
+					continue;
+				}
+
+				if (range.first == range.second)
+					Throw(std::runtime_error("Could not find any blocks associated with the given request"));
 
 				auto i = std::find_if(
 					range.first, range.second, 
@@ -800,40 +820,72 @@ namespace Assets
 							<< r->_name << ") expected: " << r->_expectedVersion << ", got: " << i->_version));
 			}
 
+			std::vector<std::pair<std::string, std::string>> attachedStrings;
+			std::string attachedStringPrefix;
+			if (requiresLogOrMetrics) {
+				Log(Verbose) << "Retrieving log or metrics data from ArchiveCache. This is an inefficient path, try to avoid in high performance projects." << std::endl;
+				utf8 debugFilename[MaxPath];
+				XlCopyString(debugFilename, _archiveCache->_mainFileName);
+				XlCatString(debugFilename, ".debug");
+				size_t fileSize = 0;
+				auto fileData = ::Assets::TryLoadFileAsMemoryBlock(debugFilename, &fileSize);
+				attachedStrings = TryParseStringTable(MakeIteratorRange(fileData.get(), PtrAdd(fileData.get(), fileSize)));
+
+				auto idLookup = (StringMeld<128>() << std::hex << _objectId).AsString();
+				auto c = LowerBound(attachedStrings, idLookup);
+				if (c!=attachedStrings.end() && c->first == idLookup) {
+					attachedStringPrefix = c->second;
+				} else
+					Throw(std::runtime_error("Attempting to load log or metrics data for an object, but no attached strings exist for this object"));
+			}
+
 			auto archiveFile = MainFileSystem::OpenFileInterface(_archiveCache->_mainFileName, "rb");
 
 			for (const auto& r:requests) {
-				auto i = std::find_if(range.first, range.second, [&r](const auto& c) { return c._chunkTypeCode == r._chunkTypeCode; });
-				assert(i != range.second);
-
 				ArtifactRequestResult chunkResult;
-				if (	r._dataType == ArtifactRequest::DataType::BlockSerializer
-					||	r._dataType == ArtifactRequest::DataType::Raw) {
-					uint8* mem = (uint8*)XlMemAlign(i->_size, sizeof(uint64_t));
-					chunkResult._buffer = std::unique_ptr<uint8[], PODAlignedDeletor>(mem);
-					chunkResult._bufferSize = i->_size;
-					archiveFile->Seek(i->_start);
-					archiveFile->Read(chunkResult._buffer.get(), i->_size);
+				if (r._chunkTypeCode == ChunkType_Log || r._chunkTypeCode == ChunkType_Metrics) {
+					assert(r._dataType == ArtifactRequest::DataType::SharedBlob);
+					std::string attachedStringName;
+					if (r._chunkTypeCode == ChunkType_Metrics) attachedStringName = attachedStringPrefix + "-metrics";
+					else if (r._chunkTypeCode == ChunkType_Log) attachedStringName = attachedStringPrefix + "-log";
 
-					// initialize with the block serializer (if requested)
-					if (r._dataType == ArtifactRequest::DataType::BlockSerializer)
-						Block_Initialize(chunkResult._buffer.get());
-				} else if (r._dataType == ArtifactRequest::DataType::ReopenFunction) {
-					// note -- captured raw pointer
-					chunkResult._reopenFunction = [offset=i->_start, archiveCache=_archiveCache, objectId=_objectId, changeId=_changeId]() -> std::shared_ptr<IFileInterface> {
-						ScopedLock(archiveCache->_pendingCommitsLock);
-						VerifyChangeId_AlreadyLocked(*archiveCache, objectId, changeId);
-						auto archiveFile = MainFileSystem::OpenFileInterface(archiveCache->_mainFileName, "rb");
-						archiveFile->Seek(offset);
-						return archiveFile;
-					};
-				} else if (r._dataType == ArtifactRequest::DataType::SharedBlob) {
-					chunkResult._sharedBlob = std::make_shared<std::vector<uint8_t>>();
-					chunkResult._sharedBlob->resize(i->_size);
-					archiveFile->Seek(i->_start);
-					archiveFile->Read(chunkResult._sharedBlob->data(), i->_size);
-				} else {
-					assert(0);
+					auto c = LowerBound(attachedStrings, attachedStringName);
+					if (c!=attachedStrings.end() && c->first == attachedStringName) {
+						chunkResult._sharedBlob = AsBlob(c->second);
+					} else {
+						Throw(std::runtime_error("Missing attached string while retrieving log or metrics information: " + attachedStringName));
+					}
+				}  else {
+					auto i = std::find_if(range.first, range.second, [&r](const auto& c) { return c._chunkTypeCode == r._chunkTypeCode; });
+					assert(i != range.second);
+					if (	r._dataType == ArtifactRequest::DataType::BlockSerializer
+							||	r._dataType == ArtifactRequest::DataType::Raw) {
+						uint8* mem = (uint8*)XlMemAlign(i->_size, sizeof(uint64_t));
+						chunkResult._buffer = std::unique_ptr<uint8[], PODAlignedDeletor>(mem);
+						chunkResult._bufferSize = i->_size;
+						archiveFile->Seek(i->_start);
+						archiveFile->Read(chunkResult._buffer.get(), i->_size);
+
+						// initialize with the block serializer (if requested)
+						if (r._dataType == ArtifactRequest::DataType::BlockSerializer)
+							Block_Initialize(chunkResult._buffer.get());
+					} else if (r._dataType == ArtifactRequest::DataType::ReopenFunction) {
+						// note -- captured raw pointer
+						chunkResult._reopenFunction = [offset=i->_start, archiveCache=_archiveCache, objectId=_objectId, changeId=_changeId]() -> std::shared_ptr<IFileInterface> {
+							ScopedLock(archiveCache->_pendingCommitsLock);
+							VerifyChangeId_AlreadyLocked(*archiveCache, objectId, changeId);
+							auto archiveFile = MainFileSystem::OpenFileInterface(archiveCache->_mainFileName, "rb");
+							archiveFile->Seek(offset);
+							return archiveFile;
+						};
+					} else if (r._dataType == ArtifactRequest::DataType::SharedBlob) {
+						chunkResult._sharedBlob = std::make_shared<std::vector<uint8_t>>();
+						chunkResult._sharedBlob->resize(i->_size);
+						archiveFile->Seek(i->_start);
+						archiveFile->Read(chunkResult._sharedBlob->data(), i->_size);
+					} else {
+						assert(0);
+					}
 				}
 
 				result.emplace_back(std::move(chunkResult));

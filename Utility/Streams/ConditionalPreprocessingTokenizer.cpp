@@ -662,9 +662,11 @@ namespace Utility
                 auto headerGuardDetection = !foundNonWhitespaceChar && XlEqStringI(directive._value, "define") && gotNotDefinedCheck;
                 if (!headerGuardDetection) {
                     if (unconditionalSet) {
-                        if (XlEndsWith(symbol._value, MakeStringSection("_H"))) {
-                            std::cout << "Suspicious define for variable " << symbol._value << " found" << std::endl;
-                        }
+                        #if defined(_DEBUG)
+                            if (XlEndsWith(symbol._value, MakeStringSection("_H"))) {
+                                std::cout << "Suspicious define for variable " << symbol._value << " found" << std::endl;
+                            }
+                        #endif
 
                         // It could be an unconditional substitution, or it could be set in different ways
                         // depending on the conditions on the stack.
@@ -684,7 +686,9 @@ namespace Utility
                                         activeSubstitutions._defaultSets.insert(std::make_pair(symbol._value.AsString(), expr));
                                     }
                                 } catch (const std::exception& e) {
-                                    std::cout << "Substitution for " << symbol._value << " is not an expression" << std::endl;
+                                    #if defined(_DEBUG)
+                                        std::cout << "Substitution for " << symbol._value << " is not an expression" << std::endl;
+                                    #endif
                                 }
                             } else {
                                 if (!gotNotDefinedCheck) {
@@ -704,9 +708,13 @@ namespace Utility
                         // the symbol here; and then any expression that uses this symbol should then
                         // merge in the relevance information for it
                         if (XlEndsWith(symbol._value, MakeStringSection("_H"))) {
-                            std::cout << "Conditional substitution for suspicious variable " << symbol._value << " ignored." << std::endl;
+                            #if defined(_DEBUG)
+                                std::cout << "Conditional substitution for suspicious variable " << symbol._value << " ignored." << std::endl;
+                            #endif
                         } else {
-                            std::cout << "Conditional substitution for variable " << symbol._value << " ignored." << std::endl;
+                            #if defined(_DEBUG)
+                                std::cout << "Conditional substitution for variable " << symbol._value << " ignored." << std::endl;
+                            #endif
                         }
                     }
                  } else {

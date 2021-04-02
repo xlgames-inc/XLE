@@ -49,7 +49,12 @@ namespace UnitTests
 			)--")),
 		std::make_pair(
 			"vsText.hlsl",
-			::Assets::AsBlob(vsText))
+			::Assets::AsBlob(vsText)),
+		std::make_pair(
+			"ShaderWithError.hlsl",
+			::Assets::AsBlob(R"--(
+				#error Intentional compilation error
+			)--"))
 	};
 
 	TEST_CASE( "ShaderCompilation-Compile", "[rendercore_metal]" )
@@ -70,7 +75,7 @@ namespace UnitTests
 		// Let's load and compile a basic shader from a mounted filesystem
 		// We'll use a custom shader source that will expand #include directives
 		// for us (some gfx-apis can already do this, others need a little help)
-		auto mnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
+		auto mnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData, s_defaultFilenameRules, ::Assets::FileSystemMemoryFlags::UseModuleModificationTime));
 
 		auto customShaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
 			CreateDefaultShaderCompiler(*testHelper->_device),
@@ -108,6 +113,31 @@ namespace UnitTests
 			REQUIRE(hdr._identifier == std::string{"ut-data/IncludeDirective.hlsl-main[SOME_DEFINE=1]"});
 		}
 
+		SECTION("Catch errors") {
+			// do this twice to ensure that all requests, even after the first, receive the correct error log
+			for (unsigned c=0; c<2; ++c) {
+				auto compileMarker = ::Assets::Internal::BeginCompileOperation(
+					RenderCore::CompiledShaderByteCode::CompileProcessType,
+					::Assets::InitializerPack { "ut-data/ShaderWithError.hlsl:main:vs_*" });
+				REQUIRE(compileMarker != nullptr);
+				auto collection = compileMarker->GetExistingAsset(RenderCore::CompiledShaderByteCode::CompileProcessType);
+				if (!collection->GetDependencyValidation() || collection->GetDependencyValidation()->GetValidationIndex()!=0) {
+					auto compiledFromFile = compileMarker->InvokeCompile();
+					REQUIRE(compiledFromFile != nullptr);
+					compiledFromFile->StallWhilePending();
+					// The marker itself is marked as ready, but the artifact collection should be marked as invalid
+					REQUIRE(compiledFromFile->GetAssetState() == ::Assets::AssetState::Ready);
+					collection = compiledFromFile->GetArtifactCollection(RenderCore::CompiledShaderByteCode::CompileProcessType);
+				}
+				REQUIRE(collection);
+				REQUIRE(collection->GetAssetState() == ::Assets::AssetState::Invalid);
+				auto errorLog = ::Assets::AsString(::Assets::GetErrorMessage(*collection));
+				INFO(errorLog);
+				REQUIRE(XlFindString(errorLog, MakeStringSection("Intentional compilation error")));
+			}
+		}
+
+		::Assets::Services::GetAsyncMan().GetIntermediateStore()->FlushToDisk();
 		::Assets::Services::GetAsyncMan().GetIntermediateCompilers().DeregisterCompiler(compilerRegistration._registrationId);
 		::Assets::MainFileSystem::GetMountingTree()->Unmount(mnt);
 	}

@@ -428,6 +428,11 @@ namespace Assets
 
 		// on missing file (or failed load), we return the equivalent of an empty file
 		if (sizeResult) { *sizeResult = 0; }
+		if (fileState) {
+			fileState->_filename = sourceFileName.AsString();
+			fileState->_status = DependentFileState::Status::DoesNotExist;
+			fileState->_timeMarker = 0;
+		}
 		return nullptr;
 	}
 
@@ -731,6 +736,11 @@ namespace Assets
 
         // on missing file (or failed load), we return the equivalent of an empty file
         if (sizeResult) { *sizeResult = 0; }
+		if (fileState) {
+			fileState->_filename = sourceFileName.AsString();
+			fileState->_status = DependentFileState::Status::DoesNotExist;
+			fileState->_timeMarker = 0;
+		}
         return nullptr;
 	}
 
