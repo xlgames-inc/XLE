@@ -257,25 +257,20 @@ namespace RenderCore { namespace Metal_Vulkan
 		StringSection<> identifier,
 		const ResChar shaderModel[]) 
 	{
-		// This function is derived from the Vulkan SDK samples
-		auto builtInLimits = CreateTBuiltInResource();
-
 		// Enable SPIR-V and Vulkan rules when parsing GLSL
 		EShMessages messages = (EShMessages)(EShMsgSpvRules | EShMsgVulkanRules);
 		messages = (EShMessages)(messages|EShMsgAST);
 
 		glslang::TShader shader(shaderType);
 
-		if (!definesTable.IsEmpty()) {
-			auto definesPreamble = MakeDefinesPreamble(definesTable);
-			const char *shaderStrings[2] { definesPreamble.data(), glslSource.begin() };
-			int shaderStringLengths[2] { (int)definesPreamble.size(), (int)glslSource.size() };
-			shader.setStringsWithLengths(shaderStrings, shaderStringLengths, dimof(shaderStrings));
-		} else {
-			const char *shaderStrings[1] { glslSource.begin() };
-			int shaderStringLengths[1] { (int)glslSource.size() };
-			shader.setStringsWithLengths(shaderStrings, shaderStringLengths, dimof(shaderStrings));
-		}
+		auto definesPreamble = MakeDefinesPreamble(definesTable);
+		shader.setPreamble(definesPreamble.c_str());
+
+		const char *shaderStrings[1] { glslSource.begin() };
+		int shaderStringLengths[1] { (int)glslSource.size() };
+		shader.setStringsWithLengths(shaderStrings, shaderStringLengths, dimof(shaderStrings));
+
+		auto builtInLimits = CreateTBuiltInResource();
 		if (!shader.parse(&builtInLimits, 100, false, messages)) {
 			AppendErrors(errors, shader);
 			return false;

@@ -95,19 +95,19 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 			${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Tools-sharedd.lib
 		)
 else ()
-target_link_libraries(
-	RenderCore_Vulkan PUBLIC 
-		${Vulkan_INCLUDE_DIRS}/../Lib/glslang.lib
-		${Vulkan_INCLUDE_DIRS}/../Lib/GenericCodeGen.lib
-		${Vulkan_INCLUDE_DIRS}/../Lib/MachineIndependent.lib
-		${Vulkan_INCLUDE_DIRS}/../Lib/OGLCompiler.lib
-		${Vulkan_INCLUDE_DIRS}/../Lib/OSDependent.lib
-		${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV.lib
-		${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Tools.lib
-		${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Tools-opt.lib
-		${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Tools-reduce.lib
-		${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Tools-shared.lib
-	)
+	target_link_libraries(
+		RenderCore_Vulkan PUBLIC 
+			${Vulkan_INCLUDE_DIRS}/../Lib/glslang.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/GenericCodeGen.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/MachineIndependent.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/OGLCompiler.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/OSDependent.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Tools.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Tools-opt.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Tools-reduce.lib
+			${Vulkan_INCLUDE_DIRS}/../Lib/SPIRV-Tools-shared.lib
+		)
 endif ()
 
 target_link_libraries(RenderCore_Vulkan PUBLIC dxguid.lib)
