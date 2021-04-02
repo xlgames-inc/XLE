@@ -281,18 +281,20 @@ namespace UnitTests
 			Metal::BoundUniforms uniforms(shaderProgram, uniformInterface);
 
 			UniformsStream uniformsStream;
-			uniformsStream._immediateData = {
+			UniformsStream::ImmediateData cbvs[] = {
 				MakeOpaqueIteratorRange(set0binding0),
 				MakeOpaqueIteratorRange(set1binding4),
 				MakeOpaqueIteratorRange(pushConstants0),
 				MakeOpaqueIteratorRange(pushConstants1)
 			};
+			uniformsStream._immediateData = cbvs;
 			auto testStorageBufferView = testStorageBuffer->CreateBufferView(BindFlag::UnorderedAccess);
 			auto testStorageTextureView = testStorageTexture->CreateTextureView(BindFlag::UnorderedAccess);		
-			uniformsStream._resourceViews = {
+			const IResourceView* resourceViews[] = { 
 				testStorageBufferView.get(),
 				testStorageTextureView.get()
 			};
+			uniformsStream._resourceViews = resourceViews;
 			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 
 			Metal::BoundInputLayout inputLayout(IteratorRange<const InputElementDesc*>{}, shaderProgram);
@@ -334,10 +336,11 @@ namespace UnitTests
 			Metal::BoundUniforms uniforms(shaderProgram, uniformInterface);
 
 			UniformsStream uniformsStream;
-			uniformsStream._immediateData = {
+			UniformsStream::ImmediateData cbvs[] = {
 				MakeOpaqueIteratorRange(pushConstants0),
 				MakeOpaqueIteratorRange(pushConstants1)
 			};
+			uniformsStream._immediateData = cbvs;
 			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 
 			IDescriptorSet* descSets[] = { set0.get(), set1.get() };
@@ -375,10 +378,11 @@ namespace UnitTests
 			Metal::BoundUniforms uniforms(*pipeline, uniformInterface);
 
 			UniformsStream uniformsStream;
-			uniformsStream._immediateData = {
+			UniformsStream::ImmediateData cbvs[] = {
 				MakeOpaqueIteratorRange(pushConstants0),
 				MakeOpaqueIteratorRange(pushConstants1)
 			};
+			uniformsStream._immediateData = cbvs;
 			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 
 			IDescriptorSet* descSets[] = { set0.get(), set1.get() };

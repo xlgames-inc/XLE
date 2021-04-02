@@ -103,9 +103,11 @@ namespace UnitTests
 			usi.BindSampler(0, Hash64("Texture_sampler"));
 			Metal::BoundUniforms uniforms { shaderProgram, usi };
 
+			const IResourceView* resourceViews[] = { srv };
+			const ISampler* samplers[] = { samplerState };
 			UniformsStream uniformsStream;
-			uniformsStream._resourceViews = { srv };
-			uniformsStream._samplers = { samplerState };
+			uniformsStream._resourceViews = resourceViews;
+			uniformsStream._samplers = samplers;
 			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 		}
 

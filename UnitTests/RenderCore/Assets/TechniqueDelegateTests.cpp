@@ -386,8 +386,9 @@ namespace UnitTests
 			auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 			auto encoder = metalContext.BeginGraphicsEncoder(pipelinePool->GetPipelineLayout());
 
+			UniformsStream::ImmediateData cbvs[] = { MakeOpaqueIteratorRange(globalTransform) };
 			UniformsStream uniformsStream;
-			uniformsStream._immediateData = { MakeOpaqueIteratorRange(globalTransform) };
+			uniformsStream._immediateData = cbvs;
 			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 
 			IDescriptorSet* descSets[] = { descriptorSet.get() };

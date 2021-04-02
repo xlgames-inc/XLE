@@ -562,10 +562,9 @@ namespace UnitTests
 			REQUIRE(uniforms.GetBoundLooseConstantBuffers() == 1ull);
 
 			Values v { 0.4f, 0.5f, 0.2f, 0, Float4 { 0.1f, 1.0f, 1.0f, 1.0f } };
+			UniformsStream::ImmediateData cbvs[] = { MakeOpaqueIteratorRange(v) };
 			UniformsStream us;
-			us._immediateData = {
-				MakeOpaqueIteratorRange(v)
-			};
+			us._immediateData = cbvs;
 			uniforms.ApplyLooseUniforms(metalContext, encoder, us);
 
 			encoder.Draw(4);
@@ -600,10 +599,9 @@ namespace UnitTests
 			REQUIRE(uniforms.GetBoundLooseConstantBuffers() == 1ull);
 
 			Values v { 0.1f, 0.7f, 0.4f, 0, Float4 { 0.8f, 1.0f, 1.0f, 1.0f } };
+			UniformsStream::ImmediateData cbvs[] = { MakeOpaqueIteratorRange(v) };
 			UniformsStream us;
-			us._immediateData = {
-				MakeOpaqueIteratorRange(v)
-			};
+			us._immediateData = cbvs;
 			uniforms.ApplyLooseUniforms(metalContext, encoder, us);
 
 			encoder.Draw(4);
@@ -783,13 +781,11 @@ namespace UnitTests
 			auto srv = testTexture._res->CreateTextureView(BindFlag::ShaderResource);
 			auto pointSampler = testHelper->_device->CreateSampler(SamplerDesc{ FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp });
 
+			const IResourceView* resourceViews[] = { srv.get() };
+			const ISampler* samplers[] = { pointSampler.get() };
 			UniformsStream uniformsStream;
-			uniformsStream._resourceViews = {
-				srv.get()
-			};
-			uniformsStream._samplers = {
-				pointSampler.get()
-			};
+			uniformsStream._resourceViews = resourceViews;
+			uniformsStream._samplers = samplers;
 			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 		}
 
@@ -803,10 +799,9 @@ namespace UnitTests
 			Metal::BoundUniforms uniforms { shaderProgramSRV, usi };
 			
 			Values v;
+			UniformsStream::ImmediateData cbvs[] = { MakeOpaqueIteratorRange(v) };
 			UniformsStream uniformsStream;
-			uniformsStream._immediateData = {
-				MakeOpaqueIteratorRange(v)
-			};
+			uniformsStream._immediateData = cbvs;
 			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);                
 		}
 
@@ -894,13 +889,11 @@ namespace UnitTests
 			auto srv = testTexture._res->CreateTextureView(BindFlag::ShaderResource);
 			auto pointSampler = testHelper->_device->CreateSampler(SamplerDesc{ FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp });
 
+			const IResourceView* resourceViews[] = { srv.get() };
+			const ISampler* samplers[] = { pointSampler.get() };
 			UniformsStream uniformsStream;
-			uniformsStream._resourceViews = {
-				srv.get()
-			};
-			uniformsStream._samplers = {
-				pointSampler.get()
-			};
+			uniformsStream._resourceViews = resourceViews;
+			uniformsStream._samplers = samplers;
 			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 		}
 
@@ -914,10 +907,9 @@ namespace UnitTests
 			Metal::BoundUniforms uniforms { shaderProgramSRV, usi };
 
 			Values v;
+			UniformsStream::ImmediateData cbvs[] = { MakeOpaqueIteratorRange(v) };
 			UniformsStream uniformsStream;
-			uniformsStream._immediateData = {
-				MakeOpaqueIteratorRange(v)
-			};
+			uniformsStream._immediateData = cbvs;
 			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 		}
 
@@ -1010,13 +1002,11 @@ namespace UnitTests
 			auto srv = testTexture._res->CreateTextureView(BindFlag::ShaderResource);
 			auto pointSampler = testHelper->_device->CreateSampler(SamplerDesc{ FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp });
 
+			const IResourceView* resourceViews[] = { srv.get() };
+			const ISampler* samplers[] = { pointSampler.get() };
 			UniformsStream uniformsStream;
-			uniformsStream._resourceViews = {
-				srv.get()
-			};
-			uniformsStream._samplers = {
-				pointSampler.get()
-			};
+			uniformsStream._resourceViews = resourceViews;
+			uniformsStream._samplers = samplers;
 			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 
 			encoder.Bind(inputLayout, Topology::TriangleStrip);
@@ -1082,13 +1072,11 @@ namespace UnitTests
 			auto srv = testTexture._res->CreateTextureView(BindFlag::ShaderResource);
 			auto pointSampler = testHelper->_device->CreateSampler(SamplerDesc{ FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp });
 
+			const IResourceView* resourceViews[] = { srv.get() };
+			const ISampler* samplers[] = { pointSampler.get() };
 			UniformsStream uniformsStream;
-			uniformsStream._resourceViews = {
-				srv.get()
-			};
-			uniformsStream._samplers = {
-				pointSampler.get()
-			};
+			uniformsStream._resourceViews = resourceViews;
+			uniformsStream._samplers = samplers;
 			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 
 			encoder.Bind(inputLayout, Topology::TriangleStrip);
@@ -1124,13 +1112,11 @@ namespace UnitTests
 			auto srv = testTexture._res->CreateTextureView(BindFlag::ShaderResource);
 			auto linearSampler = testHelper->_device->CreateSampler(SamplerDesc{ FilterMode::Bilinear, AddressMode::Clamp, AddressMode::Clamp });
 
+			const IResourceView* resourceViews[] = { srv.get() };
+			const ISampler* samplers[] = { linearSampler.get() };
 			UniformsStream uniformsStream;
-			uniformsStream._resourceViews = {
-				srv.get()
-			};
-			uniformsStream._samplers = {
-				linearSampler.get()
-			};
+			uniformsStream._resourceViews = resourceViews;
+			uniformsStream._samplers = samplers;
 			uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
 
 			encoder.Bind(inputLayout, Topology::TriangleStrip);
