@@ -9,6 +9,7 @@
 #include "../Assets/AssetUtils.h"
 #include "../Assets/IntermediateCompilers.h"
 #include "../Assets/DepVal.h"
+#include "../Assets/PreprocessorIncludeHandler.h"
 #include "../ConsoleRig/GlobalServices.h"		// for GetLibVersionDesc
 #include "../Utility/Streams/ConditionalPreprocessingTokenizer.h"
 #include "../Utility/Streams/OutputStreamFormatter.h"
@@ -200,7 +201,7 @@ namespace ShaderSourceParser
 
 	SelectorFilteringRules GenerateSelectorFilteringRules(StringSection<> sourceCode)
 	{
-		auto analysis = Utility::GeneratePreprocessorAnalysis(sourceCode, {}, nullptr);
+		auto analysis = Utility::GeneratePreprocessorAnalysisFromString(sourceCode, {}, nullptr);
 		SelectorFilteringRules filteringRules;
 
 		filteringRules._tokenDictionary = analysis._tokenDictionary;
@@ -232,53 +233,6 @@ namespace ShaderSourceParser
 		return str;
 	}
 
-	class IncludeHandler : public IPreprocessorIncludeHandler
-	{
-	public:
-		virtual PreprocessorAnalysis GeneratePreprocessorAnalysis(
-			StringSection<> requestString,
-			StringSection<> fileIncludedFrom) override
-		{
-			std::string resolvedFile;
-			if (!fileIncludedFrom.IsEmpty()) {
-				char resolvedFileT[MaxPath];
-				::Assets::DefaultDirectorySearchRules(fileIncludedFrom).ResolveFile(resolvedFileT, requestString);
-				resolvedFile = resolvedFileT;
-			} else {
-				resolvedFile = requestString.AsString();
-			}
-
-			if (_processingFilesSet.find(resolvedFile) != _processingFilesSet.end())
-				return {};		// recursive include -- trying to include a file while we're still processing it somewhere higher on the stack
-			_processingFilesSet.insert(resolvedFile);
-
-			::Assets::DependentFileState mainFileState;
-			size_t size = 0;
-			auto blk = ::Assets::TryLoadFileAsMemoryBlock(resolvedFile, &size, &mainFileState);
-			if (!size) {
-				if (!fileIncludedFrom.IsEmpty())
-					Throw(std::runtime_error("Missing or empty file when loading: " + resolvedFile + " (included from: " + fileIncludedFrom.AsString() + ")"));
-				Throw(std::runtime_error("Missing or empty file when loading: " + resolvedFile));
-			}
-			assert(!mainFileState._filename.empty());
-			_depFileStates.insert(mainFileState);
-			
-			auto result = Utility::GeneratePreprocessorAnalysis(
-				MakeStringSection((const char*)blk.get(), (const char*)PtrAdd(blk.get(), size)),
-				resolvedFile,
-				this);
-
-			_processingFilesSet.erase(resolvedFile);
-
-			return result;
-		}
-
-		std::set<::Assets::DependentFileState> _depFileStates;
-
-	private:
-		std::set<std::string> _processingFilesSet;
-	};
-
 	class ShaderSelectorFilteringCompileOperation : public ::Assets::ICompileOperation
 	{
 	public:
@@ -304,8 +258,8 @@ namespace ShaderSourceParser
 		{
 			auto fn = initializer.GetInitializer<std::string>(0);
 
-			IncludeHandler handler;
-			auto analysis = handler.GeneratePreprocessorAnalysis(fn, {});
+			::Assets::PreprocessorIncludeHandler handler;
+			auto analysis = GeneratePreprocessorAnalysisFromFile(fn, &handler);
 
 			SelectorFilteringRules filteringRules;
 			filteringRules._tokenDictionary = analysis._tokenDictionary;

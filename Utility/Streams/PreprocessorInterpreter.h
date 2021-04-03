@@ -103,15 +103,26 @@ namespace Utility
 
 	class IPreprocessorIncludeHandler;
 
-    PreprocessorAnalysis GeneratePreprocessorAnalysis(
+    PreprocessorAnalysis GeneratePreprocessorAnalysisFromString(
 		StringSection<> input,
 		StringSection<> filenameForRelativeIncludeSearch = {},
+		IPreprocessorIncludeHandler* includeHandler = nullptr);
+
+	PreprocessorAnalysis GeneratePreprocessorAnalysisFromFile(
+		StringSection<> inputFilename,
 		IPreprocessorIncludeHandler* includeHandler = nullptr);
 
 	class IPreprocessorIncludeHandler
 	{
 	public:
-		virtual PreprocessorAnalysis GeneratePreprocessorAnalysis(
+		struct Result 
+		{ 
+			std::string _filename; 
+			std::unique_ptr<uint8[]> _fileContents;
+			size_t _fileContentsSize;
+		};
+
+		virtual Result OpenFile(
 			StringSection<> requestString,
 			StringSection<> fileIncludedFrom) = 0;
 		virtual ~IPreprocessorIncludeHandler();

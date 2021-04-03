@@ -3,8 +3,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ConditionalPreprocessingTokenizer.h"
+#include "PathUtils.h"
 #include "../StringFormat.h"
 #include <iostream>
+#include <set>
 
 namespace Utility
 {
@@ -16,283 +18,6 @@ namespace Utility
             ||  (c >= '0' && c <= '9')
             ;
     }
-
-    void ConditionalProcessingTokenizer::SkipWhitespace()
-    {
-        // Note -- not supporting block comments or line extensions
-        while (_input.begin() != _input.end()) {
-            switch (*_input.begin()) {
-            case '/':
-                if ((_input.begin()+1) != _input.end() && *(_input.begin()+1) == '/') {
-                    // read upto, but don't swallow the next newline (line extension not supported for these comments)
-                    _input._start += 2;
-                    ReadUntilEndOfLine();
-                    break;
-                } else
-                    return;
-
-            case ' ':
-            case '\t':
-                ++_input._start;
-                break;
-
-            case '\r':  // (could be an independant new line, or /r/n combo)
-                ++_input._start;
-                if (_input.begin() != _input.end() &&  *_input.begin() == '\n')
-                    ++_input._start;
-                ++_lineIndex; _lineStart = _input.begin();
-                _preprocValid = true;
-                break;
-
-            case '\n':  // (independant new line. A following /r will be treated as another new line)
-                ++_input._start;
-                ++_lineIndex; _lineStart = _input.begin();
-                _preprocValid = true;
-                break;
-
-            case '#':
-                if (!_preprocValid)
-                    return;
-
-                ++_input._start;
-                ParsePreprocessorDirective();
-                break;
-
-            default:
-                // something other than whitespace; time to get out
-                // (we also get here on a newline char)
-                return;
-            }
-        }
-    }
-
-    auto ConditionalProcessingTokenizer::GetNextToken() -> Token
-    {
-        SkipWhitespace();
-
-        auto startLocation = GetLocation();
-
-        auto startOfToken = _input.begin();
-        if (_input.begin() != _input.end()) {
-            if (IsIdentifierOrNumericChar(*_input.begin())) {
-                while ((_input.begin() != _input.end()) && IsIdentifierOrNumericChar(*_input.begin()))
-                    ++_input._start;
-            } else {
-                ++_input._start; // non identifier tokens are always single chars (ie, for some kind of operator)
-            }
-            _preprocValid = false;      // can't start a preprocessor directive if there is any non-whitespace content prior on the same line
-        }
-
-        return Token { { startOfToken, _input.begin() }, startLocation, GetLocation() };
-    }
-
-    auto ConditionalProcessingTokenizer::PeekNextToken() -> Token
-    {
-        // We do the destructive "SkipWhitespace" -- including parsing
-        // any preprocessor directives before the next token, etc. This is a little more
-        // efficient because PeekNextToken is usually followed by a GetNextToken, so we avoid having
-        // to do this twice.
-        SkipWhitespace();
-
-        auto startLocation = GetLocation();
-
-        auto startOfToken = _input.begin();
-        auto iterator = startOfToken;
-        if (iterator != _input.end()) {
-            if (IsIdentifierOrNumericChar(*iterator)) {
-                while ((iterator != _input.end()) && IsIdentifierOrNumericChar(*iterator))
-                    ++iterator;
-            } else {
-                ++iterator; // non identifier tokens are always single chars (ie, for some kind of operator)
-            }
-        }
-
-        auto endLocation = startLocation;
-        endLocation._charIndex += unsigned(iterator-startOfToken);
-        return Token { { startOfToken, iterator }, startLocation, endLocation };
-    }
-
-    void ConditionalProcessingTokenizer::PreProc_SkipWhitespace()
-    {
-        // Note -- not supporting block comments or line extensions
-        while (_input.begin() != _input.end()) {
-            switch (*_input.begin()) {
-            case '/':
-                if ((_input.begin()+1) != _input.end() && *(_input.begin()+1) == '/') {
-                    // read upto, but don't swallow the next newline (line extension not supported for these comments)s
-                    _input._start += 2;
-                    ReadUntilEndOfLine();
-                }
-                return;
-
-            case ' ':
-            case '\t':
-                ++_input._start;
-                continue;       // back to top of the loop
-
-            default:
-                // something other than whitespace; time to get out
-                // (we also get here on a newline char)
-                return;
-            }
-        }
-
-    }
-
-    auto ConditionalProcessingTokenizer::PreProc_GetNextToken() -> Token
-    {
-        // we need a special implementation for this for reading the preprocessor tokens themselves,
-        // because the rules are slightly different (for example, we don't want to start parsing
-        // preprocessor tokens recursively)
-        PreProc_SkipWhitespace();
-
-        auto startLocation = GetLocation();
-
-        auto startOfToken = _input.begin();
-        if (_input.begin() != _input.end()) {
-            if (IsIdentifierOrNumericChar(*_input.begin())) {
-                while ((_input.begin() != _input.end()) && IsIdentifierOrNumericChar(*_input.begin()))
-                    ++_input._start;
-            } else {
-                if (*_input.begin() == '\r' || *_input.begin() == '\n')
-                    return {};      // hit newline, no more tokens
-                ++_input._start; // non identifier tokens are always single chars (ie, for some kind of operator)
-            }
-        }
-
-        return Token { { startOfToken, _input.begin() }, startLocation, GetLocation() };
-    }
-
-    void ConditionalProcessingTokenizer::ParsePreprocessorDirective()
-    {
-        //
-        // There are only a few options here, after the hash:
-        //      1) define, undef, include, line, error, pragma
-        //      2) if, ifdef, ifndef
-        //      3) elif, else, endif
-        //
-        //  (not case sensitive)
-        //
-
-        auto directive = PreProc_GetNextToken();
-        if (    XlEqStringI(directive._value, "define") || XlEqStringI(directive._value, "undef") || XlEqStringI(directive._value, "include")
-            ||  XlEqStringI(directive._value, "line") || XlEqStringI(directive._value, "error") || XlEqStringI(directive._value, "pragma")) {
-
-            Throw(FormatException(StringMeld<256>() << "Unexpected preprocessor directive: " << directive._value << ". This directive is not supported.", directive._start));
-
-        } else if (XlEqStringI(directive._value, "if")) {
-
-            // the rest of the line should be some preprocessor condition expression
-            PreProc_SkipWhitespace();
-            auto remainingLine = ReadUntilEndOfLine();
-            _preprocessorContext._conditionsStack.push_back({remainingLine._value.AsString()});
-
-        } else if (XlEqStringI(directive._value, "ifdef")) {
-
-            auto symbol = PreProc_GetNextToken();
-            if (symbol._value.IsEmpty())
-                Throw(FormatException("Expected token in #ifdef", directive._start));
-
-            _preprocessorContext._conditionsStack.push_back({"defined(" + symbol._value.AsString() + ")"});
-
-            ReadUntilEndOfLine();       // skip rest of line
-
-        } else if (XlEqStringI(directive._value, "ifndef")) {
-
-            auto symbol = PreProc_GetNextToken();
-            if (symbol._value.IsEmpty())
-                Throw(FormatException("Expected token in #ifndef", directive._start));
-
-            _preprocessorContext._conditionsStack.push_back({"!defined(" + symbol._value.AsString() + ")"});
-
-            ReadUntilEndOfLine();       // skip rest of line
-
-        } else if (XlEqStringI(directive._value, "elif") || XlEqStringI(directive._value, "else") || XlEqStringI(directive._value, "endif")) {
-
-            if (_preprocessorContext._conditionsStack.empty())
-                Throw(FormatException(
-                    StringMeld<256>() << "endif/else/elif when there has been no if",
-                    directive._start));
-
-            auto prevCondition = *(_preprocessorContext._conditionsStack.end()-1);
-            _preprocessorContext._conditionsStack.erase(_preprocessorContext._conditionsStack.end()-1);
-
-            auto negCondition = prevCondition._positiveCond;
-            if (!prevCondition._negativeCond.empty())
-                negCondition = "(" + negCondition + ") && (" + prevCondition._negativeCond +  ")";
-
-            if (XlEqStringI(directive._value, "elif")) {
-                auto remainingLine = ReadUntilEndOfLine();
-                _preprocessorContext._conditionsStack.push_back({remainingLine._value.AsString(), negCondition});
-            } else if (XlEqStringI(directive._value, "else")) {
-                _preprocessorContext._conditionsStack.push_back({"1", negCondition});
-
-                ReadUntilEndOfLine();       // skip rest of line
-            }
-
-        } else {
-
-            Throw(FormatException(
-                StringMeld<256>() << "Unknown preprocessor directive: " << directive._value,
-                directive._start));
-
-        }
-
-    }
-
-    auto ConditionalProcessingTokenizer::ReadUntilEndOfLine() -> Token
-    {
-        auto startLocation = GetLocation();
-        auto startOfToken = _input.begin();
-
-        while (_input.begin() != _input.end() && *_input.begin() != '\r' && *_input.begin() != '\n') {
-            ++_input._start;
-        }
-
-        return Token { { startOfToken, _input.begin() }, startLocation, GetLocation() };
-    }
-
-    StreamLocation ConditionalProcessingTokenizer::GetLocation() const
-    {
-        StreamLocation result;
-        result._charIndex = 1 + unsigned(size_t(_input.begin()) - size_t(_lineStart));
-        result._lineIndex = 1 + _lineIndex;
-        return result;
-    }
-
-    ConditionalProcessingTokenizer::ConditionalProcessingTokenizer(
-        StringSection<> input,
-        unsigned lineIndex, const void* lineStart)
-    {
-        _input = input;
-        _lineIndex = lineIndex;
-        _lineStart = lineStart;
-        if (!lineStart)
-            _lineStart = input.begin();
-    }
-
-    ConditionalProcessingTokenizer::~ConditionalProcessingTokenizer()
-    {
-    }
-
-    auto ConditionalProcessingTokenizer::PreprocessorParseContext::GetCurrentConditionString() -> Expression
-    {
-        Expression result;
-        for (auto i=_conditionsStack.rbegin(); i!=_conditionsStack.rend(); ++i) {
-            if (!i->_negativeCond.empty()) {
-                if (!result.empty()) result += " && ";
-                result += "!(" + i->_negativeCond + ")";
-            }
-            if (!i->_positiveCond.empty()) {
-                if (!result.empty()) result += " && ";
-                result += "(" + i->_positiveCond + ")";
-            }
-        }
-        return result;
-    }
-
-    ConditionalProcessingTokenizer::PreprocessorParseContext::PreprocessorParseContext() {}
-    ConditionalProcessingTokenizer::PreprocessorParseContext::~PreprocessorParseContext() {}
 
     struct ParserHelper
     {
@@ -346,11 +71,7 @@ namespace Utility
             }
         }
 
-        struct Token
-        {
-            StringSection<> _value;
-            StreamLocation _start, _end;
-        };
+        using Token = ConditionalProcessingTokenizer::Token;
 
         StreamLocation GetLocation() const
         {
@@ -461,6 +182,315 @@ namespace Utility
         }
     };
 
+    struct ConditionalProcessingTokenizer::FileState
+    {
+        ParserHelper _helper;
+        std::unique_ptr<uint8_t[]> _savedBlock;
+        std::string _filenameForRelativeIncludeSearch;
+        uint64_t _filenameHash;
+    };
+
+    void ConditionalProcessingTokenizer::SkipWhitespace()
+    {
+        assert(!_fileStates.empty());
+        auto& state = *(_fileStates.end()-1);
+
+        // Note -- not supporting block comments or line extensions
+        while ((_fileStates.end()-1)->_helper._input.begin() != (_fileStates.end()-1)->_helper._input.end()) {
+            auto& state = *(_fileStates.end()-1);
+
+            switch (*state._helper._input.begin()) {
+            case '/':
+                if ((state._helper._input.begin()+1) != state._helper._input.end() && *(state._helper._input.begin()+1) == '/') {
+                    // read upto, but don't swallow the next newline (line extension not supported for these comments)
+                    state._helper._input._start += 2;
+                    ReadUntilEndOfLine();
+                    break;
+                } else
+                    return;
+
+            case ' ':
+            case '\t':
+                ++state._helper._input._start;
+                break;
+
+            case '\r':  // (could be an independant new line, or /r/n combo)
+                ++state._helper._input._start;
+                if (state._helper._input.begin() != state._helper._input.end() &&  *state._helper._input.begin() == '\n')
+                    ++state._helper._input._start;
+                ++state._helper._lineIndex; state._helper._lineStart = state._helper._input.begin();
+                _preprocValid = true;
+                break;
+
+            case '\n':  // (independant new line. A following /r will be treated as another new line)
+                ++state._helper._input._start;
+                ++state._helper._lineIndex; state._helper._lineStart = state._helper._input.begin();
+                _preprocValid = true;
+                break;
+
+            case '#':
+                if (!_preprocValid)
+                    return;
+
+                ++state._helper._input._start;
+                ParsePreprocessorDirective();
+                break;
+
+            default:
+                // something other than whitespace; time to get out
+                // (we also get here on a newline char)
+                return;
+            }
+        }
+
+        // reached end of file. Might just need to pop off next thing in the stack
+        // (though we never pop off the last entry in the stack)
+        if (_fileStates.size() > 1) {
+            _fileStates.erase(_fileStates.end()-1);
+            // On the new top of the stack, we must be just after a #include statement. So we must read
+            // until the end of the line to skip over anything that trails in the #include
+            ReadUntilEndOfLine();
+            SkipWhitespace();
+        }
+    }
+
+    auto ConditionalProcessingTokenizer::GetNextToken() -> Token
+    {
+        SkipWhitespace();
+
+        assert(!_fileStates.empty());
+        auto& state = *(_fileStates.end()-1);
+        auto startLocation = GetLocation();
+
+        auto startOfToken = state._helper._input.begin();
+        if (state._helper._input.begin() != state._helper._input.end()) {
+            if (IsIdentifierOrNumericChar(*state._helper._input.begin())) {
+                while ((state._helper._input.begin() != state._helper._input.end()) && IsIdentifierOrNumericChar(*state._helper._input.begin()))
+                    ++state._helper._input._start;
+            } else {
+                ++state._helper._input._start; // non identifier tokens are always single chars (ie, for some kind of operator)
+            }
+            _preprocValid = false;      // can't start a preprocessor directive if there is any non-whitespace content prior on the same line
+        }
+
+        return Token { { startOfToken, state._helper._input.begin() }, startLocation, GetLocation() };
+    }
+
+    auto ConditionalProcessingTokenizer::PeekNextToken() -> Token
+    {
+        // We do the destructive "SkipWhitespace" -- including parsing
+        // any preprocessor directives before the next token, etc. This is a little more
+        // efficient because PeekNextToken is usually followed by a GetNextToken, so we avoid having
+        // to do this twice.
+        SkipWhitespace();
+
+        assert(!_fileStates.empty());
+        auto& state = *(_fileStates.end()-1);
+        auto startLocation = GetLocation();
+
+        auto startOfToken = state._helper._input.begin();
+        auto iterator = startOfToken;
+        if (iterator != state._helper._input.end()) {
+            if (IsIdentifierOrNumericChar(*iterator)) {
+                while ((iterator != state._helper._input.end()) && IsIdentifierOrNumericChar(*iterator))
+                    ++iterator;
+            } else {
+                ++iterator; // non identifier tokens are always single chars (ie, for some kind of operator)
+            }
+        }
+
+        auto endLocation = startLocation;
+        endLocation._charIndex += unsigned(iterator-startOfToken);
+        return Token { { startOfToken, iterator }, startLocation, endLocation };
+    }
+
+    void ConditionalProcessingTokenizer::PreProc_SkipWhitespace()
+    {
+        assert(!_fileStates.empty());
+        auto& state = *(_fileStates.end()-1);
+        state._helper.PreProc_SkipWhitespace();
+    }
+
+    auto ConditionalProcessingTokenizer::PreProc_GetNextToken() -> Token
+    {
+        assert(!_fileStates.empty());
+        auto& state = *(_fileStates.end()-1);
+        return state._helper.PreProc_GetNextToken();
+    }
+
+    void ConditionalProcessingTokenizer::ParsePreprocessorDirective()
+    {
+        //
+        // There are only a few options here, after the hash:
+        //      1) define, undef, include, line, error, pragma
+        //      2) if, ifdef, ifndef
+        //      3) elif, else, endif
+        //
+        //  (not case sensitive)
+        //
+
+        auto directive = PreProc_GetNextToken();
+        if (    XlEqStringI(directive._value, "define") || XlEqStringI(directive._value, "undef")
+            ||  XlEqStringI(directive._value, "line") || XlEqStringI(directive._value, "error") || XlEqStringI(directive._value, "pragma")) {
+
+            Throw(FormatException(StringMeld<256>() << "Unexpected preprocessor directive: " << directive._value << ". This directive is not supported.", directive._start));
+
+        } else if (XlEqStringI(directive._value, "if")) {
+
+            // the rest of the line should be some preprocessor condition expression
+            PreProc_SkipWhitespace();
+            auto remainingLine = ReadUntilEndOfLine();
+            _preprocessorContext._conditionsStack.push_back({remainingLine._value.AsString()});
+
+        } else if (XlEqStringI(directive._value, "ifdef")) {
+
+            auto symbol = PreProc_GetNextToken();
+            if (symbol._value.IsEmpty())
+                Throw(FormatException("Expected token in #ifdef", directive._start));
+
+            _preprocessorContext._conditionsStack.push_back({"defined(" + symbol._value.AsString() + ")"});
+
+            ReadUntilEndOfLine();       // skip rest of line
+
+        } else if (XlEqStringI(directive._value, "ifndef")) {
+
+            auto symbol = PreProc_GetNextToken();
+            if (symbol._value.IsEmpty())
+                Throw(FormatException("Expected token in #ifndef", directive._start));
+
+            _preprocessorContext._conditionsStack.push_back({"!defined(" + symbol._value.AsString() + ")"});
+
+            ReadUntilEndOfLine();       // skip rest of line
+
+        } else if (XlEqStringI(directive._value, "elif") || XlEqStringI(directive._value, "else") || XlEqStringI(directive._value, "endif")) {
+
+            if (_preprocessorContext._conditionsStack.empty())
+                Throw(FormatException(
+                    StringMeld<256>() << "endif/else/elif when there has been no if",
+                    directive._start));
+
+            auto prevCondition = *(_preprocessorContext._conditionsStack.end()-1);
+            _preprocessorContext._conditionsStack.erase(_preprocessorContext._conditionsStack.end()-1);
+
+            auto negCondition = prevCondition._positiveCond;
+            if (!prevCondition._negativeCond.empty())
+                negCondition = "(" + negCondition + ") && (" + prevCondition._negativeCond +  ")";
+
+            if (XlEqStringI(directive._value, "elif")) {
+                auto remainingLine = ReadUntilEndOfLine();
+                _preprocessorContext._conditionsStack.push_back({remainingLine._value.AsString(), negCondition});
+            } else if (XlEqStringI(directive._value, "else")) {
+                _preprocessorContext._conditionsStack.push_back({"1", negCondition});
+
+                ReadUntilEndOfLine();       // skip rest of line
+            }
+
+        } else if (XlEqStringI(directive._value, "include")) {
+
+            assert(!_fileStates.empty());
+            auto& state = *(_fileStates.end()-1);
+            auto symbol = state._helper.PreProc_GetBrackettedToken();
+            if (symbol._value.IsEmpty())
+                Throw(FormatException("Expected file to include after #include directive", directive._start));
+
+            if (!_includeHandler)
+                Throw(FormatException("No include handler provided to handle #include directive", directive._start));
+
+            auto newFile = _includeHandler->OpenFile(symbol._value, state._filenameForRelativeIncludeSearch);
+            if (!newFile._fileContents || !newFile._fileContentsSize)
+                Throw(FormatException(("Could not open included file (or empty file): " + symbol._value.AsString()).c_str(), directive._start));
+
+            auto hashedName = HashFilenameAndPath(MakeStringSection(newFile._filename));
+            auto existing = std::find_if(_fileStates.begin(), _fileStates.end(),
+                [hashedName](const auto& c) { return c._filenameHash == hashedName; });
+            if (existing == _fileStates.end()) {
+
+                FileState newState;
+                newState._helper._input = MakeStringSection((const char*)newFile._fileContents.get(), (const char*)PtrAdd(newFile._fileContents.get(), newFile._fileContentsSize));
+                newState._helper._lineIndex = 0;
+                newState._helper._lineStart = newState._helper._input.begin();
+                newState._filenameHash = hashedName;
+                newState._filenameForRelativeIncludeSearch = newFile._filename;
+                newState._savedBlock = std::move(newFile._fileContents);
+                _fileStates.push_back(std::move(newState));
+
+            } else {
+                // we're skipping this because it's a circular include
+                ReadUntilEndOfLine();
+            }
+
+        } else {
+
+            Throw(FormatException(
+                StringMeld<256>() << "Unknown preprocessor directive: " << directive._value,
+                directive._start));
+
+        }
+
+    }
+
+    auto ConditionalProcessingTokenizer::ReadUntilEndOfLine() -> Token
+    {
+        assert(!_fileStates.empty());
+        auto& state = *(_fileStates.end()-1);
+        return state._helper.ReadUntilEndOfLine();
+    }
+
+    StreamLocation ConditionalProcessingTokenizer::GetLocation() const
+    {
+        assert(!_fileStates.empty());
+        auto& state = *(_fileStates.end()-1);
+        return state._helper.GetLocation();
+    }
+
+    StringSection<> ConditionalProcessingTokenizer::Remaining() const 
+    {
+        if (_fileStates.size() != 1)
+            Throw(std::runtime_error("ConditionalProcessingTokenizer::Remaining cannot return the entire remaining string when there are files #included from other files"));
+        auto& state = *(_fileStates.end()-1);
+        return state._helper._input; 
+    }
+
+    ConditionalProcessingTokenizer::ConditionalProcessingTokenizer(
+        StringSection<> input,
+        StringSection<> filenameForRelativeIncludeSearch,
+        IPreprocessorIncludeHandler* includeHandler)
+    : _includeHandler(includeHandler)
+    {
+        FileState initialState;
+        initialState._helper._input = input;
+        initialState._helper._lineIndex = 0;
+        initialState._helper._lineStart = input.begin();
+        initialState._filenameHash = HashFilenameAndPath(filenameForRelativeIncludeSearch);
+        initialState._filenameForRelativeIncludeSearch = filenameForRelativeIncludeSearch.AsString();
+        _fileStates.push_back(std::move(initialState));
+    }
+
+    ConditionalProcessingTokenizer::~ConditionalProcessingTokenizer()
+    {
+    }
+
+    auto ConditionalProcessingTokenizer::PreprocessorParseContext::GetCurrentConditionString() -> Expression
+    {
+        Expression result;
+        for (auto i=_conditionsStack.rbegin(); i!=_conditionsStack.rend(); ++i) {
+            if (!i->_negativeCond.empty()) {
+                if (!result.empty()) result += " && ";
+                result += "!(" + i->_negativeCond + ")";
+            }
+            if (!i->_positiveCond.empty()) {
+                if (!result.empty()) result += " && ";
+                result += "(" + i->_positiveCond + ")";
+            }
+        }
+        return result;
+    }
+
+    ConditionalProcessingTokenizer::PreprocessorParseContext::PreprocessorParseContext() {}
+    ConditionalProcessingTokenizer::PreprocessorParseContext::~PreprocessorParseContext() {}
+
+    
+
     struct Cond
     {
         Internal::ExpressionTokenList _positiveCond;
@@ -496,103 +526,62 @@ namespace Utility
             token0._type == Internal::TokenDictionary::TokenType::UnaryMarker
             && token2._type == Internal::TokenDictionary::TokenType::Operation && XlEqString(token2._value, "!");
     }
-    
-    PreprocessorAnalysis GeneratePreprocessorAnalysis(StringSection<> input, StringSection<> filenameForRelativeIncludeSearch, IPreprocessorIncludeHandler* includeHandler)
+
+    class PreprocessAnalysisIncludeHelper
     {
-        // Walk through the input string, extracting all preprocessor operations
-        // We need to consider "//" comments, but we don't support block comments or line extensions
+    public:
+        IPreprocessorIncludeHandler* _includeHandler = nullptr;
+        std::set<uint64_t> _processingFilesSet;
 
-        ParserHelper helper;
-        helper._input = input;
-        helper._lineIndex = 0;
-        helper._lineStart = input.begin();
+        PreprocessorAnalysis GeneratePreprocessorAnalysisFromFile(
+			StringSection<> requestString,
+			StringSection<> fileIncludedFrom)
+        {
+            auto includeHandlerResult = _includeHandler->OpenFile(requestString, fileIncludedFrom);
+            if (!includeHandlerResult._fileContents || !includeHandlerResult._fileContentsSize)
+                return {};
 
-        Internal::TokenDictionary tokenDictionary;
-        std::vector<Cond> conditionsStack;
+            auto hashedName = HashFilenameAndPath(MakeStringSection(includeHandlerResult._filename));
+            if (_processingFilesSet.find(hashedName) != _processingFilesSet.end())
+				return {};		// circular include -- trying to include a file while we're still processing it somewhere higher on the stack
+			_processingFilesSet.insert(hashedName);
 
-        Internal::WorkingRelevanceTable relevanceTable;
-        Internal::PreprocessorSubstitutions activeSubstitutions;
+            auto result = GeneratePreprocessorAnalysisFromString(
+				MakeStringSection((const char*)includeHandlerResult._fileContents.get(), (const char*)PtrAdd(includeHandlerResult._fileContents.get(), includeHandlerResult._fileContentsSize)),
+				includeHandlerResult._filename);
 
-        while (true) {
-            helper.SkipUntilNextPreproc();
-            auto directive = helper.PreProc_GetNextToken();
-            if (directive._value.IsEmpty()) break;
+            _processingFilesSet.erase(hashedName);
 
-            if (XlEqStringI(directive._value, "if")) {
+            return result;
+        }
+        
+        PreprocessorAnalysis GeneratePreprocessorAnalysisFromString(
+            StringSection<> input, 
+            StringSection<> filenameForRelativeIncludeSearch)
+        {
+            // Walk through the input string, extracting all preprocessor operations
+            // We need to consider "//" comments, but we don't support block comments or line extensions
 
-                // the rest of the line should be some preprocessor condition expression
-                helper.PreProc_SkipWhitespace();
-                auto remainingLine = helper.ReadUntilEndOfLine();
+            ParserHelper helper;
+            helper._input = input;
+            helper._lineIndex = 0;
+            helper._lineStart = input.begin();
 
-                auto expr = Internal::AsExpressionTokenList(
-                    tokenDictionary, remainingLine._value, activeSubstitutions);
+            Internal::TokenDictionary tokenDictionary;
+            std::vector<Cond> conditionsStack;
 
-                auto exprRelevance = CalculatePreprocessorExpressionRevelance(
-                    tokenDictionary, expr);
+            Internal::WorkingRelevanceTable relevanceTable;
+            Internal::PreprocessorSubstitutions activeSubstitutions;
 
-                relevanceTable = Internal::MergeRelevanceTables(
-                    relevanceTable, {},
-                    exprRelevance, GetCurrentCondition(conditionsStack));
+            while (true) {
+                helper.SkipUntilNextPreproc();
+                auto directive = helper.PreProc_GetNextToken();
+                if (directive._value.IsEmpty()) break;
 
-                conditionsStack.push_back({expr});
+                if (XlEqStringI(directive._value, "if")) {
 
-            } else if (XlEqStringI(directive._value, "ifdef")) {
-
-                auto symbol = helper.PreProc_GetNextToken();
-                if (symbol._value.IsEmpty())
-                    Throw(FormatException("Expected token in #ifdef", directive._start));
-
-                Internal::ExpressionTokenList expr;
-                tokenDictionary.PushBack(expr, Internal::TokenDictionary::TokenType::IsDefinedTest, symbol._value.AsString());
-
-                auto exprRelevance = CalculatePreprocessorExpressionRevelance(
-                    tokenDictionary, expr);
-
-                relevanceTable = Internal::MergeRelevanceTables(
-                    relevanceTable, {},
-                    exprRelevance, GetCurrentCondition(conditionsStack));
-
-                conditionsStack.push_back({expr});
-                helper.ReadUntilEndOfLine();       // skip rest of line
-
-            } else if (XlEqStringI(directive._value, "ifndef")) {
-
-                auto symbol = helper.PreProc_GetNextToken();
-                if (symbol._value.IsEmpty())
-                    Throw(FormatException("Expected token in #ifndef", directive._start));
-
-                Internal::ExpressionTokenList expr;
-                tokenDictionary.PushBack(expr, Internal::TokenDictionary::TokenType::IsDefinedTest, symbol._value.AsString());
-                expr = Internal::InvertExpression(expr);
-
-                auto exprRelevance = CalculatePreprocessorExpressionRevelance(
-                    tokenDictionary, expr);
-
-                relevanceTable = Internal::MergeRelevanceTables(
-                    relevanceTable, {},
-                    exprRelevance, GetCurrentCondition(conditionsStack));
-
-                conditionsStack.push_back({expr});
-                helper.ReadUntilEndOfLine();       // skip rest of line
-
-            } else if (XlEqStringI(directive._value, "elif") || XlEqStringI(directive._value, "else") || XlEqStringI(directive._value, "endif")) {
-
-                if (conditionsStack.empty())
-                    Throw(FormatException(
-                        StringMeld<256>() << "endif/else/elif when there has been no if",
-                        directive._start));
-
-                // Since we're at the same layer of nesting as the #if that we're trailing,
-                // we wil actually modify the top condition on the stack, rather than pushing
-                // and going to a deaper level
-                auto prevCondition = *(conditionsStack.end()-1);
-                conditionsStack.erase(conditionsStack.end()-1);
-
-                // The "_negativeCond" must be false for this section to be value
-                auto negCondition = Internal::AndExpression(prevCondition._positiveCond, prevCondition._negativeCond);
-
-                if (XlEqStringI(directive._value, "elif")) {
-
+                    // the rest of the line should be some preprocessor condition expression
+                    helper.PreProc_SkipWhitespace();
                     auto remainingLine = helper.ReadUntilEndOfLine();
 
                     auto expr = Internal::AsExpressionTokenList(
@@ -601,191 +590,280 @@ namespace Utility
                     auto exprRelevance = CalculatePreprocessorExpressionRevelance(
                         tokenDictionary, expr);
 
-                    auto conditions = Internal::AndNotExpression(GetCurrentCondition(conditionsStack), negCondition);
                     relevanceTable = Internal::MergeRelevanceTables(
                         relevanceTable, {},
-                        exprRelevance, conditions);
+                        exprRelevance, GetCurrentCondition(conditionsStack));
 
-                    conditionsStack.push_back({expr, negCondition});
-                } else if (XlEqStringI(directive._value, "else")) {
-                    conditionsStack.push_back({{}, negCondition});
+                    conditionsStack.push_back({expr});
+
+                } else if (XlEqStringI(directive._value, "ifdef")) {
+
+                    auto symbol = helper.PreProc_GetNextToken();
+                    if (symbol._value.IsEmpty())
+                        Throw(FormatException("Expected token in #ifdef", directive._start));
+
+                    Internal::ExpressionTokenList expr;
+                    tokenDictionary.PushBack(expr, Internal::TokenDictionary::TokenType::IsDefinedTest, symbol._value.AsString());
+
+                    auto exprRelevance = CalculatePreprocessorExpressionRevelance(
+                        tokenDictionary, expr);
+
+                    relevanceTable = Internal::MergeRelevanceTables(
+                        relevanceTable, {},
+                        exprRelevance, GetCurrentCondition(conditionsStack));
+
+                    conditionsStack.push_back({expr});
                     helper.ReadUntilEndOfLine();       // skip rest of line
-                }
 
-            } else if (XlEqStringI(directive._value, "define") || XlEqStringI(directive._value, "undef")) {
+                } else if (XlEqStringI(directive._value, "ifndef")) {
 
-                auto symbol = helper.PreProc_GetNextToken();
-                if (symbol._value.IsEmpty())
-                    Throw(FormatException("Expected token in #define", directive._start));
+                    auto symbol = helper.PreProc_GetNextToken();
+                    if (symbol._value.IsEmpty())
+                        Throw(FormatException("Expected token in #ifndef", directive._start));
 
-                auto remainingLine = helper.ReadUntilEndOfLine();
-                bool foundNonWhitespaceChar = false;
-                for (auto c:remainingLine._value)
-                    if (c!=' ' && c!='\t') {
-                        foundNonWhitespaceChar = true;
-                        break;
+                    Internal::ExpressionTokenList expr;
+                    tokenDictionary.PushBack(expr, Internal::TokenDictionary::TokenType::IsDefinedTest, symbol._value.AsString());
+                    expr = Internal::InvertExpression(expr);
+
+                    auto exprRelevance = CalculatePreprocessorExpressionRevelance(
+                        tokenDictionary, expr);
+
+                    relevanceTable = Internal::MergeRelevanceTables(
+                        relevanceTable, {},
+                        exprRelevance, GetCurrentCondition(conditionsStack));
+
+                    conditionsStack.push_back({expr});
+                    helper.ReadUntilEndOfLine();       // skip rest of line
+
+                } else if (XlEqStringI(directive._value, "elif") || XlEqStringI(directive._value, "else") || XlEqStringI(directive._value, "endif")) {
+
+                    if (conditionsStack.empty())
+                        Throw(FormatException(
+                            StringMeld<256>() << "endif/else/elif when there has been no if",
+                            directive._start));
+
+                    // Since we're at the same layer of nesting as the #if that we're trailing,
+                    // we wil actually modify the top condition on the stack, rather than pushing
+                    // and going to a deaper level
+                    auto prevCondition = *(conditionsStack.end()-1);
+                    conditionsStack.erase(conditionsStack.end()-1);
+
+                    // The "_negativeCond" must be false for this section to be value
+                    auto negCondition = Internal::AndExpression(prevCondition._positiveCond, prevCondition._negativeCond);
+
+                    if (XlEqStringI(directive._value, "elif")) {
+
+                        auto remainingLine = helper.ReadUntilEndOfLine();
+
+                        auto expr = Internal::AsExpressionTokenList(
+                            tokenDictionary, remainingLine._value, activeSubstitutions);
+
+                        auto exprRelevance = CalculatePreprocessorExpressionRevelance(
+                            tokenDictionary, expr);
+
+                        auto conditions = Internal::AndNotExpression(GetCurrentCondition(conditionsStack), negCondition);
+                        relevanceTable = Internal::MergeRelevanceTables(
+                            relevanceTable, {},
+                            exprRelevance, conditions);
+
+                        conditionsStack.push_back({expr, negCondition});
+                    } else if (XlEqStringI(directive._value, "else")) {
+                        conditionsStack.push_back({{}, negCondition});
+                        helper.ReadUntilEndOfLine();       // skip rest of line
                     }
 
-                auto definedCheck = tokenDictionary.TryGetToken(Internal::TokenDictionary::TokenType::IsDefinedTest, symbol._value);
+                } else if (XlEqStringI(directive._value, "define") || XlEqStringI(directive._value, "undef")) {
 
-                bool unconditionalSet = true;
-                bool gotNotDefinedCheck = false;
-                for (auto condition=conditionsStack.rbegin(); condition!=conditionsStack.rend(); ++condition) {
-                    if (!condition->_negativeCond.empty()) {
-                        unconditionalSet = false;
-                        break;
-                    }
-                    // We're looking for "just true" or "just !defined(X)"
-                    if (condition->_positiveCond.size() == 1) {
-                        if (condition->_positiveCond[0] != 1) {
+                    auto symbol = helper.PreProc_GetNextToken();
+                    if (symbol._value.IsEmpty())
+                        Throw(FormatException("Expected token in #define", directive._start));
+
+                    auto remainingLine = helper.ReadUntilEndOfLine();
+                    bool foundNonWhitespaceChar = false;
+                    for (auto c:remainingLine._value)
+                        if (c!=' ' && c!='\t') {
+                            foundNonWhitespaceChar = true;
+                            break;
+                        }
+
+                    auto definedCheck = tokenDictionary.TryGetToken(Internal::TokenDictionary::TokenType::IsDefinedTest, symbol._value);
+
+                    bool unconditionalSet = true;
+                    bool gotNotDefinedCheck = false;
+                    for (auto condition=conditionsStack.rbegin(); condition!=conditionsStack.rend(); ++condition) {
+                        if (!condition->_negativeCond.empty()) {
                             unconditionalSet = false;
                             break;
                         }
-                    } else if (definedCheck.has_value() && IsNotDefinedCheck(tokenDictionary, condition->_positiveCond, definedCheck.value())) {
-                        // Note that "gotNotDefinedCheck" will not be set to true if there are any non-true condition closer to the top
-                        // of the stack
-                        gotNotDefinedCheck = true;
-                    } else {
-                        unconditionalSet = false;
-                        break;
-                    }
-                }
-
-                // If we're defining something with no value, and there is a !defined() check for the same
-                // variable on the conditions stack, and there are no conditionals later on the stack than
-                // that check, then let's assume this is a header guard type pattern, and just wipe out
-                // the condition on the stack
-                // The header guard check needs to trigger even if there are conditions closer to the bottom
-                // of the stack to handle strings that have already had #includes expanded. Ie, if we see
-                // something like "#if <something>\n #include <something>\n #endif" then we might end up with
-                // a header guard inside of some conditional check
-                auto headerGuardDetection = !foundNonWhitespaceChar && XlEqStringI(directive._value, "define") && gotNotDefinedCheck;
-                if (!headerGuardDetection) {
-                    if (unconditionalSet) {
-                        #if defined(_DEBUG)
-                            if (XlEndsWith(symbol._value, MakeStringSection("_H"))) {
-                                std::cout << "Suspicious define for variable " << symbol._value << " found" << std::endl;
+                        // We're looking for "just true" or "just !defined(X)"
+                        if (condition->_positiveCond.size() == 1) {
+                            if (condition->_positiveCond[0] != 1) {
+                                unconditionalSet = false;
+                                break;
                             }
-                        #endif
+                        } else if (definedCheck.has_value() && IsNotDefinedCheck(tokenDictionary, condition->_positiveCond, definedCheck.value())) {
+                            // Note that "gotNotDefinedCheck" will not be set to true if there are any non-true condition closer to the top
+                            // of the stack
+                            gotNotDefinedCheck = true;
+                        } else {
+                            unconditionalSet = false;
+                            break;
+                        }
+                    }
 
-                        // It could be an unconditional substitution, or it could be set in different ways
-                        // depending on the conditions on the stack.
-                        // Conditional sets add some complexity -- we can't actually think of it as just a straight
-                        // substitution anymore; but instead just something that pulls in an extra relevance table
-                        if (XlEqStringI(directive._value, "define")) {
-                            if (foundNonWhitespaceChar) {
-                                try {
-                                    auto expr = Internal::AsExpressionTokenList(
-                                        activeSubstitutions._dictionary, remainingLine._value, activeSubstitutions);
+                    // If we're defining something with no value, and there is a !defined() check for the same
+                    // variable on the conditions stack, and there are no conditionals later on the stack than
+                    // that check, then let's assume this is a header guard type pattern, and just wipe out
+                    // the condition on the stack
+                    // The header guard check needs to trigger even if there are conditions closer to the bottom
+                    // of the stack to handle strings that have already had #includes expanded. Ie, if we see
+                    // something like "#if <something>\n #include <something>\n #endif" then we might end up with
+                    // a header guard inside of some conditional check
+                    auto headerGuardDetection = !foundNonWhitespaceChar && XlEqStringI(directive._value, "define") && gotNotDefinedCheck;
+                    if (!headerGuardDetection) {
+                        if (unconditionalSet) {
+                            #if defined(_DEBUG)
+                                if (XlEndsWith(symbol._value, MakeStringSection("_H"))) {
+                                    std::cout << "Suspicious define for variable " << symbol._value << " found" << std::endl;
+                                }
+                            #endif
 
-                                    // Note that we don't want to calculate any relevance information yet. We will do
-                                    // that if the substitution is used, however
-                                    if (!gotNotDefinedCheck) {
-                                        activeSubstitutions._items.insert(std::make_pair(symbol._value.AsString(), expr));
-                                    } else {
-                                        activeSubstitutions._defaultSets.insert(std::make_pair(symbol._value.AsString(), expr));
+                            // It could be an unconditional substitution, or it could be set in different ways
+                            // depending on the conditions on the stack.
+                            // Conditional sets add some complexity -- we can't actually think of it as just a straight
+                            // substitution anymore; but instead just something that pulls in an extra relevance table
+                            if (XlEqStringI(directive._value, "define")) {
+                                if (foundNonWhitespaceChar) {
+                                    try {
+                                        auto expr = Internal::AsExpressionTokenList(
+                                            activeSubstitutions._dictionary, remainingLine._value, activeSubstitutions);
+
+                                        // Note that we don't want to calculate any relevance information yet. We will do
+                                        // that if the substitution is used, however
+                                        if (!gotNotDefinedCheck) {
+                                            activeSubstitutions._items.insert(std::make_pair(symbol._value.AsString(), expr));
+                                        } else {
+                                            activeSubstitutions._defaultSets.insert(std::make_pair(symbol._value.AsString(), expr));
+                                        }
+                                    } catch (const std::exception& e) {
+                                        #if defined(_DEBUG)
+                                            std::cout << "Substitution for " << symbol._value << " is not an expression" << std::endl;
+                                        #endif
                                     }
-                                } catch (const std::exception& e) {
-                                    #if defined(_DEBUG)
-                                        std::cout << "Substitution for " << symbol._value << " is not an expression" << std::endl;
-                                    #endif
+                                } else {
+                                    if (!gotNotDefinedCheck) {
+                                        activeSubstitutions._items.insert(std::make_pair(symbol._value.AsString(), Internal::ExpressionTokenList{}));
+                                    } else {
+                                        activeSubstitutions._defaultSets.insert(std::make_pair(symbol._value.AsString(), Internal::ExpressionTokenList{}));
+                                    }
                                 }
                             } else {
-                                if (!gotNotDefinedCheck) {
-                                    activeSubstitutions._items.insert(std::make_pair(symbol._value.AsString(), Internal::ExpressionTokenList{}));
-                                } else {
-                                    activeSubstitutions._defaultSets.insert(std::make_pair(symbol._value.AsString(), Internal::ExpressionTokenList{}));
-                                }
+                                auto subs = activeSubstitutions._items.find(symbol._value.AsString());
+                                if (subs != activeSubstitutions._items.end())
+                                    activeSubstitutions._items.erase(subs);
                             }
                         } else {
-                            auto subs = activeSubstitutions._items.find(symbol._value.AsString());
-                            if (subs != activeSubstitutions._items.end())
-                                activeSubstitutions._items.erase(subs);
+                            // The state of this variable will vary based on
+                            // We can still support this, but it requires building a relevance table for
+                            // the symbol here; and then any expression that uses this symbol should then
+                            // merge in the relevance information for it
+                            if (XlEndsWith(symbol._value, MakeStringSection("_H"))) {
+                                #if defined(_DEBUG)
+                                    std::cout << "Conditional substitution for suspicious variable " << symbol._value << " ignored." << std::endl;
+                                #endif
+                            } else {
+                                #if defined(_DEBUG)
+                                    std::cout << "Conditional substitution for variable " << symbol._value << " ignored." << std::endl;
+                                #endif
+                            }
                         }
                     } else {
-                        // The state of this variable will vary based on
-                        // We can still support this, but it requires building a relevance table for
-                        // the symbol here; and then any expression that uses this symbol should then
-                        // merge in the relevance information for it
-                        if (XlEndsWith(symbol._value, MakeStringSection("_H"))) {
-                            #if defined(_DEBUG)
-                                std::cout << "Conditional substitution for suspicious variable " << symbol._value << " ignored." << std::endl;
-                            #endif
-                        } else {
-                            #if defined(_DEBUG)
-                                std::cout << "Conditional substitution for variable " << symbol._value << " ignored." << std::endl;
-                            #endif
-                        }
+                        auto i = relevanceTable.find(definedCheck.value());
+                        if (i != relevanceTable.end())
+                            relevanceTable.erase(i);
+
+                        // Clear out the !defined() checks for this header guard, because we won't want them to appear in the
+                        // relevance conditions
+                        for (auto& condition:conditionsStack)
+                            if (condition._negativeCond.empty() && IsNotDefinedCheck(tokenDictionary, condition._positiveCond, definedCheck.value()))
+                                condition._positiveCond = {1};
                     }
-                 } else {
-                    auto i = relevanceTable.find(definedCheck.value());
-                    if (i != relevanceTable.end())
-                        relevanceTable.erase(i);
 
-                    // Clear out the !defined() checks for this header guard, because we won't want them to appear in the
-                    // relevance conditions
-                    for (auto& condition:conditionsStack)
-                        if (condition._negativeCond.empty() && IsNotDefinedCheck(tokenDictionary, condition._positiveCond, definedCheck.value()))
-                            condition._positiveCond = {1};
+                } else if (XlEqStringI(directive._value, "include")) {
+
+                    auto symbol = helper.PreProc_GetBrackettedToken();
+                    if (symbol._value.IsEmpty())
+                        Throw(FormatException("Expected file to include after #include directive", directive._start));
+
+                    if (!_includeHandler)
+                        Throw(FormatException("No include handler provided to handle #include directive", directive._start));
+
+                    // todo -- do we need any #pragma once type functionality to prevent infinite recursion
+                    // or just searching through too many files
+                    auto includedAnalysis = GeneratePreprocessorAnalysisFromFile(symbol._value, filenameForRelativeIncludeSearch);
+
+                    // merge in the results we got from this included file
+                    std::map<unsigned, Internal::ExpressionTokenList> translatedRelevanceTable;
+                    for (const auto& relevance:includedAnalysis._relevanceTable) {
+                        translatedRelevanceTable.insert(std::make_pair(
+                            tokenDictionary.Translate(includedAnalysis._tokenDictionary, relevance.first),
+                            tokenDictionary.Translate(includedAnalysis._tokenDictionary, relevance.second)));
+                    }
+                    relevanceTable = Internal::MergeRelevanceTables(
+                        relevanceTable, {},
+                        translatedRelevanceTable, GetCurrentCondition(conditionsStack));
+
+                    for (const auto& sideEffect:includedAnalysis._substitutionSideEffects._items) {
+                        activeSubstitutions._items.insert(std::make_pair(
+                            sideEffect.first,
+                            activeSubstitutions._dictionary.Translate(includedAnalysis._substitutionSideEffects._dictionary, sideEffect.second)));
+                    }
+
+                    for (const auto& sideEffect:includedAnalysis._substitutionSideEffects._defaultSets) {
+                        if (    activeSubstitutions._items.find(sideEffect.first) != activeSubstitutions._items.end()
+                            ||  activeSubstitutions._defaultSets.find(sideEffect.first) != activeSubstitutions._defaultSets.end())
+                            continue;
+                        activeSubstitutions._defaultSets.insert(std::make_pair(
+                            sideEffect.first,
+                            activeSubstitutions._dictionary.Translate(includedAnalysis._substitutionSideEffects._dictionary, sideEffect.second)));
+                    }
+
+                } else if (XlEqStringI(directive._value, "line") || XlEqStringI(directive._value, "error") || XlEqStringI(directive._value, "pragma")) {
+
+                    // These don't have any effects relevant to us. We can just go ahead and skip them
+                    helper.ReadUntilEndOfLine();
+
+                } else {
+
+                    Throw(FormatException(
+                        StringMeld<256>() << "Unknown preprocessor directive: " << directive._value,
+                        directive._start));
+
                 }
-
-            } else if (XlEqStringI(directive._value, "include")) {
-
-                auto symbol = helper.PreProc_GetBrackettedToken();
-                if (symbol._value.IsEmpty())
-                    Throw(FormatException("Expected file to include after #include directive", directive._start));
-
-                if (!includeHandler)
-                    Throw(FormatException("No include handler provided to handle #include directive", directive._start));
-
-                // todo -- do we need any #pragma once type functionality to prevent infinite recursion
-                // or just searching through too many files
-                auto includedAnalysis = includeHandler->GeneratePreprocessorAnalysis(symbol._value, filenameForRelativeIncludeSearch);
-
-                // merge in the results we got from this included file
-                std::map<unsigned, Internal::ExpressionTokenList> translatedRelevanceTable;
-                for (const auto& relevance:includedAnalysis._relevanceTable) {
-                    translatedRelevanceTable.insert(std::make_pair(
-                        tokenDictionary.Translate(includedAnalysis._tokenDictionary, relevance.first),
-                        tokenDictionary.Translate(includedAnalysis._tokenDictionary, relevance.second)));
-                }
-                relevanceTable = Internal::MergeRelevanceTables(
-                    relevanceTable, {},
-                    translatedRelevanceTable, GetCurrentCondition(conditionsStack));
-
-                for (const auto& sideEffect:includedAnalysis._substitutionSideEffects._items) {
-                    activeSubstitutions._items.insert(std::make_pair(
-                        sideEffect.first,
-                        activeSubstitutions._dictionary.Translate(includedAnalysis._substitutionSideEffects._dictionary, sideEffect.second)));
-                }
-
-                for (const auto& sideEffect:includedAnalysis._substitutionSideEffects._defaultSets) {
-                    if (    activeSubstitutions._items.find(sideEffect.first) != activeSubstitutions._items.end()
-                        ||  activeSubstitutions._defaultSets.find(sideEffect.first) != activeSubstitutions._defaultSets.end())
-                        continue;
-                    activeSubstitutions._defaultSets.insert(std::make_pair(
-                        sideEffect.first,
-                        activeSubstitutions._dictionary.Translate(includedAnalysis._substitutionSideEffects._dictionary, sideEffect.second)));
-                }
-
-            } else if (XlEqStringI(directive._value, "line") || XlEqStringI(directive._value, "error") || XlEqStringI(directive._value, "pragma")) {
-
-                // These don't have any effects relevant to us. We can just go ahead and skip them
-                helper.ReadUntilEndOfLine();
-
-            } else {
-
-                Throw(FormatException(
-                    StringMeld<256>() << "Unknown preprocessor directive: " << directive._value,
-                    directive._start));
-
             }
-        }
 
-        PreprocessorAnalysis result;
-        result._tokenDictionary = std::move(tokenDictionary);
-        result._relevanceTable = std::move(relevanceTable);
-        result._substitutionSideEffects = std::move(activeSubstitutions);
-		return result;
+            PreprocessorAnalysis result;
+            result._tokenDictionary = std::move(tokenDictionary);
+            result._relevanceTable = std::move(relevanceTable);
+            result._substitutionSideEffects = std::move(activeSubstitutions);
+            return result;
+        }
+    };
+
+    PreprocessorAnalysis GeneratePreprocessorAnalysisFromString(
+		StringSection<> input,
+		StringSection<> filenameForRelativeIncludeSearch,
+		IPreprocessorIncludeHandler* includeHandler)
+    {
+        PreprocessAnalysisIncludeHelper helper { includeHandler };
+        return helper.GeneratePreprocessorAnalysisFromString(input, filenameForRelativeIncludeSearch);
+    }
+
+	PreprocessorAnalysis GeneratePreprocessorAnalysisFromFile(
+		StringSection<> inputFilename,
+		IPreprocessorIncludeHandler* includeHandler)
+    {
+        PreprocessAnalysisIncludeHelper helper { includeHandler };
+        return GeneratePreprocessorAnalysisFromFile(inputFilename, {});
     }
 }

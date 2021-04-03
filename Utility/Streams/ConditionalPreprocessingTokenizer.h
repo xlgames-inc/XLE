@@ -55,7 +55,7 @@ namespace Utility
         Token PeekNextToken();
 
         StreamLocation GetLocation() const;
-        StringSection<> Remaining() const { return _input; }
+        StringSection<> Remaining() const;
 
         class PreprocessorParseContext
         {
@@ -77,14 +77,15 @@ namespace Utility
 
         ConditionalProcessingTokenizer(
             StringSection<> input,
-            unsigned lineIndex = 0, const void* lineStart = nullptr);
+            StringSection<> filenameForRelativeIncludeSearch = {},
+            IPreprocessorIncludeHandler* includeHandler = nullptr);
         ~ConditionalProcessingTokenizer();
 
     private:
-        StringSection<>     _input;
-        unsigned            _lineIndex;
-        const void*         _lineStart;
+        struct FileState;
+        std::vector<FileState> _fileStates;
         bool                _preprocValid = true;
+        IPreprocessorIncludeHandler* _includeHandler = nullptr;
 
         void SkipWhitespace();
         Token ReadUntilEndOfLine();
