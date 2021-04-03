@@ -53,13 +53,17 @@ namespace RenderCore { namespace Assets
 			StringSection<> inputData,
 			const ::Assets::DirectorySearchRules& searchRules,
 			const std::shared_ptr<::Assets::DependencyValidation>& depVal);
+		PredefinedDescriptorSetLayout(
+			Utility::ConditionalProcessingTokenizer&,
+			const std::shared_ptr<::Assets::DependencyValidation>&);
 		PredefinedDescriptorSetLayout();
 		~PredefinedDescriptorSetLayout();
 
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 
 	protected:
-		void ParseSlot(ConditionalProcessingTokenizer& iterator, DescriptorType type);
+		void ParseSlot(Utility::ConditionalProcessingTokenizer& iterator, DescriptorType type);
+		void Parse(Utility::ConditionalProcessingTokenizer& iterator);
 
 		std::shared_ptr<::Assets::DependencyValidation> _depVal;
 	};

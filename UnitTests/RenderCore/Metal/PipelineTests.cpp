@@ -131,19 +131,19 @@ namespace UnitTests
 	{
 		using namespace RenderCore;
 		RenderCore::DescriptorSetSignature set0 {
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
 		};
 
 		RenderCore::DescriptorSetSignature set1 {
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
 
 			{DescriptorType::UnorderedAccessBuffer},
 			{DescriptorType::UnorderedAccessTexture}

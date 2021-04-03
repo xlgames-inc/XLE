@@ -13,6 +13,7 @@
 #include <string>
 #include <iosfwd>
 
+namespace Utility { class ConditionalProcessingTokenizer; }
 namespace RenderCore { class SharedPkt; }
 namespace RenderCore { namespace Assets
 {
@@ -68,7 +69,13 @@ namespace RenderCore { namespace Assets
 
         PredefinedCBLayout();
         PredefinedCBLayout(StringSection<::Assets::ResChar> initializer);
-        PredefinedCBLayout(StringSection<char> source, bool);
+        PredefinedCBLayout(
+            StringSection<char> source, 
+            const ::Assets::DirectorySearchRules& searchRules,
+			const std::shared_ptr<::Assets::DependencyValidation>& depVal);
+        PredefinedCBLayout(
+			ConditionalProcessingTokenizer&,
+			const std::shared_ptr<::Assets::DependencyValidation>&);
 		PredefinedCBLayout(IteratorRange<const NameAndType*> elements, const ParameterBox& defaults = {});
         ~PredefinedCBLayout();
         
@@ -83,7 +90,7 @@ namespace RenderCore { namespace Assets
     private:
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
 
-        void Parse(StringSection<char> source);
+        void Parse(ConditionalProcessingTokenizer&);
         void WriteBuffer(void* dst, const ParameterBox& parameters, ShaderLanguage lang) const;
 
         // Similar to the offset values, the size of the CB depends on what shader language rules are used

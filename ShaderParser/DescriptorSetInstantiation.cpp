@@ -82,7 +82,7 @@ namespace ShaderSourceParser
 
 				newSlot._cbIdx = (unsigned)std::distance(workingCBs.begin(), cbi);
 				newSlot._name = cbName;
-				newSlot._type = RenderCore::DescriptorType::ConstantBuffer;
+				newSlot._type = RenderCore::DescriptorType::UniformBuffer;
 			} else {
 				newSlot._name = MakeGlobalName(c._name);
 			}

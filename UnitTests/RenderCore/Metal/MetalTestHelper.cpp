@@ -14,6 +14,7 @@
 #include "../../../RenderCore/Vulkan/IDeviceVulkan.h"
 #include "../../../RenderCore/MinimalShaderSource.h"
 #include "../../../RenderCore/ResourceUtils.h"
+#include "../../../RenderCore/Assets/PipelineConfigurationUtils.h"
 #include "../../../Assets/AssetUtils.h"
 #include "../../../Assets/DepVal.h"
 #include "../../../Utility/Streams/StreamFormatter.h"
@@ -27,95 +28,9 @@
 	#include "../../../RenderCore/Metal/State.h"
 #endif
 
-namespace RenderCore
-{
-	static LegacyRegisterBindingDesc::RegisterQualifier AsQualifier(StringSection<char> str)
-	{
-		// look for "(image)" or "(buffer)" qualifiers
-		if (str.IsEmpty() || str[0] != '(') return LegacyRegisterBindingDesc::RegisterQualifier::None;
-
-		if (XlEqStringI(StringSection<char>(str.begin()+1, str.end()), "buffer)"))
-			return LegacyRegisterBindingDesc::RegisterQualifier::Buffer;
-
-		if (XlEqStringI(StringSection<char>(str.begin()+1, str.end()), "texture)"))
-			return LegacyRegisterBindingDesc::RegisterQualifier::Texture;
-
-		return LegacyRegisterBindingDesc::RegisterQualifier::None;
-	}
-	
-	struct RegisterRange
-	{
-		unsigned long _begin = 0, _end = 0;
-		LegacyRegisterBindingDesc::RegisterQualifier _qualifier;
-	};
-
-	static RegisterRange AsRegisterRange(StringSection<> input)
-	{
-		if (input.IsEmpty()) return {};
-
-		char* endPt = nullptr;
-		auto start = std::strtoul(input.begin(), &endPt, 10);
-		auto end = start+1;
-		if (endPt && endPt[0] == '.' && endPt[1] == '.')
-			end = std::strtoul(endPt+2, &endPt, 10);
-
-		auto qualifier = AsQualifier(StringSection<char>(endPt, input.end()));
-		return {start, end, qualifier};
-	}
-
-	static LegacyRegisterBindingDesc::RegisterType AsLegacyRegisterType(char type)
-	{
-		// convert between HLSL style register binding indices to a type enum
-		switch (type) {
-		case 'b': return LegacyRegisterBindingDesc::RegisterType::ConstantBuffer;
-		case 's': return LegacyRegisterBindingDesc::RegisterType::Sampler;
-		case 't': return LegacyRegisterBindingDesc::RegisterType::ShaderResource;
-		case 'u': return LegacyRegisterBindingDesc::RegisterType::UnorderedAccess;
-		default:  return LegacyRegisterBindingDesc::RegisterType::Unknown;
-		}
-	}
-
-	void DeserializationOperator(
-		InputStreamFormatter<>& formatter,
-		LegacyRegisterBindingDesc& result)
-	{
-		StreamDOM<InputStreamFormatter<>> dom(formatter);
-		auto element = dom.RootElement();
-		for (auto e:element.children()) {
-			auto name = e.Name();
-			if (name.IsEmpty())
-				Throw(std::runtime_error("Legacy register binding with empty name"));
-
-			auto regType = AsLegacyRegisterType(name[0]);
-			if (regType == LegacyRegisterBindingDesc::RegisterType::Unknown)
-				Throw(::Exceptions::BasicLabel("Could not parse legacy register binding (%s)", name.AsString().c_str()));
-
-			auto legacyRegisters = AsRegisterRange({name.begin()+1, name.end()});
-			if (legacyRegisters._end <= legacyRegisters._begin)
-				Throw(::Exceptions::BasicLabel("Could not parse legacy register binding (%s)", name.AsString().c_str()));
-
-			auto mappedRegisters = AsRegisterRange(e.Attribute("mapping").Value());
-			if (mappedRegisters._begin == mappedRegisters._end)
-				Throw(::Exceptions::BasicLabel("Could not parse target register mapping in ReadLegacyRegisterBinding (%s)", e.Attribute("mapping").Value().AsString().c_str()));
-			
-			if ((mappedRegisters._end - mappedRegisters._begin) != (legacyRegisters._end - legacyRegisters._begin))
-				Throw(::Exceptions::BasicLabel("Number of legacy register and number of mapped registers don't match up in ReadLegacyRegisterBinding"));
-
-			result.AppendEntry(
-				regType, legacyRegisters._qualifier,
-				LegacyRegisterBindingDesc::Entry {
-					(unsigned)legacyRegisters._begin, (unsigned)legacyRegisters._end,
-					Hash64(e.Attribute("set").Value()),
-					e.Attribute("setIndex").As<unsigned>().value(),
-					(unsigned)mappedRegisters._begin, (unsigned)mappedRegisters._end });
-		}
-	}
-}
-
 namespace UnitTests
 {
 	std::shared_ptr<RenderCore::ICompiledPipelineLayout> CreateDefaultPipelineLayout(RenderCore::IDevice& device);
-	RenderCore::LegacyRegisterBindingDesc CreateDefaultLegacyRegisterBindingDesc();
 	
 	RenderCore::CompiledShaderByteCode MetalTestHelper::MakeShader(StringSection<> shader, StringSection<> shaderModel, StringSection<> defines)
 	{
@@ -138,7 +53,7 @@ namespace UnitTests
 		if (glesDevice)
 			glesDevice->InitializeRootContextHeadless();
 
-		_defaultLegacyBindings = std::make_unique<RenderCore::LegacyRegisterBindingDesc>(CreateDefaultLegacyRegisterBindingDesc());
+		_defaultLegacyBindings = std::make_unique<RenderCore::LegacyRegisterBindingDesc>(RenderCore::Assets::CreateDefaultLegacyRegisterBindingDesc());
 		_pipelineLayout = CreateDefaultPipelineLayout(*_device);
 
 		auto shaderCompiler = CreateDefaultShaderCompiler(*_device);
@@ -200,7 +115,7 @@ namespace UnitTests
 			// cross compilation approach
 			RenderCore::VulkanCompilerConfiguration cfg;
 			cfg._shaderMode = RenderCore::VulkanShaderMode::HLSLCrossCompiled;
-			cfg._legacyBindings = CreateDefaultLegacyRegisterBindingDesc();
+			cfg._legacyBindings = RenderCore::Assets::CreateDefaultLegacyRegisterBindingDesc();
 		 	return vulkanDevice->CreateShaderCompiler(cfg);
 		} else {
 			return device.CreateShaderCompiler();
@@ -478,35 +393,35 @@ namespace UnitTests
 	{
 		using namespace RenderCore;
 		RenderCore::DescriptorSetSignature sequencerSet {
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
 
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture}
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture}
 		};
 
 		RenderCore::DescriptorSetSignature materialSet {
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
 
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
 
 			{DescriptorType::UnorderedAccessBuffer},
 
@@ -514,35 +429,35 @@ namespace UnitTests
 		};
 
 		RenderCore::DescriptorSetSignature drawSet {
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture}
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture}
 		};
 
 		RenderCore::DescriptorSetSignature numericSet {
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
-			{DescriptorType::Texture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},
 
 			{DescriptorType::Sampler},
 			{DescriptorType::Sampler},
@@ -552,10 +467,10 @@ namespace UnitTests
 			{DescriptorType::Sampler},
 			{DescriptorType::Sampler},
 
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
-			{DescriptorType::ConstantBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},
 
 			{DescriptorType::Sampler}
 		};
@@ -567,58 +482,4 @@ namespace UnitTests
 		desc.AppendDescriptorSet("Numeric", numericSet);
 		return device.CreatePipelineLayout(desc);
 	}
-
-	RenderCore::LegacyRegisterBindingDesc CreateDefaultLegacyRegisterBindingDesc()
-	{
-		const char* defaultCfg = R"--(
-			t0..16=~
-				set = Numeric
-				setIndex = 3
-				mapping = 0..16
-			t16..23=~
-				set = Sequencer
-				setIndex = 0
-				mapping = 6..13
-			t23..31=~
-				set = Material
-				setIndex = 1
-				mapping = 3..11
-			t27(buffer)=~
-				set = Material
-				setIndex = 1
-				mapping = 11
-
-			s0..7=~
-				set = Numeric
-				setIndex = 3
-				mapping = 16..23
-			s7=~
-				set = Material
-				setIndex = 1
-				mapping = 12
-			s16=~		~~ (this the DummySampler generated by the HLSLCrossCompiler)
-				set = Numeric
-				setIndex = 3
-				mapping = 27
-
-			b0..4=~
-				set = Numeric
-				setIndex = 3
-				mapping = 23..27
-			b4..7=~
-				set = Material
-				setIndex = 1
-				mapping = 0..3
-			b7..13=~
-				set = Sequencer
-				setIndex = 0
-				mapping = 0..6
-		)--";
-
-		RenderCore::LegacyRegisterBindingDesc result;
-		InputStreamFormatter<> formatter(MakeStringSection(defaultCfg));
-		formatter >> result;
-		return result;
-	}
-
 }

@@ -29,7 +29,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		SPIRVReflection::Binding _binding = {};
 		SPIRVReflection::StorageType _storageType = SPIRVReflection::StorageType::Unknown;
-		DescriptorType _slotType = DescriptorType::ConstantBuffer;
+		DescriptorType _slotType = DescriptorType::UniformBuffer;
 		StringSection<> _name;
 	};
 
@@ -69,7 +69,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				case SPIRVReflection::BasicType::Image:
 					// image types can map onto different input slots, so we may need to be
 					// more expressive here
-					result._slotType = DescriptorType::Texture;
+					result._slotType = DescriptorType::SampledTexture;
 					break;
 
 				case SPIRVReflection::BasicType::Sampler:
@@ -85,7 +85,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			} else {
 				if (std::find(reflection._structTypes.begin(), reflection._structTypes.end(), typeToLookup) != reflection._structTypes.end()) {
 					// a structure will require some kind of buffer as input
-					result._slotType = DescriptorType::ConstantBuffer;
+					result._slotType = DescriptorType::UniformBuffer;
 
 					// In this case, the name we're interested in isn't actually the variable
 					// name itself, but instead the name of the struct type. As per HLSL, this
@@ -395,7 +395,7 @@ namespace RenderCore { namespace Metal_Vulkan
 							// assigned to the particular slot. We just need to know the that type is what
 							// we expect
 
-							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || (descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::Texture && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessTexture && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::ConstantBuffer && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessBuffer))
+							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || (descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::SampledTexture && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessTexture && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UniformBuffer && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessBuffer))
 								Throw(std::runtime_error(""));
 
 							AddLooseUniformBinding(
@@ -404,7 +404,7 @@ namespace RenderCore { namespace Metal_Vulkan
 								groupIdx, inputSlot, shaderStageMask);
 
 						} else if (bindingType == UniformStreamType::ImmediateData) {
-							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || (descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::ConstantBuffer && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessBuffer))
+							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || (descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UniformBuffer && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessBuffer))
 								Throw(std::runtime_error(""));
 
 							AddLooseUniformBinding(

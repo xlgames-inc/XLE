@@ -73,7 +73,7 @@ namespace RenderCore { namespace Techniques
 			auto hashName = Hash64(s._name);
 			auto boundResource = resourceBindings.GetParameterAsString(hashName);
 			if (boundResource.has_value() && !boundResource.value().empty()) {
-				if (s._type != DescriptorType::Texture)
+				if (s._type != DescriptorType::SampledTexture)
 					Throw(std::runtime_error("Attempting to bind resource to non-texture descriptor slot for slot " + s._name));
 
 				slotInProgress._bindType = DescriptorSetInitializer::BindType::ResourceView;
@@ -86,7 +86,7 @@ namespace RenderCore { namespace Techniques
 				if (bindingInfo)
 					slotBindingInfo._binding = (StringMeldInPlace(stringMeldBuffer) << "DeferredShaderResource: " << boundResource.value()).AsString();
 
-			} else if (s._type == DescriptorType::ConstantBuffer && s._cbIdx < (unsigned)layout._constantBuffers.size()) {
+			} else if (s._type == DescriptorType::UniformBuffer && s._cbIdx < (unsigned)layout._constantBuffers.size()) {
 				auto& cbLayout = layout._constantBuffers[s._cbIdx];
 				auto buffer = cbLayout->BuildCBDataAsVector(constantBindings, shrLanguage);
 

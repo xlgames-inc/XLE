@@ -120,7 +120,7 @@ namespace RenderCore { namespace Techniques
 			
 			// Also append the "RES_HAS_" constants for each resource that is both in the descriptor set and that we have a binding for
 			for (const auto&r:descriptorSetLayout->_slots) {
-				if (r._type == DescriptorType::Sampler || r._type == DescriptorType::ConstantBuffer)
+				if (r._type == DescriptorType::Sampler || r._type == DescriptorType::UniformBuffer)
 					continue;
 				if (material._bindings.HasParameter(MakeStringSection(r._name)))
 					matSelectors.SetParameter(MakeStringSection(std::string{"RES_HAS_"} + r._name).Cast<utf8>(), 1);

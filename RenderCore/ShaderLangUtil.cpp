@@ -141,13 +141,13 @@ namespace RenderCore
 		// note -- some really special function signature-only: InputPatch, OutputPatch, LineStream, TriangleStream, PointStream
 
 		if (XlBeginsWithI(type, "texture"))
-			return DescriptorType::Texture;
+			return DescriptorType::SampledTexture;
 
 		if (XlBeginsWithI(type, "rwtexture"))
 			return DescriptorType::UnorderedAccessTexture;
 
 		if (XlEqStringI(type, "cbuffer"))
-			return DescriptorType::ConstantBuffer;
+			return DescriptorType::UniformBuffer;
 
 		if (XlEqStringI(type, "tbuffer"))
 			Throw(std::runtime_error("Encountered texel buffer descriptor slot type within shader. These are not supported."));

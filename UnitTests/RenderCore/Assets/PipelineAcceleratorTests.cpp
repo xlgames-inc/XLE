@@ -416,8 +416,8 @@ namespace UnitTests
 			{
 				INFO(materialUniformsI->_binding);
 				REQUIRE(materialUniformsI->_bindType == DescriptorSetInitializer::BindType::ResourceView);
-				REQUIRE(materialUniformsI->_layoutSlotType == DescriptorType::ConstantBuffer);
-				RenderCore::Assets::PredefinedCBLayout parsedBinding(materialUniformsI->_binding, true);
+				REQUIRE(materialUniformsI->_layoutSlotType == DescriptorType::UniformBuffer);
+				RenderCore::Assets::PredefinedCBLayout parsedBinding(materialUniformsI->_binding, {}, nullptr);
 
 				auto diffuseColorI = std::find_if(parsedBinding._elements.begin(), parsedBinding._elements.end(), [](const auto& c) { return c._name == "DiffuseColor"; });
 				REQUIRE(diffuseColorI != parsedBinding._elements.end());
@@ -433,8 +433,8 @@ namespace UnitTests
 			{
 				INFO(anotherCapturesI->_binding);
 				REQUIRE(anotherCapturesI->_bindType == DescriptorSetInitializer::BindType::ResourceView);
-				REQUIRE(anotherCapturesI->_layoutSlotType == DescriptorType::ConstantBuffer);
-				RenderCore::Assets::PredefinedCBLayout parsedBinding(anotherCapturesI->_binding, true);
+				REQUIRE(anotherCapturesI->_layoutSlotType == DescriptorType::UniformBuffer);
+				RenderCore::Assets::PredefinedCBLayout parsedBinding(anotherCapturesI->_binding, {}, nullptr);
 
 				auto test2I = std::find_if(parsedBinding._elements.begin(), parsedBinding._elements.end(), [](const auto& c) { return c._name == "Test2"; });
 				REQUIRE(test2I != parsedBinding._elements.end());
@@ -507,7 +507,7 @@ namespace UnitTests
 				REQUIRE(bindingInfo);
 				auto boundTextureI = std::find_if(bindingInfo->_slots.begin(), bindingInfo->_slots.end(), [](const auto& slot) { return slot._layoutName == "BoundTexture"; });
 				REQUIRE(boundTextureI != bindingInfo->_slots.end());
-				REQUIRE(boundTextureI->_layoutSlotType == DescriptorType::Texture);
+				REQUIRE(boundTextureI->_layoutSlotType == DescriptorType::SampledTexture);
 				REQUIRE(boundTextureI->_bindType == DescriptorSetInitializer::BindType::ResourceView);
 				REQUIRE(!boundTextureI->_binding.empty());
 				

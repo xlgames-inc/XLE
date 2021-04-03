@@ -5,6 +5,7 @@ set(Src
     ModelScaffold.cpp
     PredefinedCBLayout.cpp
     PredefinedDescriptorSetLayout.cpp
+    PredefinedPipelineLayout.cpp
     RawAnimationCurve.cpp
     RawMaterial.cpp
     # Services.cpp  (*1 some files not really required for processing dlls -- eg model conversion dlls -- so it's convenient to remove them here)
@@ -30,6 +31,7 @@ set(Headers
     ModelScaffold.h
     PredefinedCBLayout.h
     PredefinedDescriptorSetLayout.h
+    PredefinedPipelineLayout.h
     RawAnimationCurve.h
     RawMaterial.h
     Services.h

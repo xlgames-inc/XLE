@@ -77,16 +77,13 @@ namespace RenderCore
 
 	enum class DescriptorType
 	{
-		Sampler,
-		Texture,
-		ConstantBuffer,
+		SampledTexture,
+		UniformBuffer,
 		UnorderedAccessTexture,
 		UnorderedAccessBuffer,
+		Sampler,
 		Unknown
 	};
-
-	const char* AsString(DescriptorType type);
-	DescriptorType AsDescriptorType(StringSection<> type);
 
 	struct DescriptorSlot
 	{

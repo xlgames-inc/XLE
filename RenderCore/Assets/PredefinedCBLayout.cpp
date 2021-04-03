@@ -48,7 +48,10 @@ namespace RenderCore { namespace Assets
 					configSection = i->_content;
 			}
 
-			Parse(configSection);
+			ConditionalProcessingTokenizer tokenizer{configSection};
+            Parse(tokenizer);
+            if (!tokenizer.Remaining().IsEmpty())
+    			Throw(FormatException("Additional tokens found, expecting end of file", tokenizer.GetLocation()));
 		} CATCH(const ::Assets::Exceptions::ConstructionError& e) {
 			Throw(::Assets::Exceptions::ConstructionError(e, _validationCallback));
 		} CATCH (const std::exception& e) {
@@ -56,12 +59,28 @@ namespace RenderCore { namespace Assets
 		} CATCH_END
 	}
 
-    PredefinedCBLayout::PredefinedCBLayout(StringSection<char> source, bool)
+    PredefinedCBLayout::PredefinedCBLayout(
+        StringSection<char> source, 
+        const ::Assets::DirectorySearchRules& searchRules,
+        const std::shared_ptr<::Assets::DependencyValidation>& depVal)
+    : _validationCallback(depVal)
     {
-		for (unsigned c=0; c<dimof(_cbSizeByLanguage); ++c)
+        for (unsigned c=0; c<dimof(_cbSizeByLanguage); ++c)
             _cbSizeByLanguage[c] = 0;
-        Parse(source);
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        ConditionalProcessingTokenizer tokenizer{source};
+        Parse(tokenizer);
+        if (!tokenizer.Remaining().IsEmpty())
+			Throw(FormatException("Additional tokens found, expecting end of file", tokenizer.GetLocation()));
+    }
+
+    PredefinedCBLayout::PredefinedCBLayout(
+        ConditionalProcessingTokenizer& tokenizer,
+        const std::shared_ptr<::Assets::DependencyValidation>& depVal)
+    : _validationCallback(depVal)
+    {
+        for (unsigned c=0; c<dimof(_cbSizeByLanguage); ++c)
+            _cbSizeByLanguage[c] = 0;
+        Parse(tokenizer);
     }
 
     /**
@@ -270,12 +289,12 @@ namespace RenderCore { namespace Assets
         cbLayout._elements.push_back(e);
     }
 
-    void PredefinedCBLayout::Parse(StringSection<char> source)
+    void PredefinedCBLayout::Parse(ConditionalProcessingTokenizer& si)
     {
-        ConditionalProcessingTokenizer si { source };
         unsigned cbIterator[AlignmentRules_Max] = { 0, 0, 0 };
         for (;;) {
-            if (si.PeekNextToken()._value.IsEmpty())
+            auto next = si.PeekNextToken();
+            if (next._value.IsEmpty() || XlEqString(next._value, "}"))
                 break;
 
             auto parsed = ParseStatement(si, _defaults);

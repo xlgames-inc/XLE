@@ -175,7 +175,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		assert(_signature[descriptorSetBindPoint]._count == 1);
 
 		switch (slotType) {
-		case DescriptorType::ConstantBuffer:
+		case DescriptorType::UniformBuffer:
 		case DescriptorType::UnorderedAccessBuffer:
 			{
 				assert(resource._prebuiltBuffer);
@@ -205,7 +205,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		assert(_signature[descriptorSetBindPoint]._count == 1);
 
 		switch (slotType) {
-		case DescriptorType::ConstantBuffer:
+		case DescriptorType::UniformBuffer:
 		case DescriptorType::UnorderedAccessBuffer:
 			WriteBinding(
 				descriptorSetBindPoint,
@@ -275,13 +275,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			auto b = _signature[bIndex]._type;
 			assert(_signature[bIndex]._count == 1);
-			if (b == DescriptorType::ConstantBuffer) {
+			if (b == DescriptorType::UniformBuffer) {
 				WriteBinding(
 					bIndex,
 					AsVkDescriptorType(b),
 					blankBuffer, false
 					VULKAN_VERBOSE_DEBUG_ONLY(, s_dummyDescriptorString));
-			} else if (b == DescriptorType::Texture) {
+			} else if (b == DescriptorType::SampledTexture) {
 				WriteBinding(
 					bIndex,
 					AsVkDescriptorType(b),
@@ -496,6 +496,20 @@ namespace RenderCore { namespace Metal_Vulkan
 		static const std::string s_columnHeader2 = "Binding";
 		static const std::string s_columnHeader3 = "Legacy Binding";
 
+		const char* AsString(DescriptorType type)
+		{
+			const char* descriptorTypeNames[] = {
+				"Sampler",
+				"Texture",
+				"ConstantBuffer",
+				"UnorderedAccessTexture",
+				"UnorderedAccessBuffer"
+			};
+			if (unsigned(type) < dimof(descriptorTypeNames))
+				return descriptorTypeNames[unsigned(type)];
+			return "<<unknown>>";
+		}
+
 		std::ostream& WriteDescriptorSet(
 			std::ostream& stream,
 			const DescriptorSetDebugInfo& bindingDescription,
@@ -694,7 +708,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				// across APIs.
 				// to support different descriptor types, we'd need to change the offset alignment
 				// values and change the bind flag used to create the buffer
-				assert(layout->GetDescriptorSlots()[c]._type == DescriptorType::ConstantBuffer);
+				assert(layout->GetDescriptorSlots()[c]._type == DescriptorType::UniformBuffer);
 				auto size = uniforms._immediateData[binds[c]._uniformsStreamIdx].size();
 				linearBufferIterator += CeilToMultiple(size, offsetMultiple);
 				writtenMask |= 1ull<<uint64_t(c);
@@ -780,8 +794,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		switch (type) {
 		case DescriptorType::Sampler:					return VK_DESCRIPTOR_TYPE_SAMPLER;
-		case DescriptorType::Texture:					return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		case DescriptorType::ConstantBuffer:			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		case DescriptorType::SampledTexture:					return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		case DescriptorType::UniformBuffer:			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		case DescriptorType::UnorderedAccessTexture:	return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 		case DescriptorType::UnorderedAccessBuffer:		return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		default:										return VK_DESCRIPTOR_TYPE_SAMPLER;

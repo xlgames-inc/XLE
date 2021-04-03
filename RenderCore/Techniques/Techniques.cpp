@@ -359,7 +359,7 @@ namespace RenderCore { namespace Techniques
 					auto value = RequireValue(formatter);
 
 					if (XlEqString(attribName, "CBLayout")) {
-						_cbLayout = RenderCore::Assets::PredefinedCBLayout(value, true);
+						_cbLayout = RenderCore::Assets::PredefinedCBLayout(value, searchRules, _validationCallback);
 					} else {
 						auto index = AsTechniqueIndex(attribName);
 						if (index != ~0) {		// (silent failure if the technique name is unknown)

@@ -311,11 +311,11 @@ namespace RenderCore { namespace Metal_Vulkan
 					result._samplerCount += b._count;
 					break;
 
-				case DescriptorType::Texture:
+				case DescriptorType::SampledTexture:
 					result._sampledImageCount += b._count;
 					break;
 
-				case DescriptorType::ConstantBuffer:
+				case DescriptorType::UniformBuffer:
 					result._uniformBufferCount += b._count;
 					break;
 
