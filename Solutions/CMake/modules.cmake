@@ -13,8 +13,8 @@ add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../RenderCore/Techniques RenderCoreTec
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../RenderCore/Assets RenderCoreAssets)
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../ShaderParser ShaderParser)
 
-#add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../PlatformRig PlatformRig)
-#add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../RenderOverlays RenderOverlays)
+add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../PlatformRig PlatformRig)
+add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../RenderOverlays RenderOverlays)
 #add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../SceneEngine SceneEngine)
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../BufferUploads BufferUploads)
 #add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../FixedFunctionModel FixedFunctionModel)
@@ -22,9 +22,7 @@ add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../BufferUploads BufferUploads)
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../ColladaConversion ColladaConversion)
 
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../Foreign ForeignMisc)
-# add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../Foreign/freetype2 freetype2)
+add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../Foreign/freetype freetype)
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../Foreign/tiny-process-library tiny-process-library)
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../Foreign/Catch2 catch2)
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../Foreign/DirectXTex DirectXTex)
-
-

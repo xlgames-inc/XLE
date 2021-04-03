@@ -8,14 +8,13 @@
 
 #include "OverlayPrimitives.h"
 #include "../RenderCore/Format.h"
-#include "../RenderCore/Metal/TextureView.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/IntrusivePtr.h"
 #include <vector>
 #include <memory>
 
-namespace RenderCore { class IResource; class Box2D; }
+namespace RenderCore { class IResource; class IResourceView; class Box2D; }
 namespace BufferUploads { class IManager; class ResourceLocator; class DataPacket; using TransactionID = uint64_t; }
 
 namespace RenderOverlays
@@ -25,7 +24,7 @@ namespace RenderOverlays
 	public:
 		void UpdateToTexture(BufferUploads::DataPacket& packet, const RenderCore::Box2D& destBox);
 		const std::shared_ptr<RenderCore::IResource>& GetUnderlying() const;
-		const RenderCore::Metal::ShaderResourceView& GetSRV() const;
+		const std::shared_ptr<RenderCore::IResourceView>& GetSRV() const;
 
 		FontTexture2D(unsigned width, unsigned height, RenderCore::Format pixelFormat);
 		~FontTexture2D();
@@ -36,7 +35,7 @@ namespace RenderOverlays
 	private:
 		mutable BufferUploads::TransactionID					_transaction;
 		mutable intrusive_ptr<BufferUploads::ResourceLocator>	_locator;
-		mutable RenderCore::Metal::ShaderResourceView			_srv;
+		mutable std::shared_ptr<RenderCore::IResourceView>		_srv;
 
 		void Resolve() const;
 	};

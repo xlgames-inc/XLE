@@ -7,7 +7,10 @@
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Types.h"
 #include "../RenderCore/Format.h"
+#include "../RenderCore/StateDesc.h"
+#include "../RenderCore/BufferView.h"
 #include "../Assets/Assets.h"
+#include "../Assets/AssetFutureContinuation.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/PtrUtils.h"
@@ -19,18 +22,12 @@
 #include <assert.h>
 #include <algorithm>
 
-#include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/Shader.h"
-#include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/DeviceContextImpl.h"
-#include "../RenderCore/Metal/TextureView.h"
-#include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/BufferView.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
 
 #include "../RenderCore/Techniques/CommonResources.h"
-#include "../ConsoleRig/ResourceBox.h"
 
 namespace RenderOverlays
 {
@@ -52,7 +49,7 @@ namespace RenderOverlays
 		bool                PushQuad(const Quad& positions, unsigned color, const Quad& textureCoords, float depth, bool snap=true);
 		void                Reset();
 		size_t              VertexCount() const;
-		RenderCore::Metal::Buffer    CreateBuffer(RenderCore::Metal::ObjectFactory&) const;
+		RenderCore::Metal::Resource    CreateBuffer(RenderCore::Metal::ObjectFactory&) const;
 
 		WorkingVertexSetPCT();
 
@@ -102,10 +99,15 @@ namespace RenderOverlays
 		return true;
 	}
 
-	RenderCore::Metal::Buffer    WorkingVertexSetPCT::CreateBuffer(RenderCore::Metal::ObjectFactory& objectFactory) const
+	RenderCore::Metal::Resource WorkingVertexSetPCT::CreateBuffer(RenderCore::Metal::ObjectFactory& objectFactory) const
 	{
+		// todo -- we shouldn't create temporary buffers this small. We need a better way to push
+		// small amounts of temporary buffer space
 		unsigned size = unsigned(size_t(_currentIterator) - size_t(_vertices));
-		return MakeVertexBuffer(objectFactory, MakeIteratorRange(_vertices, PtrAdd(_vertices, size)));
+		return RenderCore::Metal::Resource {
+			objectFactory, 
+			RenderCore::CreateDesc(RenderCore::BindFlag::VertexBuffer, 0, RenderCore::GPUAccess::Read, RenderCore::LinearBufferDesc::Create(size), "tmp-font-buffer"),
+			RenderCore::SubResourceInitData { MakeIteratorRange(_vertices, PtrAdd(_vertices, size)) } };
 	}
 
 	size_t          WorkingVertexSetPCT::VertexCount() const
@@ -121,18 +123,6 @@ namespace RenderOverlays
 	WorkingVertexSetPCT::WorkingVertexSetPCT()
 	{
 		_currentIterator = _vertices;
-	}
-
-	static void Flush(RenderCore::Metal::DeviceContext& renderer, RenderCore::Metal::BoundInputLayout& inputLayout, WorkingVertexSetPCT& vertices)
-	{
-		using namespace RenderCore;
-		if (vertices.VertexCount()) {
-			auto vertexBuffer = vertices.CreateBuffer(renderer.GetFactory());
-			VertexBufferView vbvs[] = { &vertexBuffer };
-			inputLayout.Apply(renderer, MakeIteratorRange(vbvs));
-			renderer.Draw((unsigned)vertices.VertexCount(), 0);
-			vertices.Reset();
-		}
 	}
 
 	static unsigned ToDigitValue(ucs4 chr, unsigned base)
@@ -168,18 +158,24 @@ namespace RenderOverlays
 	class TextStyleResources
 	{
 	public:
-		class Desc {};
+		std::shared_ptr<RenderCore::Metal::GraphicsPipeline> _pipeline;
+		RenderCore::Metal::BoundUniforms _boundUniforms;
 
-		const RenderCore::Metal::ShaderProgram*   _shaderProgram;
-		RenderCore::Metal::BoundInputLayout _boundInputLayout;
-		RenderCore::Metal::BoundUniforms    _boundUniforms;
-
-		TextStyleResources(const Desc& desc);
 		~TextStyleResources();
 
-		const std::shared_ptr<Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
-	private:
-		std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+		struct Desc 
+		{
+			uint64_t GetHash() const { return 0; }
+		};
+		static void ConstructToFuture(
+			::Assets::AssetFuture<TextStyleResources>&,
+			const std::shared_ptr<RenderCore::ICompiledPipelineLayout>& pipelineLayout,
+			const Desc&);
+
+		const std::shared_ptr<Assets::DependencyValidation>& GetDependencyValidation() const   { return _depVal; }
+	protected:
+		TextStyleResources();
+		std::shared_ptr<Assets::DependencyValidation> _depVal;
 	};
 
 	struct ReciprocalViewportDimensions
@@ -189,50 +185,88 @@ namespace RenderOverlays
 		float _pad[2];
 	};
 
-	TextStyleResources::TextStyleResources(const Desc& desc)
+	void TextStyleResources::ConstructToFuture(
+		::Assets::AssetFuture<TextStyleResources>& future,
+		const std::shared_ptr<RenderCore::ICompiledPipelineLayout>& pipelineLayout,
+		const Desc& desc)
 	{
 		using namespace RenderCore;
 		const char vertexShaderSource[]   = BASIC2D_VERTEX_HLSL ":P2CT:" VS_DefShaderModel;
 		const char pixelShaderSource[]    = BASIC_PIXEL_HLSL ":PCT_Text:" PS_DefShaderModel;
+		const auto& shaderFuture = ::Assets::MakeAsset<Metal::ShaderProgram>(pipelineLayout, vertexShaderSource, pixelShaderSource);
 
-		const auto& shaderProgram = Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, pixelShaderSource);
-		Metal::BoundInputLayout boundInputLayout(RenderCore::GlobalInputLayouts::PCT, shaderProgram);
+		::Assets::WhenAll(shaderFuture).ThenConstructToFuture<TextStyleResources>(
+			future,
+			[](const std::shared_ptr<Metal::ShaderProgram>& shader) {
 
-		ConstantBufferElementDesc elements[] = {
-			{ Hash64("ReciprocalViewportDimensions"), RenderCore::Format::R32G32_FLOAT, offsetof(ReciprocalViewportDimensions, _reciprocalWidth) }
-		};
+				auto result = std::make_shared<TextStyleResources>();
 
-		UniformsStreamInterface usi;
-		usi.BindConstantBuffer(0, {Hash64("ReciprocalViewportDimensionsCB"), MakeIteratorRange(elements)});
-		usi.BindShaderResource(0, Hash64("InputTexture"));
+				Metal::GraphicsPipelineBuilder builder;
+				Metal::BoundInputLayout boundInputLayout(RenderCore::GlobalInputLayouts::PCT, *shader);
+				builder.Bind(boundInputLayout, Topology::TriangleList);
+				auto& commonResources = Techniques::CommonResources();
+				builder.Bind(commonResources._dsDisable);
+				builder.Bind(commonResources._rsCullDisable);
+				AttachmentBlendDesc attachmentBlends[] = { commonResources._abStraightAlpha };
+				builder.Bind(MakeIteratorRange(attachmentBlends));
 
-		Metal::BoundUniforms boundUniforms(
-			shaderProgram,
-			Metal::PipelineLayoutConfig{},
-			UniformsStreamInterface{},
-			usi);
+				// We have to make an assumption about the render pass we're going to be drawing onto
+				// in particular, we need to know the format we'll render to
+				{
+					SubpassDesc expectingSubpass;
+					expectingSubpass.AppendOutput(AttachmentViewDesc{0});
+					FrameBufferDesc::Attachment expectingAttachment;
+					expectingAttachment._desc._format = Format::R8G8B8A8_UNORM_SRGB;
+					FrameBufferDesc expectingRenderPass { 
+						std::vector<FrameBufferDesc::Attachment>{ expectingAttachment },
+						std::vector<SubpassDesc>{ expectingSubpass }
+					};
+					builder.SetRenderPassConfiguration(expectingRenderPass, 0);
+				}
 
-		auto validationCallback = std::make_shared<Assets::DependencyValidation>();
-		Assets::RegisterAssetDependency(validationCallback, shaderProgram.GetDependencyValidation());
+				result->_pipeline = builder.CreatePipeline(Metal::GetObjectFactory());
 
-		_shaderProgram = &shaderProgram;
-		_boundInputLayout = std::move(boundInputLayout);
-		_boundUniforms = std::move(boundUniforms);
-		_validationCallback = std::move(validationCallback);
+				ConstantBufferElementDesc elements[] = {
+					{ Hash64("ReciprocalViewportDimensions"), RenderCore::Format::R32G32_FLOAT, offsetof(ReciprocalViewportDimensions, _reciprocalWidth) }
+				};
+
+				UniformsStreamInterface usi;
+				usi.BindImmediateData(0, Hash64("ReciprocalViewportDimensionsCB"), MakeIteratorRange(elements));
+				usi.BindResourceView(0, Hash64("InputTexture"));
+				result->_boundUniforms = Metal::BoundUniforms{*shader, usi};
+				result->_depVal = shader->GetDependencyValidation();
+				return result;
+			});
 	}
 
-	TextStyleResources::~TextStyleResources()
-	{}
+	TextStyleResources::TextStyleResources() {}
+	TextStyleResources::~TextStyleResources() {}
+
+	static void Flush(
+		RenderCore::Metal::GraphicsEncoder_Optimized& encoder, 
+		const RenderCore::Metal::GraphicsPipeline& pipeline,
+		WorkingVertexSetPCT& vertices)
+	{
+		using namespace RenderCore;
+		if (vertices.VertexCount()) {
+			auto vertexBuffer = vertices.CreateBuffer(Metal::GetObjectFactory());
+			VertexBufferView vbvs[] = { &vertexBuffer };
+			encoder.Bind(MakeIteratorRange(vbvs), {});
+			encoder.Draw(pipeline, (unsigned)vertices.VertexCount(), 0);
+			vertices.Reset();
+		}
+	}
 
 	float Draw(    
-		RenderCore::IThreadContext& threadContext, 
+		RenderCore::IThreadContext& threadContext,
+		const std::shared_ptr<RenderCore::ICompiledPipelineLayout>& pipelineLayout,
 		const Font& font, const TextStyle& style,
 		float x, float y, StringSection<ucs4> text,
 		float spaceExtra, float scale, float mx, float depth,
 		unsigned colorARGB, bool applyDescender, Quad* q)
 	{
 		using namespace RenderCore;
-		auto& renderer = *Metal::DeviceContext::Get(threadContext);
+		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
 
 		int prevGlyph = 0;
 		float xScale = scale;
@@ -243,32 +277,29 @@ namespace RenderOverlays
 			y = yScale * (int)(0.5f + y / yScale);
 		}
 
-		auto& res = ConsoleRig::FindCachedBoxDep<TextStyleResources>(TextStyleResources::Desc());
-		res._shaderProgram->Apply(renderer);
-		renderer.Bind(Topology::TriangleList);
+		auto resFuture = ::Assets::MakeAsset<TextStyleResources>(
+			pipelineLayout,
+			TextStyleResources::Desc());
+		auto* res = resFuture->TryActualize().get();
+		if (!res) return 0.f;
+		
+		auto encoder = metalContext.BeginGraphicsEncoder(pipelineLayout);
 
-		renderer.Bind(Techniques::CommonResources()._dssDisable);
-		renderer.Bind(Techniques::CommonResources()._cullDisable);
-
-		Metal::ViewportDesc viewportDesc = renderer.GetBoundViewport();
+		auto viewportDesc = metalContext.GetBoundViewport();
 		ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc.Width), 1.f / float(viewportDesc.Height), 0.f, 0.f };
             
-		auto packet = RenderCore::MakeSharedPkt(
-			(const uint8*)&reciprocalViewportDimensions, 
-			(const uint8*)PtrAdd(&reciprocalViewportDimensions, sizeof(reciprocalViewportDimensions)));
-            
 		auto& textureMgr = GetFontTextureMgr();
-		auto& texSRV = textureMgr.GetFontTexture().GetSRV();
+		auto* texSRV = textureMgr.GetFontTexture().GetSRV().get();
 		auto texDims = textureMgr.GetTextureDimensions();
-		WorkingVertexSetPCT     workingVertices;
+		WorkingVertexSetPCT workingVertices;
 
-		const Metal::ShaderResourceView* srvs[] = { &texSRV };
-		ConstantBufferView cbvs[] = { packet };
-		res._boundUniforms.Apply(
-			renderer, 1, 
+		const IResourceView* srvs[] = { texSRV };
+		IteratorRange<const void*> cbvs[] = { MakeOpaqueIteratorRange(reciprocalViewportDimensions) };
+		res->_boundUniforms.ApplyLooseUniforms(
+			metalContext, encoder,
 			UniformsStream{
-				MakeIteratorRange(cbvs),
-				UniformsStream::MakeResources(MakeIteratorRange(srvs))
+				MakeIteratorRange(srvs),
+				MakeIteratorRange(cbvs)
 			});
 
 		float descent = 0.0f;
@@ -325,16 +356,16 @@ namespace RenderOverlays
 				shadowPos.max[0] -= xScale;
 				shadowPos.min[1] -= yScale;
 				shadowPos.max[1] -= yScale;
-				if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-					Flush(renderer, res._boundInputLayout, workingVertices);
+				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, shadowColor, tc, depth), true)) {
+					Flush(encoder, *res->_pipeline, workingVertices);
 					workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
 				}
 
 				shadowPos = pos;
 				shadowPos.min[1] -= yScale;
 				shadowPos.max[1] -= yScale;
-				if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-					Flush(renderer, res._boundInputLayout, workingVertices);
+				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, shadowColor, tc, depth), true)) {
+					Flush(encoder, *res->_pipeline, workingVertices);
 					workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
 				}
 
@@ -343,24 +374,24 @@ namespace RenderOverlays
 				shadowPos.max[0] += xScale;
 				shadowPos.min[1] -= yScale;
 				shadowPos.max[1] -= yScale;
-				if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-					Flush(renderer, res._boundInputLayout, workingVertices);
+				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, shadowColor, tc, depth), true)) {
+					Flush(encoder, *res->_pipeline, workingVertices);
 					workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
 				}
 
 				shadowPos = pos;
 				shadowPos.min[0] -= xScale;
 				shadowPos.max[0] -= xScale;
-				if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-					Flush(renderer, res._boundInputLayout, workingVertices);
+				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, shadowColor, tc, depth), true)) {
+					Flush(encoder, *res->_pipeline, workingVertices);
 					workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
 				}
 
 				shadowPos = pos;
 				shadowPos.min[0] += xScale;
 				shadowPos.max[0] += xScale;
-				if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-					Flush(renderer, res._boundInputLayout, workingVertices);
+				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, shadowColor, tc, depth), true)) {
+					Flush(encoder, *res->_pipeline, workingVertices);
 					workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
 				}
 
@@ -369,16 +400,16 @@ namespace RenderOverlays
 				shadowPos.max[0] -= xScale;
 				shadowPos.min[1] += yScale;
 				shadowPos.max[1] += yScale;
-				if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-					Flush(renderer, res._boundInputLayout, workingVertices);
+				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, shadowColor, tc, depth), true)) {
+					Flush(encoder, *res->_pipeline, workingVertices);
 					workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
 				}
 
 				shadowPos = pos;
 				shadowPos.min[1] += yScale;
 				shadowPos.max[1] += yScale;
-				if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-					Flush(renderer, res._boundInputLayout, workingVertices);
+				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, shadowColor, tc, depth), true)) {
+					Flush(encoder, *res->_pipeline, workingVertices);
 					workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
 				}
 
@@ -387,8 +418,8 @@ namespace RenderOverlays
 				shadowPos.max[0] += xScale;
 				shadowPos.min[1] += yScale;
 				shadowPos.max[1] += yScale;
-				if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-					Flush(renderer, res._boundInputLayout, workingVertices);
+				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, shadowColor, tc, depth), true)) {
+					Flush(encoder, *res->_pipeline, workingVertices);
 					workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
 				}
 			}
@@ -399,14 +430,14 @@ namespace RenderOverlays
 				shadowPos.max[0] += xScale;
 				shadowPos.min[1] += yScale;
 				shadowPos.max[1] += yScale;
-				if (!workingVertices.PushQuad(shadowPos, ColorB::FromNormalized(0,0,0,opacity).AsUInt32(), tc, depth)) {
-					Flush(renderer, res._boundInputLayout, workingVertices);
+				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, ColorB::FromNormalized(0,0,0,opacity).AsUInt32(), tc, depth), true)) {
+					Flush(encoder, *res->_pipeline, workingVertices);
 					workingVertices.PushQuad(shadowPos, ColorB::FromNormalized(0,0,0,opacity).AsUInt32(), tc, depth);
 				}
 			}
 
-			if (!workingVertices.PushQuad(pos, RenderCore::ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth)) {
-				Flush(renderer, res._boundInputLayout, workingVertices);
+			if (!__builtin_expect(workingVertices.PushQuad(pos, RenderCore::ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth), true)) {
+				Flush(encoder, *res->_pipeline, workingVertices);
 				workingVertices.PushQuad(pos, RenderCore::ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth);
 			}
 
@@ -439,7 +470,7 @@ namespace RenderOverlays
 			}
 		}
 
-		Flush(renderer, res._boundInputLayout, workingVertices);
+		Flush(encoder, *res->_pipeline, workingVertices);
 
 		return x;
 	}

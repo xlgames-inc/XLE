@@ -224,6 +224,8 @@ namespace RenderOverlays
 		case TextAlignment::BottomRight:
 			pos[1] -= fontProps._descender;
 			break;
+		default:
+			break;
 		}
 		return pos;
 	}

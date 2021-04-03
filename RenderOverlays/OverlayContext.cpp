@@ -338,7 +338,7 @@ namespace RenderOverlays
         // _metalContext->BindPS_G(ResourceList<Metal::SamplerState, 1>(std::make_tuple(Techniques::CommonResources()._defaultSampler)));
 
         Metal::ViewportDesc viewportDesc = _metalContext->GetBoundViewport();
-        ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc.Width), 1.f / float(viewportDesc.Height), 0.f, 0.f };
+        ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc._width), 1.f / float(viewportDesc._height), 0.f, 0.f };
         _viewportConstantBuffer = MakeSharedPkt(
             (const uint8*)&reciprocalViewportDimensions, 
             (const uint8*)PtrAdd(&reciprocalViewportDimensions, sizeof(reciprocalViewportDimensions)));
@@ -527,7 +527,7 @@ namespace RenderOverlays
         if (_shaderProgram) {
             Metal::BoundInputLayout boundInputLayout(inputLayout, *_shaderProgram);
 			UniformsStreamInterface uniformsInterf;
-			uniformsInterf.BindConstantBuffer(0, { Hash64("ReciprocalViewportDimensionsCB"), MakeIteratorRange(ReciprocalViewportDimensions_Elements) });
+			uniformsInterf.BindImmediateData(0, Hash64("ReciprocalViewportDimensionsCB"), MakeIteratorRange(ReciprocalViewportDimensions_Elements));
 			Metal::BoundUniforms boundUniforms(
 				*_shaderProgram,
 				Metal::PipelineLayoutConfig(),

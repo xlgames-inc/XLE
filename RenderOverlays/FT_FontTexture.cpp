@@ -7,6 +7,7 @@
 #include "FT_FontTexture.h"
 #include "FontRectanglePacking.h"
 #include "../RenderCore/Format.h"
+#include "../RenderCore/ResourceDesc.h"
 #include "../RenderCore/Techniques/Services.h"
 #include "../Core/Types.h"
 #include "../Utility/PtrUtils.h"
@@ -14,14 +15,12 @@
 #include "../Utility/MemoryUtils.h"
 
 #include "../BufferUploads/IBufferUploads.h"
-#include "../BufferUploads/DataPacket.h"
-#include "../BufferUploads/ResourceLocator.h"
 
 #include <assert.h>
 #include <algorithm>
 #include <functional>
 
-#include <ft2build.h>
+#include "ft2build.h"
 #include FT_FREETYPE_H
 
 namespace RenderOverlays
@@ -61,9 +60,9 @@ namespace RenderOverlays
 
 	FontTexture2D::FontTexture2D(unsigned width, unsigned height, RenderCore::Format pixelFormat)
 	{
-		using namespace BufferUploads;
-		BufferDesc desc;
-		desc._type = BufferDesc::Type::Texture;
+		using namespace RenderCore;
+		ResourceDesc desc;
+		desc._type = ResourceDesc::Type::Texture;
 		desc._bindFlags = BindFlag::ShaderResource | BindFlag::TransferDst;
 		desc._cpuAccess = CPUAccess::Write;
 		desc._gpuAccess = GPUAccess::Read;
@@ -88,7 +87,7 @@ namespace RenderOverlays
 		int offX, int offY, int width, int height)
 	{
 		auto packet = BufferUploads::CreateBasicPacket(
-			width*height, nullptr, RenderCore::TexturePitches{unsigned(width), unsigned(width*height)});
+			width*height, nullptr, RenderCore::TexturePitches{unsigned(width), unsigned(width*height), 0u});
 		uint8* data = (uint8*)packet->GetData();
 
 		int j = 0;
@@ -138,7 +137,7 @@ namespace RenderOverlays
 		return _locator ? _locator->GetUnderlying() : nullResPtr;
 	}
 
-	const RenderCore::Metal::ShaderResourceView& FontTexture2D::GetSRV() const
+	const std::shared_ptr<RenderCore::IResourceView>& FontTexture2D::GetSRV() const
 	{
 		Resolve();
 		return _srv;

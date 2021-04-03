@@ -15,6 +15,8 @@
 #include <memory>
 #include <utility>
 
+namespace RenderCore { class IThreadContext; }
+
 namespace RenderOverlays
 {
     class Font

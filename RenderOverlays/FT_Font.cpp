@@ -18,8 +18,9 @@
 #include <set>
 #include <algorithm>
 #include <assert.h>
+#include <locale>
 
-#include <ft2build.h>
+#include "ft2build.h"
 #include FT_FREETYPE_H
 
 namespace RenderOverlays
@@ -242,7 +243,9 @@ namespace RenderOverlays
 
 	std::shared_ptr<Font> GetX2Font(StringSection<> path, int size)
 	{
-		return ::Assets::ActualizePtr<FTFont>(path, size);
+		auto future = ::Assets::MakeAsset<FTFont>(path, size);
+		future->StallWhilePending();
+		return future->Actualize();
 	}
 
 	std::shared_ptr<Font> GetDefaultFont(unsigned size)
@@ -254,35 +257,21 @@ namespace RenderOverlays
 
 	static void LoadFontNameMapping(InputStreamFormatter<utf8>& formatter, std::unordered_map<std::string, std::string>& result)
 	{
-		for (;;) {
-            using Blob = InputStreamFormatter<utf8>::Blob;
+		StringSection<> name;
+		while (formatter.TryKeyedItem(name)) {
             switch (formatter.PeekNext()) {
-            case Blob::AttributeName:
-                {
-                    InputStreamFormatter<utf8>::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-					result.insert({name.AsString(), value.AsString()});
-                    break;
-                }
-
-			case Blob::BeginElement:
-				{
-					InputStreamFormatter<utf8>::InteriorSection eleName;
-					formatter.TryBeginElement(eleName);
-					formatter.SkipElement();
-					formatter.TryEndElement();
-				}
+            case FormatterBlob::Value:
+				result.insert({name.AsString(), RequireValue(formatter).AsString()});
 				break;
 
-			case Blob::AttributeValue:
-            case Blob::CharacterData:
-			default:
-                Throw(FormatException("Unexpected element", formatter.GetLocation()));
-                break;
+			case FormatterBlob::BeginElement:
+				RequireBeginElement(formatter);
+				SkipElement(formatter);
+				RequireEndElement(formatter);
+				break;
 
-            case Blob::EndElement:
-            case Blob::None:
-                return;
+			default:
+                Throw(FormatException("Unexpected blob", formatter.GetLocation()));
             }
         }
 	}
@@ -294,39 +283,21 @@ namespace RenderOverlays
 		size_t blobSize = 0;
 		auto blob = ::Assets::TryLoadFileAsMemoryBlock(cfgFile, &blobSize);
 
-		InputStreamFormatter<utf8> formatter(MemoryMappedInputStream{blob.get(), PtrAdd(blob.get(), blobSize)});
+		InputStreamFormatter<utf8> formatter(MakeStringSection((const char*)blob.get(), (const char*)PtrAdd(blob.get(), blobSize)));
 
-		const char* locale = XlGetLocaleString(XlGetLocale());
+		auto locale = std::locale("").name();
 
-		for (;;) {
-            using Blob = InputStreamFormatter<utf8>::Blob;
-            switch (formatter.PeekNext()) {
-            case Blob::BeginElement:
-                {
-                    InputStreamFormatter<utf8>::InteriorSection eleName;
-                    formatter.TryBeginElement(eleName);
-					if (XlEqStringI(eleName, (const utf8*)"*")) {
-						LoadFontNameMapping(formatter, result);
-					} else if (XlEqStringI(eleName, (const utf8*)locale)) {
-						LoadFontNameMapping(formatter, result);
-					} else {
-						formatter.SkipElement();
-					}
-					formatter.TryEndElement();
-                    break;
-                }
-
-            case Blob::AttributeName:
-			case Blob::AttributeValue:
-            case Blob::CharacterData:
-			default:
-                Throw(FormatException("Unexpected element", formatter.GetLocation()));
-                break;
-
-            case Blob::EndElement:
-            case Blob::None:
-                return result;
-            }
+		StringSection<> name;
+		while (formatter.TryKeyedItem(name)) {
+			RequireBeginElement(formatter);
+			if (XlEqStringI(name, "*")) {
+				LoadFontNameMapping(formatter, result);
+			} else if (XlEqStringI(name, locale)) {
+				LoadFontNameMapping(formatter, result);
+			} else {
+				SkipElement(formatter);
+			}
+			RequireEndElement(formatter);
         }
 	}
 
