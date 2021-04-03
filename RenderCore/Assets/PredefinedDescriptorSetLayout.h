@@ -11,7 +11,7 @@
 
 namespace Assets { class DirectorySearchRules; class DependencyValidation; }
 namespace Utility { class ConditionalProcessingTokenizer; }
-namespace RenderCore { enum class DescriptorType; }
+namespace RenderCore { enum class DescriptorType; class DescriptorSetSignature; }
 
 namespace RenderCore { namespace Assets 
 {
@@ -46,6 +46,8 @@ namespace RenderCore { namespace Assets
 		};
 		std::vector<ConditionalDescriptorSlot> _slots;
 		std::vector<std::shared_ptr<RenderCore::Assets::PredefinedCBLayout>> _constantBuffers;
+
+		DescriptorSetSignature MakeDescriptorSetSignature() const;
 
 		uint64_t CalculateHash() const;
 

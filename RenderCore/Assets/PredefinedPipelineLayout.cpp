@@ -5,6 +5,7 @@
 #include "PredefinedPipelineLayout.h"
 #include "PredefinedDescriptorSetLayout.h"
 #include "PredefinedCBLayout.h"
+#include "../UniformsStream.h"
 #include "../../Assets/DepVal.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/PreprocessorIncludeHandler.h"
@@ -18,7 +19,7 @@
 namespace RenderCore { namespace Assets
 {
 
-	auto PredefinedPipelineLayout::ParsePipelineLayout(ConditionalProcessingTokenizer& iterator) -> std::shared_ptr<PipelineLayout>
+	auto PredefinedPipelineLayoutFile::ParsePipelineLayout(ConditionalProcessingTokenizer& iterator) -> std::shared_ptr<PipelineLayout>
 	{
 		auto result = std::make_shared<PipelineLayout>();
 		for (;;) {
@@ -80,7 +81,7 @@ namespace RenderCore { namespace Assets
 		return result;
 	}
 
-	void PredefinedPipelineLayout::Parse(Utility::ConditionalProcessingTokenizer& tokenizer)
+	void PredefinedPipelineLayoutFile::Parse(Utility::ConditionalProcessingTokenizer& tokenizer)
 	{
 		for (;;) {
 			auto token = tokenizer.GetNextToken();
@@ -129,7 +130,7 @@ namespace RenderCore { namespace Assets
 			Throw(FormatException("Additional tokens found, expecting end of file", tokenizer.GetLocation()));
 	}
 
-	PredefinedPipelineLayout::PredefinedPipelineLayout(
+	PredefinedPipelineLayoutFile::PredefinedPipelineLayoutFile(
 		StringSection<> inputData,
 		const ::Assets::DirectorySearchRules& searchRules,
 		const ::Assets::DepValPtr& depVal)
@@ -139,7 +140,7 @@ namespace RenderCore { namespace Assets
 		Parse(tokenizer);
 	}
 
-	PredefinedPipelineLayout::PredefinedPipelineLayout(StringSection<> sourceFileName)
+	PredefinedPipelineLayoutFile::PredefinedPipelineLayoutFile(StringSection<> sourceFileName)
 	{
 		::Assets::PreprocessorIncludeHandler includeHandler;
 		auto initialFile = includeHandler.OpenFile(sourceFileName, {});
@@ -151,8 +152,48 @@ namespace RenderCore { namespace Assets
 		_depVal = includeHandler.MakeDependencyValidation();
 	}
 
-	PredefinedPipelineLayout::PredefinedPipelineLayout() {}
-	PredefinedPipelineLayout::~PredefinedPipelineLayout() {}
+	PredefinedPipelineLayoutFile::PredefinedPipelineLayoutFile() {}
+	PredefinedPipelineLayoutFile::~PredefinedPipelineLayoutFile() {}
+
+	PipelineLayoutInitializer PredefinedPipelineLayoutFile::PipelineLayout::MakePipelineLayoutInitializer(ShaderLanguage language) const
+	{
+		PipelineLayoutInitializer::DescriptorSetBinding descriptorSetBindings[_descriptorSets.size()];
+		for (size_t c=0; c<_descriptorSets.size(); ++c) {
+			descriptorSetBindings[c]._name = _descriptorSets[c].first;
+			descriptorSetBindings[c]._signature = _descriptorSets[c].second->MakeDescriptorSetSignature();
+		}
+
+		PipelineLayoutInitializer::PushConstantsBinding pushConstantBindings[3];
+		unsigned pushConstantBindingsCount = 0;
+		if (_vsPushConstants.second) {
+			auto& binding = pushConstantBindings[pushConstantBindingsCount++];
+			binding._name = _vsPushConstants.first;
+			binding._shaderStage = ShaderStage::Vertex;
+			binding._cbSize = _vsPushConstants.second->GetSize(language);
+			binding._cbElements = _vsPushConstants.second->MakeConstantBufferElements(language);
+		}
+
+		if (_psPushConstants.second) {
+			auto& binding = pushConstantBindings[pushConstantBindingsCount++];
+			binding._name = _psPushConstants.first;
+			binding._shaderStage = ShaderStage::Pixel;
+			binding._cbSize = _psPushConstants.second->GetSize(language);
+			binding._cbElements = _psPushConstants.second->MakeConstantBufferElements(language);
+		}
+
+		if (_gsPushConstants.second) {
+			auto& binding = pushConstantBindings[pushConstantBindingsCount++];
+			binding._name = _gsPushConstants.first;
+			binding._shaderStage = ShaderStage::Geometry;
+			binding._cbSize = _gsPushConstants.second->GetSize(language);
+			binding._cbElements = _gsPushConstants.second->MakeConstantBufferElements(language);
+		}
+		assert(pushConstantBindingsCount <= dimof(pushConstantBindings));
+
+		return PipelineLayoutInitializer {
+			MakeIteratorRange(descriptorSetBindings, &descriptorSetBindings[_descriptorSets.size()]),
+			MakeIteratorRange(pushConstantBindings, &pushConstantBindings[pushConstantBindingsCount])};
+	}
 
 }}
 

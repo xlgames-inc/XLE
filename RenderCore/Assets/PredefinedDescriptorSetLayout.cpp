@@ -4,6 +4,7 @@
 
 #include "PredefinedDescriptorSetLayout.h"
 #include "PredefinedCBLayout.h"
+#include "../UniformsStream.h"
 #include "../../Assets/DepVal.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/StringUtils.h"
@@ -241,6 +242,17 @@ namespace RenderCore { namespace Assets
 
 	PredefinedDescriptorSetLayout::~PredefinedDescriptorSetLayout()
 	{
+	}
+
+	DescriptorSetSignature PredefinedDescriptorSetLayout::MakeDescriptorSetSignature() const
+	{
+		DescriptorSetSignature result;
+		result._slots.reserve(_slots.size());
+		for (const auto&s:_slots) {
+			auto count = std::max(s._arrayElementCount, 1u);
+			result._slots.push_back(DescriptorSlot{s._type, count});
+		}
+		return result;
 	}
 
 }}

@@ -10,6 +10,7 @@
 
 namespace Assets { class DirectorySearchRules; class DependencyValidation; }
 namespace Utility { class ConditionalProcessingTokenizer; }
+namespace RenderCore { class PipelineLayoutInitializer; enum class ShaderLanguage; }
 
 namespace RenderCore { namespace Assets
 {
@@ -23,7 +24,7 @@ namespace RenderCore { namespace Assets
     /// Generally this is used to construct a RenderCore::PipelineLayoutInitializer, which can be used to
     /// in-turn generate a RenderCore::ICompiledPipelineLayout via a IDevice. However this form contains a little
     /// more information, which can be handy when configuring higher-level types (such as the PipelineAcceleratorPool)
-    class PredefinedPipelineLayout
+    class PredefinedPipelineLayoutFile
 	{
 	public:
         std::unordered_map<std::string, std::shared_ptr<PredefinedDescriptorSetLayout>> _descriptorSets;
@@ -34,17 +35,19 @@ namespace RenderCore { namespace Assets
             std::pair<std::string, std::shared_ptr<PredefinedCBLayout>> _vsPushConstants;
             std::pair<std::string, std::shared_ptr<PredefinedCBLayout>> _psPushConstants;
             std::pair<std::string, std::shared_ptr<PredefinedCBLayout>> _gsPushConstants;
+
+            PipelineLayoutInitializer MakePipelineLayoutInitializer(ShaderLanguage language) const;
         };
         std::unordered_map<std::string, std::shared_ptr<PipelineLayout>> _pipelineLayouts;
 
-        PredefinedPipelineLayout(
+        PredefinedPipelineLayoutFile(
 			StringSection<> inputData,
 			const ::Assets::DirectorySearchRules& searchRules,
 			const std::shared_ptr<::Assets::DependencyValidation>& depVal);
-        PredefinedPipelineLayout(
+        PredefinedPipelineLayoutFile(
 			StringSection<> sourceFileName);
-		PredefinedPipelineLayout();
-		~PredefinedPipelineLayout();
+		PredefinedPipelineLayoutFile();
+		~PredefinedPipelineLayoutFile();
 
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 

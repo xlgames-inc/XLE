@@ -6,6 +6,9 @@
 #include "../../UnitTestHelper.h"
 #include "../Metal/MetalTestHelper.h"
 #include "../../../RenderCore/Assets/PredefinedPipelineLayout.h"
+#include "../../../RenderCore/IDevice.h"
+#include "../../../RenderCore/ShaderLangUtil.h"
+#include "../../../RenderCore/UniformsStream.h"
 #include "../../../Assets/AssetUtils.h"
 #include "../../../Assets/MountingTree.h"
 #include "../../../Assets/MemoryFile.h"
@@ -45,7 +48,6 @@ namespace UnitTests
 
 					UniformBuffer cb0;
 					UniformBuffer cb1;
-					UniformBuffer arrayOfCBs[3];
 
 					SampledTexture tex0;
 					SampledTexture tex1;
@@ -53,7 +55,6 @@ namespace UnitTests
 					SampledTexture tex3;
 					SampledTexture tex4;
 					SampledTexture tex5;
-					SampledTexture arrayOfTextures[5];
 				};
 			)--")
 		),
@@ -81,9 +82,14 @@ namespace UnitTests
 					StorageBuffer uab1;
 
 					UnorderedAccessTexture uat0;
-					StorageImage uabt[5];
 
 					Sampler sampler0;
+				};
+
+				DescriptorSet DescriptorSetWithArrays {
+					UniformBuffer arrayOfCBs[3];
+					SampledTexture arrayOfTextures[5];
+					StorageImage uabt[5];
 					Sampler samplerArray[2];
 				};
 
@@ -115,7 +121,7 @@ namespace UnitTests
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
 		auto mnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
 
-		auto layoutFile = ::Assets::AutoConstructAsset<RenderCore::Assets::PredefinedPipelineLayout>("ut-data/graphics-main.pipeline");
+		auto layoutFile = ::Assets::AutoConstructAsset<RenderCore::Assets::PredefinedPipelineLayoutFile>("ut-data/graphics-main.pipeline");
 		REQUIRE(layoutFile->_pipelineLayouts.size() == 1);
 		REQUIRE(layoutFile->_pipelineLayouts.begin()->first == "GraphicsMain");
 		auto& pipelineLayout = *layoutFile->_pipelineLayouts.begin()->second;
@@ -124,18 +130,24 @@ namespace UnitTests
 		REQUIRE(pipelineLayout._psPushConstants.first == "pspush");
 		REQUIRE(pipelineLayout._gsPushConstants.first == "gspush");
 
+		// Attempt to build an actual ICompiledPipelineLayout from the configuration we loaded
+		auto pipelineLayoutInitializer = pipelineLayout.MakePipelineLayoutInitializer(RenderCore::ShaderLanguage::HLSL);
+		auto testHelper = MakeTestHelper();
+		auto compiledLayout = testHelper->_device->CreatePipelineLayout(pipelineLayoutInitializer);
+		REQUIRE(compiledLayout != nullptr);
+
 		::Assets::MainFileSystem::GetMountingTree()->Unmount(mnt);
 	}
 
 	TEST_CASE( "PipelineConfiguration-BadSyntax", "[rendercore_assets]" )
 	{
-		using PredefinedPipelineLayout = RenderCore::Assets::PredefinedPipelineLayout;
+		using PredefinedPipelineLayoutFile = RenderCore::Assets::PredefinedPipelineLayoutFile;
 
 		REQUIRE_THROWS(
-			PredefinedPipelineLayout{"#include <file-without-include-handler>", {}, nullptr});
+			PredefinedPipelineLayoutFile{"#include <file-without-include-handler>", {}, nullptr});
 
 		REQUIRE_THROWS(
-			PredefinedPipelineLayout{R"(
+			PredefinedPipelineLayoutFile{R"(
 				PipelineLayout GraphicsMain {
 					DescriptorSet UndeclaredDescriptorSet;
 					DescriptorSet UndeclaredDescriptorSet2;
@@ -143,14 +155,14 @@ namespace UnitTests
 			)", {}, nullptr});
 
 		REQUIRE_THROWS(
-			PredefinedPipelineLayout{R"(
+			PredefinedPipelineLayoutFile{R"(
 				DescriptorSet Material {
 					UnknownObject obj0;
 				};
 			)", {}, nullptr});
 
 		REQUIRE_THROWS(
-			PredefinedPipelineLayout{R"(
+			PredefinedPipelineLayoutFile{R"(
 				DescriptorSet MissingSemi1 {}
 				DescriptorSet MissingSemi2 {}
 			)", {}, nullptr});
