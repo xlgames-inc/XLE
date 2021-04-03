@@ -37,3 +37,6 @@
 [submodule "Foreign/DirectXTex"]
 	path = Foreign/DirectXTex
 	url = git@github.com:microsoft/DirectXTex
+[submodule "Foreign/freetype"]
+	path = Foreign/freetype
+	url = git@github.com:freetype/freetype
