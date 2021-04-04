@@ -11,7 +11,7 @@
 #include "../Metal/Metal.h"
 
 #if GFXAPI_TARGET == GFXAPI_DX11
-    #include "../Metal/State.h
+    #include "../Metal/State.h"
 #endif
 
 namespace RenderCore { namespace Techniques 
@@ -46,21 +46,21 @@ namespace RenderCore { namespace Techniques
 
 		///////////////////////////////////////
 
-		DepthStencilDesc _dsReadWrite;
-        DepthStencilDesc _dsReadOnly;
-        DepthStencilDesc _dsDisable;
-        DepthStencilDesc _dsReadWriteWriteStencil;
-        DepthStencilDesc _dsWriteOnly;
+		static DepthStencilDesc s_dsReadWrite;
+        static DepthStencilDesc s_dsReadOnly;
+        static DepthStencilDesc s_dsDisable;
+        static DepthStencilDesc s_dsReadWriteWriteStencil;
+        static DepthStencilDesc s_dsWriteOnly;
 
-		AttachmentBlendDesc _abStraightAlpha;
-		AttachmentBlendDesc _abAlphaPremultiplied;
-		AttachmentBlendDesc _abOpaque;
-		AttachmentBlendDesc _abOneSrcAlpha;
-		AttachmentBlendDesc _abAdditive;
+		static AttachmentBlendDesc s_abStraightAlpha;
+		static AttachmentBlendDesc s_abAlphaPremultiplied;
+		static AttachmentBlendDesc s_abOpaque;
+		static AttachmentBlendDesc s_abOneSrcAlpha;
+		static AttachmentBlendDesc s_abAdditive;
 
-        RasterizationDesc _rsDefault;
-        RasterizationDesc _rsCullDisable;
-        RasterizationDesc _rsCullReverse;
+        static RasterizationDesc s_rsDefault;
+        static RasterizationDesc s_rsCullDisable;
+        static RasterizationDesc s_rsCullReverse;
 
         CommonResourceBox(IDevice&);
         ~CommonResourceBox();

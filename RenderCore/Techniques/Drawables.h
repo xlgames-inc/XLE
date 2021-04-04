@@ -15,25 +15,13 @@
 namespace Utility { class ParameterBox; }
 namespace RenderCore { class IThreadContext; class MiniInputElementDesc; class UniformsStreamInterface; class UniformsStream; }
 namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; class ShaderPatchCollection; } }
+namespace Assets { class IAsyncMarker; }
 
 namespace RenderCore { namespace Techniques
 {
 	class ParsingContext;
-	class IUniformBufferDelegate;
-	class IShaderResourceDelegate;
 	class PipelineAccelerator;
-	class IPipelineAcceleratorPool;
 	class DescriptorSetAccelerator;
-	class SequencerConfig;
-
-	class SequencerContext
-	{
-	public:
-		std::vector<std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>> _sequencerUniforms;
-		std::vector<std::shared_ptr<IShaderResourceDelegate>> _sequencerResources;
-
-		const SequencerConfig*	_sequencerConfig = nullptr;
-	};
 
 	class DrawableGeo
     {
@@ -59,12 +47,25 @@ namespace RenderCore { namespace Techniques
         Flags::BitField     _flags = 0u;
     };
 
-	class DrawableMaterial
+	class ExecuteDrawableContext
 	{
 	public:
-		RenderCore::Assets::MaterialScaffoldMaterial _material;
-		std::shared_ptr<RenderCore::Assets::ShaderPatchCollection> _patchCollection;
+		void		ApplyLooseUniforms(const UniformsStream&) const;
+		void 		ApplyDescriptorSets(IteratorRange<const IDescriptorSet* const*>) const;
+
+		uint64_t 	GetBoundLooseImmediateDatas() const;
+		uint64_t 	GetBoundLooseResources() const;
+		uint64_t 	GetBoundLooseSamplers() const;
+
+		void        Draw(unsigned vertexCount, unsigned startVertexLocation=0) const;
+		void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0) const;
+		void		DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0) const;
+		void		DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0) const;
+		void        DrawAuto() const;
 	};
+
+	class Drawable;
+	using ExecuteDrawableFn = void(ParsingContext&, const ExecuteDrawableContext&, const Drawable&);
 
 	class Drawable
 	{
@@ -73,26 +74,7 @@ namespace RenderCore { namespace Techniques
 		std::shared_ptr<DescriptorSetAccelerator>	_descriptorSet;
         std::shared_ptr<DrawableGeo>				_geo;
 		std::shared_ptr<UniformsStreamInterface>  	_looseUniformsInterface;
-
-		class DrawFunctionContext
-		{
-		public:
-			void		ApplyLooseUniforms(const UniformsStream&) const;
-			void 		ApplyDescriptorSets(IteratorRange<const IDescriptorSet* const*>) const;
-
-			uint64_t 	GetBoundLooseImmediateDatas() const;
-			uint64_t 	GetBoundLooseResources() const;
-			uint64_t 	GetBoundLooseSamplers() const;
-
-			void        Draw(unsigned vertexCount, unsigned startVertexLocation=0) const;
-			void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0) const;
-			void		DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0) const;
-			void		DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0) const;
-			void        DrawAuto() const;
-		};
-
-        typedef void (ExecuteDrawFn)(ParsingContext&, const DrawFunctionContext&, const Drawable&);
-        ExecuteDrawFn*	_drawFn;
+        ExecuteDrawableFn*							_drawFn;
 	};
 
 	class DrawablesPacket
@@ -113,11 +95,30 @@ namespace RenderCore { namespace Techniques
 		unsigned				_storageAlignment = 0u;
 	};
 
+	class IPipelineAcceleratorPool;
+	class IUniformBufferDelegate;
+	class IShaderResourceDelegate;
+	class SequencerConfig;
+	
+	class SequencerContext
+	{
+	public:
+		std::vector<std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>> _sequencerUniforms;
+		std::vector<std::shared_ptr<IShaderResourceDelegate>> _sequencerResources;
+
+		const SequencerConfig*	_sequencerConfig = nullptr;
+	};
+	
 	void Draw(
 		IThreadContext& context,
         ParsingContext& parserContext,
 		const IPipelineAcceleratorPool& pipelineAccelerators,
 		const SequencerContext& sequencerTechnique,
+		const DrawablesPacket& drawablePkt);
+
+	std::shared_ptr<::Assets::IAsyncMarker> PrepareResources(
+		const IPipelineAcceleratorPool& pipelineAccelerators,
+		SequencerConfig& sequencerConfig,
 		const DrawablesPacket& drawablePkt);
 
 	enum class BatchFilter
@@ -128,5 +129,12 @@ namespace RenderCore { namespace Techniques
 		PreDepth,               // objects that should get a pre-depth pass
 		Max
     };
+
+	class DrawableMaterial
+	{
+	public:
+		RenderCore::Assets::MaterialScaffoldMaterial _material;
+		std::shared_ptr<RenderCore::Assets::ShaderPatchCollection> _patchCollection;
+	};
 
 }}

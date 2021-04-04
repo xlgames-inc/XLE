@@ -23,6 +23,7 @@
 #include "../Metal/Resource.h"
 #include "../Metal/TextureView.h"
 #include "../Assets/ShaderPatchCollection.h"
+#include "../Assets/AsyncMarkerGroup.h"
 
 namespace RenderCore { namespace Techniques
 {
@@ -62,7 +63,7 @@ namespace RenderCore { namespace Techniques
 		return i->second.get();
 	}
 
-	class RealDrawFunctionContext
+	class RealExecuteDrawableContext
 	{
 	public:
 		Metal::DeviceContext*				_metalContext;
@@ -101,9 +102,15 @@ namespace RenderCore { namespace Techniques
 		for (auto d=drawablePkt._drawables.begin(); d!=drawablePkt._drawables.end(); ++d) {
 			const auto& drawable = *(Drawable*)d.get();
 			auto* pipeline = pipelineAccelerators.TryGetPipeline(*drawable._pipeline, *sequencerTechnique._sequencerConfig);
-			auto* matDescSet = pipelineAccelerators.TryGetDescriptorSet(*drawable._descriptorSet);
-			if (!pipeline || !matDescSet)
+			if (!pipeline)
 				continue;
+
+			const IDescriptorSet* matDescSet = nullptr;
+			if (drawable._descriptorSet) {
+				matDescSet = pipelineAccelerators.TryGetDescriptorSet(*drawable._descriptorSet);
+				if (!matDescSet)
+					continue;
+			}
 
 			////////////////////////////////////////////////////////////////////////////// 
 		 
@@ -142,11 +149,11 @@ namespace RenderCore { namespace Techniques
 
 			//////////////////////////////////////////////////////////////////////////////
 
-			RealDrawFunctionContext drawFnContext { &metalContext, &encoder, pipeline, boundUniforms };
+			RealExecuteDrawableContext drawFnContext { &metalContext, &encoder, pipeline, boundUniforms };
 
 			drawable._drawFn(
 				parserContext, 
-				*(Drawable::DrawFunctionContext*)&drawFnContext,
+				*(ExecuteDrawableContext*)&drawFnContext,
 				drawable);
 		}
 	}
@@ -176,6 +183,38 @@ namespace RenderCore { namespace Techniques
 		} else {
 			assert(0);
 		}
+	}
+
+	static const std::string s_graphicsPipeline { "graphics-pipeline" };
+	static const std::string s_descriptorSet { "descriptor-set" };
+
+	std::shared_ptr<::Assets::IAsyncMarker> PrepareResources(
+		const IPipelineAcceleratorPool& pipelineAccelerators,
+		SequencerConfig& sequencerConfig,
+		const DrawablesPacket& drawablePkt)
+	{
+		std::shared_ptr<::Assets::AsyncMarkerGroup> result;
+
+		for (auto d=drawablePkt._drawables.begin(); d!=drawablePkt._drawables.end(); ++d) {
+			const auto& drawable = *(Drawable*)d.get();
+			auto pipelineFuture = pipelineAccelerators.GetPipeline(*drawable._pipeline, sequencerConfig);
+			if (pipelineFuture->GetAssetState() != ::Assets::AssetState::Ready) {
+				if (!result)
+					result = std::make_shared<::Assets::AsyncMarkerGroup>();
+				result->Add(pipelineFuture, s_graphicsPipeline);
+			}
+
+			if (drawable._descriptorSet) {
+				auto descriptorSetFuture = pipelineAccelerators.GetDescriptorSet(*drawable._descriptorSet);
+				if (descriptorSetFuture->GetAssetState() != ::Assets::AssetState::Ready) {
+					if (!result)
+						result = std::make_shared<::Assets::AsyncMarkerGroup>();
+					result->Add(pipelineFuture, s_descriptorSet);
+				}
+			}
+		}
+
+		return result;
 	}
 
 	std::shared_ptr<IDescriptorSet> CreateSequencerDescriptorSet(
@@ -399,65 +438,65 @@ namespace RenderCore { namespace Techniques
 		return result;
 	}
 
-	void Drawable::DrawFunctionContext::ApplyLooseUniforms(const UniformsStream& stream) const
+	void ExecuteDrawableContext::ApplyLooseUniforms(const UniformsStream& stream) const
 	{
-		auto& realContext = *(RealDrawFunctionContext*)this;
+		auto& realContext = *(RealExecuteDrawableContext*)this;
 		realContext._boundUniforms->ApplyLooseUniforms(*realContext._metalContext, *realContext._encoder, stream, 1);
 	}
 
-	void Drawable::DrawFunctionContext::ApplyDescriptorSets(IteratorRange<const IDescriptorSet* const*> descSets) const
+	void ExecuteDrawableContext::ApplyDescriptorSets(IteratorRange<const IDescriptorSet* const*> descSets) const
 	{
-		auto& realContext = *(RealDrawFunctionContext*)this;
+		auto& realContext = *(RealExecuteDrawableContext*)this;
 		realContext._boundUniforms->ApplyDescriptorSets(*realContext._metalContext, *realContext._encoder, descSets, 1);
 	}
 
-	uint64_t Drawable::DrawFunctionContext::GetBoundLooseImmediateDatas() const
+	uint64_t ExecuteDrawableContext::GetBoundLooseImmediateDatas() const
 	{
-		auto& realContext = *(RealDrawFunctionContext*)this;
+		auto& realContext = *(RealExecuteDrawableContext*)this;
 		return realContext._boundUniforms->GetBoundLooseImmediateDatas(1);
 	}
 
-	uint64_t Drawable::DrawFunctionContext::GetBoundLooseResources() const
+	uint64_t ExecuteDrawableContext::GetBoundLooseResources() const
 	{
-		auto& realContext = *(RealDrawFunctionContext*)this;
+		auto& realContext = *(RealExecuteDrawableContext*)this;
 		return realContext._boundUniforms->GetBoundLooseResources(1);
 	}
 
-	uint64_t Drawable::DrawFunctionContext::GetBoundLooseSamplers() const
+	uint64_t ExecuteDrawableContext::GetBoundLooseSamplers() const
 	{
-		auto& realContext = *(RealDrawFunctionContext*)this;
+		auto& realContext = *(RealExecuteDrawableContext*)this;
 		return realContext._boundUniforms->GetBoundLooseSamplers(1);
 	}
 
-	void Drawable::DrawFunctionContext::Draw(unsigned vertexCount, unsigned startVertexLocation) const
+	void ExecuteDrawableContext::Draw(unsigned vertexCount, unsigned startVertexLocation) const
 	{
-		auto& realContext = *(RealDrawFunctionContext*)this;
+		auto& realContext = *(RealExecuteDrawableContext*)this;
 		realContext._encoder->Draw(*realContext._pipeline, vertexCount, startVertexLocation);
 	}
 
-	void Drawable::DrawFunctionContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation) const
+	void ExecuteDrawableContext::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation) const
 	{
 		assert(baseVertexLocation == 0);		// parameter deprecated
-		auto& realContext = *(RealDrawFunctionContext*)this;
+		auto& realContext = *(RealExecuteDrawableContext*)this;
 		realContext._encoder->DrawIndexed(*realContext._pipeline, indexCount, startIndexLocation);
 	}
 
-	void Drawable::DrawFunctionContext::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation) const
+	void ExecuteDrawableContext::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation) const
 	{
-		auto& realContext = *(RealDrawFunctionContext*)this;
+		auto& realContext = *(RealExecuteDrawableContext*)this;
 		realContext._encoder->DrawInstances(*realContext._pipeline, vertexCount, instanceCount, startVertexLocation);
 	}
 
-	void Drawable::DrawFunctionContext::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation) const
+	void ExecuteDrawableContext::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation) const
 	{
 		assert(baseVertexLocation == 0);		// parameter deprecated
-		auto& realContext = *(RealDrawFunctionContext*)this;
+		auto& realContext = *(RealExecuteDrawableContext*)this;
 		realContext._encoder->DrawIndexedInstances(*realContext._pipeline, indexCount, instanceCount, startIndexLocation);
 	}
 
-	void Drawable::DrawFunctionContext::DrawAuto() const
+	void ExecuteDrawableContext::DrawAuto() const
 	{
-		auto& realContext = *(RealDrawFunctionContext*)this;
+		auto& realContext = *(RealExecuteDrawableContext*)this;
 		realContext._encoder->DrawAuto(*realContext._pipeline);
 	}
 

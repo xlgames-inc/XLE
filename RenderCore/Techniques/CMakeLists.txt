@@ -9,6 +9,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         DeferredShaderResource.cpp
         DescriptorSetAccelerator.cpp
         Drawables.cpp
+        ImmediateDrawables.cpp
         ParsingContext.cpp
         PipelineAccelerator.cpp
         RenderPass.cpp
@@ -35,6 +36,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         DeferredShaderResource.h
         DrawableDelegates.h
         Drawables.h
+        ImmediateDrawables.h
         ParsingContext.h
         PipelineAccelerator.h
         RenderPass.h

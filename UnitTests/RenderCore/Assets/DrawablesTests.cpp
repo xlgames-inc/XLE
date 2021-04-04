@@ -304,7 +304,7 @@ namespace UnitTests
 			drawable->_descriptorSet = descriptorSetAccelerator;
 			drawable->_geo = drawableGeo;
 			drawable->_vertexCount = sphereGeo.size();
-			drawable->_drawFn = [](Techniques::ParsingContext&, const Techniques::Drawable::DrawFunctionContext& drawFnContext, const Techniques::Drawable& drawable)
+			drawable->_drawFn = [](Techniques::ParsingContext&, const Techniques::ExecuteDrawableContext& drawFnContext, const Techniques::Drawable& drawable)
 				{
 					drawFnContext.Draw(((CustomDrawable&)drawable)._vertexCount);
 				};

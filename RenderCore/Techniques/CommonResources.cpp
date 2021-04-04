@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -15,6 +13,22 @@
 
 namespace RenderCore { namespace Techniques
 {
+    DepthStencilDesc CommonResourceBox::s_dsReadWrite {};
+    DepthStencilDesc CommonResourceBox::s_dsReadOnly { CompareOp::LessEqual, false };
+    DepthStencilDesc CommonResourceBox::s_dsDisable { CompareOp::Always, false };
+    DepthStencilDesc CommonResourceBox::s_dsReadWriteWriteStencil { CompareOp::LessEqual, true, true, 0xff, 0xff, 0xff, StencilDesc::AlwaysWrite, StencilDesc::AlwaysWrite };
+    DepthStencilDesc CommonResourceBox::s_dsWriteOnly { CompareOp::Always, true };
+
+    AttachmentBlendDesc CommonResourceBox::s_abStraightAlpha { true, Blend::SrcAlpha, Blend::InvSrcAlpha, BlendOp::Add };
+    AttachmentBlendDesc CommonResourceBox::s_abAlphaPremultiplied { true, Blend::One, Blend::InvSrcAlpha, BlendOp::Add };
+    AttachmentBlendDesc CommonResourceBox::s_abOneSrcAlpha { true, Blend::One, Blend::SrcAlpha, BlendOp::Add };
+    AttachmentBlendDesc CommonResourceBox::s_abAdditive { true, Blend::One, Blend::One, BlendOp::Add };
+    AttachmentBlendDesc CommonResourceBox::s_abOpaque { };
+
+    RasterizationDesc CommonResourceBox::s_rsDefault { CullMode::Back };
+    RasterizationDesc CommonResourceBox::s_rsCullDisable { CullMode::None };
+    RasterizationDesc CommonResourceBox::s_rsCullReverse { CullMode::Back, FaceWinding::CW };
+
     CommonResourceBox::CommonResourceBox(IDevice& device)
     {
         using namespace RenderCore::Metal;
@@ -42,22 +56,6 @@ namespace RenderCore { namespace Techniques
         _linearWrapSampler = device.CreateSampler(SamplerDesc{FilterMode::Trilinear, AddressMode::Clamp, AddressMode::Clamp});
         _pointClampSampler = device.CreateSampler(SamplerDesc{FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp});
         _defaultSampler = _linearWrapSampler;
-
-		_dsReadWrite = DepthStencilDesc {};
-		_dsReadOnly = DepthStencilDesc { CompareOp::LessEqual, false };
-        _dsDisable = DepthStencilDesc { CompareOp::Always, false };
-        _dsReadWriteWriteStencil = DepthStencilDesc { CompareOp::LessEqual, true, true, 0xff, 0xff, 0xff, StencilDesc::AlwaysWrite, StencilDesc::AlwaysWrite };
-		_dsWriteOnly = DepthStencilDesc { CompareOp::Always, true };
-
-		_abStraightAlpha = AttachmentBlendDesc { true, Blend::SrcAlpha, Blend::InvSrcAlpha, BlendOp::Add };
-		_abAlphaPremultiplied = AttachmentBlendDesc { true, Blend::One, Blend::InvSrcAlpha, BlendOp::Add };
-		_abOneSrcAlpha = AttachmentBlendDesc { true, Blend::One, Blend::SrcAlpha, BlendOp::Add };
-		_abAdditive = AttachmentBlendDesc { true, Blend::One, Blend::One, BlendOp::Add };
-		_abOpaque = AttachmentBlendDesc { };
-
-        _rsDefault = RasterizationDesc { CullMode::Back };
-        _rsCullDisable = RasterizationDesc { CullMode::None };
-        _rsCullReverse = RasterizationDesc { CullMode::Back, FaceWinding::CW };
     }
 
     CommonResourceBox::~CommonResourceBox()

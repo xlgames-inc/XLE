@@ -82,6 +82,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         RenderCore/Assets/DrawablesTests.cpp
         RenderCore/Assets/ColladaModelConversion.cpp
         RenderCore/Assets/PipelineConfigurationTests.cpp
+        RenderCore/Assets/ImmediateDrawablesTests.cpp
         RenderCore/Metal/MetalTestHelper.cpp
         EmbeddedRes.cpp
         ../Tools/ToolsRig/VisualisationGeo.cpp

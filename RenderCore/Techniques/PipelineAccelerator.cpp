@@ -41,6 +41,7 @@ namespace RenderCore { namespace Techniques
 	public:
 		Threading::Mutex _lock;
 		UniqueShaderVariationSet _selectorVariationsSet;
+		::Assets::FuturePtr<CompiledShaderPatchCollection> _emptyPatchCollection;
 	};
 
 	class PipelineAccelerator : public std::enable_shared_from_this<PipelineAccelerator>
@@ -195,7 +196,12 @@ namespace RenderCore { namespace Techniques
 		ParameterBox copyGlobalSelectors = globalSelectors;
 		std::weak_ptr<PipelineAccelerator> weakThis = shared_from_this();
 
-		auto patchCollectionFuture = ::Assets::MakeAsset<CompiledShaderPatchCollection>(*_shaderPatches, matDescSetLayout);
+		::Assets::FuturePtr<CompiledShaderPatchCollection> patchCollectionFuture;
+		if (_shaderPatches) {
+			patchCollectionFuture = ::Assets::MakeAsset<CompiledShaderPatchCollection>(*_shaderPatches, matDescSetLayout);
+		} else {
+			patchCollectionFuture = sharedPools->_emptyPatchCollection;
+		}
 
 		// Queue massive chain of future continuation functions (it's not as scary as it looks)
 		//
@@ -218,6 +224,9 @@ namespace RenderCore { namespace Techniques
 					[sharedPools, pipelineLayout, copyGlobalSelectors, cfg, weakThis, compiledPatchCollection](
 						::Assets::AssetFuture<Metal::GraphicsPipeline>& resultFuture,
 						const std::shared_ptr<ITechniqueDelegate::GraphicsPipelineDesc>& pipelineDesc) {
+
+						if (pipelineDesc->_blend.empty())
+							Throw(std::runtime_error("No blend modes specified in GraphicsPipelineDesc. There must be at least one blend mode specified"));
 
 						UniqueShaderVariationSet::FilteredSelectorSet filteredSelectors[dimof(ITechniqueDelegate::GraphicsPipelineDesc::_shaders)];
 
@@ -541,7 +550,8 @@ namespace RenderCore { namespace Techniques
 		hash = HashCombine(Hash(inputAssembly), hash);
 		hash = HashCombine((unsigned)topology, hash);
 		hash = HashCombine(stateSet.GetHash(), hash);
-		hash = HashCombine(shaderPatches->GetHash(), hash);
+		if (shaderPatches)
+			hash = HashCombine(shaderPatches->GetHash(), hash);
 
 		// If it already exists in the cache, just return it now
 		auto i = LowerBound(_pipelineAccelerators, hash);
@@ -584,7 +594,8 @@ namespace RenderCore { namespace Techniques
 			hash = HashCombine(s.first, hash);
 			hash = HashCombine(s.second.Hash(), hash);
 		}
-		hash = HashCombine(shaderPatches->GetHash(), hash);
+		if (shaderPatches)
+			hash = HashCombine(shaderPatches->GetHash(), hash);
 
 		// If it already exists in the cache, just return it now
 		auto cachei = LowerBound(_descriptorSetAccelerators, hash);
@@ -597,51 +608,63 @@ namespace RenderCore { namespace Techniques
 		auto result = std::make_shared<DescriptorSetAccelerator>();
 		result->_descriptorSet = std::make_shared<::Assets::AssetFuture<IDescriptorSet>>("descriptorset-accelerator");
 
-		auto patchCollectionFuture = ::Assets::MakeAsset<CompiledShaderPatchCollection>(*shaderPatches, _matDescSetLayout);
-
 		std::vector<std::pair<uint64_t, std::shared_ptr<ISampler>>> metalSamplers;
 		metalSamplers.reserve(samplerBindings.size());
 		for (const auto&c:samplerBindings)
 			metalSamplers.push_back(std::make_pair(c.first, GetMetalSampler(c.second)));
 
-		// Most of the time, it will be ready immediately, and we can avoid some of the overhead of the
-		// future continuation functions
-		if (auto* patchCollection = patchCollectionFuture->TryActualize().get()) {
+		if (shaderPatches) {
+			auto patchCollectionFuture = ::Assets::MakeAsset<CompiledShaderPatchCollection>(*shaderPatches, _matDescSetLayout);
+
+			// Most of the time, it will be ready immediately, and we can avoid some of the overhead of the
+			// future continuation functions
+			if (auto* patchCollection = patchCollectionFuture->TryActualize().get()) {
+				ConstructDescriptorSet(
+					*result->_descriptorSet,
+					_device,
+					constantBindings,
+					resourceBindings,
+					MakeIteratorRange(metalSamplers),
+					patchCollection->GetInterface().GetMaterialDescriptorSet(),
+					(_flags & PipelineAcceleratorPoolFlags::RecordDescriptorSetBindingInfo) ? &result->_bindingInfo : nullptr);
+			} else {
+				ParameterBox constantBindingsCopy = constantBindings;
+				ParameterBox resourceBindingsCopy = resourceBindings;
+
+				std::weak_ptr<IDevice> weakDevice = _device;
+				std::shared_ptr<DescriptorSetAccelerator> bindingInfoHolder;
+				if (_flags & PipelineAcceleratorPoolFlags::RecordDescriptorSetBindingInfo)
+					bindingInfoHolder = result;
+				::Assets::WhenAll(patchCollectionFuture).ThenConstructToFuture<RenderCore::IDescriptorSet>(
+					*result->_descriptorSet,
+					[constantBindingsCopy, resourceBindingsCopy, metalSamplers, weakDevice, bindingInfoHolder](
+						::Assets::AssetFuture<RenderCore::IDescriptorSet>& future,
+						const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection) {
+
+						auto d = weakDevice.lock();
+						if (!d)
+							Throw(std::runtime_error("Device has been destroyed"));
+						
+						ConstructDescriptorSet(
+							future,
+							d,
+							constantBindingsCopy,
+							resourceBindingsCopy,
+							MakeIteratorRange(metalSamplers),
+							patchCollection->GetInterface().GetMaterialDescriptorSet(),
+							bindingInfoHolder ? &bindingInfoHolder->_bindingInfo : nullptr);
+					});
+			}
+		} else {
+			RenderCore::Assets::PredefinedDescriptorSetLayout emptyDescriptorSet;
 			ConstructDescriptorSet(
 				*result->_descriptorSet,
 				_device,
 				constantBindings,
 				resourceBindings,
 				MakeIteratorRange(metalSamplers),
-				patchCollection->GetInterface().GetMaterialDescriptorSet(),
+				emptyDescriptorSet,
 				(_flags & PipelineAcceleratorPoolFlags::RecordDescriptorSetBindingInfo) ? &result->_bindingInfo : nullptr);
-		} else {
-			ParameterBox constantBindingsCopy = constantBindings;
-			ParameterBox resourceBindingsCopy = resourceBindings;
-
-			std::weak_ptr<IDevice> weakDevice = _device;
-			std::shared_ptr<DescriptorSetAccelerator> bindingInfoHolder;
-			if (_flags & PipelineAcceleratorPoolFlags::RecordDescriptorSetBindingInfo)
-				bindingInfoHolder = result;
-			::Assets::WhenAll(patchCollectionFuture).ThenConstructToFuture<RenderCore::IDescriptorSet>(
-				*result->_descriptorSet,
-				[constantBindingsCopy, resourceBindingsCopy, metalSamplers, weakDevice, bindingInfoHolder](
-					::Assets::AssetFuture<RenderCore::IDescriptorSet>& future,
-					const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection) {
-
-					auto d = weakDevice.lock();
-					if (!d)
-						Throw(std::runtime_error("Device has been destroyed"));
-					
-					ConstructDescriptorSet(
-						future,
-						d,
-						constantBindingsCopy,
-						resourceBindingsCopy,
-						MakeIteratorRange(metalSamplers),
-						patchCollection->GetInterface().GetMaterialDescriptorSet(),
-						bindingInfoHolder ? &bindingInfoHolder->_bindingInfo : nullptr);
-				});
 		}
 
 		if (cachei != _descriptorSetAccelerators.end() && cachei->first == hash) {
@@ -848,6 +871,8 @@ namespace RenderCore { namespace Techniques
 		_pipelineLayout = pipelineLayout;
 		_flags = flags;
 		_sharedPools = std::make_shared<SharedPools>();
+		_sharedPools->_emptyPatchCollection = std::make_shared<::Assets::AssetFuture<CompiledShaderPatchCollection>>("empty-patch-collection");
+		_sharedPools->_emptyPatchCollection->SetAsset(std::make_shared<CompiledShaderPatchCollection>(), nullptr);
 
 		auto pipelineLayoutDesc = _pipelineLayout->GetInitializer();
 		if (_matDescSetLayout.GetLayout()) {

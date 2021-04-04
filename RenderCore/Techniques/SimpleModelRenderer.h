@@ -5,7 +5,7 @@
 #pragma once
 
 #include "DrawableDelegates.h"					// for IUniformBufferDelegate
-#include "Drawables.h"							// for DrawFunctionContext
+#include "Drawables.h"							// for ExecuteDrawableContext
 #include "../Assets/ModelImmutableData.h"		// for SkeletonBinding
 #include "../Metal/Forward.h"
 #include "../../Math/Matrix.h"
@@ -39,7 +39,7 @@ namespace RenderCore { namespace Techniques
 	{
 	public:
 		virtual bool OnDraw(
-			const Drawable::DrawFunctionContext&, ParsingContext&,
+			const ExecuteDrawableContext&, ParsingContext&,
 			const Drawable&,
 			uint64_t materialGuid, unsigned drawCallIdx) = 0;
 		virtual ~IPreDrawDelegate();

@@ -68,7 +68,7 @@ namespace RenderCore { namespace Techniques
 
 	static void DrawFn_SimpleModelStatic(
 		Techniques::ParsingContext& parserContext,
-		const Techniques::Drawable::DrawFunctionContext& drawFnContext,
+		const Techniques::ExecuteDrawableContext& drawFnContext,
         const SimpleModelDrawable& drawable)
 	{
 		IteratorRange<const void*> cbvs[6];
@@ -129,7 +129,7 @@ namespace RenderCore { namespace Techniques
 				drawable._geo = _geos[geoCall._geoId];
 				drawable._pipeline = compiledGeoCall._pipelineAccelerator;
 				drawable._descriptorSet = compiledGeoCall._descriptorSetAccelerator;
-				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
+				drawable._drawFn = (Techniques::ExecuteDrawableFn*)&DrawFn_SimpleModelStatic;
 				drawable._drawCall = drawCall;
 				drawable._looseUniformsInterface = _usi;
 				drawable._materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
@@ -165,7 +165,7 @@ namespace RenderCore { namespace Techniques
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
 				drawable._pipeline = compiledGeoCall._pipelineAccelerator;
 				drawable._descriptorSet = compiledGeoCall._descriptorSetAccelerator;
-				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
+				drawable._drawFn = (Techniques::ExecuteDrawableFn*)&DrawFn_SimpleModelStatic;
 				drawable._drawCall = drawCall;
 				drawable._looseUniformsInterface = _usi;
 				drawable._materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
@@ -190,7 +190,7 @@ namespace RenderCore { namespace Techniques
 
 	static void DrawFn_SimpleModelDelegate(
 		Techniques::ParsingContext& parserContext,
-		const Techniques::Drawable::DrawFunctionContext& drawFnContext,
+		const Techniques::ExecuteDrawableContext& drawFnContext,
         const SimpleModelDrawable_Delegate& drawable)
 	{
 		bool delegateResult = drawable._delegate->OnDraw(drawFnContext, parserContext, drawable, drawable._materialGuid, drawable._drawCallIdx);
@@ -239,7 +239,7 @@ namespace RenderCore { namespace Techniques
 				drawable._geo = _geos[geoCall._geoId];
 				drawable._pipeline = compiledGeoCall._pipelineAccelerator;
 				drawable._descriptorSet = compiledGeoCall._descriptorSetAccelerator;
-				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
+				drawable._drawFn = (Techniques::ExecuteDrawableFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
 				drawable._looseUniformsInterface = _usi;
 				drawable._materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
@@ -275,7 +275,7 @@ namespace RenderCore { namespace Techniques
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
 				drawable._pipeline = compiledGeoCall._pipelineAccelerator;
 				drawable._descriptorSet = compiledGeoCall._descriptorSetAccelerator;
-				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
+				drawable._drawFn = (Techniques::ExecuteDrawableFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
 				drawable._looseUniformsInterface = _usi;
 				drawable._materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];

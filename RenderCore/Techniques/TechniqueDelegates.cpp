@@ -369,7 +369,7 @@ namespace RenderCore { namespace Techniques
 			bool deferredDecal = 
 					(stateSet._flag & Assets::RenderStateSet::Flag::BlendType)
 				&&	(stateSet._blendType == Assets::RenderStateSet::BlendType::DeferredDecal);
-			nascentDesc->_blend.push_back(deferredDecal ? _sharedResources->_commonResources._abStraightAlpha : _sharedResources->_commonResources._abOpaque);
+			nascentDesc->_blend.push_back(deferredDecal ? CommonResourceBox::s_abStraightAlpha : CommonResourceBox::s_abOpaque);
 
 			auto illumType = CalculateIllumType(shaderPatches);
 			bool hasDeformVertex = shaderPatches.HasPatchType(s_deformVertex);
