@@ -82,7 +82,7 @@ namespace ToolsRig
 
 		static void DrawFn(
 			Techniques::ParsingContext& parserContext,
-			const DrawFunctionContext& drawFnContext,
+			const ExecuteDrawableContext& drawFnContext,
 			const MaterialSceneParserDrawable& drawable)
 		{
 			if (drawFnContext.UniformBindingBitField() != 0) {

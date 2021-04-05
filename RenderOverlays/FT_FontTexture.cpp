@@ -45,7 +45,8 @@ namespace RenderOverlays
 		: _rectanglePacker({texWidth, texHeight})
 		, _texWidth(texWidth), _texHeight(texHeight) 
 		{
-			_texture = std::make_unique<FontTexture2D>(texWidth, texHeight, RenderCore::Format::R8_UNORM);
+			assert(0);
+			// _texture = std::make_unique<FontTexture2D>(texWidth, texHeight, RenderCore::Format::R8_UNORM);
 		}
 	};
 

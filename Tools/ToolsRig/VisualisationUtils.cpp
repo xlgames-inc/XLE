@@ -440,7 +440,7 @@ namespace ToolsRig
 	{
 	public:
 		virtual bool OnDraw( 
-			const RenderCore::Techniques::Drawable::DrawFunctionContext& drawContext, RenderCore::Techniques::ParsingContext&,
+			const RenderCore::Techniques::ExecuteDrawableContext& drawContext, RenderCore::Techniques::ParsingContext&,
 			const RenderCore::Techniques::Drawable&,
 			uint64_t materialGuid, unsigned drawCallIdx) override
 		{

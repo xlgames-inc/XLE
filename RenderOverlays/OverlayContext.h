@@ -85,7 +85,7 @@ namespace RenderOverlays
 
         class DrawCall;
         // std::vector<DrawCall>   _drawCalls;
-        void                    Flush();
+        // void                    Flush();
         // void                    SetShader(RenderCore::Topology topology, VertexFormat format, ProjectionMode projMode, const std::string& pixelShaderName, IteratorRange<const RenderCore::VertexBufferView*> vertexBuffers);
 
         IteratorRange<void*>    BeginDrawCall(const DrawCall& drawCall);

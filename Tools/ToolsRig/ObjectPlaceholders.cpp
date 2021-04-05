@@ -71,7 +71,7 @@ namespace ToolsRig
 
 		static void DrawFn(
 			Techniques::ParsingContext& parserContext,
-			const Techniques::Drawable::DrawFunctionContext& drawFnContext,
+			const Techniques::ExecuteDrawableContext& drawFnContext,
 			const SimpleModelDrawable& drawable)
 		{
 			ConstantBufferView cbvs[1];

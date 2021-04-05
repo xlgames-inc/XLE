@@ -191,13 +191,14 @@ namespace RenderOverlays
 		glyphEntry._bitmapOffsetY = -glyph->bitmap_top;
 
 		if (glyph->bitmap.width!=0 && glyph->bitmap.rows!=0) {
-			auto textureGlyph = _resources->_fontTexMgr->CreateChar(
+			assert(0);
+			/*auto textureGlyph = _resources->_fontTexMgr->CreateChar(
 				glyph->bitmap.width, glyph->bitmap.rows,
 				MakeIteratorRange(glyph->bitmap.buffer, PtrAdd(glyph->bitmap.buffer, glyph->bitmap.width*glyph->bitmap.rows)));
 
 			glyphEntry._topLeft = textureGlyph._topLeft;
 			glyphEntry._bottomRight = textureGlyph._bottomRight;
-			glyphEntry._textureId = textureGlyph._glyphId;
+			glyphEntry._textureId = textureGlyph._glyphId;*/
 		}
 
 		id = (FontBitmapId)_bitmaps.size();
@@ -299,6 +300,8 @@ namespace RenderOverlays
 			}
 			RequireEndElement(formatter);
         }
+
+		return result;
 	}
 
 	FTFontResources::FTFontResources()

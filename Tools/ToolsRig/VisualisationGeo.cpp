@@ -7,6 +7,7 @@
 #include "VisualisationGeo.h"
 #include "../../RenderCore/Types.h"
 #include "../../RenderCore/Format.h"
+#include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../Utility/MemoryUtils.h"
 
 namespace ToolsRig
@@ -31,14 +32,14 @@ namespace ToolsRig
     IteratorRange<const RenderCore::InputElementDesc*> Vertex3D_InputLayout = MakeIteratorRange(Internal::Vertex3D_InputLayout_);
 
 	std::vector<RenderCore::MiniInputElementDesc> Vertex2D_MiniInputLayout {
-		RenderCore::MiniInputElementDesc{ Hash64("POSITION"), RenderCore::Format::R32G32_FLOAT },
-		RenderCore::MiniInputElementDesc{ Hash64("TEXCOORD"), RenderCore::Format::R32G32_FLOAT }
+		RenderCore::MiniInputElementDesc{ RenderCore::Technqiues::CommonSemantics::POSITION, RenderCore::Format::R32G32_FLOAT },
+		RenderCore::MiniInputElementDesc{ RenderCore::Technqiues::CommonSemantics::TEXCOORD, RenderCore::Format::R32G32_FLOAT }
 	};
     std::vector<RenderCore::MiniInputElementDesc> Vertex3D_MiniInputLayout {
-		RenderCore::MiniInputElementDesc{ Hash64("POSITION"), RenderCore::Format::R32G32B32_FLOAT },
-		RenderCore::MiniInputElementDesc{ Hash64("NORMAL"), RenderCore::Format::R32G32B32_FLOAT },
-		RenderCore::MiniInputElementDesc{ Hash64("TEXCOORD"), RenderCore::Format::R32G32_FLOAT },
-		RenderCore::MiniInputElementDesc{ Hash64("TEXTANGENT"), RenderCore::Format::R32G32B32A32_FLOAT }
+		RenderCore::MiniInputElementDesc{ RenderCore::Technqiues::CommonSemantics::POSITION, RenderCore::Format::R32G32B32_FLOAT },
+		RenderCore::MiniInputElementDesc{ RenderCore::Technqiues::CommonSemantics::NORMAL, RenderCore::Format::R32G32B32_FLOAT },
+		RenderCore::MiniInputElementDesc{ RenderCore::Technqiues::CommonSemantics::TEXCOORD, RenderCore::Format::R32G32_FLOAT },
+		RenderCore::MiniInputElementDesc{ RenderCore::Technqiues::CommonSemantics::TEXTANGENT, RenderCore::Format::R32G32B32A32_FLOAT }
 	};
 
     static void GeodesicSphere_Subdivide(const Float3 &v1, const Float3 &v2, const Float3 &v3, std::vector<Float3> &sphere_points, unsigned int depth) 

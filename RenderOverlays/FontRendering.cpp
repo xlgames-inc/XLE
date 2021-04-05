@@ -5,7 +5,7 @@
 #include "Font.h"
 #include "FT_FontTexture.h"
 #include "../RenderCore/Techniques/ImmediateDrawables.h"
-#include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Types.h"
 #include "../RenderCore/Format.h"

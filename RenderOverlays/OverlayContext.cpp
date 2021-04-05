@@ -17,7 +17,7 @@
 // #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ImmediateDrawables.h"
-#include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Types.h"
 #include "../RenderCore/StateDesc.h"
@@ -266,12 +266,6 @@ namespace RenderOverlays
 													ColorB col, 
 													TextAlignment alignment, StringSection<char> text)
 	{
-			//
-			//      Because _textStyle.Draw() will draw immediately, we need to flush out
-			//      any pending draws
-			//
-		Flush();
-
 		ucs4 unicharBuffer[4096];
 		utf8_2_ucs4((const utf8*)text.begin(), text.size(), unicharBuffer, dimof(unicharBuffer));
 		StringSection<ucs4> convertedText = unicharBuffer;

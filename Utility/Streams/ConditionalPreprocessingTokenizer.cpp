@@ -864,6 +864,6 @@ namespace Utility
 		IPreprocessorIncludeHandler* includeHandler)
     {
         PreprocessAnalysisIncludeHelper helper { includeHandler };
-        return GeneratePreprocessorAnalysisFromFile(inputFilename, {});
+        return helper.GeneratePreprocessorAnalysisFromFile(inputFilename, {});
     }
 }

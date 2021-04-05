@@ -155,6 +155,7 @@ namespace RenderCore { namespace Techniques
 
         Metal::FrameBuffer& GetFrameBuffer() { return *_frameBuffer; }
         const Metal::FrameBuffer& GetFrameBuffer() const { return *_frameBuffer; }
+        const FrameBufferDesc& GetFrameBufferDesc() const { return _layout; }
 
 		auto GetInputAttachmentDesc(unsigned inputAttachmentSlot) const -> const AttachmentDesc*;
         auto GetInputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
