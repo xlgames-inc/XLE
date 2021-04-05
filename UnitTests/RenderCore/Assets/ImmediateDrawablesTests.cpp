@@ -96,8 +96,8 @@ namespace UnitTests
 
         {
             auto data = immediateDrawables->QueueDraw(
-                sphereGeo.size() * sizeof(decltype(sphereGeo)::value_type),
-                ToolsRig::Vertex3D_InputLayout,
+                sphereGeo.size(),
+                ToolsRig::Vertex3D_MiniInputLayout,
                 RenderCore::Assets::RenderStateSet{});
             REQUIRE(data.size() == (sphereGeo.size() * sizeof(decltype(sphereGeo)::value_type)));
             std::memcpy(data.data(), sphereGeo.data(), data.size());

@@ -102,39 +102,83 @@ namespace RenderCore { namespace Techniques
 		::Assets::FuturePtr<GraphicsPipelineDesc> _pipelineDescFuture;
 	};
 
-	struct DrawableWithVertexCount : public Drawable { unsigned _vertexCount = 0; };
+	struct DrawableWithVertexCount : public Drawable { unsigned _vertexCount = 0, _vertexStride = 0, _bytesAllocated = 0; };
 
 	class ImmediateDrawables : public IImmediateDrawables
 	{
 	public:
 		IteratorRange<void*> QueueDraw(
-			size_t vertexDataSize,
-			IteratorRange<const InputElementDesc*> inputAssembly,
+			size_t vertexCount,
+			IteratorRange<const MiniInputElementDesc*> inputAssembly,
 			const RenderCore::Assets::RenderStateSet& stateSet,
 			Topology topology,
 			const ParameterBox& shaderSelectors)
 		{
-			// auto vStride = CalculateVertexStride(inputAssembly);
-			auto vStringA = CalculateVertexStrides(inputAssembly);
-			auto vStride = vStringA[0];
-			auto vertexCount = vertexDataSize / vStride;
-			if (!vertexCount) return {};
+			auto vStride = CalculateVertexStride(inputAssembly);
+			auto vertexDataSize = vertexCount * vStride;
+			if (!vertexDataSize) return {};	
 
 			auto vertexStorage = _workingPkt.AllocateStorage(DrawablesPacket::Storage::VB, vertexDataSize);
+			auto pipeline = GetPipelineAccelerator(inputAssembly, stateSet, topology, shaderSelectors);
 
-			auto* drawable = _workingPkt._drawables.Allocate<DrawableWithVertexCount>();
-			drawable->_geo = AllocateDrawableGeo();
-			drawable->_geo->_vertexStreams[0]._resource = nullptr;
-			drawable->_geo->_vertexStreams[0]._vbOffset = vertexStorage._startOffset;
-			drawable->_geo->_vertexStreamCount = 1;
-			drawable->_geo->_ibFormat = Format(0);
-			drawable->_pipeline = GetPipelineAccelerator(inputAssembly, stateSet, topology, shaderSelectors);
-			drawable->_vertexCount = vertexCount;
-			drawable->_drawFn = [](ParsingContext&, const ExecuteDrawableContext& drawContext, const Drawable& drawable) {
-				drawContext.Draw(((DrawableWithVertexCount&)drawable)._vertexCount);
-			};
+			// check if we can just merge it into the previous draw call. If so we're just going to
+			// increase the vertex count on that draw call
+			if (_lastQueuedDrawable && _lastQueuedDrawable->_pipeline == pipeline && topology != Topology::TriangleStrip && topology != Topology::LineStrip) {
+				#if defined(_DEBUG)
+					// We're assuming that our vertex data immediately follows on from the previous storage allocation
+					auto validateBegin = _workingPkt.GetStorage(DrawablesPacket::Storage::VB);
+					assert(PtrAdd(validateBegin.begin(), _lastQueuedDrawable->_geo->_vertexStreams[0]._vbOffset + _lastQueuedDrawable->_vertexCount * vStride) == vertexStorage._data.begin());
+				#endif
+				_lastQueuedDrawable->_vertexCount += vertexCount;
+			} else {
+				auto* drawable = _workingPkt._drawables.Allocate<DrawableWithVertexCount>();
+				drawable->_geo = AllocateDrawableGeo();
+				drawable->_geo->_vertexStreams[0]._resource = nullptr;
+				drawable->_geo->_vertexStreams[0]._vbOffset = vertexStorage._startOffset;
+				drawable->_geo->_vertexStreamCount = 1;
+				drawable->_geo->_ibFormat = Format(0);
+				drawable->_pipeline = std::move(pipeline);
+				drawable->_vertexCount = vertexCount;
+				drawable->_vertexStride = vStride;
+				drawable->_bytesAllocated = vertexDataSize;
+				drawable->_drawFn = [](ParsingContext&, const ExecuteDrawableContext& drawContext, const Drawable& drawable) {
+					drawContext.Draw(((DrawableWithVertexCount&)drawable)._vertexCount);
+				};
+				_lastQueuedDrawable = drawable;
+			}
 
 			return vertexStorage._data;
+		}
+
+		IteratorRange<void*> UpdateLastDrawCallVertexCount(size_t newVertexCount)
+		{
+			if (!_lastQueuedDrawable)
+				Throw(std::runtime_error("Calling UpdateLastDrawCallVertexCount, but no previous draw call to update"));
+
+			if (newVertexCount == _lastQueuedDrawable->_vertexCount) {
+				// no update necessary			
+			} else if (newVertexCount > _lastQueuedDrawable->_vertexCount) {
+				size_t allocationRequired = newVertexCount * _lastQueuedDrawable->_vertexStride;
+				if (allocationRequired <= _lastQueuedDrawable->_bytesAllocated) {
+					_lastQueuedDrawable->_vertexCount = newVertexCount;
+				} else {
+					auto extraStorage = _workingPkt.AllocateStorage(DrawablesPacket::Storage::VB, _lastQueuedDrawable->_bytesAllocated-allocationRequired);
+					#if defined(_DEBUG)
+						auto fullStorage = _workingPkt.GetStorage(DrawablesPacket::Storage::VB);
+						auto* endOfLastBlock = PtrAdd(fullStorage.begin(), _lastQueuedDrawable->_geo->_vertexStreams[0]._vbOffset + _lastQueuedDrawable->_bytesAllocated);
+						assert(endOfLastBlock == extraStorage._data.begin());
+					#endif
+					_lastQueuedDrawable->_bytesAllocated = allocationRequired;
+					_lastQueuedDrawable->_vertexCount = newVertexCount;
+				}
+			} else {
+				_lastQueuedDrawable->_vertexCount = newVertexCount;
+			}
+
+			auto fullStorage = _workingPkt.GetStorage(DrawablesPacket::Storage::VB);
+			return MakeIteratorRange(
+				const_cast<void*>(PtrAdd(fullStorage.begin(), _lastQueuedDrawable->_geo->_vertexStreams[0]._vbOffset)),
+				const_cast<void*>(PtrAdd(fullStorage.begin(), _lastQueuedDrawable->_geo->_vertexStreams[0]._vbOffset + newVertexCount * _lastQueuedDrawable->_vertexStride)));
 		}
 
 		void ExecuteDraws(
@@ -157,6 +201,7 @@ namespace RenderCore { namespace Techniques
 			_workingPkt.Reset();
 			_reservedDrawableGeos.insert(_reservedDrawableGeos.end(), _drawableGeosInWorkingPkt.begin(), _drawableGeosInWorkingPkt.end());
 			_drawableGeosInWorkingPkt.clear();
+			_lastQueuedDrawable = nullptr;
 		}
 
 		std::shared_ptr<::Assets::IAsyncMarker> PrepareResources(
@@ -178,6 +223,7 @@ namespace RenderCore { namespace Techniques
 			_pipelineAcceleratorPool = CreatePipelineAcceleratorPool(device, pipelineLayout, 0, matDescSetLayout, sequencerDescSetLayout);
 			_resourceDelegate = std::make_shared<ImmediateRendererResourceDelegate>();
 			_techniqueDelegate = std::make_shared<ImmediateRendererTechniqueDelegate>();
+			_lastQueuedDrawable = nullptr;
 		}
 
 	protected:
@@ -188,6 +234,7 @@ namespace RenderCore { namespace Techniques
 		std::shared_ptr<ImmediateRendererResourceDelegate> _resourceDelegate;
 		std::vector<std::pair<uint64_t, std::shared_ptr<PipelineAccelerator>>> _pipelineAccelerators;
 		std::shared_ptr<ITechniqueDelegate> _techniqueDelegate;
+		DrawableWithVertexCount* _lastQueuedDrawable;
 
 		std::shared_ptr<DrawableGeo> AllocateDrawableGeo()
 		{
@@ -205,12 +252,12 @@ namespace RenderCore { namespace Techniques
 		}
 
 		std::shared_ptr<PipelineAccelerator> GetPipelineAccelerator(
-			IteratorRange<const InputElementDesc*> inputAssembly,
+			IteratorRange<const MiniInputElementDesc*> inputAssembly,
 			const RenderCore::Assets::RenderStateSet& stateSet,
 			Topology topology,
 			const ParameterBox& shaderSelectors)
 		{
-			uint64_t hashCode = Hash64(inputAssembly.begin(), inputAssembly.end(), stateSet.GetHash());
+			uint64_t hashCode = HashInputAssembly(inputAssembly, stateSet.GetHash());
 			if (topology != Topology::TriangleList)
 				hashCode = HashCombine((uint64_t)topology, hashCode);	// awkward because it's just a small integer value
 			if (shaderSelectors.GetCount() != 0) {

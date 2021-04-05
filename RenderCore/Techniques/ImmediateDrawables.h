@@ -19,11 +19,12 @@ namespace RenderCore { namespace Techniques
 	{
 	public:
 		virtual IteratorRange<void*> QueueDraw(
-			size_t vertexDataSize,
-			IteratorRange<const InputElementDesc*> inputAssembly,
+			size_t vertexCount,
+			IteratorRange<const MiniInputElementDesc*> inputAssembly,
 			const RenderCore::Assets::RenderStateSet& stateSet,
 			Topology topology = Topology::TriangleList,
 			const ParameterBox& shaderSelectors = {}) = 0;
+		virtual IteratorRange<void*> UpdateLastDrawCallVertexCount(size_t newVertexCount) = 0;
 		virtual void ExecuteDraws(
 			IThreadContext& context,
 			ParsingContext& parserContext,
