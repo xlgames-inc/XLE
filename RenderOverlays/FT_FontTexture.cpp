@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -8,7 +6,11 @@
 #include "FontRectanglePacking.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/ResourceDesc.h"
+#include "../RenderCore/IDevice.h"
+#include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/Techniques/Services.h"
+#include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/Resource.h"
 #include "../Core/Types.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringUtils.h"
@@ -58,7 +60,10 @@ namespace RenderOverlays
 		return RenderCore::Techniques::Services::GetBufferUploads();
 	}
 
-	FontTexture2D::FontTexture2D(unsigned width, unsigned height, RenderCore::Format pixelFormat)
+	FontTexture2D::FontTexture2D(
+		RenderCore::IDevice& dev,
+		unsigned width, unsigned height, RenderCore::Format pixelFormat)
+	: _format(pixelFormat)
 	{
 		using namespace RenderCore;
 		ResourceDesc desc;
@@ -69,83 +74,56 @@ namespace RenderOverlays
 		desc._allocationRules = 0;
 		desc._textureDesc = TextureDesc::Plain2D(width, height, pixelFormat, 1);
 		XlCopyString(desc._name, "Font");
-		_transaction = GetBufferUploads().Transaction_Begin(
-			desc, (BufferUploads::DataPacket*)nullptr, BufferUploads::TransactionOptions::ForceCreate|BufferUploads::TransactionOptions::LongTerm);
+		_resource = dev.CreateResource(desc);
+		_srv = _resource->CreateTextureView();
 	}
 
 	FontTexture2D::~FontTexture2D()
 	{
-		if (_transaction != ~BufferUploads::TransactionID(0x0)) {
-			GetBufferUploads().Transaction_End(_transaction); 
-			_transaction = ~BufferUploads::TransactionID(0x0);
-		}
 	}
 
-	static intrusive_ptr<BufferUploads::DataPacket> GlyphAsDataPacket(
+	void FontTexture2D::UpdateToTexture(
+		RenderCore::IThreadContext& threadContext,
+		IteratorRange<const uint8_t*> data, const RenderCore::Box2D& destBox)
+	{
+		using namespace RenderCore;
+		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
+		auto blitEncoder = metalContext.BeginBlitEncoder();
+		blitEncoder.Write(
+			Metal::BlitEncoder::CopyPartial_Dest {
+				_resource.get(), {}, VectorPattern<unsigned, 3>{ unsigned(destBox._left), unsigned(destBox._top), 0u }
+			},
+			SubResourceInitData { data },
+			_format,
+			VectorPattern<unsigned, 3>{ unsigned(destBox._right - destBox._left), unsigned(destBox._bottom - destBox._top), 1u });
+	}
+
+	static std::vector<uint8_t> GlyphAsDataPacket(
 		unsigned srcWidth, unsigned srcHeight,
 		IteratorRange<const void*> srcData,
 		int offX, int offY, int width, int height)
 	{
-		auto packet = BufferUploads::CreateBasicPacket(
-			width*height, nullptr, RenderCore::TexturePitches{unsigned(width), unsigned(width*height), 0u});
-		uint8* data = (uint8*)packet->GetData();
+		std::vector<uint8_t> packet(width*height);
 
 		int j = 0;
 		for (; j < std::min(height, (int)srcHeight); ++j) {
 			int i = 0;
 			for (; i < std::min(width, (int)srcWidth); ++i)
-				data[i + j*width] = ((const uint8_t*)srcData.begin())[i + srcWidth * j];
+				packet[i + j*width] = ((const uint8_t*)srcData.begin())[i + srcWidth * j];
 			for (; i < width; ++i)
-				data[i + j*width] = 0;
+				packet[i + j*width] = 0;
 		}
 		for (; j < height; ++j)
 			for (int i=0; i < width; ++i)
-				data[i + j*width] = 0;
+				packet[i + j*width] = 0;
 
 		return packet;
-	}
-
-	void FontTexture2D::UpdateToTexture(BufferUploads::DataPacket& packet, const RenderCore::Box2D& destBox)
-	{
-		if (_transaction == ~BufferUploads::TransactionID(0x0)) {
-			_transaction = GetBufferUploads().Transaction_Begin(_locator);
-		}
-
-		GetBufferUploads().UpdateData(_transaction, &packet, destBox);
-	}
-
-	void FontTexture2D::Resolve() const
-	{
-		if (_transaction != ~BufferUploads::TransactionID(0x0)) {
-			if (GetBufferUploads().IsCompleted(_transaction)) {
-				_locator = GetBufferUploads().GetResource(_transaction);
-				GetBufferUploads().Transaction_End(_transaction);
-				_transaction = ~BufferUploads::TransactionID(0x0);
-				if (_locator) {
-					_srv = RenderCore::Metal::ShaderResourceView(_locator->GetUnderlying());
-				} else {
-					_srv = RenderCore::Metal::ShaderResourceView{};
-				}
-			}
-		}
-	}
-
-	const RenderCore::IResourcePtr& FontTexture2D::GetUnderlying() const
-	{
-		Resolve();
-		static RenderCore::IResourcePtr nullResPtr;
-		return _locator ? _locator->GetUnderlying() : nullResPtr;
-	}
-
-	const std::shared_ptr<RenderCore::IResourceView>& FontTexture2D::GetSRV() const
-	{
-		Resolve();
-		return _srv;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	auto FT_FontTextureMgr::CreateChar(
+		RenderCore::IThreadContext& threadContext,
 		unsigned width, unsigned height,
 		IteratorRange<const void*> data) -> Glyph
 	{
@@ -156,7 +134,8 @@ namespace RenderOverlays
 		if (_pimpl->_texture) {
 			auto pkt = GlyphAsDataPacket(width, height, data, rect.first[0], rect.first[1], rect.second[0]-rect.first[0], rect.second[1]-rect.first[1]);
 			_pimpl->_texture->UpdateToTexture(
-				*pkt, 
+				threadContext,
+				pkt, 
 				RenderCore::Box2D{
 					(int)rect.first[0], (int)rect.first[1], 
 					(int)rect.second[0], (int)rect.second[1]});

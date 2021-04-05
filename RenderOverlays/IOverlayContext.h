@@ -78,13 +78,13 @@ namespace RenderOverlays
             ColorB color0, ColorB color1,
             const Float2& minTex0, const Float2& maxTex0, 
             const Float2& minTex1, const Float2& maxTex1,
-            StringSection<char> pixelShader = StringSection<char>()) = 0;
+            StringSection<char> shaderSelectorTable = {}) = 0;
 
         virtual void    DrawQuad(
             ProjectionMode proj, 
             const Float3& mins, const Float3& maxs, 
             ColorB color,
-            StringSection<char> pixelShader = StringSection<char>()) = 0;
+            StringSection<char> shaderSelectorTable = {}) = 0;
 
         virtual void    DrawTexturedQuad(
             ProjectionMode proj, 

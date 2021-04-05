@@ -16,6 +16,7 @@
 #include <utility>
 
 namespace RenderCore { class IThreadContext; }
+namespace RenderCore { namespace Techniques { class IImmediateDrawables; }}
 
 namespace RenderOverlays
 {
@@ -112,6 +113,7 @@ namespace RenderOverlays
 	};
         
     float       Draw(   RenderCore::IThreadContext& threadContext,
+						RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
 						const Font& font, const TextStyle& style,
                         float x, float y, StringSection<ucs4> text,
                         float spaceExtra, float scale, float mx, float depth,

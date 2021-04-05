@@ -4,30 +4,30 @@
 
 #include "Font.h"
 #include "FT_FontTexture.h"
+#include "../RenderCore/Techniques/ImmediateDrawables.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Types.h"
 #include "../RenderCore/Format.h"
-#include "../RenderCore/StateDesc.h"
-#include "../RenderCore/BufferView.h"
+// #include "../RenderCore/StateDesc.h"
+// #include "../RenderCore/BufferView.h"
 #include "../Assets/Assets.h"
 #include "../Assets/AssetFutureContinuation.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Math/Vector.h"
-#include "../Core/Exceptions.h"
-#include "../xleres/FileList.h"
-#include <initializer_list>
-#include <tuple>        // We can't use variadic template parameters, or initializer_lists, so use tr1 tuples :(
+// #include "../Core/Exceptions.h"
+// #include "../xleres/FileList.h"
 #include <assert.h>
 #include <algorithm>
 
-#include "../RenderCore/Metal/Shader.h"
+/*#include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
 
-#include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/CommonResources.h"*/
 
 namespace RenderOverlays
 {
@@ -44,24 +44,36 @@ namespace RenderOverlays
 			Vertex() {}
 			Vertex(Float3 ip, unsigned ic, Float2 it) : p(ip), c(ic), t(it) {}
 		};
-		static const int    VertexSize = sizeof(Vertex);
+		static const int VertexSize = sizeof(Vertex);
 
-		bool                PushQuad(const Quad& positions, unsigned color, const Quad& textureCoords, float depth, bool snap=true);
-		void                Reset();
-		size_t              VertexCount() const;
-		RenderCore::Metal::Resource    CreateBuffer(RenderCore::Metal::ObjectFactory&) const;
+		void PushQuad(const Quad& positions, unsigned color, const Quad& textureCoords, float depth, bool snap=true);
+		void Complete();
 
-		WorkingVertexSetPCT();
+		WorkingVertexSetPCT(
+			RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
+			unsigned reservedQuads);
 
 	private:
-		Vertex              _vertices[512];
-		Vertex *            _currentIterator;
+		RenderCore::Techniques::IImmediateDrawables* _immediateDrawables;
+		IteratorRange<Vertex*> 	_currentAllocation;
+		Vertex*            		_currentIterator;
 	};
 
-	bool            WorkingVertexSetPCT::PushQuad(const Quad& positions, unsigned color, const Quad& textureCoords, float depth, bool snap)
+	static RenderCore::MiniInputElementDesc s_inputElements[] = 
 	{
-		if ((_currentIterator + 6) > &_vertices[dimof(_vertices)]) {
-			return false;       // no more space!
+		RenderCore::MiniInputElementDesc{ RenderCore::Techniques::CommonSemantics::POSITION, RenderCore::Format::R32G32B32_FLOAT },
+		RenderCore::MiniInputElementDesc{ RenderCore::Techniques::CommonSemantics::COLOR, RenderCore::Format::R8G8B8A8_UNORM },
+		RenderCore::MiniInputElementDesc{ RenderCore::Techniques::CommonSemantics::TEXCOORD, RenderCore::Format::R32G32_FLOAT }
+	};
+
+	void WorkingVertexSetPCT::PushQuad(const Quad& positions, unsigned color, const Quad& textureCoords, float depth, bool snap)
+	{
+		if (__builtin_expect((_currentIterator + 6) > _currentAllocation.end(), false)) {
+			auto reserveVertexCount = _currentAllocation.size() + 6 + (_currentAllocation.size() + 6)/2;
+			auto iteratorPosition = _currentIterator - _currentAllocation.begin();
+			_currentAllocation = _immediateDrawables->UpdateLastDrawCallVertexCount(reserveVertexCount).Cast<Vertex*>();
+			_currentIterator = _currentAllocation.begin() + iteratorPosition;
+			assert((_currentIterator + 6) <= _currentAllocation.end());
 		}
 
 		float x0 = positions.min[0];
@@ -95,10 +107,9 @@ namespace RenderOverlays
 		*_currentIterator++ = Vertex(p1, color, Float2( textureCoords.max[0], textureCoords.min[1] ));
 		*_currentIterator++ = Vertex(p2, color, Float2( textureCoords.min[0], textureCoords.max[1] ));
 		*_currentIterator++ = Vertex(p3, color, Float2( textureCoords.max[0], textureCoords.max[1] ));
-
-		return true;
 	}
 
+	/*
 	RenderCore::Metal::Resource WorkingVertexSetPCT::CreateBuffer(RenderCore::Metal::ObjectFactory& objectFactory) const
 	{
 		// todo -- we shouldn't create temporary buffers this small. We need a better way to push
@@ -119,10 +130,25 @@ namespace RenderOverlays
 	{
 		_currentIterator = _vertices;
 	}
+	*/
 
-	WorkingVertexSetPCT::WorkingVertexSetPCT()
+	void WorkingVertexSetPCT::Complete()
 	{
-		_currentIterator = _vertices;
+		// Update the vertex count to be where we ended up
+		_immediateDrawables->UpdateLastDrawCallVertexCount(_currentIterator - _currentAllocation.begin());
+	}
+
+	WorkingVertexSetPCT::WorkingVertexSetPCT(
+		RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
+		unsigned reservedQuads)
+	: _immediateDrawables(&immediateDrawables)
+	{
+		assert(reservedQuads != 0);
+		_currentAllocation = _immediateDrawables->QueueDraw(
+			reservedQuads * 6,
+			MakeIteratorRange(s_inputElements), 
+			RenderCore::Assets::RenderStateSet{}).Cast<Vertex*>();
+		_currentIterator = _currentAllocation.begin();
 	}
 
 	static unsigned ToDigitValue(ucs4 chr, unsigned base)
@@ -155,6 +181,7 @@ namespace RenderOverlays
 		return 0;
 	}
 
+#if 0
 	class TextStyleResources
 	{
 	public:
@@ -204,10 +231,9 @@ namespace RenderOverlays
 				Metal::GraphicsPipelineBuilder builder;
 				Metal::BoundInputLayout boundInputLayout(RenderCore::GlobalInputLayouts::PCT, *shader);
 				builder.Bind(boundInputLayout, Topology::TriangleList);
-				auto& commonResources = Techniques::CommonResources();
-				builder.Bind(commonResources._dsDisable);
-				builder.Bind(commonResources._rsCullDisable);
-				AttachmentBlendDesc attachmentBlends[] = { commonResources._abStraightAlpha };
+				builder.Bind(Techniques::CommonResourceBox::s_dsDisable);
+				builder.Bind(Techniques::CommonResourceBox::s_rsCullDisable);
+				AttachmentBlendDesc attachmentBlends[] = { Techniques::CommonResourceBox::s_abStraightAlpha };
 				builder.Bind(MakeIteratorRange(attachmentBlends));
 
 				// We have to make an assumption about the render pass we're going to be drawing onto
@@ -256,17 +282,18 @@ namespace RenderOverlays
 			vertices.Reset();
 		}
 	}
+#endif
 
-	float Draw(    
+	float Draw(
 		RenderCore::IThreadContext& threadContext,
-		const std::shared_ptr<RenderCore::ICompiledPipelineLayout>& pipelineLayout,
+		RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
 		const Font& font, const TextStyle& style,
 		float x, float y, StringSection<ucs4> text,
 		float spaceExtra, float scale, float mx, float depth,
 		unsigned colorARGB, bool applyDescender, Quad* q)
 	{
 		using namespace RenderCore;
-		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
+		// auto& metalContext = *Metal::DeviceContext::Get(threadContext);
 
 		int prevGlyph = 0;
 		float xScale = scale;
@@ -277,6 +304,7 @@ namespace RenderOverlays
 			y = yScale * (int)(0.5f + y / yScale);
 		}
 
+		/*
 		auto resFuture = ::Assets::MakeAsset<TextStyleResources>(
 			pipelineLayout,
 			TextStyleResources::Desc());
@@ -287,12 +315,19 @@ namespace RenderOverlays
 
 		auto viewportDesc = metalContext.GetBoundViewport();
 		ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc.Width), 1.f / float(viewportDesc.Height), 0.f, 0.f };
-            
+		*/
+			
 		auto& textureMgr = GetFontTextureMgr();
 		auto* texSRV = textureMgr.GetFontTexture().GetSRV().get();
 		auto texDims = textureMgr.GetTextureDimensions();
-		WorkingVertexSetPCT workingVertices;
+		auto estimatedQuadCount = text.size();
+		if (style._options.shadow)
+			estimatedQuadCount += text.size();
+		if (style._options.outline)
+			estimatedQuadCount += 8 * text.size();
+		WorkingVertexSetPCT workingVertices(immediateDrawables, estimatedQuadCount);
 
+		/*
 		const IResourceView* srvs[] = { texSRV };
 		IteratorRange<const void*> cbvs[] = { MakeOpaqueIteratorRange(reciprocalViewportDimensions) };
 		res->_boundUniforms.ApplyLooseUniforms(
@@ -301,6 +336,7 @@ namespace RenderOverlays
 				MakeIteratorRange(srvs),
 				MakeIteratorRange(cbvs)
 			});
+		*/
 
 		float descent = 0.0f;
 		if (applyDescender) {
@@ -308,13 +344,14 @@ namespace RenderOverlays
 		}
 		float opacity = (colorARGB >> 24) / float(0xff);
 		unsigned colorOverride = 0x0;
+
 		for (auto i=text.begin(); i!=text.end(); ++i) {
 			auto ch = *i;
-			if (mx > 0.0f && x > mx) {
-				return x;
+			if (__builtin_expect(mx > 0.0f && x > mx, false)) {
+				break;
 			}
 
-			if (!XlComparePrefixI((ucs4*)"{\0\0\0C\0\0\0o\0\0\0l\0\0\0o\0\0\0r\0\0\0:\0\0\0", i, 7)) {
+			if (__builtin_expect(!XlComparePrefixI((ucs4*)"{\0\0\0C\0\0\0o\0\0\0l\0\0\0o\0\0\0r\0\0\0:\0\0\0", i, 7), false)) {
 				unsigned newColorOverride = 0;
 				unsigned parseLength = ParseColorValue(i+7, &newColorOverride);
 				if (parseLength) {
@@ -340,10 +377,10 @@ namespace RenderOverlays
 				baseY = yScale * (int)(0.5f + baseY / yScale);
 			}
 
-			Quad pos    = Quad::MinMax(
+			Quad pos = Quad::MinMax(
 				baseX, baseY, 
 				baseX + (bitmap._bottomRight[0] - bitmap._topLeft[0]) * xScale, baseY + (bitmap._bottomRight[1] - bitmap._topLeft[1]) * yScale);
-			Quad tc     = Quad::MinMax(
+			Quad tc = Quad::MinMax(
 				bitmap._topLeft[0] / float(texDims[0]), bitmap._topLeft[1] / float(texDims[1]), 
 				bitmap._bottomRight[0] / float(texDims[0]), bitmap._bottomRight[1] / float(texDims[1]));
 
@@ -356,72 +393,48 @@ namespace RenderOverlays
 				shadowPos.max[0] -= xScale;
 				shadowPos.min[1] -= yScale;
 				shadowPos.max[1] -= yScale;
-				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, shadowColor, tc, depth), true)) {
-					Flush(encoder, *res->_pipeline, workingVertices);
-					workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
-				}
+				workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
 
 				shadowPos = pos;
 				shadowPos.min[1] -= yScale;
 				shadowPos.max[1] -= yScale;
-				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, shadowColor, tc, depth), true)) {
-					Flush(encoder, *res->_pipeline, workingVertices);
-					workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
-				}
+				workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
 
 				shadowPos = pos;
 				shadowPos.min[0] += xScale;
 				shadowPos.max[0] += xScale;
 				shadowPos.min[1] -= yScale;
 				shadowPos.max[1] -= yScale;
-				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, shadowColor, tc, depth), true)) {
-					Flush(encoder, *res->_pipeline, workingVertices);
-					workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
-				}
+				workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
 
 				shadowPos = pos;
 				shadowPos.min[0] -= xScale;
 				shadowPos.max[0] -= xScale;
-				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, shadowColor, tc, depth), true)) {
-					Flush(encoder, *res->_pipeline, workingVertices);
-					workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
-				}
+				workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
 
 				shadowPos = pos;
 				shadowPos.min[0] += xScale;
 				shadowPos.max[0] += xScale;
-				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, shadowColor, tc, depth), true)) {
-					Flush(encoder, *res->_pipeline, workingVertices);
-					workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
-				}
+				workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
 
 				shadowPos = pos;
 				shadowPos.min[0] -= xScale;
 				shadowPos.max[0] -= xScale;
 				shadowPos.min[1] += yScale;
 				shadowPos.max[1] += yScale;
-				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, shadowColor, tc, depth), true)) {
-					Flush(encoder, *res->_pipeline, workingVertices);
-					workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
-				}
+				workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
 
 				shadowPos = pos;
 				shadowPos.min[1] += yScale;
 				shadowPos.max[1] += yScale;
-				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, shadowColor, tc, depth), true)) {
-					Flush(encoder, *res->_pipeline, workingVertices);
-					workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
-				}
+				workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
 
 				shadowPos = pos;
 				shadowPos.min[0] += xScale;
 				shadowPos.max[0] += xScale;
 				shadowPos.min[1] += yScale;
 				shadowPos.max[1] += yScale;
-				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, shadowColor, tc, depth), true)) {
-					Flush(encoder, *res->_pipeline, workingVertices);
-					workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
-				}
+				workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
 			}
 
 			if (style._options.shadow) {
@@ -430,16 +443,10 @@ namespace RenderOverlays
 				shadowPos.max[0] += xScale;
 				shadowPos.min[1] += yScale;
 				shadowPos.max[1] += yScale;
-				if (!__builtin_expect(workingVertices.PushQuad(shadowPos, ColorB::FromNormalized(0,0,0,opacity).AsUInt32(), tc, depth), true)) {
-					Flush(encoder, *res->_pipeline, workingVertices);
-					workingVertices.PushQuad(shadowPos, ColorB::FromNormalized(0,0,0,opacity).AsUInt32(), tc, depth);
-				}
+				workingVertices.PushQuad(shadowPos, ColorB::FromNormalized(0,0,0,opacity).AsUInt32(), tc, depth);
 			}
 
-			if (!__builtin_expect(workingVertices.PushQuad(pos, RenderCore::ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth), true)) {
-				Flush(encoder, *res->_pipeline, workingVertices);
-				workingVertices.PushQuad(pos, RenderCore::ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth);
-			}
+			workingVertices.PushQuad(pos, RenderCore::ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth);
 
 			x += bitmap._glyph._xAdvance * xScale;
 			if (style._options.outline) {
@@ -470,8 +477,7 @@ namespace RenderOverlays
 			}
 		}
 
-		Flush(encoder, *res->_pipeline, workingVertices);
-
+		workingVertices.Complete();
 		return x;
 	}
 
