@@ -53,9 +53,7 @@ namespace PlatformRig
     {
         StreamDOM<InputStreamFormatter<utf8>> doc(formatter);
 
-        auto attrib = doc.FirstAttribute();
-        while (attrib) {
-
+        for (auto attrib:doc.RootElement().attributes()) {
             auto executeString = attrib.Value();
             if (!executeString.IsEmpty()) {
                 auto keyName = attrib.Name();
@@ -65,8 +63,6 @@ namespace PlatformRig
                     executeString.AsString());
                 _table.push_back(p);
             }
-
-            attrib = attrib.Next();
         }
     }
     TableOfKeys::~TableOfKeys() {}

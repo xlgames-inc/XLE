@@ -56,10 +56,10 @@ namespace PlatformRig { namespace Overlays
         unsigned        _lockedFrameId;
 
         float           _graphMinValueHistory, _graphMaxValueHistory;
-        unsigned        _accumulatedCreateCount[BufferUploads::UploadDataType::Max];
-        unsigned        _accumulatedCreateBytes[BufferUploads::UploadDataType::Max];
-        unsigned        _accumulatedUploadCount[BufferUploads::UploadDataType::Max];
-        unsigned        _accumulatedUploadBytes[BufferUploads::UploadDataType::Max];
+        unsigned        _accumulatedCreateCount[(unsigned)BufferUploads::UploadDataType::Max];
+        unsigned        _accumulatedCreateBytes[(unsigned)BufferUploads::UploadDataType::Max];
+        unsigned        _accumulatedUploadCount[(unsigned)BufferUploads::UploadDataType::Max];
+        unsigned        _accumulatedUploadBytes[(unsigned)BufferUploads::UploadDataType::Max];
 
         double          _reciprocalTimerFrequency;
         unsigned        _graphsMode;

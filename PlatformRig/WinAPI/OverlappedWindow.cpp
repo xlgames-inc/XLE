@@ -11,10 +11,9 @@
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/UTFUtils.h"
 #include "../../Utility/MemoryUtils.h"
-#include "../../Utility/TimeUtils.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/Conversion.h"
-#include "../../Utility/WinAPI/WinAPIWrapper.h"
+#include "../../OSServices/WinAPI/WinAPIWrapper.h"
 #include "../../Core/Exceptions.h"
 #include <windowsx.h>
 
@@ -195,7 +194,7 @@ namespace PlatformRig
             //      ---<>--- Register window class ---<>---
             //
 
-        Windows::WNDCLASSEX wc;
+        OSServices::Windows::WNDCLASSEX wc;
         XlZeroMemory(wc);
         XlSetMemory(&wc, 0, sizeof(wc));
 

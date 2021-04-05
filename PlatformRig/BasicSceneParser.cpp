@@ -8,6 +8,7 @@
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetFutureContinuation.h"
 #include "../../Math/Transformations.h"
+#include "../../Math/MathSerialization.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Conversion.h"
@@ -207,12 +208,12 @@ namespace PlatformRig
         utf8 buffer[256];
 
         bool exit = false;
-        while (!exit) {
+        StringSection<> name;
+        while (formatter.TryKeyedItem(name)) {
             switch(formatter.PeekNext()) {
-            case InputStreamFormatter<utf8>::Blob::BeginElement:
+            case FormatterBlob::BeginElement:
                 {
-                    InputStreamFormatter<utf8>::InteriorSection name;
-                    if (!formatter.TryBeginElement(name)) break;
+                    RequireBeginElement(formatter);
 
                     if (XlEqString(name, EntityTypeName::AmbientSettings)) {
                         _globalLightingDesc = GlobalLightingDesc(ParameterBox(formatter));
@@ -222,8 +223,9 @@ namespace PlatformRig
 
                         ParameterBox params(formatter);
                         uint64 hashName = 0ull;
-                        if (params.GetString(Attribute::Name, buffer, dimof(buffer)))
-                            hashName = Hash64((const char*)buffer);
+                        auto paramValue = params.GetParameterAsString(Attribute::Name);
+                        if (paramValue.has_value())
+                            hashName = Hash64(paramValue.value());
 
                         SceneEngine::LightDesc lightDesc(params);
                         if (XlEqString(name, EntityTypeName::DirectionalLight))
@@ -242,41 +244,40 @@ namespace PlatformRig
 
                         ParameterBox params(formatter);
                         uint64 hashName = 0ull;
-                        if (params.GetString(Attribute::Name, buffer, dimof(buffer))) {
-                            hashName = Hash64((const char*)buffer);
-                        }
+                        auto paramValue = params.GetParameterAsString(Attribute::Name);
+                        if (paramValue.has_value())
+                            hashName = Hash64(paramValue.value());
 
                         shadowSettings.push_back(
                             std::make_pair(hashName, CreateFromParameters<PlatformRig::DefaultShadowFrustumSettings>(params)));
 
                         uint64 frustumLink = 0;
-                        if (params.GetString(Attribute::AttachedLight, buffer, dimof(buffer)))
-                            frustumLink = Hash64((const char*)buffer);
+                        paramValue = params.GetParameterAsString(Attribute::Name);
+                        if (paramValue.has_value())
+                            frustumLink = Hash64(paramValue.value());
                         lightFrustumLink.push_back(std::make_pair(frustumLink, hashName));
 
+#if 0
                     } else if (XlEqString(name, EntityTypeName::OceanLightingSettings)) {
                         _oceanLighting = OceanLightingSettings(ParameterBox(formatter));
                     } else if (XlEqString(name, EntityTypeName::OceanSettings)) {
                         _deepOceanSim = DeepOceanSimSettings(ParameterBox(formatter));
                     } else if (XlEqString(name, EntityTypeName::FogVolumeRenderer)) {
                         _volFogRenderer = VolumetricFogConfig::Renderer(formatter);
+#endif
                     } else
-                        formatter.SkipElement();
+                        SkipElement(formatter);
                     
-                    formatter.TryEndElement();
+                    RequireEndElement(formatter);
                     break;
                 }
 
-            case InputStreamFormatter<utf8>::Blob::AttributeName:
-                {
-                    InputStreamFormatter<utf8>::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-                    break;
-                }
+            case FormatterBlob::Value:
+                RequireValue(formatter);
+                break;
 
             default:
-                exit = true; 
-                break;
+                Throw(FormatException("Expected value or element", formatter.GetLocation()));
             }
         }
 

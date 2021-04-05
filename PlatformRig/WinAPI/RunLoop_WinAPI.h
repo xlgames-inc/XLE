@@ -7,13 +7,14 @@
 #include "../OverlappedWindow.h"
 #include "../../OSServices/WinAPI/IncludeWindows.h"
 #include <vector>
+#include <chrono>
 
 namespace PlatformRig
 {
 	class OSRunLoop_BasicTimer : public IOSRunLoop
 	{
 	public:
-		EventId ScheduleTimeoutEvent(unsigned timePoint, TimeoutCallback&& callback);
+		EventId ScheduleTimeoutEvent(std::chrono::steady_clock::time_point timePoint, TimeoutCallback&& callback);
 		void RemoveEvent(EventId evnts);
 
 		bool OnOSTrigger(UINT_PTR osTimer);
@@ -26,12 +27,12 @@ namespace PlatformRig
 			unsigned _eventId;
 			TimeoutCallback _callback;			
 		};
-		std::vector<std::pair<unsigned, TimeoutEvent>> _timeoutEvents;
+		std::vector<std::pair<std::chrono::steady_clock::time_point, TimeoutEvent>> _timeoutEvents;
 
 		HWND _attachedWindow;
 		UINT_PTR _osTimer;
 		unsigned _nextEventId;
 
-		void ResetUnderlyingTimer(unsigned currentTimepoint);
+		void ResetUnderlyingTimer(std::chrono::steady_clock::time_point currentTimepoint);
 	};
 }

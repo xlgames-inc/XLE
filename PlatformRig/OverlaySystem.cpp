@@ -11,6 +11,7 @@
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/RenderPassUtils.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
+#include "../../RenderCore/Techniques/ImmediateDrawables.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
@@ -202,12 +203,13 @@ namespace PlatformRig
             RenderCore::Techniques::ParsingContext& parserContext);
         void SetActivationState(bool);
 
-        ConsoleOverlaySystem();
+        ConsoleOverlaySystem(const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables);
         ~ConsoleOverlaySystem();
 
     private:
         typedef RenderOverlays::DebuggingDisplay::DebugScreensSystem DebugScreensSystem;
-        std::shared_ptr<DebugScreensSystem>     _screens;
+        std::shared_ptr<DebugScreensSystem> _screens;
+        std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> _immediateDrawables;
     };
 
     std::shared_ptr<IInputListener> ConsoleOverlaySystem::GetInputListener()
@@ -220,15 +222,18 @@ namespace PlatformRig
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
-		auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
-		auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
+		auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, *_immediateDrawables);
 		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
+		auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
 		_screens->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ {0,0}, {int(viewportDims[0]), int(viewportDims[1])} });
+        _immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi.GetFrameBufferDesc(), 0);
     }
 
     void ConsoleOverlaySystem::SetActivationState(bool) {}
 
-    ConsoleOverlaySystem::ConsoleOverlaySystem()
+    ConsoleOverlaySystem::ConsoleOverlaySystem(
+        const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables)
+    : _immediateDrawables(immediateDrawables)
     {
         _screens = std::make_shared<DebugScreensSystem>();
 
@@ -241,9 +246,9 @@ namespace PlatformRig
     {
     }
 
-    std::shared_ptr<IOverlaySystem> CreateConsoleOverlaySystem()
+    std::shared_ptr<IOverlaySystem> CreateConsoleOverlaySystem(const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables)
     {
-        return std::make_shared<ConsoleOverlaySystem>();
+        return std::make_shared<ConsoleOverlaySystem>(immediateDrawables);
     }
 
 }

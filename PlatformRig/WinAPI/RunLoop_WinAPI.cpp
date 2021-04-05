@@ -4,18 +4,18 @@
 
 #include "RunLoop_WinAPI.h"
 #include "../../Utility/IteratorUtils.h"
-#include "../../Utility/TimeUtils.h"
+#include <chrono>
 
 namespace PlatformRig
 {
-	auto OSRunLoop_BasicTimer::ScheduleTimeoutEvent(unsigned timePoint, TimeoutCallback&& callback) -> EventId
+	auto OSRunLoop_BasicTimer::ScheduleTimeoutEvent(std::chrono::steady_clock::time_point timePoint, TimeoutCallback&& callback) -> EventId
 	{
 		auto i = LowerBound(_timeoutEvents, timePoint);
 		bool isFirst = i == _timeoutEvents.begin();
 		auto eventId = _nextEventId++;
 		_timeoutEvents.emplace(i, std::make_pair(timePoint, TimeoutEvent{eventId, std::move(callback)}));
 		if (isFirst)
-			ResetUnderlyingTimer(Millisecond_Now());
+			ResetUnderlyingTimer(std::chrono::steady_clock::now());
 		return eventId;
 	}
 
@@ -23,12 +23,12 @@ namespace PlatformRig
 	{
 		auto i = std::find_if(
 			_timeoutEvents.begin(), _timeoutEvents.end(),
-			[evnt](const std::pair<unsigned, TimeoutEvent>& p) { return p.second._eventId == evnt; });
+			[evnt](const auto& p) { return p.second._eventId == evnt; });
 		if (i != _timeoutEvents.end()) {
 			bool isFirst = i == _timeoutEvents.begin();
 			_timeoutEvents.erase(i);
 			if (isFirst)
-				ResetUnderlyingTimer(Millisecond_Now());
+				ResetUnderlyingTimer(std::chrono::steady_clock::now());
 		}
 	}
 
@@ -36,7 +36,7 @@ namespace PlatformRig
 	{
 		if (osTimer != _osTimer) return false;
 
-		auto currentTimepoint = Millisecond_Now();
+		auto currentTimepoint = std::chrono::steady_clock::now();
 		while (!_timeoutEvents.empty() && _timeoutEvents.begin()->first <= currentTimepoint) {
 			_timeoutEvents.begin()->second._callback();
 			_timeoutEvents.erase(_timeoutEvents.begin());
@@ -46,7 +46,7 @@ namespace PlatformRig
 		return true;
 	}
 
-	void OSRunLoop_BasicTimer::ResetUnderlyingTimer(unsigned currentTimepoint)
+	void OSRunLoop_BasicTimer::ResetUnderlyingTimer(std::chrono::steady_clock::time_point currentTimepoint)
 	{
 		if (!_timeoutEvents.empty()) {
 			auto timeToNext = _timeoutEvents.begin()->first - currentTimepoint;
@@ -55,7 +55,7 @@ namespace PlatformRig
 			} else {
 				_osTimer = 0;
 			}
-			_osTimer = SetTimer(_attachedWindow, _osTimer, timeToNext, nullptr);
+			_osTimer = SetTimer(_attachedWindow, _osTimer, std::chrono::duration_cast<std::chrono::milliseconds>(timeToNext).count(), nullptr);
 		} else if (_osTimer != 0) {
 			KillTimer(_attachedWindow, _osTimer);
 			_osTimer = 0;

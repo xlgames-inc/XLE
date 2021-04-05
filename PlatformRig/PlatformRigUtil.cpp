@@ -8,7 +8,7 @@
 #include "../RenderCore/IDevice.h"
 #include "../SceneEngine/LightDesc.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
-#include "../RenderCore/Techniques/RenderPass.h"
+#include "../RenderCore/Techniques/RenderPass.h"        // (for FrameBufferPool::Reset)
 #include "../RenderCore/Format.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/IncludeLUA.h"
@@ -110,26 +110,28 @@ template<> const ClassAccessors& Legacy_GetAccessors<PlatformRig::DefaultShadowF
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add("FrustumCount", DefaultGet(Obj, _frustumCount),  
+        props.Add("FrustumCount",
+            [](const Obj& obj) { return obj._frustumCount; },
             [](Obj& obj, unsigned value) { obj._frustumCount = Clamp(value, 1u, SceneEngine::MaxShadowTexturesPerLight); });
-        props.Add("MaxDistanceFromCamera",  DefaultGet(Obj, _maxDistanceFromCamera),   DefaultSet(Obj, _maxDistanceFromCamera));
-        props.Add("FrustumSizeFactor",   DefaultGet(Obj, _frustumSizeFactor),    DefaultSet(Obj, _frustumSizeFactor));
-        props.Add("FocusDistance",   DefaultGet(Obj, _focusDistance),    DefaultSet(Obj, _focusDistance));
-        props.Add("Flags",   DefaultGet(Obj, _flags),    DefaultSet(Obj, _flags));
-        props.Add("TextureSize",   DefaultGet(Obj, _textureSize),    
+        props.Add("MaxDistanceFromCamera",  &Obj:: _maxDistanceFromCamera);
+        props.Add("FrustumSizeFactor", &Obj::_frustumSizeFactor);
+        props.Add("FocusDistance", &Obj::_focusDistance);
+        props.Add("Flags", &Obj::_flags);
+        props.Add("TextureSize",
+            [](const Obj& obj) { return obj._textureSize; },
             [](Obj& obj, unsigned value) { obj._textureSize = 1<<(IntegerLog2(value-1)+1); });  // ceil to a power of two
-        props.Add("SingleSidedSlopeScaledBias",   DefaultGet(Obj, _slopeScaledBias),    DefaultSet(Obj, _slopeScaledBias));
-        props.Add("SingleSidedDepthBiasClamp",   DefaultGet(Obj, _depthBiasClamp),    DefaultSet(Obj, _depthBiasClamp));
-        props.Add("SingleSidedRasterDepthBias",   DefaultGet(Obj, _rasterDepthBias),    DefaultSet(Obj, _rasterDepthBias));
-        props.Add("DoubleSidedSlopeScaledBias",   DefaultGet(Obj, _dsSlopeScaledBias),    DefaultSet(Obj, _dsSlopeScaledBias));
-        props.Add("DoubleSidedDepthBiasClamp",   DefaultGet(Obj, _dsDepthBiasClamp),    DefaultSet(Obj, _dsDepthBiasClamp));
-        props.Add("DoubleSidedRasterDepthBias",   DefaultGet(Obj, _dsRasterDepthBias),    DefaultSet(Obj, _dsRasterDepthBias));
-        props.Add("WorldSpaceResolveBias",   DefaultGet(Obj, _worldSpaceResolveBias),    DefaultSet(Obj, _worldSpaceResolveBias));
+        props.Add("SingleSidedSlopeScaledBias", &Obj::_slopeScaledBias);
+        props.Add("SingleSidedDepthBiasClamp", &Obj::_depthBiasClamp);
+        props.Add("SingleSidedRasterDepthBias", &Obj::_rasterDepthBias);
+        props.Add("DoubleSidedSlopeScaledBias", &Obj::_dsSlopeScaledBias);
+        props.Add("DoubleSidedDepthBiasClamp", &Obj::_dsDepthBiasClamp);
+        props.Add("DoubleSidedRasterDepthBias", &Obj::_dsRasterDepthBias);
+        props.Add("WorldSpaceResolveBias", &Obj::_worldSpaceResolveBias);
         props.Add("BlurAngleDegrees",   
             [](const Obj& obj) { return Rad2Deg(XlATan(obj._tanBlurAngle)); },
             [](Obj& obj, float value) { obj._tanBlurAngle = XlTan(Deg2Rad(value)); } );
-        props.Add("MinBlurSearch",   DefaultGet(Obj, _minBlurSearch),    DefaultSet(Obj, _minBlurSearch));
-        props.Add("MaxBlurSearch",   DefaultGet(Obj, _maxBlurSearch),    DefaultSet(Obj, _maxBlurSearch));
+        props.Add("MinBlurSearch", &Obj::_minBlurSearch);
+        props.Add("MaxBlurSearch", &Obj::_maxBlurSearch);
         init = true;
     }
     return props;

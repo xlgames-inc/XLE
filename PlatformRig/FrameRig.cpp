@@ -11,16 +11,16 @@
 
 #include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/IAnnotator.h"
+#include "../RenderCore/IDevice.h"
 #include "../RenderOverlays/Font.h"
 #include "../RenderOverlays/DebuggingDisplay.h"
+#include "../RenderOverlays/OverlayContext.h"
 
-#include "../RenderCore/Techniques/CommonResources.h"
-#include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/RenderPassUtils.h"
 #include "../RenderCore/Techniques/RenderPass.h"
-
-#include "../RenderOverlays/OverlayContext.h"
+#include "../RenderCore/Techniques/CommonBindings.h"
+#include "../RenderCore/Techniques/ImmediateDrawables.h"
 
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../Assets/AssetServices.h"
@@ -28,13 +28,13 @@
 
 #include "../ConsoleRig/ResourceBox.h"
 
-#include "../Utility/TimeUtils.h"
 #include "../Utility/IntrusivePtr.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/Profiling/CPUProfiler.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 
 #include "../OSServices/Log.h"
+#include "../OSServices/TimeUtils.h"
 #include "../ConsoleRig/Console.h"
 #include "../Core/Types.h"
 
@@ -51,15 +51,15 @@ namespace PlatformRig
     class FrameRateRecorder
     {
     public:
-        void PushFrameDuration(uint64 duration);
+        void PushFrameDuration(uint64_t duration);
         std::tuple<float, float, float> GetPerformanceStats() const;
 
         FrameRateRecorder();
         ~FrameRateRecorder();
 
     private:
-        uint64      _frequency;
-        uint64      _durationHistory[64];
+        uint64_t      _frequency;
+        uint64_t      _durationHistory[64];
         unsigned    _bufferStart, _bufferEnd;
     };
 
@@ -86,11 +86,11 @@ namespace PlatformRig
     public:
         AccumulatedAllocations::Snapshot _prevFrameAllocationCount;
         FrameRateRecorder _frameRate;
-        uint64      _prevFrameStartTime;
+        uint64_t      _prevFrameStartTime;
         float       _timerToSeconds;
         unsigned    _frameRenderCount;
-        uint64      _frameLimiter;
-        uint64      _timerFrequency;
+        uint64_t      _frameLimiter;
+        uint64_t      _timerFrequency;
         bool        _updateAsyncMan;
 
         std::shared_ptr<OverlaySystemSet> _mainOverlaySys;
@@ -100,7 +100,7 @@ namespace PlatformRig
 
         Pimpl()
         : _prevFrameStartTime(0) 
-        , _timerFrequency(GetPerformanceCounterFrequency())
+        , _timerFrequency(OSServices::GetPerformanceCounterFrequency())
         , _frameRenderCount(0)
         , _frameLimiter(0)
         , _updateAsyncMan(false)
@@ -114,9 +114,9 @@ namespace PlatformRig
     public:
         class Desc {};
 
-		std::shared_ptr<RenderOverlays::Font> _frameRateFont;
-		std::shared_ptr<RenderOverlays::Font> _smallFrameRateFont;
-		std::shared_ptr<RenderOverlays::Font> _tabHeadingFont;
+        std::shared_ptr<RenderOverlays::Font> _frameRateFont;
+        std::shared_ptr<RenderOverlays::Font> _smallFrameRateFont;
+        std::shared_ptr<RenderOverlays::Font> _tabHeadingFont;
 
         FrameRigResources(const Desc&);
     };
@@ -137,9 +137,12 @@ namespace PlatformRig
     class DebugScreensOverlay : public IOverlaySystem
     {
     public:
-        DebugScreensOverlay(std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem)
-            : _debugScreensSystem(debugScreensSystem)
-            , _inputListener(std::make_shared<PlatformRig::DebugScreensInputHandler>(std::move(debugScreensSystem)))
+        DebugScreensOverlay(
+            std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem,
+            std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> immediateDrawables)
+        : _debugScreensSystem(debugScreensSystem)
+        , _inputListener(std::make_shared<PlatformRig::DebugScreensInputHandler>(std::move(debugScreensSystem)))
+        , _immediateDrawables(std::move(immediateDrawables))
         {
         }
 
@@ -150,10 +153,11 @@ namespace PlatformRig
 			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext)
         {
-			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
-			auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
+			auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, *_immediateDrawables);
+            auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
 			auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
-			_debugScreensSystem->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ { 0,0 },{ int(viewportDims[0]), int(viewportDims[1]) } });
+            _debugScreensSystem->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ {0,0}, {int(viewportDims[0]), int(viewportDims[1])} });
+            _immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi.GetFrameBufferDesc(), 0);
         }
 
         void SetActivationState(bool) {}
@@ -161,12 +165,14 @@ namespace PlatformRig
     private:
         std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> _debugScreensSystem;
         std::shared_ptr<DebugScreensInputHandler> _inputListener;
+        std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> _immediateDrawables;
     };
 
     static std::shared_ptr<IOverlaySystem> CreateDebugScreensOverlay(
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem)
+        std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem,
+        std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> immediateDrawables)
     {
-        return std::make_shared<DebugScreensOverlay>(std::move(debugScreensSystem));
+        return std::make_shared<DebugScreensOverlay>(std::move(debugScreensSystem), std::move(immediateDrawables));
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -181,12 +187,12 @@ namespace PlatformRig
 
         assert(presChain);
 
-        uint64 startTime = GetPerformanceCounter();
+        uint64_t startTime = OSServices::GetPerformanceCounter();
         if (_pimpl->_frameLimiter) {
             CPUProfileEvent_Conditional pEvnt2("FrameLimiter", cpuProfiler);
             while (startTime < _pimpl->_prevFrameStartTime + _pimpl->_frameLimiter) {
                 Threading::YieldTimeSlice();
-                startTime = GetPerformanceCounter();
+                startTime = OSServices::GetPerformanceCounter();
             }
         }
 
@@ -203,7 +209,7 @@ namespace PlatformRig
 		auto presentationTarget = context.BeginFrame(*presChain);
 		auto presentationTargetDesc = presentationTarget->GetDesc();
 
-		context.GetAnnotator().Frame_Begin(context, _pimpl->_frameRenderCount);		// (on Vulkan, we must do this after IThreadContext::BeginFrame(), because that primes the command list in the vulkan device)
+		context.GetAnnotator().Frame_Begin(_pimpl->_frameRenderCount);		// (on Vulkan, we must do this after IThreadContext::BeginFrame(), because that primes the command list in the vulkan device)
 
             //  We must invalidate the cached state at least once per frame.
             //  It appears that the driver might forget bound constant buffers
@@ -277,9 +283,9 @@ namespace PlatformRig
 			Log(Error) << "Suppressed error in frame rig render: " << e.what() << std::endl;
 		} CATCH_END
 
-		context.GetAnnotator().Frame_End(context);
+		context.GetAnnotator().Frame_End();
 
-        uint64 duration = GetPerformanceCounter() - startTime;
+        uint64_t duration = OSServices::GetPerformanceCounter() - startTime;
         _pimpl->_frameRate.PushFrameDuration(duration);
         ++_pimpl->_frameRenderCount;
         auto accAlloc = AccumulatedAllocations::GetInstance();
@@ -305,7 +311,7 @@ namespace PlatformRig
 
     void FrameRig::SetFrameLimiter(unsigned maxFPS)
     {
-        if (maxFPS) { _pimpl->_frameLimiter = _pimpl->_timerFrequency / uint64(maxFPS); }
+        if (maxFPS) { _pimpl->_frameLimiter = _pimpl->_timerFrequency / uint64_t(maxFPS); }
         else { _pimpl->_frameLimiter = 0; }
     }
 
@@ -315,7 +321,7 @@ namespace PlatformRig
     }
 
     const std::shared_ptr<OverlaySystemSet>& FrameRig::GetMainOverlaySystem() { return _pimpl->_mainOverlaySys; }
-	const std::shared_ptr<OverlaySystemSet>& FrameRig::GetDebugScreensOverlaySystem() { return _pimpl->_debugScreenOverlaySystem; }
+    const std::shared_ptr<OverlaySystemSet>& FrameRig::GetDebugScreensOverlaySystem() { return _pimpl->_debugScreenOverlaySystem; }
     const std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& FrameRig::GetDebugSystem() { return _pimpl->_debugSystem; }
     void FrameRig::SetUpdateAsyncMan(bool updateAsyncMan) { _pimpl->_updateAsyncMan = updateAsyncMan; }
 
@@ -335,7 +341,7 @@ namespace PlatformRig
                     "FrameRig", DebugScreensSystem::SystemDisplay);
         }
 
-        _pimpl->_debugScreenOverlaySystem->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem));
+        _pimpl->_debugScreenOverlaySystem->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem, nullptr));
 
 		Log(Verbose) << "---- Beginning FrameRig ------------------------------------------------------------------" << std::endl;
         auto accAlloc = AccumulatedAllocations::GetInstance();
@@ -380,7 +386,7 @@ namespace PlatformRig
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    void FrameRateRecorder::PushFrameDuration(uint64 duration)
+    void FrameRateRecorder::PushFrameDuration(uint64_t duration)
     {
             // (note, in this scheme, one entry is always empty -- so actual capacity is really dimof(_durationHistory)-1)
         _durationHistory[_bufferEnd] = duration;
@@ -393,8 +399,8 @@ namespace PlatformRig
     std::tuple<float, float, float> FrameRateRecorder::GetPerformanceStats() const
     {
         unsigned    entryCount = 0;
-        uint64      accumulation = 0;
-        uint64      minTime = std::numeric_limits<uint64>::max(), maxTime = 0;
+        uint64_t      accumulation = 0;
+        uint64_t      minTime = std::numeric_limits<uint64_t>::max(), maxTime = 0;
         for (unsigned c=_bufferStart; c!=_bufferEnd; c=(c+1)%dimof(_durationHistory)) {
             accumulation += _durationHistory[c];
             minTime = std::min(minTime, _durationHistory[c]);
@@ -411,7 +417,7 @@ namespace PlatformRig
     FrameRateRecorder::FrameRateRecorder()
     {
         _bufferStart = _bufferEnd = 0;
-        _frequency = GetPerformanceCounterFrequency();
+        _frequency = OSServices::GetPerformanceCounterFrequency();
     }
 
     FrameRateRecorder::~FrameRateRecorder() {}
