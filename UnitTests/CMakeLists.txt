@@ -76,7 +76,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         RenderCore/Assets/TechniqueDelegateTests.cpp
         RenderCore/Assets/TechniqueFileTests.cpp
         RenderCore/Assets/NodeGraphInstantiationTests.cpp
-        RenderCore/Assets/CBLayoutTests.cpp
+        RenderCore/Assets/RenderMiscTests.cpp
         RenderCore/Assets/BufferUploadsTests.cpp
         RenderCore/Assets/PipelineAcceleratorTests.cpp
         RenderCore/Assets/DrawablesTests.cpp

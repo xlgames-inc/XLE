@@ -21,6 +21,7 @@
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/Threading/ThreadLocalPtr.h"
+#include "../Utility/ArithmeticUtils.h"
 #include <cctype>
 
 namespace RenderCore
@@ -601,6 +602,91 @@ namespace RenderCore
 
 		return result;
 	}
+
+    uint64_t HashInputAssembly(IteratorRange<const InputElementDesc*> inputAssembly, uint64_t seed)
+	{
+        // We want ideal to create a hashing algorithm such that Hash(A) == Hash(NormalizeInputAssembly(A))
+        // and also the MiniInputElementDesc version will produce the same hash for equivalent results
+        // That makes this a little more complicated, unfortunately
+        // Note -- this won't produce the correct result if the input is so scrambled that there are multiple
+        // elements that overlap each other
+
+        uint64_t result = seed;
+
+        unsigned elementsHashed = 0;
+        for (unsigned inputSlot = 0;; ++inputSlot) {
+            assert(inputSlot < 16); // if this gets too high, it signals that something has gone off the rails (maybe overlapping elements in the input?)
+            if (elementsHashed == inputAssembly.size())
+                break;
+
+            // rotate the hash as a way of marking the changing input slot
+            if (inputSlot != 0)
+                result = rotl64(result, 1);
+
+            const InputElementDesc* earliestElement = nullptr;
+            unsigned earliestElementOffset = ~0u;
+            for (const auto& e:inputAssembly) {
+                if (e._inputSlot != inputSlot) continue;
+                if (e._alignedByteOffset < earliestElementOffset || !earliestElement) {
+                    earliestElement = &e;
+                    earliestElementOffset = e._alignedByteOffset;
+                }
+            }
+
+            if (!earliestElement) continue;     // no elements on this slot at all
+
+            auto e = earliestElement;
+            unsigned offsetIterator = earliestElementOffset;
+            if (offsetIterator == ~0u) offsetIterator = 0;
+
+            for (;;) {
+                auto semanticHash = Utility::Hash64(e->_semanticName) + e->_semanticIndex;
+                result = HashCombine(semanticHash ^ uint64_t(e->_nativeFormat), result);
+                if (e->_inputSlotClass != InputDataRate::PerVertex)
+                    result = HashCombine((uint64_t(e->_instanceDataStepRate) << 32ull) | uint64_t(e->_inputSlotClass), result);
+                ++elementsHashed;
+                if (elementsHashed == inputAssembly.size())
+                    break;
+
+                offsetIterator += BitsPerPixel(e->_nativeFormat) / 8;
+
+                auto nexte = e+1;
+                if (nexte != inputAssembly.end() && nexte->_alignedByteOffset == ~0u) {
+                    e = nexte;
+                    continue;
+                }            
+
+                nexte = nullptr;
+                earliestElementOffset = ~0u;
+                for (e=inputAssembly.begin(); e!=inputAssembly.end(); ++e) {
+                    if (e->_inputSlot != inputSlot) continue;
+                    if (e->_alignedByteOffset >= offsetIterator && (e->_alignedByteOffset < earliestElementOffset)) {
+                        nexte = e;
+                        earliestElementOffset = e->_alignedByteOffset;
+                    }
+                }
+
+                if (!nexte)
+                    break;
+
+                auto gap = nexte->_alignedByteOffset - offsetIterator;
+                if (gap != 0)
+                    result = HashCombine(gap, result);
+                offsetIterator = nexte->_alignedByteOffset;
+                e = nexte;
+            }
+        }
+
+        return result;
+	}
+
+    uint64_t HashInputAssembly(IteratorRange<const MiniInputElementDesc*> inputAssembly, uint64_t seed)
+    {
+        auto result = seed;
+        for (const auto&e:inputAssembly)
+            result = HashCombine(e._semanticHash ^ uint64_t(e._nativeFormat), result);
+        return result;
+    }
 
     unsigned HasElement(IteratorRange<const InputElementDesc*> range, const char elementSemantic[])
     {

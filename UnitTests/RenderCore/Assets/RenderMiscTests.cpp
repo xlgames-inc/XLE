@@ -3,11 +3,17 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../../../RenderCore/Assets/PredefinedCBLayout.h"
+#include "../../../RenderCore/Types.h"
+#include "../../../RenderCore/Format.h"
+#include "../../../Tools/ToolsRig/VisualisationGeo.h"
 #include "../../../Utility/ImpliedTyping.h"
+#include "../../../Utility/MemoryUtils.h"
 #include "../../../Math/Vector.h"
 #include "../../../Math/MathSerialization.h"
 #include "catch2/catch_test_macros.hpp"
 #include "catch2/catch_approx.hpp"
+#include <algorithm>
+#include <random>
 
 using namespace Catch::literals;
 namespace UnitTests
@@ -68,6 +74,52 @@ namespace UnitTests
 		REQUIRE(wellOrdered.GetSize(shdLang) == reorderedPoor.GetSize(shdLang));
 		REQUIRE(poorlyOrdered.GetSize(shdLang) > wellOrdered.GetSize(shdLang));
 		REQUIRE(reorderedWell.CalculateHash() == reorderedPoor.CalculateHash());
+	}
+
+	static void TestHashingNormalizingAndScrambling(IteratorRange<const RenderCore::InputElementDesc*> inputAssembly)
+	{
+		using namespace RenderCore;
+		auto hashingSeed = Hash64("hash-for-seed");
+		auto expectedHash = HashInputAssembly(inputAssembly, hashingSeed);
+		auto normalizedElements = NormalizeInputAssembly(inputAssembly);
+		REQUIRE(expectedHash == HashInputAssembly(normalizedElements, hashingSeed));
+		std::mt19937_64 rng(0);
+		for (unsigned c=0; c<400; ++c) {
+			auto scrambled = normalizedElements;
+			std::shuffle(scrambled.begin(), scrambled.end(), rng);
+			auto scrambledHash = HashInputAssembly(scrambled, hashingSeed);
+			REQUIRE(scrambledHash == expectedHash);
+		}
+	}
+
+	TEST_CASE( "HashInputAssembly", "[rendercore]" )
+	{
+		using namespace RenderCore;
+
+		auto hashingSeed = Hash64("hash-for-seed");
+
+		// "InputElementDesc" and "MiniInputElementDesc" should hash to the same value
+		auto hashExpandedStyle = HashInputAssembly(MakeIteratorRange(ToolsRig::Vertex3D_InputLayout), hashingSeed);
+		auto hashCompressedStyle = HashInputAssembly(MakeIteratorRange(ToolsRig::Vertex3D_MiniInputLayout), hashingSeed);
+		REQUIRE(hashExpandedStyle == hashCompressedStyle);
+
+		hashExpandedStyle = HashInputAssembly(MakeIteratorRange(ToolsRig::Vertex2D_InputLayout), hashingSeed);
+		hashCompressedStyle = HashInputAssembly(MakeIteratorRange(ToolsRig::Vertex2D_MiniInputLayout), hashingSeed);
+		REQUIRE(hashExpandedStyle == hashCompressedStyle);
+
+		TestHashingNormalizingAndScrambling(ToolsRig::Vertex3D_InputLayout);
+		TestHashingNormalizingAndScrambling(ToolsRig::Vertex2D_InputLayout);
+
+		InputElementDesc complicatedIA[] = 
+		{
+			InputElementDesc { "POSITION", 0, Format::R8_UNORM, 0, 0 },
+			InputElementDesc { "POSITION", 1, Format::R8_UNORM, 1, 16 },
+			InputElementDesc { "TEXCOORD", 0, Format::R32_FLOAT, 1, ~0u },
+			InputElementDesc { "TEXTANGENT", 0, Format::R8_UNORM, 1, 24 },
+			InputElementDesc { "NORMAL", 0, Format::R8_UNORM, 0, 24 },
+			InputElementDesc { "TEXCOORD", 3, Format::R8G8B8A8_UNORM, 0, ~0u }
+		};
+		TestHashingNormalizingAndScrambling(MakeIteratorRange(complicatedIA));
 	}
 }
 

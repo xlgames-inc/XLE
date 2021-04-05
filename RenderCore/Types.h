@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -52,11 +50,29 @@ namespace RenderCore
 
 	using InputLayout = IteratorRange<const InputElementDesc*>;
 
+#pragma pack(push)
+#pragma pack(1)
+    class MiniInputElementDesc
+    {
+    public:
+        uint64_t  _semanticHash;
+        Format	_nativeFormat;
+        
+        static const bool SerializeRaw = true;
+    } attribute_packed;
+#pragma pack(pop)
+
     unsigned CalculateVertexStrideForSlot(IteratorRange<const InputElementDesc*> elements, unsigned slot);
 	std::vector<unsigned> CalculateVertexStrides(IteratorRange<const InputElementDesc*> layout);
 	std::vector<InputElementDesc> NormalizeInputAssembly(IteratorRange<const InputElementDesc*> layout);
     unsigned HasElement(IteratorRange<const InputElementDesc*> elements, const char elementSemantic[]);
     unsigned FindElement(IteratorRange<const InputElementDesc*> elements, const char elementSemantic[], unsigned semanticIndex = 0);
+
+    bool HasElement(IteratorRange<const MiniInputElementDesc*> elements, uint64_t semanticHash);
+	unsigned CalculateVertexStride(IteratorRange<const MiniInputElementDesc*> elements, bool enforceAlignment=true);
+
+    uint64_t HashInputAssembly(IteratorRange<const InputElementDesc*>, uint64_t seed);
+    uint64_t HashInputAssembly(IteratorRange<const MiniInputElementDesc*>, uint64_t seed);
    
     /// Contains some common reusable vertex input layouts
     namespace GlobalInputLayouts
@@ -71,44 +87,8 @@ namespace RenderCore
         extern InputLayout PNT;
         extern InputLayout PNTT;
     }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	inline InputElementDesc::InputElementDesc()
-	{
-		_semanticIndex = 0;
-		_nativeFormat = (Format)0; _inputSlot = 0;
-		_alignedByteOffset = ~0u; _inputSlotClass = InputDataRate::PerVertex;
-		_instanceDataStepRate = 0;
-	}
-	inline InputElementDesc::InputElementDesc(const std::string& name, unsigned semanticIndex,
-		Format nativeFormat, unsigned inputSlot,
-		unsigned alignedByteOffset,
-		InputDataRate inputSlotClass,
-		unsigned instanceDataStepRate)
-	{
-		_semanticName = name; _semanticIndex = semanticIndex;
-		_nativeFormat = nativeFormat; _inputSlot = inputSlot;
-		_alignedByteOffset = alignedByteOffset; _inputSlotClass = inputSlotClass;
-		_instanceDataStepRate = instanceDataStepRate;
-	}
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    
-#pragma pack(push)
-#pragma pack(1)
-    class MiniInputElementDesc
-    {
-    public:
-        uint64  _semanticHash;
-        Format	_nativeFormat;
-        
-        static const bool SerializeRaw = true;
-    } attribute_packed;
-#pragma pack(pop)
-
-	bool HasElement(IteratorRange<const MiniInputElementDesc*> elements, uint64 semanticHash);
-	unsigned CalculateVertexStride(IteratorRange<const MiniInputElementDesc*> elements, bool enforceAlignment=true);
 
 	class StreamOutputInitializers
 	{
@@ -167,5 +147,28 @@ namespace RenderCore
     };
 
     struct ClearFilter { enum Enum { Depth = 1<<0, Stencil = 1<<1 }; using BitField = unsigned; };
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	inline InputElementDesc::InputElementDesc()
+	{
+		_semanticIndex = 0;
+		_nativeFormat = (Format)0; _inputSlot = 0;
+		_alignedByteOffset = ~0u; _inputSlotClass = InputDataRate::PerVertex;
+		_instanceDataStepRate = 0;
+	}
+	inline InputElementDesc::InputElementDesc(const std::string& name, unsigned semanticIndex,
+		Format nativeFormat, unsigned inputSlot,
+		unsigned alignedByteOffset,
+		InputDataRate inputSlotClass,
+		unsigned instanceDataStepRate)
+	{
+		_semanticName = name; _semanticIndex = semanticIndex;
+		_nativeFormat = nativeFormat; _inputSlot = inputSlot;
+		_alignedByteOffset = alignedByteOffset; _inputSlotClass = inputSlotClass;
+		_instanceDataStepRate = instanceDataStepRate;
+	}
+
 }
 

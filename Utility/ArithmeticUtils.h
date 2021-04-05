@@ -518,22 +518,22 @@ namespace Utility
 
         inline uint32 rotl32(uint32 x, int8_t r)
         {
-            return (x << r) | (x >> (32 - r));
+            return (x << uint32(r)) | (x >> uint32(32 - r));
         }
 
         inline uint64 rotl64(uint64 x, int8_t r)
         {
-            return (x << r) | (x >> (64 - r));
+            return (x << uint64(r)) | (x >> uint64(64 - r));
         }
 
         inline uint32 rotr32(uint32 x, int8_t r)
         {
-            return (x >> r) | (x << (32 - r));
+            return (x >> uint32(r)) | (x << uint32(32 - r));
         }
 
         inline uint64 rotr64(uint64 x, int8_t r)
         {
-            return (x >> r) | (x << (64 - r));
+            return (x >> uint64(r)) | (x << uint64(64 - r));
         }
 
         #define ROTL32(x, y) rotl32(x, y)
