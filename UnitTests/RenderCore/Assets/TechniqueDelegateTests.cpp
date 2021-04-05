@@ -305,17 +305,10 @@ namespace UnitTests
 
 			auto desc = std::make_shared<GraphicsPipelineDesc>();
 			if (hasDeformPosition) {
-				desc->_shaders[(unsigned)RenderCore::ShaderStage::Vertex]._initializer = "ut-data/framework-entry.vertex.hlsl:frameworkEntryWithDeform";
+				desc->_shaders[(unsigned)RenderCore::ShaderStage::Vertex] = "ut-data/framework-entry.vertex.hlsl:frameworkEntryWithDeform";
 			} else
-				desc->_shaders[(unsigned)RenderCore::ShaderStage::Vertex]._initializer = "ut-data/framework-entry.vertex.hlsl:frameworkEntry";
-			desc->_shaders[(unsigned)RenderCore::ShaderStage::Pixel]._initializer = "ut-data/framework-entry.pixel.hlsl:frameworkEntry";
-
-			for (unsigned c=0; c<dimof(desc->_shaders); ++c) {
-				if (desc->_shaders[c]._initializer.empty()) continue;
-				auto future = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(MakeFileNameSplitter(desc->_shaders[c]._initializer).AllExceptParameters());
-				future->StallWhilePending();
-				desc->_shaders[c]._automaticFiltering = future->Actualize();
-			}
+				desc->_shaders[(unsigned)RenderCore::ShaderStage::Vertex] = "ut-data/framework-entry.vertex.hlsl:frameworkEntry";
+			desc->_shaders[(unsigned)RenderCore::ShaderStage::Pixel] = "ut-data/framework-entry.pixel.hlsl:frameworkEntry";
 
 			desc->_blend.push_back(RenderCore::AttachmentBlendDesc{});
 
@@ -491,7 +484,7 @@ namespace UnitTests
 					std::cout << "Failed to get pipeline from technique delegate; with exception message: " << std::endl << log << std::endl;
 				}
 				REQUIRE(pipelineDesc);
-				REQUIRE(!pipelineDesc->_shaders[0]._initializer.empty());
+				REQUIRE(!pipelineDesc->_shaders[0].empty());
 			}
 		}
 

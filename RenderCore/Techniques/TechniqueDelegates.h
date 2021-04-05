@@ -23,15 +23,10 @@ namespace RenderCore { namespace Techniques
 	public:
 		struct GraphicsPipelineDesc
 		{
-			struct Shader
-			{
-				std::string	_initializer;
-				std::shared_ptr<ShaderSourceParser::SelectorFilteringRules> _automaticFiltering;
-			};
-			Shader 		_shaders[3];		// indexed by RenderCore::ShaderStage
+			std::string				_shaders[3];		// indexed by RenderCore::ShaderStage
 			ShaderSourceParser::ManualSelectorFiltering _manualSelectorFiltering;
 
-			std::vector<uint64_t> 				_patchExpansions;
+			std::vector<uint64_t>	_patchExpansions;
 
 			std::vector<AttachmentBlendDesc> 	_blend;
 			DepthStencilDesc					_depthStencil;

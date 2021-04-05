@@ -87,30 +87,15 @@ namespace RenderCore { namespace Techniques
 		ImmediateRendererTechniqueDelegate() 
 		{
 			auto nascentDesc = std::make_shared<GraphicsPipelineDesc>();
-			nascentDesc->_shaders[(unsigned)ShaderStage::Vertex]._initializer = BASIC2D_VERTEX_HLSL ":P2C:vs_*";
-			nascentDesc->_shaders[(unsigned)ShaderStage::Pixel]._initializer = BASIC_PIXEL_HLSL ":P:ps_*";
+			nascentDesc->_shaders[(unsigned)ShaderStage::Vertex] = BASIC2D_VERTEX_HLSL ":P2C:vs_*";
+			nascentDesc->_shaders[(unsigned)ShaderStage::Pixel] = BASIC_PIXEL_HLSL ":P:ps_*";
 
 			nascentDesc->_depthStencil = CommonResourceBox::s_dsDisable;
 			nascentDesc->_rasterization = CommonResourceBox::s_rsCullDisable;
 			nascentDesc->_blend.push_back(CommonResourceBox::s_abStraightAlpha);
 
-			auto vsfn = MakeFileNameSplitter(nascentDesc->_shaders[(unsigned)ShaderStage::Vertex]._initializer).AllExceptParameters();
-			auto psfn = MakeFileNameSplitter(nascentDesc->_shaders[(unsigned)ShaderStage::Pixel]._initializer).AllExceptParameters();
-
-			auto vsFilteringFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(vsfn);
-			auto psFilteringFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(psfn);
-			
 			_pipelineDescFuture = std::make_shared<::Assets::AssetFuture<GraphicsPipelineDesc>>("immediate-renderer");
-			::Assets::WhenAll(vsFilteringFuture, psFilteringFuture).ThenConstructToFuture<GraphicsPipelineDesc>(
-				*_pipelineDescFuture,
-				[nascentDesc](
-					const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
-					const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& psFiltering) {
-					
-					nascentDesc->_shaders[(unsigned)ShaderStage::Vertex]._automaticFiltering = vsFiltering;
-					nascentDesc->_shaders[(unsigned)ShaderStage::Pixel]._automaticFiltering = psFiltering;
-					return nascentDesc;
-				});
+			_pipelineDescFuture->SetAsset(std::move(nascentDesc), {});
 		}
 		~ImmediateRendererTechniqueDelegate() {}
 	private:

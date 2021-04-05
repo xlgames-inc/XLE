@@ -158,47 +158,13 @@ namespace RenderCore { namespace Techniques
 	};
 
 	static void PrepareShadersFromTechniqueEntry(
-		::Assets::AssetFuture<ITechniqueDelegate::GraphicsPipelineDesc>& future,
 		const std::shared_ptr<ITechniqueDelegate::GraphicsPipelineDesc>& nascentDesc,
 		const TechniqueEntry& entry)
 	{
-		nascentDesc->_shaders[(unsigned)ShaderStage::Vertex]._initializer = entry._vertexShaderName;
-		nascentDesc->_shaders[(unsigned)ShaderStage::Pixel]._initializer = entry._pixelShaderName;
-		nascentDesc->_shaders[(unsigned)ShaderStage::Geometry]._initializer = entry._geometryShaderName;
+		nascentDesc->_shaders[(unsigned)ShaderStage::Vertex] = entry._vertexShaderName;
+		nascentDesc->_shaders[(unsigned)ShaderStage::Pixel] = entry._pixelShaderName;
+		nascentDesc->_shaders[(unsigned)ShaderStage::Geometry] = entry._geometryShaderName;
 		nascentDesc->_manualSelectorFiltering = entry._selectorFiltering;
-
-		auto vsfn = MakeFileNameSplitter(nascentDesc->_shaders[(unsigned)ShaderStage::Vertex]._initializer).AllExceptParameters();
-		auto psfn = MakeFileNameSplitter(nascentDesc->_shaders[(unsigned)ShaderStage::Pixel]._initializer).AllExceptParameters();
-
-		auto vsFilteringFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(vsfn);
-		auto psFilteringFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(psfn);
-		if (entry._geometryShaderName.empty()) {
-			::Assets::WhenAll(vsFilteringFuture, psFilteringFuture).ThenConstructToFuture<ITechniqueDelegate::GraphicsPipelineDesc>(
-				future,
-				[nascentDesc](
-					const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
-					const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& psFiltering) {
-					
-					nascentDesc->_shaders[(unsigned)ShaderStage::Vertex]._automaticFiltering = vsFiltering;
-					nascentDesc->_shaders[(unsigned)ShaderStage::Pixel]._automaticFiltering = psFiltering;
-					return nascentDesc;
-				});
-		} else {
-			auto gsfn = MakeFileNameSplitter(nascentDesc->_shaders[(unsigned)ShaderStage::Geometry]._initializer).AllExceptParameters();
-			auto gsFilteringFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(gsfn);
-			::Assets::WhenAll(vsFilteringFuture, psFilteringFuture, gsFilteringFuture).ThenConstructToFuture<ITechniqueDelegate::GraphicsPipelineDesc>(
-				future,
-				[nascentDesc](
-					const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
-					const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& psFiltering,
-					const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& gsFiltering) {
-					
-					nascentDesc->_shaders[(unsigned)ShaderStage::Vertex]._automaticFiltering = vsFiltering;
-					nascentDesc->_shaders[(unsigned)ShaderStage::Pixel]._automaticFiltering = psFiltering;
-					nascentDesc->_shaders[(unsigned)ShaderStage::Geometry]._automaticFiltering = gsFiltering;
-					return nascentDesc;
-				});
-		}
 	}
 
 	auto TechniqueDelegate_Legacy::Resolve(
@@ -216,19 +182,18 @@ namespace RenderCore { namespace Techniques
 		if (technique) {
 			nascentDesc->_depVal = technique->GetDependencyValidation();
 			auto& entry = technique->GetEntry(_techniqueIndex);
-			PrepareShadersFromTechniqueEntry(*result, nascentDesc, entry);
+			PrepareShadersFromTechniqueEntry(nascentDesc, entry);
+			result->SetAsset(std::move(nascentDesc), {});
 		} else {
 			// We need to poll until the technique file is ready, and then continue on to figuring out the shader
 			// information as usual
 			::Assets::WhenAll(_techniqueFuture).ThenConstructToFuture<GraphicsPipelineDesc>(
 				*result,
-				[techniqueIndex = _techniqueIndex, nascentDesc](
-					::Assets::AssetFuture<GraphicsPipelineDesc>& thatFuture,
-					const std::shared_ptr<Technique>& technique) {
-
+				[techniqueIndex = _techniqueIndex, nascentDesc](const std::shared_ptr<Technique>& technique) {
 					nascentDesc->_depVal = technique->GetDependencyValidation();
 					auto& entry = technique->GetEntry(techniqueIndex);
-					PrepareShadersFromTechniqueEntry(thatFuture, nascentDesc, entry);
+					PrepareShadersFromTechniqueEntry(nascentDesc, entry);
+					return nascentDesc;
 				});
 		}
 
@@ -377,7 +342,6 @@ namespace RenderCore { namespace Techniques
 			::Assets::WhenAll(_techniqueFileHelper).ThenConstructToFuture<GraphicsPipelineDesc>(
 				*result,
 				[nascentDesc, illumType, hasDeformVertex](
-					::Assets::AssetFuture<GraphicsPipelineDesc>& thatFuture,
 					const std::shared_ptr<TechniqueFileHelper>& techniqueFileHelper) {
 
 					nascentDesc->_depVal = techniqueFileHelper->GetDependencyValidation();
@@ -406,7 +370,8 @@ namespace RenderCore { namespace Techniques
 					TechniqueEntry mergedTechEntry = *vsTechEntry;
 					mergedTechEntry.MergeIn(*psTechEntry);
 
-					PrepareShadersFromTechniqueEntry(thatFuture, nascentDesc, mergedTechEntry);
+					PrepareShadersFromTechniqueEntry(nascentDesc, mergedTechEntry);
+					return nascentDesc;
 				});
 			
 			return result;

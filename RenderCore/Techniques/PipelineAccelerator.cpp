@@ -15,6 +15,7 @@
 #include "../../Assets/Assets.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/Streams/PathUtils.h"
 #include <cctype>
 
 #include "Techniques.h"
@@ -146,12 +147,12 @@ namespace RenderCore { namespace Techniques
 		::Assets::FuturePtr<CompiledShaderByteCode_InstantiateShaderGraph> byteCodeFuture[3];
 
 		for (unsigned c=0; c<3; ++c) {
-			if (pipelineDesc._shaders[c]._initializer.empty())
+			if (pipelineDesc._shaders[c].empty())
 				continue;
 
 			byteCodeFuture[c] = MakeByteCodeFuture(
 				(ShaderStage)c,
-				pipelineDesc._shaders[c]._initializer,
+				pipelineDesc._shaders[c],
 				filteredSelectors[c]._selectors,
 				compiledPatchCollection,
 				pipelineDesc._patchExpansions);
@@ -183,6 +184,69 @@ namespace RenderCore { namespace Techniques
 		}
 		return result;
 	}
+
+	class GraphicsPipelineDescWithFilteringRules
+	{
+	public:
+		std::shared_ptr<ITechniqueDelegate::GraphicsPipelineDesc> _pipelineDesc;
+		std::shared_ptr<ShaderSourceParser::SelectorFilteringRules> _automaticFiltering[3];
+
+		static ::Assets::FuturePtr<GraphicsPipelineDescWithFilteringRules> CreateFuture(
+			const ::Assets::FuturePtr<ITechniqueDelegate::GraphicsPipelineDesc>& pipelineDescFuture)
+		{
+			auto result = std::make_shared<::Assets::AssetFuture<GraphicsPipelineDescWithFilteringRules>>(pipelineDescFuture->Initializer());
+			::Assets::WhenAll(pipelineDescFuture).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
+				*result,
+				[](	::Assets::AssetFuture<GraphicsPipelineDescWithFilteringRules>& resultFuture,
+					const std::shared_ptr<ITechniqueDelegate::GraphicsPipelineDesc>& pipelineDesc) {
+
+					auto vsfn = MakeFileNameSplitter(pipelineDesc->_shaders[(unsigned)ShaderStage::Vertex]).AllExceptParameters();
+					auto psfn = MakeFileNameSplitter(pipelineDesc->_shaders[(unsigned)ShaderStage::Pixel]).AllExceptParameters();
+
+					auto vsFilteringFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(vsfn);
+					auto psFilteringFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(psfn);
+
+					if (pipelineDesc->_shaders[(unsigned)ShaderStage::Geometry].empty()) {
+
+						::Assets::WhenAll(vsFilteringFuture, psFilteringFuture).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
+							resultFuture,
+							[pipelineDesc](
+								const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
+								const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& psFiltering) {
+								
+								auto finalObject = std::make_shared<GraphicsPipelineDescWithFilteringRules>();
+								finalObject->_pipelineDesc = pipelineDesc;
+								finalObject->_automaticFiltering[(unsigned)ShaderStage::Vertex] = vsFiltering;
+								finalObject->_automaticFiltering[(unsigned)ShaderStage::Pixel] = psFiltering;
+								return finalObject;
+							});
+
+					} else {
+
+						auto gsfn = MakeFileNameSplitter(pipelineDesc->_shaders[(unsigned)ShaderStage::Geometry]).AllExceptParameters();
+						auto gsFilteringFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(gsfn);
+
+						::Assets::WhenAll(vsFilteringFuture, psFilteringFuture, gsFilteringFuture).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
+							resultFuture,
+							[pipelineDesc](
+								const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
+								const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& psFiltering,
+								const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& gsFiltering) {
+								
+								auto finalObject = std::make_shared<GraphicsPipelineDescWithFilteringRules>();
+								finalObject->_pipelineDesc = pipelineDesc;
+								finalObject->_automaticFiltering[(unsigned)ShaderStage::Vertex] = vsFiltering;
+								finalObject->_automaticFiltering[(unsigned)ShaderStage::Pixel] = psFiltering;
+								finalObject->_automaticFiltering[(unsigned)ShaderStage::Geometry] = gsFiltering;
+								return finalObject;
+							});
+
+					}
+
+				});
+			return result;
+		}
+	};
 
 	auto PipelineAccelerator::CreatePipelineForSequencerState(
 		const SequencerConfig& cfg,
@@ -217,14 +281,18 @@ namespace RenderCore { namespace Techniques
 				if (!containingPipelineAccelerator)
 					Throw(std::runtime_error("Containing GraphicsPipeline builder has been destroyed"));
 
-				auto resolvedTechnique = cfg._delegate->Resolve(compiledPatchCollection->GetInterface(), containingPipelineAccelerator->_stateSet);
+				// we will actually begin a "GraphicsPipelineDescWithFilteringRules" future here, which
+				// will complete to the pipeline desc + automatic shader filtering rules
+				auto pipelineDescFuture = cfg._delegate->Resolve(compiledPatchCollection->GetInterface(), containingPipelineAccelerator->_stateSet);
+				auto resolvedTechnique = GraphicsPipelineDescWithFilteringRules::CreateFuture(pipelineDescFuture);
 				
 				::Assets::WhenAll(resolvedTechnique).ThenConstructToFuture<Metal::GraphicsPipeline>(
 					resultFuture,
 					[sharedPools, pipelineLayout, copyGlobalSelectors, cfg, weakThis, compiledPatchCollection](
 						::Assets::AssetFuture<Metal::GraphicsPipeline>& resultFuture,
-						const std::shared_ptr<ITechniqueDelegate::GraphicsPipelineDesc>& pipelineDesc) {
+						const std::shared_ptr<GraphicsPipelineDescWithFilteringRules>& pipelineDescWithFiltering) {
 
+						const auto& pipelineDesc = pipelineDescWithFiltering->_pipelineDesc;
 						if (pipelineDesc->_blend.empty())
 							Throw(std::runtime_error("No blend modes specified in GraphicsPipelineDesc. There must be at least one blend mode specified"));
 
@@ -246,11 +314,11 @@ namespace RenderCore { namespace Techniques
 							
 							ScopedLock(sharedPools->_lock);
 							for (unsigned c=0; c<dimof(ITechniqueDelegate::GraphicsPipelineDesc::_shaders); ++c)
-								if (!pipelineDesc->_shaders[c]._initializer.empty())
+								if (!pipelineDesc->_shaders[c].empty())
 									filteredSelectors[c] = sharedPools->_selectorVariationsSet.FilterSelectors(
 										MakeIteratorRange(paramBoxes),
 										pipelineDesc->_manualSelectorFiltering,
-										*pipelineDesc->_shaders[c]._automaticFiltering);
+										*pipelineDescWithFiltering->_automaticFiltering[c]);
 						}
 
 						auto shaderProgram = MakeShaderProgram(*pipelineDesc, pipelineLayout, compiledPatchCollection, MakeIteratorRange(filteredSelectors));
