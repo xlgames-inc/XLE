@@ -6,6 +6,7 @@
 
 #include "TechniqueUtils.h"
 #include "DrawableDelegates.h"
+#include "CommonResources.h"
 #include "../../RenderCore/Types.h"
 #include "../../RenderCore/Metal/Metal.h"       // for GFXAPI_TARGET define used below
 #include "../../Math/Transformations.h"
@@ -243,23 +244,14 @@ namespace RenderCore { namespace Techniques
 
 	void SetGeoSelectors(ParameterBox& geoParameters, IteratorRange<const MiniInputElementDesc*> ia)
 	{
-		static auto TEXCOORD = Hash64("TEXCOORD");
-		static auto COLOR = Hash64("COLOR");
-		static auto NORMAL = Hash64("NORMAL");
-		static auto TEXTANGENT = Hash64("TEXTANGENT");
-		static auto TEXBITANGENT = Hash64("TEXBITANGENT");
-		static auto BONEINDICES = Hash64("BONEINDICES");
-		static auto BONEWEIGHTS = Hash64("BONEWEIGHTS");
-		static auto PER_VERTEX_AO = Hash64("PER_VERTEX_AO");
-
-		if (HasElement(ia, TEXCOORD))			{ geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1); }
-        if (HasElement(ia, COLOR))				{ geoParameters.SetParameter((const utf8*)"GEO_HAS_COLOR", 1); }
-        if (HasElement(ia, NORMAL))				{ geoParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1); }
-        if (HasElement(ia, TEXTANGENT))			{ geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXTANGENT", 1); }
-        if (HasElement(ia, TEXBITANGENT))		{ geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXBITANGENT", 1); }
-        if (HasElement(ia, BONEINDICES) && HasElement(ia, BONEWEIGHTS))
+		if (HasElement(ia, CommonSemantics::TEXCOORD))			{ geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1); }
+        if (HasElement(ia, CommonSemantics::COLOR))				{ geoParameters.SetParameter((const utf8*)"GEO_HAS_COLOR", 1); }
+        if (HasElement(ia, CommonSemantics::NORMAL))				{ geoParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1); }
+        if (HasElement(ia, CommonSemantics::TEXTANGENT))			{ geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXTANGENT", 1); }
+        if (HasElement(ia, CommonSemantics::TEXBITANGENT))		{ geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXBITANGENT", 1); }
+        if (HasElement(ia, CommonSemantics::BONEINDICES) && HasElement(ia, CommonSemantics::BONEWEIGHTS))
             { geoParameters.SetParameter((const utf8*)"GEO_HAS_BONEWEIGHTS", 1); }
-        if (HasElement(ia, PER_VERTEX_AO))
+        if (HasElement(ia, CommonSemantics::PER_VERTEX_AO))
             { geoParameters.SetParameter((const utf8*)"GEO_HAS_PER_VERTEX_AO", 1); }
 	}
 

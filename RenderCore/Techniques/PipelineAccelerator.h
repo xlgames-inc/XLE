@@ -17,6 +17,7 @@ namespace RenderCore
 {
 	class FrameBufferDesc;
 	class InputElementDesc;
+	class MiniInputElementDesc;
 }
 
 namespace RenderCore { namespace Assets { class RenderStateSet; class ShaderPatchCollection; } }
@@ -43,6 +44,13 @@ namespace RenderCore { namespace Techniques
 			const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
 			const ParameterBox& materialSelectors,
 			IteratorRange<const InputElementDesc*> inputAssembly,
+			RenderCore::Topology topology,
+			const RenderCore::Assets::RenderStateSet& stateSet) = 0;
+
+		virtual std::shared_ptr<PipelineAccelerator> CreatePipelineAccelerator(
+			const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
+			const ParameterBox& materialSelectors,
+			IteratorRange<const MiniInputElementDesc*> inputAssembly,
 			RenderCore::Topology topology,
 			const RenderCore::Assets::RenderStateSet& stateSet) = 0;
 

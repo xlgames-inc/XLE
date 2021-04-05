@@ -5,6 +5,7 @@
 #include "CommonResources.h"
 #include "../IDevice.h"
 #include "../Metal/Metal.h"
+#include "../../Utility/MemoryUtils.h"
 
 #if GFXAPI_TARGET == GFXAPI_DX11
     #include "TechniqueUtils.h" // just for sizeof(LocalTransformConstants)
@@ -60,4 +61,33 @@ namespace RenderCore { namespace Techniques
 
     CommonResourceBox::~CommonResourceBox()
     {}
+
+    namespace CommonSemantics
+    {
+        auto POSITION = Hash64("POSITION");
+        auto TEXCOORD = Hash64("TEXCOORD");
+		auto COLOR = Hash64("COLOR");
+		auto NORMAL = Hash64("NORMAL");
+		auto TEXTANGENT = Hash64("TEXTANGENT");
+		auto TEXBITANGENT = Hash64("TEXBITANGENT");
+		auto BONEINDICES = Hash64("BONEINDICES");
+		auto BONEWEIGHTS = Hash64("BONEWEIGHTS");
+		auto PER_VERTEX_AO = Hash64("PER_VERTEX_AO");
+        auto RADIUS = Hash64("RADIUS");
+
+        std::pair<const char*, unsigned> TryDehash(uint64_t hashValue)
+        {
+            if ((hashValue - POSITION) < 16) return std::make_pair("POSITION", unsigned(hashValue - POSITION));
+            else if ((hashValue - TEXCOORD) < 16) return std::make_pair("TEXCOORD", unsigned(hashValue - TEXCOORD));
+            else if ((hashValue - COLOR) < 16) return std::make_pair("COLOR", unsigned(hashValue - COLOR));
+            else if ((hashValue - NORMAL) < 16) return std::make_pair("NORMAL", unsigned(hashValue - NORMAL));
+            else if ((hashValue - TEXTANGENT) < 16) return std::make_pair("TEXTANGENT", unsigned(hashValue - TEXTANGENT));
+            else if ((hashValue - TEXBITANGENT) < 16) return std::make_pair("TEXBITANGENT", unsigned(hashValue - TEXBITANGENT));
+            else if ((hashValue - BONEINDICES) < 16) return std::make_pair("BONEINDICES", unsigned(hashValue - BONEINDICES));
+            else if ((hashValue - BONEWEIGHTS) < 16) return std::make_pair("BONEWEIGHTS", unsigned(hashValue - BONEWEIGHTS));
+            else if ((hashValue - PER_VERTEX_AO) < 16) return std::make_pair("PER_VERTEX_AO", unsigned(hashValue - PER_VERTEX_AO));
+            else if ((hashValue - RADIUS) < 16) return std::make_pair("RADIUS", unsigned(hashValue - RADIUS));
+            else return std::make_pair(nullptr, ~0u);
+        }
+    }
 }}

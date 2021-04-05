@@ -70,5 +70,21 @@ namespace RenderCore { namespace Techniques
         CommonResourceBox& operator=(const CommonResourceBox&);
     };
 
+    namespace CommonSemantics
+    {
+        extern uint64_t POSITION;
+        extern uint64_t NORMAL;
+        extern uint64_t COLOR;
+        extern uint64_t TEXCOORD;
+        extern uint64_t TEXTANGENT;
+        extern uint64_t TEXBITANGENT;
+        extern uint64_t BONEWEIGHTS;
+        extern uint64_t BONEINDICES;
+        extern uint64_t PER_VERTEX_AO;
+        extern uint64_t RADIUS;
+
+        std::pair<const char*, unsigned> TryDehash(uint64_t);
+    }
+
 }}
 

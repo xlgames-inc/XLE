@@ -5,6 +5,7 @@
 #include "PipelineAccelerator.h"
 #include "DescriptorSetAccelerator.h"
 #include "CompiledShaderPatchCollection.h"
+#include "CommonResources.h"
 #include "../FrameBufferDesc.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/InputLayout.h"
@@ -55,6 +56,13 @@ namespace RenderCore { namespace Techniques
 			IteratorRange<const InputElementDesc*> inputAssembly,
 			Topology topology,
 			const RenderCore::Assets::RenderStateSet& stateSet);
+		PipelineAccelerator(
+			unsigned ownerPoolId,
+			const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
+			const ParameterBox& materialSelectors,
+			IteratorRange<const MiniInputElementDesc*> inputAssembly,
+			Topology topology,
+			const RenderCore::Assets::RenderStateSet& stateSet);
 		~PipelineAccelerator();
 	
 		struct Pipeline
@@ -77,6 +85,7 @@ namespace RenderCore { namespace Techniques
 		ParameterBox _geoSelectors;
 
 		std::vector<InputElementDesc> _inputAssembly;
+		std::vector<MiniInputElementDesc> _miniInputAssembly;
 		Topology _topology;
 		RenderCore::Assets::RenderStateSet _stateSet;
 
@@ -95,8 +104,14 @@ namespace RenderCore { namespace Techniques
 			builder.Bind(depthStencil);
 			builder.Bind(rasterization);
 
-			Metal::BoundInputLayout ia(MakeIteratorRange(_inputAssembly), shader);
-			builder.Bind(ia, _topology);
+			if (!_inputAssembly.empty()) {
+				Metal::BoundInputLayout ia(MakeIteratorRange(_inputAssembly), shader);
+				builder.Bind(ia, _topology);
+			} else {
+				Metal::BoundInputLayout::SlotBinding slotBinding { MakeIteratorRange(_miniInputAssembly), 0 };
+				Metal::BoundInputLayout ia(MakeIteratorRange(&slotBinding, &slotBinding+1), shader);
+				builder.Bind(ia, _topology);
+			}
 
 			builder.SetRenderPassConfiguration(sequencerCfg._fbDesc, 0);
 
@@ -400,12 +415,65 @@ namespace RenderCore { namespace Techniques
 		// If we have no IA elements at all, force on GEO_HAS_VERTEX_ID. Shaders will almost always
 		// require it in this case, because there's no other way to distinquish one vertex from
 		// the next.
-		if (sortedIA.empty()) {
+		if (sortedIA.empty())
 			_geoSelectors.SetParameter("GEO_HAS_VERTEX_ID", 1);
-		}
-		if (!foundPosition) {
+		if (!foundPosition)
 			_geoSelectors.SetParameter("GEO_NO_POSITION", 1);
+	}
+
+	PipelineAccelerator::PipelineAccelerator(
+		unsigned ownerPoolId,
+		const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
+		const ParameterBox& materialSelectors,
+		IteratorRange<const MiniInputElementDesc*> miniInputAssembly,
+		Topology topology,
+		const RenderCore::Assets::RenderStateSet& stateSet)
+	: _shaderPatches(shaderPatches)
+	, _materialSelectors(materialSelectors)
+	, _miniInputAssembly(miniInputAssembly.begin(), miniInputAssembly.end())
+	, _topology(topology)
+	, _stateSet(stateSet)
+	, _ownerPoolId(ownerPoolId)
+	{
+		std::vector<MiniInputElementDesc> sortedIA = _miniInputAssembly;
+		std::sort(
+			sortedIA.begin(), sortedIA.end(),
+			[](const MiniInputElementDesc& lhs, const MiniInputElementDesc& rhs) {
+				return lhs._semanticHash < rhs._semanticHash;
+			});
+
+		bool foundPosition = false;
+
+		// Build up the geometry selectors. 
+		for (auto i = sortedIA.begin(); i!=sortedIA.end();) {
+			StringMeld<256> meld;
+			auto basicSemantic = CommonSemantics::TryDehash(i->_semanticHash);
+			if (basicSemantic.first) {
+				auto base = i->_semanticHash - basicSemantic.second;
+				auto endEquivalents = i+1;
+				while (endEquivalents != sortedIA.end() && (endEquivalents->_semanticHash - base) < 16)
+					++endEquivalents;
+				auto lastSemanticIndex = (endEquivalents-1)->_semanticHash - base;
+
+				meld << "GEO_HAS_" << basicSemantic.first;
+				_geoSelectors.SetParameter(meld.AsStringSection(), lastSemanticIndex+1);
+			} else {
+				// The MiniInputElementDesc is not all-knowing, unfortunately. We can only dehash the
+				// "common" semantics
+				meld << "GEO_HAS_" << std::hex << i->_semanticHash;
+				_geoSelectors.SetParameter(meld.AsStringSection(), 1);
+			}
+
+			foundPosition |= (i->_semanticHash - CommonSemantics::POSITION) < 16;
 		}
+
+		// If we have no IA elements at all, force on GEO_HAS_VERTEX_ID. Shaders will almost always
+		// require it in this case, because there's no other way to distinquish one vertex from
+		// the next.
+		if (sortedIA.empty())
+			_geoSelectors.SetParameter("GEO_HAS_VERTEX_ID", 1);
+		if (!foundPosition)
+			_geoSelectors.SetParameter("GEO_NO_POSITION", 1);
 	}
 
 	PipelineAccelerator::~PipelineAccelerator()
@@ -433,6 +501,13 @@ namespace RenderCore { namespace Techniques
 			const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
 			const ParameterBox& materialSelectors,
 			IteratorRange<const InputElementDesc*> inputAssembly,
+			Topology topology,
+			const RenderCore::Assets::RenderStateSet& stateSet) override;
+
+		std::shared_ptr<PipelineAccelerator> CreatePipelineAccelerator(
+			const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
+			const ParameterBox& materialSelectors,
+			IteratorRange<const MiniInputElementDesc*> inputAssembly,
 			Topology topology,
 			const RenderCore::Assets::RenderStateSet& stateSet) override;
 
@@ -580,33 +655,6 @@ namespace RenderCore { namespace Techniques
 		return cfg;
 	}
 
-	static uint64_t Hash(IteratorRange<const InputElementDesc*> inputAssembly)
-	{
-		auto norm = NormalizeInputAssembly(inputAssembly);
-		uint64_t result = DefaultSeed64;
-		for (const auto&a:norm) {
-			result = Hash64(a._semanticName, result);
-
-			assert((uint64_t(a._nativeFormat) & ~0xffull) == 0);
-			assert((uint64_t(a._alignedByteOffset) & ~0xffull) == 0);
-			assert((uint64_t(a._semanticIndex) & ~0xfull) == 0);
-			assert((uint64_t(a._inputSlot) & ~0xfull) == 0);
-			assert((uint64_t(a._inputSlotClass) & ~0xfull) == 0);
-			assert((uint64_t(a._instanceDataStepRate) & ~0xfull) == 0);
-			uint64_t paramHash = 
-					((uint64_t(a._nativeFormat) & 0xffull) << 0ull)
-				|	((uint64_t(a._alignedByteOffset) & 0xffull) << 8ull)
-				|	((uint64_t(a._semanticIndex) & 0xfull) << 16ull)
-				|	((uint64_t(a._inputSlot) & 0xfull) << 20ull)
-				|	((uint64_t(a._inputSlotClass) & 0xfull) << 24ull)
-				|	((uint64_t(a._instanceDataStepRate) & 0xfull) << 28ull)
-				;
-			result = HashCombine(paramHash, result);
-		}
-
-		return result;
-	}
-
 	std::shared_ptr<PipelineAccelerator> PipelineAcceleratorPool::CreatePipelineAccelerator(
 		const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
 		const ParameterBox& materialSelectors,
@@ -615,7 +663,46 @@ namespace RenderCore { namespace Techniques
 		const RenderCore::Assets::RenderStateSet& stateSet)
 	{
 		uint64_t hash = HashCombine(materialSelectors.GetHash(), materialSelectors.GetParameterNamesHash());
-		hash = HashCombine(Hash(inputAssembly), hash);
+		hash = HashInputAssembly(inputAssembly, hash);
+		hash = HashCombine((unsigned)topology, hash);
+		hash = HashCombine(stateSet.GetHash(), hash);
+		if (shaderPatches)
+			hash = HashCombine(shaderPatches->GetHash(), hash);
+
+		// If it already exists in the cache, just return it now
+		auto i = LowerBound(_pipelineAccelerators, hash);
+		if (i != _pipelineAccelerators.end() && i->first == hash) {
+			auto l = i->second.lock();
+			if (l)
+				return l;
+		}
+
+		auto newAccelerator = std::make_shared<PipelineAccelerator>(
+			_guid,
+			shaderPatches, materialSelectors,
+			inputAssembly, topology,
+			stateSet);
+
+		if (i != _pipelineAccelerators.end() && i->first == hash) {
+			i->second = newAccelerator;		// (we replaced one that expired)
+		} else {
+			_pipelineAccelerators.insert(i, std::make_pair(hash, newAccelerator));
+		}
+
+		RebuildAllPipelines(_guid, *newAccelerator);
+
+		return newAccelerator;
+	}
+
+	std::shared_ptr<PipelineAccelerator> PipelineAcceleratorPool::CreatePipelineAccelerator(
+		const std::shared_ptr<RenderCore::Assets::ShaderPatchCollection>& shaderPatches,
+		const ParameterBox& materialSelectors,
+		IteratorRange<const MiniInputElementDesc*> inputAssembly,
+		Topology topology,
+		const RenderCore::Assets::RenderStateSet& stateSet)
+	{
+		uint64_t hash = HashCombine(materialSelectors.GetHash(), materialSelectors.GetParameterNamesHash());
+		hash = HashInputAssembly(inputAssembly, hash);
 		hash = HashCombine((unsigned)topology, hash);
 		hash = HashCombine(stateSet.GetHash(), hash);
 		if (shaderPatches)
