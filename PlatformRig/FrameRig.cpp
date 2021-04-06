@@ -139,10 +139,12 @@ namespace PlatformRig
     public:
         DebugScreensOverlay(
             std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem,
-            std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> immediateDrawables)
+            std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> immediateDrawables,
+            std::shared_ptr<RenderOverlays::FontRenderingManager> fontRenderer)
         : _debugScreensSystem(debugScreensSystem)
         , _inputListener(std::make_shared<PlatformRig::DebugScreensInputHandler>(std::move(debugScreensSystem)))
         , _immediateDrawables(std::move(immediateDrawables))
+        , _fontRenderer(std::move(fontRenderer))
         {
         }
 
@@ -153,7 +155,7 @@ namespace PlatformRig
 			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext)
         {
-			auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, *_immediateDrawables);
+			auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, *_immediateDrawables, *_fontRenderer);
             auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
 			auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
             _debugScreensSystem->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ {0,0}, {int(viewportDims[0]), int(viewportDims[1])} });
@@ -166,13 +168,15 @@ namespace PlatformRig
         std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> _debugScreensSystem;
         std::shared_ptr<DebugScreensInputHandler> _inputListener;
         std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> _immediateDrawables;
+        std::shared_ptr<RenderOverlays::FontRenderingManager> _fontRenderer;
     };
 
     static std::shared_ptr<IOverlaySystem> CreateDebugScreensOverlay(
         std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem,
-        std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> immediateDrawables)
+        std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> immediateDrawables,
+        std::shared_ptr<RenderOverlays::FontRenderingManager> fontRenderer)
     {
-        return std::make_shared<DebugScreensOverlay>(std::move(debugScreensSystem), std::move(immediateDrawables));
+        return std::make_shared<DebugScreensOverlay>(std::move(debugScreensSystem), std::move(immediateDrawables), std::move(fontRenderer));
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -341,7 +345,7 @@ namespace PlatformRig
                     "FrameRig", DebugScreensSystem::SystemDisplay);
         }
 
-        _pimpl->_debugScreenOverlaySystem->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem, nullptr));
+        _pimpl->_debugScreenOverlaySystem->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem, nullptr, nullptr));
 
 		Log(Verbose) << "---- Beginning FrameRig ------------------------------------------------------------------" << std::endl;
         auto accAlloc = AccumulatedAllocations::GetInstance();

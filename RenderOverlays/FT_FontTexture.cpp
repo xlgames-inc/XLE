@@ -3,27 +3,21 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "FT_FontTexture.h"
+#include "Font.h"
 #include "FontRectanglePacking.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/ResourceDesc.h"
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/IThreadContext.h"
-#include "../RenderCore/Techniques/Services.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Resource.h"
 #include "../Core/Types.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/MemoryUtils.h"
-
-#include "../BufferUploads/IBufferUploads.h"
-
 #include <assert.h>
 #include <algorithm>
 #include <functional>
-
-#include "ft2build.h"
-#include FT_FREETYPE_H
 
 namespace RenderOverlays
 {
@@ -32,34 +26,27 @@ namespace RenderOverlays
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class FT_FontTextureMgr::Pimpl
+	class FontRenderingManager::Pimpl
 	{
 	public:
 		RectanglePacker_FontCharArray	_rectanglePacker;
 		std::unique_ptr<FontTexture2D>  _texture;
-		std::vector<Glyph>				_glyphs;
 
 		unsigned _texWidth, _texHeight;
 
-		Pimpl(unsigned texWidth, unsigned texHeight)
+		Pimpl(RenderCore::IDevice& device, unsigned texWidth, unsigned texHeight)
 		: _rectanglePacker({texWidth, texHeight})
 		, _texWidth(texWidth), _texHeight(texHeight) 
 		{
-			assert(0);
-			// _texture = std::make_unique<FontTexture2D>(texWidth, texHeight, RenderCore::Format::R8_UNORM);
+			_texture = std::make_unique<FontTexture2D>(device, texWidth, texHeight, RenderCore::Format::R8_UNORM);
 		}
 	};
 
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	FT_FontTextureMgr::FT_FontTextureMgr() { _pimpl = std::make_unique<Pimpl>(512, 2048); }
-	FT_FontTextureMgr::~FT_FontTextureMgr() {}
-
-	static BufferUploads::IManager& GetBufferUploads()
-	{
-		return RenderCore::Techniques::Services::GetBufferUploads();
-	}
+	FontRenderingManager::FontRenderingManager(RenderCore::IDevice& device) { _pimpl = std::make_unique<Pimpl>(device, 512, 2048); }
+	FontRenderingManager::~FontRenderingManager() {}
 
 	FontTexture2D::FontTexture2D(
 		RenderCore::IDevice& dev,
@@ -123,17 +110,26 @@ namespace RenderOverlays
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	auto FT_FontTextureMgr::CreateChar(
+	auto FontRenderingManager::InitializeNewGlyph(
 		RenderCore::IThreadContext& threadContext,
-		unsigned width, unsigned height,
-		IteratorRange<const void*> data) -> Glyph
+		const Font& font,
+		ucs4 ch,
+		std::vector<std::pair<uint64_t, Bitmap>>::iterator insertPoint,
+		uint64_t code) -> Bitmap
 	{
-		auto rect = _pimpl->_rectanglePacker.Allocate({width, height});
+		auto newData = font.GetBitmap(ch);
+		if ((newData._width * newData._height) == 0) {
+			Bitmap result = {};
+			_glyphs.insert(insertPoint, std::make_pair(code, result));
+			return result;
+		}
+
+		auto rect = _pimpl->_rectanglePacker.Allocate({newData._width, newData._height});
 		if (rect.second[0] <= rect.first[0] || rect.second[1] <= rect.first[1])
 			return {};
 
 		if (_pimpl->_texture) {
-			auto pkt = GlyphAsDataPacket(width, height, data, rect.first[0], rect.first[1], rect.second[0]-rect.first[0], rect.second[1]-rect.first[1]);
+			auto pkt = GlyphAsDataPacket(newData._width, newData._height, newData._data, rect.first[0], rect.first[1], rect.second[0]-rect.first[0], rect.second[1]-rect.first[1]);
 			_pimpl->_texture->UpdateToTexture(
 				threadContext,
 				pkt, 
@@ -142,24 +138,30 @@ namespace RenderOverlays
 					(int)rect.second[0], (int)rect.second[1]});
 		}
 
-		Glyph result;
-		result._glyphId = FontBitmapId(_pimpl->_glyphs.size()-1);
-		result._topLeft[0] = rect.first[0];
-		result._topLeft[1] = rect.first[1];
-		result._bottomRight[0] = rect.second[0];
-		result._bottomRight[1] = rect.second[1];
+		assert(rect.second[0] > rect.first[0]);
+		assert(rect.second[1] > rect.first[1]);
 
-		_pimpl->_glyphs.push_back(result);
+		Bitmap result;
+		result._xAdvance = newData._xAdvance;
+		result._bitmapOffsetX = newData._bitmapOffsetX;
+		result._bitmapOffsetY = newData._bitmapOffsetY;
+		result._width = rect.second[0] - rect.first[0];
+		result._height = rect.second[1] - rect.first[1];
+		result._tcTopLeft[0] = rect.first[0] / float(_pimpl->_texWidth);
+		result._tcTopLeft[1] = rect.first[1] / float(_pimpl->_texHeight);
+		result._tcBottomRight[0] = rect.second[0] / float(_pimpl->_texWidth);
+		result._tcBottomRight[1] = rect.second[1] / float(_pimpl->_texHeight);
 
+		_glyphs.insert(insertPoint, std::make_pair(code, result));
 		return result;
 	}
 
-	const FontTexture2D& FT_FontTextureMgr::GetFontTexture()
+	const FontTexture2D& FontRenderingManager::GetFontTexture()
 	{
 		return *_pimpl->_texture;
 	}
 
-	UInt2 FT_FontTextureMgr::GetTextureDimensions()
+	UInt2 FontRenderingManager::GetTextureDimensions()
 	{
 		return UInt2{_pimpl->_texWidth, _pimpl->_texHeight};
 	}

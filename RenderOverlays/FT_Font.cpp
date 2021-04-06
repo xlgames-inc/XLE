@@ -9,11 +9,13 @@
 #include "../Assets/IFileSystem.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/ResourceBox.h"
+#include "../ConsoleRig/AttachablePtr.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../OSServices/RawFS.h"
 #include "../Utility/Streams/StreamFormatter.h"
+#include "../Utility/Threading/Mutex.h"
 #include "../Utility/Conversion.h"
 #include <set>
 #include <algorithm>
@@ -71,7 +73,6 @@ namespace RenderOverlays
 	public:
 		FontFileBufferManager _bufferManager;
 		FT_Library _ftLib;
-		std::shared_ptr<FT_FontTextureMgr> _fontTexMgr;
 		std::unordered_map<std::string, std::string> _nameMap;
 		::Assets::DepValPtr _nameMapDepVal;
 
@@ -79,28 +80,26 @@ namespace RenderOverlays
 		~FTFontResources();
 	};
 
-	class FTFontResourcesBox
-	{
-	public:
-		std::shared_ptr<FTFontResources> _resources;
-
-		class Desc {};
-		FTFontResourcesBox(const Desc&)
-		{
-			_resources = std::make_shared<FTFontResources>();
-		}
-		~FTFontResourcesBox() {}
-	};
+	Threading::Mutex s_mainFontResourcesInstanceLock;
+	ConsoleRig::AttachablePtr<FTFontResources> s_mainFontResourcesInstance;
 
 	FTFont::FTFont(StringSection<::Assets::ResChar> faceName, int faceSize)
 	{
-		_resources = ConsoleRig::FindCachedBox2<FTFontResourcesBox>()._resources;
+		{
+			ScopedLock(s_mainFontResourcesInstanceLock);
+			_resources = s_mainFontResourcesInstance.get();
+			if (!_resources) {
+				s_mainFontResourcesInstance = std::make_shared<FTFontResources>();
+				_resources = s_mainFontResourcesInstance.get();
+			}
+		}
 
 		std::string finalPath = faceName.AsString();
 		auto i = _resources->_nameMap.find(finalPath);
 		if (i != _resources->_nameMap.end())
 			finalPath = i->second;
 
+		_hashCode = Hash64(finalPath, DefaultSeed64 + faceSize);
 		_pBuffer = _resources->_bufferManager.GetBuffer(finalPath);
 
 		_depVal = std::make_shared<::Assets::DependencyValidation>();
@@ -173,6 +172,7 @@ namespace RenderOverlays
 		return 0.0f;
 	}
 
+#if 0
 	FontBitmapId FTFont::InitializeBitmap(ucs4 ch) const
 	{
 		FontBitmapId& id = _lookupTable[ch];
@@ -219,6 +219,40 @@ namespace RenderOverlays
 		auto internalTable = InitializeBitmap(ch);
 		if (internalTable == FontBitmapId_Invalid) return {};
 		return _bitmaps[internalTable]._glyph;
+	}
+#endif
+
+	auto FTFont::GetGlyphProperties(ucs4 ch) const -> GlyphProperties
+	{
+		auto i = LowerBound(_cachedGlyphProperties, ch);
+		if (i == _cachedGlyphProperties.end() || i->first != ch) {
+			GlyphProperties props;
+			FT_Error error = FT_Load_Char(_face.get(), ch, FT_LOAD_NO_AUTOHINT);
+			if (!error) {
+				FT_GlyphSlot glyph = _face->glyph;
+				props._xAdvance = (float)glyph->advance.x / 64.0f;
+			}
+			i = _cachedGlyphProperties.insert(i, std::make_pair(ch, props));
+		}
+		return i->second;
+	}
+
+	auto FTFont::GetBitmap(ucs4 ch) const -> Bitmap
+	{
+		FT_Error error = FT_Load_Char(_face.get(), ch, FT_LOAD_RENDER | FT_LOAD_NO_AUTOHINT);
+		if (error)
+			return Bitmap {};
+
+		FT_GlyphSlot glyph = _face->glyph;
+
+		Bitmap result;
+		result._xAdvance = (float)glyph->advance.x / 64.0f;
+		result._bitmapOffsetX = glyph->bitmap_left;
+		result._bitmapOffsetY = -glyph->bitmap_top;
+		result._width = glyph->bitmap.width;
+		result._height = glyph->bitmap.rows;
+		result._data =MakeIteratorRange(glyph->bitmap.buffer, PtrAdd(glyph->bitmap.buffer, glyph->bitmap.width*glyph->bitmap.rows));
+		return result;
 	}
 
 	struct FontDef { std::string path; int size; };
@@ -314,8 +348,6 @@ namespace RenderOverlays
 		_nameMap = LoadFontConfigFile(fontCfg);
 		_nameMapDepVal = std::make_shared<::Assets::DependencyValidation>();
 		::Assets::RegisterFileDependency(_nameMapDepVal, fontCfg);
-
-		_fontTexMgr = std::make_shared<FT_FontTextureMgr>();
 	}
 
 	FTFontResources::~FTFontResources()
@@ -323,13 +355,9 @@ namespace RenderOverlays
 		FT_Done_FreeType(_ftLib);
 	}
 
-	FT_FontTextureMgr& GetFontTextureMgr()
-	{
-		return *ConsoleRig::FindCachedBox2<FTFontResourcesBox>()._resources->_fontTexMgr;
-	}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 	#define FONT_TABLE_SIZE (256+1024)
 
 	FontCharTable::FontCharTable()
@@ -377,6 +405,7 @@ namespace RenderOverlays
 		}
 		return i->second;
 	}
+#endif
 
 }
 

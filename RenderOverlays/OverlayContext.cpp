@@ -277,6 +277,7 @@ namespace RenderOverlays
 		return Draw(
 			*_threadContext,
 			*_immediateDrawables, 
+			*_fontRenderingManager,
 			font ? *font : *_defaultFont, textStyle,
 			alignedPosition[0], alignedPosition[1],
 			convertedText,
@@ -573,15 +574,20 @@ namespace RenderOverlays
 	public:
 		class Desc {};
 		std::shared_ptr<Font> _font;
-		DefaultFontBox(const Desc&) : _font(GetX2Font("Raleway", 16)) {}
+		DefaultFontBox(const Desc&)
+		{
+			_font = GetX2Font("Raleway", 16);
+		}
 	};
 
 	ImmediateOverlayContext::ImmediateOverlayContext(
 		RenderCore::IThreadContext& threadContext,
-		RenderCore::Techniques::IImmediateDrawables& immediateDrawables)
+		RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
+		FontRenderingManager& fontRenderingManager)
 	: _defaultFont(ConsoleRig::FindCachedBox2<DefaultFontBox>()._font)
 	, _immediateDrawables(&immediateDrawables)
 	, _threadContext(&threadContext)
+	, _fontRenderingManager(&fontRenderingManager)
 	{
 		// _drawCalls.reserve(64);
 
@@ -603,9 +609,10 @@ namespace RenderOverlays
 	std::unique_ptr<ImmediateOverlayContext>
 		MakeImmediateOverlayContext(
 			RenderCore::IThreadContext& threadContext,
-			RenderCore::Techniques::IImmediateDrawables& immediateDrawables)
+			RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
+			FontRenderingManager& fontRenderingManager)
 	{
-		return std::make_unique<ImmediateOverlayContext>(threadContext, immediateDrawables);
+		return std::make_unique<ImmediateOverlayContext>(threadContext, immediateDrawables, fontRenderingManager);
 	}
 
 	IOverlayContext::~IOverlayContext() {}

@@ -7,11 +7,9 @@
 #pragma once
 
 #include "LightDesc.h"
-#include "../RenderCore/Metal/TextureView.h"
-#include "../RenderCore/Metal/Buffer.h"
 #include "../Core/Types.h"
 
-namespace RenderCore { class SharedPkt; }
+namespace RenderCore { class SharedPkt; class IResource; class IResourceView; class IThreadContext; }
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
@@ -60,8 +58,8 @@ namespace SceneEngine
     class PreparedShadowFrustum
     {
     public:
-        typedef RenderCore::Metal::ShaderResourceView SRV;
-        typedef RenderCore::Metal::ConstantBuffer CB;
+        typedef std::shared_ptr<RenderCore::IResourceView> SRV;
+        typedef std::shared_ptr<RenderCore::IResource> CB;
 
         CB          _arbitraryCB;
         CB          _orthoCB;
@@ -73,7 +71,7 @@ namespace SceneEngine
         CB_OrthoShadowProjection        _orthoCBSource;
 
         void InitialiseConstants(
-            RenderCore::Metal::DeviceContext* devContext,
+            RenderCore::IThreadContext& threadContext,
             const MultiProjection<MaxShadowTexturesPerLight>&);
 
         PreparedShadowFrustum();
@@ -130,6 +128,7 @@ namespace SceneEngine
         const Float4x4& cameraToWorld,
         const Float4x4& cameraToProjection);
 
+#if 0
     void BindShadowsForForwardResolve(
         RenderCore::Metal::DeviceContext& metalContext,
         RenderCore::Techniques::ParsingContext& parsingContext,
@@ -138,5 +137,6 @@ namespace SceneEngine
     void UnbindShadowsForForwardResolve(
         RenderCore::Metal::DeviceContext& metalContext,
         RenderCore::Techniques::ParsingContext& parsingContext);
+#endif
 
 }

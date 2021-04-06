@@ -287,6 +287,7 @@ namespace RenderOverlays
 	float Draw(
 		RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
+		FontRenderingManager& textureMan,
 		const Font& font, const TextStyle& style,
 		float x, float y, StringSection<ucs4> text,
 		float spaceExtra, float scale, float mx, float depth,
@@ -317,9 +318,8 @@ namespace RenderOverlays
 		ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc.Width), 1.f / float(viewportDesc.Height), 0.f, 0.f };
 		*/
 			
-		auto& textureMgr = GetFontTextureMgr();
-		auto* texSRV = textureMgr.GetFontTexture().GetSRV().get();
-		auto texDims = textureMgr.GetTextureDimensions();
+		auto* texSRV = textureMan.GetFontTexture().GetSRV().get();
+		auto texDims = textureMan.GetTextureDimensions();
 		auto estimatedQuadCount = text.size();
 		if (style._options.shadow)
 			estimatedQuadCount += text.size();
@@ -368,7 +368,7 @@ namespace RenderOverlays
 			y += yScale * v[1];
 			prevGlyph = curGlyph;
 
-			auto bitmap = font.GetBitmap(ch);
+			auto bitmap = textureMan.GetBitmap(threadContext, font, ch);
 
 			float baseX = x + bitmap._bitmapOffsetX * xScale;
 			float baseY = y + (bitmap._bitmapOffsetY - descent) * yScale;
@@ -379,10 +379,10 @@ namespace RenderOverlays
 
 			Quad pos = Quad::MinMax(
 				baseX, baseY, 
-				baseX + (bitmap._bottomRight[0] - bitmap._topLeft[0]) * xScale, baseY + (bitmap._bottomRight[1] - bitmap._topLeft[1]) * yScale);
+				baseX + bitmap._width * xScale, baseY + bitmap._height * yScale);
 			Quad tc = Quad::MinMax(
-				bitmap._topLeft[0] / float(texDims[0]), bitmap._topLeft[1] / float(texDims[1]), 
-				bitmap._bottomRight[0] / float(texDims[0]), bitmap._bottomRight[1] / float(texDims[1]));
+				bitmap._tcTopLeft[0], bitmap._tcTopLeft[1], 
+				bitmap._tcBottomRight[0], bitmap._tcBottomRight[1]);
 
 			if (style._options.outline) {
 				Quad shadowPos;
@@ -448,7 +448,7 @@ namespace RenderOverlays
 
 			workingVertices.PushQuad(pos, RenderCore::ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth);
 
-			x += bitmap._glyph._xAdvance * xScale;
+			x += bitmap._xAdvance * xScale;
 			if (style._options.outline) {
 				x += 2 * xScale;
 			}

@@ -324,3 +324,41 @@ namespace PlatformRig
         }
     }*/
 }
+
+#include "../SceneEngine/RenderStep_PrepareShadows.h"
+#include "../Utility/Meta/AccessorSerialize.h"
+#include "../Utility/Meta/ClassAccessors.h"
+
+namespace SceneEngine
+{
+    ToneMapSettings::ToneMapSettings() {}
+
+    RenderCore::Techniques::DrawablesPacket* ViewDelegate_Shadow::GetDrawablesPacket(RenderCore::Techniques::BatchFilter batch)
+	{
+		return nullptr;
+	}
+
+	void ViewDelegate_Shadow::Reset()
+	{
+	}
+
+    ViewDelegate_Shadow::ViewDelegate_Shadow(ShadowProjectionDesc shadowProjection)
+	: _shadowProj(shadowProjection)
+	{
+	}
+
+	ViewDelegate_Shadow::~ViewDelegate_Shadow()
+	{
+	}
+
+    std::shared_ptr<ICompiledShadowGenerator> CreateCompiledShadowGenerator(const ShadowGeneratorDesc&, const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>&)
+	{
+		return nullptr;
+	}
+}
+
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::ToneMapSettings>()
+{
+    static ClassAccessors dummy(0);
+    return dummy;
+}

@@ -8,7 +8,7 @@
 #include <memory>
 
 namespace RenderCore { class IThreadContext; }
-namespace RenderCore { namespace Techniques { class ParsingContext; class IRenderStateDelegate; class ProjectionDesc; class SequencerConfig; }}
+namespace RenderCore { namespace Techniques { class ParsingContext; class IRenderStateDelegate; class ProjectionDesc; class SequencerConfig; class IPipelineAcceleratorPool; }}
 
 namespace SceneEngine
 {
@@ -24,6 +24,7 @@ namespace SceneEngine
     void ExecuteDrawables(
         RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parserContext,
+        const RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
 		const RenderCore::Techniques::SequencerContext& sequencerContext,
 		const RenderCore::Techniques::DrawablesPacket& drawables,
 		const char name[]);

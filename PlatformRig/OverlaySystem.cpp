@@ -116,6 +116,8 @@ namespace PlatformRig
     public:
         virtual bool    OnInputEvent(const InputContext& context, const InputSnapshot& evnt)
         {
+            if (!_parent) return false;
+            
             for (auto i=_parent->_childSystems.begin(); i!=_parent->_childSystems.end(); ++i) {
                 auto listener = (*i)->GetInputListener();
                 if (listener && listener->OnInputEvent(context, evnt)) {
@@ -125,6 +127,8 @@ namespace PlatformRig
 
             return false;
         }
+
+        void ReleaseOverlaySystemSet() { _parent = nullptr; }
 
         InputListener(OverlaySystemSet* parent) : _parent(parent) {}
     protected:
@@ -182,7 +186,11 @@ namespace PlatformRig
         _inputListener = std::make_shared<InputListener>(this);
     }
 
-    OverlaySystemSet::~OverlaySystemSet() {}
+    OverlaySystemSet::~OverlaySystemSet() 
+    {
+        if (_inputListener)
+            _inputListener->ReleaseOverlaySystemSet();
+    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -203,13 +211,16 @@ namespace PlatformRig
             RenderCore::Techniques::ParsingContext& parserContext);
         void SetActivationState(bool);
 
-        ConsoleOverlaySystem(const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables);
+        ConsoleOverlaySystem(
+            std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> immediateDrawables,
+            std::shared_ptr<RenderOverlays::FontRenderingManager> fontRenderer);
         ~ConsoleOverlaySystem();
 
     private:
         typedef RenderOverlays::DebuggingDisplay::DebugScreensSystem DebugScreensSystem;
         std::shared_ptr<DebugScreensSystem> _screens;
         std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> _immediateDrawables;
+        std::shared_ptr<RenderOverlays::FontRenderingManager> _fontRenderer;
     };
 
     std::shared_ptr<IInputListener> ConsoleOverlaySystem::GetInputListener()
@@ -222,7 +233,7 @@ namespace PlatformRig
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
-		auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, *_immediateDrawables);
+		auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, *_immediateDrawables, *_fontRenderer);
 		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
 		auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
 		_screens->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ {0,0}, {int(viewportDims[0]), int(viewportDims[1])} });
@@ -232,8 +243,10 @@ namespace PlatformRig
     void ConsoleOverlaySystem::SetActivationState(bool) {}
 
     ConsoleOverlaySystem::ConsoleOverlaySystem(
-        const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables)
+        std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> immediateDrawables,
+        std::shared_ptr<RenderOverlays::FontRenderingManager> fontRenderer)
     : _immediateDrawables(immediateDrawables)
+    , _fontRenderer(fontRenderer)
     {
         _screens = std::make_shared<DebugScreensSystem>();
 
@@ -246,9 +259,11 @@ namespace PlatformRig
     {
     }
 
-    std::shared_ptr<IOverlaySystem> CreateConsoleOverlaySystem(const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables)
+    std::shared_ptr<IOverlaySystem> CreateConsoleOverlaySystem(
+        std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> immediateDrawables,
+        std::shared_ptr<RenderOverlays::FontRenderingManager> fontRenderer)
     {
-        return std::make_shared<ConsoleOverlaySystem>(immediateDrawables);
+        return std::make_shared<ConsoleOverlaySystem>(std::move(immediateDrawables), std::move(fontRenderer));
     }
 
 }

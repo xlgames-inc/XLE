@@ -6,7 +6,7 @@
 
 #include "LightInternal.h"
 #include "LightDesc.h"
-#include "SceneEngineUtils.h"
+// #include "SceneEngineUtils.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
@@ -108,7 +108,7 @@ namespace SceneEngine
     }
 
     void PreparedShadowFrustum::InitialiseConstants(
-        RenderCore::Metal::DeviceContext* devContext,
+        RenderCore::IThreadContext& threadContext,
         const MultiProjection<MaxShadowTexturesPerLight>& desc)
     {
         _frustumCount = desc._normalProjCount;
@@ -117,6 +117,8 @@ namespace SceneEngine
 
         BuildShadowConstantBuffers(_arbitraryCBSource, _orthoCBSource, desc);
 
+        assert(0);
+#if 0
         using namespace RenderCore;
             // arbitrary constants
         if (!_arbitraryCB.GetUnderlying()) {
@@ -131,6 +133,7 @@ namespace SceneEngine
         } else {
             _orthoCB.Update(*devContext, &_orthoCBSource, sizeof(_orthoCBSource));
         }
+#endif
     }
 
     PreparedShadowFrustum::PreparedShadowFrustum()
@@ -162,7 +165,9 @@ namespace SceneEngine
 
     bool PreparedDMShadowFrustum::IsReady() const
     {
-        return _srv.IsGood() && (_arbitraryCB.GetUnderlying() || _orthoCB.GetUnderlying());
+        assert(0);
+        // return _srv.IsGood() && (_arbitraryCB.GetUnderlying() || _orthoCB.GetUnderlying());
+        return false;
     }
 
     PreparedDMShadowFrustum::PreparedDMShadowFrustum() {}
@@ -186,7 +191,9 @@ namespace SceneEngine
 
     bool PreparedRTShadowFrustum::IsReady() const
     {
-        return _listHeadSRV.IsGood() && _linkedListsSRV.IsGood() && _trianglesSRV.IsGood();
+        assert(0);
+        return false;
+        // return _listHeadSRV.IsGood() && _linkedListsSRV.IsGood() && _trianglesSRV.IsGood();
     }
 
     PreparedRTShadowFrustum::PreparedRTShadowFrustum() {}
@@ -225,6 +232,14 @@ namespace SceneEngine
     static ParameterBox::ParameterNameHash ParamHash(const char name[])
     {
         return ParameterBox::MakeParameterNameHash(name);
+    }
+
+    static Float3 AsFloat3Color(unsigned packedColor)
+    {
+        return Float3(
+            (float)((packedColor >> 16) & 0xff) / 255.f,
+            (float)((packedColor >>  8) & 0xff) / 255.f,
+            (float)(packedColor & 0xff) / 255.f);
     }
 
     GlobalLightingDesc::GlobalLightingDesc(const ParameterBox& props)
@@ -275,9 +290,15 @@ namespace SceneEngine
             _doRangeFog = !!(flags.value() & (1<<1));
         }
 
-        props.GetString(skyTextureHash, _skyTexture, dimof(_skyTexture));
-        props.GetString(diffuseIBLHash, _diffuseIBL, dimof(_diffuseIBL));
-        props.GetString(specularIBLHash, _specularIBL, dimof(_specularIBL));
+        auto skyTexture = props.GetParameterAsString(skyTextureHash);
+        if (skyTexture.has_value())
+            XlCopyString(_skyTexture, skyTexture.value());
+        auto diffuseIBL = props.GetParameterAsString(diffuseIBLHash);
+        if (diffuseIBL.has_value())
+            XlCopyString(_diffuseIBL, diffuseIBL.value());
+        auto specularIBL = props.GetParameterAsString(specularIBLHash);
+        if (specularIBL.has_value())
+            XlCopyString(_specularIBL, specularIBL.value());
 
 		// If we don't have a diffuse IBL texture, or specular IBL texture, then attempt to build
 		// the filename from the sky texture

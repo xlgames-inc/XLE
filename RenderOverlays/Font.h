@@ -10,6 +10,7 @@
 #include "../Math/Vector.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/StringUtils.h"
+#include "../Utility/IteratorUtils.h"
 #include "../Core/Prefix.h"
 #include "../Core/Types.h"
 #include <memory>
@@ -31,28 +32,34 @@ namespace RenderOverlays
 			float _maxAdvance = 0.f;
 		};
 
+		struct Bitmap
+		{
+			unsigned _width = 0, _height = 0;
+			IteratorRange<const void*> _data;
+
+			float _xAdvance = 0.f;
+			signed _bitmapOffsetX = 0, _bitmapOffsetY = 0;
+		};
+
 		struct GlyphProperties
 		{
 			float _xAdvance = 0.f;
 		};
 
-		struct Bitmap
-		{
-			GlyphProperties _glyph;
-			signed _bitmapOffsetX = 0, _bitmapOffsetY = 0;
-			UInt2 _topLeft = UInt2{0u,0u};				// coordinates in the texture manager
-			UInt2 _bottomRight = UInt2{0u,0u};			// coordinates in the texture manager
-			FontBitmapId _textureId = FontBitmapId_Invalid;
-		};
-
 		virtual FontProperties		GetFontProperties() const = 0;
-		virtual GlyphProperties		GetGlyphProperties(ucs4 ch) const = 0;
 		virtual Bitmap				GetBitmap(ucs4 ch) const = 0;
 
 		virtual Float2		GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const = 0;
 		virtual float       GetKerning(ucs4 prev, ucs4 ch) const = 0;
 
+		virtual GlyphProperties		GetGlyphProperties(ucs4 ch) const = 0;
+
+		uint64_t			GetHash() const { return _hashCode; }
+
 		virtual ~Font();
+
+	protected:
+		uint64_t _hashCode;
     };
 
 	std::shared_ptr<Font> GetX2Font(StringSection<> path, int size);
@@ -111,9 +118,12 @@ namespace RenderOverlays
     public:
 		DrawTextOptions			_options;
 	};
+
+	class FontRenderingManager;
         
     float       Draw(   RenderCore::IThreadContext& threadContext,
 						RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
+						FontRenderingManager& textureMan,
 						const Font& font, const TextStyle& style,
                         float x, float y, StringSection<ucs4> text,
                         float spaceExtra, float scale, float mx, float depth,

@@ -14,6 +14,7 @@
 
 namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class ParsingContext; class IImmediateDrawables; } }
+namespace RenderOverlays { class FontRenderingManager; }
 
 namespace PlatformRig
 {
@@ -94,7 +95,9 @@ namespace PlatformRig
         std::shared_ptr<InputListener> _inputListener;
     };
 
-    std::shared_ptr<IOverlaySystem> CreateConsoleOverlaySystem(const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>&);
+    std::shared_ptr<IOverlaySystem> CreateConsoleOverlaySystem(
+        std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>,
+        std::shared_ptr<RenderOverlays::FontRenderingManager>);
     
 }
 

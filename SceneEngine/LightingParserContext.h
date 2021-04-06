@@ -31,7 +31,7 @@ namespace SceneEngine
 	class MainTargets
     {
     public:
-        std::shared_ptr<RenderCore::IResourceView> GetSRV(RenderCore::Techniques::ParsingContext& context, uint64_t semantic, const RenderCore::TextureViewDesc& window = {}) const;
+        RenderCore::IResourceView* GetSRV(RenderCore::Techniques::ParsingContext& context, uint64_t semantic, const RenderCore::TextureViewDesc& window = {}) const;
 		std::shared_ptr<RenderCore::IResource> GetResource(RenderCore::Techniques::ParsingContext& context, uint64_t semantic) const;
 
 		UInt2		GetDimensions(RenderCore::Techniques::ParsingContext& context) const;
@@ -53,8 +53,8 @@ namespace SceneEngine
         void            SetMetricsBox(MetricsBox* box);
 
             //  ----------------- Working shadow state ----------------- 
-        std::vector<std::pair<LightId, PreparedDMShadowFrustum>>    _preparedDMShadows;
-        std::vector<std::pair<LightId, PreparedRTShadowFrustum>>    _preparedRTShadows;
+        // std::vector<std::pair<LightId, PreparedDMShadowFrustum>>    _preparedDMShadows;
+        // std::vector<std::pair<LightId, PreparedRTShadowFrustum>>    _preparedRTShadows;
 
             //  ----------------- Plugins -----------------
         std::vector<std::shared_ptr<ILightingParserPlugin>> _plugins;

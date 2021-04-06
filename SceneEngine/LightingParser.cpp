@@ -7,18 +7,19 @@
 #include "LightingParser.h"
 #include "LightingParserContext.h"
 #include "SceneParser.h"
-#include "SceneEngineUtils.h"
+// #include "SceneEngineUtils.h"
 #include "RenderStepUtils.h"
 #include "RenderStep.h"
 #include "RenderStep_PrepareShadows.h"
-#include "RenderStep_ResolveHDR.h"
-#include "LightInternal.h"
+// #include "RenderStep_ResolveHDR.h"
+// #include "LightInternal.h"
 #include "PreparedScene.h"
 
 #include "../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/Services.h"
 #include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/IAnnotator.h"
 #include "../BufferUploads/IBufferUploads.h"
@@ -29,6 +30,7 @@
 
 #include <set>
 
+#if 0
 // For some of the debugging / metrics stuff towards the end
 #include "MetricsBox.h"
 #include "RefractionsBuffer.h"
@@ -39,6 +41,7 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderOverlays/Font.h"
 #include "../xleres/FileList.h"
+#endif
 
 
 namespace SceneEngine
@@ -47,6 +50,7 @@ namespace SceneEngine
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 	std::vector<std::shared_ptr<IRenderStep>> CreateStandardRenderSteps(LightingModel lightingModel)
 	{
 		std::vector<std::shared_ptr<IRenderStep>> result;
@@ -79,6 +83,7 @@ namespace SceneEngine
 
 		return result;
 	}
+#endif
 
 	class CompiledSceneTechnique
 	{
@@ -217,7 +222,7 @@ namespace SceneEngine
 		//		Shadow Generators
 		//
 
-		_shadowGenAttachmentPool = std::make_shared<RenderCore::Techniques::AttachmentPool>();
+		_shadowGenAttachmentPool = std::make_shared<RenderCore::Techniques::AttachmentPool>(pipelineAccelerators->GetDevice());
 		_shadowGenFrameBufferPool = std::make_shared<RenderCore::Techniques::FrameBufferPool>();
 		if (!techniqueDesc._shadowGenerators.empty()) {
 			for (const auto&shdGen:techniqueDesc._shadowGenerators) {
@@ -360,7 +365,7 @@ namespace SceneEngine
         // force all uploads started during PrepareScene to be completed when we next call
         // bufferUploads.Update(). Normally we want a gap between FramePriority_Barrier() and
         // Update(), because this gives some time for the background thread to run.
-        GetBufferUploads().FramePriority_Barrier();
+        RenderCore::Techniques::Services::GetBufferUploads().FramePriority_Barrier();
 
 		auto lightingParserContext = LightingParser_SetupContext(threadContext, parsingContext, lightingDelegate, technique);
         LightingParser_SetGlobalTransform(threadContext, parsingContext, mainSceneProjection);
@@ -368,14 +373,14 @@ namespace SceneEngine
 		PreparedScene preparedScene;
 		lightingParserContext._preparedScene = &preparedScene;
 
-		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
+		/*auto& metalContext = *Metal::DeviceContext::Get(threadContext);
 		ReturnToSteadyState(metalContext);
 		CATCH_ASSETS_BEGIN
 			SetFrameGlobalStates(metalContext);
-		CATCH_ASSETS_END(parsingContext)
+		CATCH_ASSETS_END(parsingContext)*/
 
-		auto* prevPipelineAccelerator = parsingContext._pipelineAcceleratorPool;
-		parsingContext._pipelineAcceleratorPool = technique._pipelineAccelerators.get();
+		// auto* prevPipelineAccelerator = parsingContext._pipelineAcceleratorPool;
+		// parsingContext._pipelineAcceleratorPool = technique._pipelineAccelerators.get();
 
 		// Preparation steps (including shadows prepare)
         {
@@ -413,7 +418,7 @@ namespace SceneEngine
 			}
         }
 
-        GetBufferUploads().Update(threadContext, true);
+        RenderCore::Techniques::Services::GetBufferUploads().Update(threadContext);
 
 		std::vector<std::pair<uint64_t, RenderCore::IResourcePtr>> workingAttachments = {
 			{ Techniques::AttachmentSemantics::ColorLDR, renderTarget }
@@ -454,7 +459,7 @@ namespace SceneEngine
 				parsingContext.GetNamedResources().Bind(w.first, rpi.GetResourceForAttachmentName(w.second));
 		}
 
-		parsingContext._pipelineAcceleratorPool = prevPipelineAccelerator;
+		// parsingContext._pipelineAcceleratorPool = prevPipelineAccelerator;
 
 		// Bind depth to NamedResources(), so we can find it later with RenderPassToPresentationTargetWithDepthStencil()
 		/*if (merged._mergedFragment._attachments[c].GetOutputSemanticBinding() == Techniques::AttachmentSemantics::MultisampleDepth)
@@ -543,8 +548,9 @@ namespace SceneEngine
 
     void LightingParserContext::Reset()
     {
-        _preparedDMShadows.clear();
-        _preparedRTShadows.clear();
+		assert(0);
+        // _preparedDMShadows.clear();
+        // _preparedRTShadows.clear();
     }
 
 	LightingParserContext::LightingParserContext() {}
@@ -552,9 +558,9 @@ namespace SceneEngine
 
 	// note -- explicitly implemented because of use of PreparedDMShadowFrustum, PreparedRTShadowFrustum in a vector
 	LightingParserContext::LightingParserContext(LightingParserContext&& moveFrom)
-	: _preparedDMShadows(std::move(moveFrom._preparedDMShadows))
+	: /*_preparedDMShadows(std::move(moveFrom._preparedDMShadows))
 	, _preparedRTShadows(std::move(moveFrom._preparedRTShadows))
-	, _plugins(std::move(moveFrom._plugins))
+	, */_plugins(std::move(moveFrom._plugins))
 	, _metricsBox(moveFrom._metricsBox)
 	, _mainTargets(std::move(moveFrom._mainTargets))
 	, _preparedScene(moveFrom._preparedScene)
@@ -569,8 +575,8 @@ namespace SceneEngine
 
 	LightingParserContext& LightingParserContext::operator=(LightingParserContext&& moveFrom)
 	{
-		_preparedDMShadows = std::move(moveFrom._preparedDMShadows);
-		_preparedRTShadows = std::move(moveFrom._preparedRTShadows);
+		// _preparedDMShadows = std::move(moveFrom._preparedDMShadows);
+		// _preparedRTShadows = std::move(moveFrom._preparedRTShadows);
 		_plugins = std::move(moveFrom._plugins);
 		_mainTargets = std::move(moveFrom._mainTargets);
 		_preparedScene = moveFrom._preparedScene;
@@ -593,6 +599,7 @@ namespace SceneEngine
 		const CompiledSceneTechnique& technique,
         unsigned samplingPassIndex, unsigned samplingPassCount)
     {
+#if 0
         struct GlobalCBuffer
         {
             float _time; unsigned _samplingPassIndex; 
@@ -617,8 +624,12 @@ namespace SceneEngine
 		// lightingParserContext._gbufferType = technique._gbufferType;
 
         return lightingParserContext;
+#else
+		return {};
+#endif
     }
 
+#if 0
 	void LightingParser_Overlays(   IThreadContext& context,
 									Techniques::ParsingContext& parsingContext,
                                     LightingParserContext& lightingParserContext)
@@ -673,20 +684,21 @@ namespace SceneEngine
             CATCH_ASSETS_END(parsingContext)
         }
     }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	auto MainTargets::GetSRV(Techniques::ParsingContext& context, uint64_t semantic, const RenderCore::TextureViewDesc& window) const -> SRV
+	auto MainTargets::GetSRV(Techniques::ParsingContext& context, uint64_t semantic, const RenderCore::TextureViewDesc& window) const -> RenderCore::IResourceView*
 	{
 		auto& namedResources = context.GetNamedResources();
 		RenderCore::FrameBufferDesc::Attachment requestAttachments[1];
 		requestAttachments[0]._semantic = semantic;
 		auto result = namedResources.Request(MakeIteratorRange(requestAttachments));
 		if (!result.empty())
-			return *namedResources.GetSRV(result[0]);
-		return SRV {};
+			return namedResources.GetSRV(result[0]);
+		return nullptr;
 	}
 
 	RenderCore::IResourcePtr MainTargets::GetResource(Techniques::ParsingContext& context, uint64_t semantic) const
@@ -752,6 +764,7 @@ namespace SceneEngine
 	void ExecuteSceneRaw(
 		RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parserContext,
+		const RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
 		const RenderCore::Techniques::SequencerContext& sequencerTechnique,
 		const SceneView& view,
 		IScene& scene)
@@ -764,6 +777,7 @@ namespace SceneEngine
 
 		Techniques::Draw(
 			threadContext, parserContext, 
+			pipelineAccelerators,
 			sequencerTechnique, 
 			viewDelegate->_pkt);
 	}

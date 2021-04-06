@@ -14,16 +14,18 @@
 typedef struct FT_FaceRec_ FT_FaceRec;
 typedef struct FT_FaceRec_* FT_Face;
 
+namespace RenderCore { class IDevice; }
+
 namespace RenderOverlays
 {
-	struct FontCharTable
+	/*struct FontCharTable
 	{
 		std::vector<std::vector<std::pair<ucs4, FontBitmapId>>>  _table;
 		FontBitmapId&         operator[](ucs4 ch);
 		void                ClearTable();
 		FontCharTable();
 		~FontCharTable();
-	};
+	};*/
 
 	class FTFontResources;
 
@@ -37,23 +39,26 @@ namespace RenderOverlays
 		virtual Float2 GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const;
 		virtual float GetKerning(ucs4 prev, ucs4 ch) const;
 
-		::Assets::DepValPtr GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 
 		FTFont(StringSection<::Assets::ResChar> faceName, int faceSize);
 		virtual ~FTFont();
 	protected:
-		std::shared_ptr<FTFontResources> _resources;
+		FTFontResources* _resources;
 		int _ascend;
 		std::shared_ptr<FT_FaceRec_> _face;
 		::Assets::Blob _pBuffer;
 		::Assets::DepValPtr _depVal;
 
-		mutable std::vector<Bitmap> _bitmaps;
+		// mutable std::vector<Bitmap> _bitmaps;
+		// mutable FontCharTable _lookupTable;
 
-		mutable FontCharTable _lookupTable;
+		mutable std::vector<std::pair<ucs4, GlyphProperties>> _cachedGlyphProperties;
 		FontProperties _fontProperties;
 
 		FontBitmapId InitializeBitmap(ucs4 ch) const;
 	};
+
+	std::shared_ptr<FTFontResources> CreateFTFontResources();
 }
 

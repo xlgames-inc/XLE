@@ -23,6 +23,8 @@ namespace RenderCore { namespace Techniques { class IImmediateDrawables; } }
 
 namespace RenderOverlays
 {
+    class FontRenderingManager;
+
     class ImmediateOverlayContext : public IOverlayContext
     {
     public:
@@ -72,7 +74,8 @@ namespace RenderOverlays
 
         ImmediateOverlayContext(
             RenderCore::IThreadContext& threadContext,
-            RenderCore::Techniques::IImmediateDrawables& immediateDrawables);
+            RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
+            FontRenderingManager& fontRenderingManager);
         ~ImmediateOverlayContext();
 
         class ShaderBox;
@@ -80,6 +83,7 @@ namespace RenderOverlays
     private:
         RenderCore::Techniques::IImmediateDrawables* _immediateDrawables;
         RenderCore::IThreadContext* _threadContext;
+        FontRenderingManager* _fontRenderingManager;
         std::shared_ptr<Font> _defaultFont;
         OverlayState _currentState;
 
@@ -94,7 +98,8 @@ namespace RenderOverlays
 	std::unique_ptr<ImmediateOverlayContext>
 		MakeImmediateOverlayContext(
             RenderCore::IThreadContext& threadContext,
-			RenderCore::Techniques::IImmediateDrawables& immediateDrawables);
+			RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
+            FontRenderingManager& fontRenderingManager);
 }
 
 

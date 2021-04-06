@@ -4,10 +4,13 @@
 
 #pragma once
 
+#include "Font.h"
 #include "OverlayPrimitives.h"
 #include "../RenderCore/Format.h"
+#include "../Math/Vector.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/IteratorUtils.h"
+#include "../Utility/MemoryUtils.h"
 #include "../Utility/IntrusivePtr.h"
 #include <vector>
 #include <memory>
@@ -38,33 +41,57 @@ namespace RenderOverlays
 		RenderCore::Format _format;
 	};
 
-	class FT_FontTextureMgr
+	class Font;
+
+	class FontRenderingManager
 	{
 	public:
-		struct Glyph
+		struct Bitmap
 		{
-			UInt2 _topLeft = UInt2{0, 0};
-			UInt2 _bottomRight = UInt2{0, 0};
-			FontBitmapId _glyphId = FontBitmapId_Invalid;
+			float _xAdvance = 0.f;
+			signed _bitmapOffsetX = 0, _bitmapOffsetY = 0;
+			unsigned _width, _height;
+			Float2 _tcTopLeft = Float2{0.f, 0.f};
+			Float2 _tcBottomRight = Float2{0.f, 0.f};
 		};
 
-		Glyph		CreateChar(
+		Bitmap GetBitmap(
 			RenderCore::IThreadContext& threadContext,
-			unsigned width, unsigned height,
-			IteratorRange<const void*> data);
+			const Font& font,
+			ucs4 ch);
 
 		const FontTexture2D& GetFontTexture();
 		UInt2 GetTextureDimensions();
     
-		FT_FontTextureMgr();
-		~FT_FontTextureMgr();
+		FontRenderingManager(RenderCore::IDevice& device);
+		~FontRenderingManager();
 
 	private:
+		std::vector<std::pair<uint64_t, Bitmap>> _glyphs;
+		
 		class Pimpl;
 		std::shared_ptr<Pimpl> _pimpl;
+
+		Bitmap InitializeNewGlyph(
+			RenderCore::IThreadContext& threadContext,
+			const Font& font,
+			ucs4 ch,
+			std::vector<std::pair<uint64_t, Bitmap>>::iterator insertPoint,
+			uint64_t code);
 	};
 
-	FT_FontTextureMgr& GetFontTextureMgr();
+	inline auto FontRenderingManager::GetBitmap(
+		RenderCore::IThreadContext& threadContext,
+		const Font& font,
+		ucs4 ch) -> Bitmap
+	{
+		auto code = HashCombine(ch, font.GetHash());
+		auto i = LowerBound(_glyphs, code);
+		if (__builtin_expect(i != _glyphs.end() && i->first == code, true))
+			return i->second;
+
+		return InitializeNewGlyph(threadContext, font, ch, i, code);
+	}
 
 }
 

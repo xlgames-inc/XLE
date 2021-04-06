@@ -68,6 +68,7 @@ namespace SceneEngine
 	void ExecuteSceneRaw(
 		RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parserContext,
+		const RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
 		const RenderCore::Techniques::SequencerContext& sequencerTechnique,
 		const SceneView& view,
 		IScene& scene);

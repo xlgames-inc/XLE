@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Font.h"
-#include "FT_Font.h"
 #include "../Utility/UTFUtils.h"
 #include <assert.h>
 

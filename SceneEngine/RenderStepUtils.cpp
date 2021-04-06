@@ -20,6 +20,7 @@ namespace SceneEngine
 	void ExecuteDrawables(
         IThreadContext& threadContext,
 		Techniques::ParsingContext& parserContext,
+		const RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
 		const Techniques::SequencerContext& sequencerContext,
 		const Techniques::DrawablesPacket& drawables,
 		const char name[])
@@ -30,6 +31,7 @@ namespace SceneEngine
 			RenderCore::Techniques::Draw(
 				threadContext, 
 				parserContext,
+				pipelineAccelerators,
 				sequencerContext,
 				drawables);
         CATCH_ASSETS_END(parserContext)
@@ -47,9 +49,9 @@ namespace SceneEngine
     {
         parserContext.GetProjectionDesc() = projDesc;
         auto globalTransform = BuildGlobalTransformConstants(projDesc);
-        parserContext.SetGlobalCB(
+        /*parserContext.SetGlobalCB(
             *Metal::DeviceContext::Get(context), Techniques::TechniqueContext::CB_GlobalTransform,
-            &globalTransform, sizeof(globalTransform));
+            &globalTransform, sizeof(globalTransform));*/
     }
 
 	RenderCore::Techniques::SequencerContext MakeSequencerContext(
