@@ -1,0 +1,111 @@
+DescriptorSet Sequencer
+{
+	UniformBuffer GlobalTransform
+	{
+		float4x4 WorldToClip;
+		float4 FrustumCorners[4];
+		float3 WorldSpaceView;
+		float FarClip;
+		float4 MinimalProjection;
+		float4x4 CameraBasis;
+	};
+
+	UniformBuffer LocalTransform
+	{
+		float3x4 LocalToWorld;
+		float3 LocalSpaceView;
+	};
+	
+	UniformBuffer ReciprocalViewportDimensionsCB
+	{
+		float2 ReciprocalViewportDimensions;
+	};
+
+	UniformBuffer cb0;
+	UniformBuffer cb1;
+	UniformBuffer cb2;
+
+	SampledTexture tex0;
+	SampledTexture tex1;
+	SampledTexture tex2;
+	SampledTexture tex3;
+	SampledTexture tex4;
+	SampledTexture tex5;
+	SampledTexture tex6;
+};
+
+DescriptorSet Draw
+{
+	SampledTexture tex0;
+	SampledTexture tex1;
+	SampledTexture tex2;
+	SampledTexture tex3;
+	SampledTexture tex4;
+	SampledTexture tex5;
+	SampledTexture tex6;
+	SampledTexture tex7;
+	SampledTexture tex8;
+	SampledTexture tex9;
+};
+
+DescriptorSet Material
+{
+	UniformBuffer cb0;
+	UniformBuffer cb1;
+	UniformBuffer cb2;
+
+	SampledTexture tex0;
+	SampledTexture tex1;
+	SampledTexture tex2;
+	SampledTexture tex3;
+	SampledTexture tex4;
+	SampledTexture tex5;
+	SampledTexture tex6;
+	SampledTexture tex7;
+
+	UnorderedAccessBuffer uab0;
+	Sampler sampler0;
+};
+
+DescriptorSet Numeric
+{
+	SampledTexture tex0;
+	SampledTexture tex1;
+	SampledTexture tex2;
+	SampledTexture tex3;
+	SampledTexture tex4;
+	SampledTexture tex5;
+	SampledTexture tex6;
+	SampledTexture tex7;
+	SampledTexture tex8;
+	SampledTexture tex9;
+	SampledTexture tex10;
+	SampledTexture tex11;
+	SampledTexture tex12;
+	SampledTexture tex13;
+	SampledTexture tex14;
+
+	Sampler sampler0;
+	Sampler sampler1;
+	Sampler sampler2;
+	Sampler sampler3;
+	Sampler sampler4;
+	Sampler sampler5;
+	Sampler sampler6;
+
+	UniformBuffer cb0;
+	UniformBuffer cb1;
+	UniformBuffer cb2;
+	UniformBuffer cb3;
+
+	Sampler sampler0;
+};
+
+PipelineLayout ImmediateDrawables
+{
+	DescriptorSet Sequencer;
+	DescriptorSet Material;
+	DescriptorSet Draw;
+	DescriptorSet Numeric;
+};
+
