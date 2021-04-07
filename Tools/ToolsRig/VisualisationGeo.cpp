@@ -32,14 +32,14 @@ namespace ToolsRig
     IteratorRange<const RenderCore::InputElementDesc*> Vertex3D_InputLayout = MakeIteratorRange(Internal::Vertex3D_InputLayout_);
 
 	std::vector<RenderCore::MiniInputElementDesc> Vertex2D_MiniInputLayout {
-		RenderCore::MiniInputElementDesc{ RenderCore::Technqiues::CommonSemantics::POSITION, RenderCore::Format::R32G32_FLOAT },
-		RenderCore::MiniInputElementDesc{ RenderCore::Technqiues::CommonSemantics::TEXCOORD, RenderCore::Format::R32G32_FLOAT }
+		RenderCore::MiniInputElementDesc{ RenderCore::Techniques::CommonSemantics::POSITION, RenderCore::Format::R32G32_FLOAT },
+		RenderCore::MiniInputElementDesc{ RenderCore::Techniques::CommonSemantics::TEXCOORD, RenderCore::Format::R32G32_FLOAT }
 	};
     std::vector<RenderCore::MiniInputElementDesc> Vertex3D_MiniInputLayout {
-		RenderCore::MiniInputElementDesc{ RenderCore::Technqiues::CommonSemantics::POSITION, RenderCore::Format::R32G32B32_FLOAT },
-		RenderCore::MiniInputElementDesc{ RenderCore::Technqiues::CommonSemantics::NORMAL, RenderCore::Format::R32G32B32_FLOAT },
-		RenderCore::MiniInputElementDesc{ RenderCore::Technqiues::CommonSemantics::TEXCOORD, RenderCore::Format::R32G32_FLOAT },
-		RenderCore::MiniInputElementDesc{ RenderCore::Technqiues::CommonSemantics::TEXTANGENT, RenderCore::Format::R32G32B32A32_FLOAT }
+		RenderCore::MiniInputElementDesc{ RenderCore::Techniques::CommonSemantics::POSITION, RenderCore::Format::R32G32B32_FLOAT },
+		RenderCore::MiniInputElementDesc{ RenderCore::Techniques::CommonSemantics::NORMAL, RenderCore::Format::R32G32B32_FLOAT },
+		RenderCore::MiniInputElementDesc{ RenderCore::Techniques::CommonSemantics::TEXCOORD, RenderCore::Format::R32G32_FLOAT },
+		RenderCore::MiniInputElementDesc{ RenderCore::Techniques::CommonSemantics::TEXTANGENT, RenderCore::Format::R32G32B32A32_FLOAT }
 	};
 
     static void GeodesicSphere_Subdivide(const Float3 &v1, const Float3 &v2, const Float3 &v3, std::vector<Float3> &sphere_points, unsigned int depth) 

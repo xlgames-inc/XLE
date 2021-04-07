@@ -155,10 +155,13 @@ namespace PlatformRig
 			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext)
         {
-			auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, *_immediateDrawables, *_fontRenderer);
+            auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, *_immediateDrawables, *_fontRenderer);
+            
+            auto targetDesc = renderTarget->GetDesc();
+            Int2 viewportDims{ targetDesc._textureDesc._width, targetDesc._textureDesc._height };
+            _debugScreensSystem->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ {0,0}, viewportDims });
+
             auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
-			auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
-            _debugScreensSystem->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ {0,0}, {int(viewportDims[0]), int(viewportDims[1])} });
             _immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi.GetFrameBufferDesc(), 0);
         }
 
@@ -329,7 +332,10 @@ namespace PlatformRig
     const std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& FrameRig::GetDebugSystem() { return _pimpl->_debugSystem; }
     void FrameRig::SetUpdateAsyncMan(bool updateAsyncMan) { _pimpl->_updateAsyncMan = updateAsyncMan; }
 
-    FrameRig::FrameRig(bool isMainFrameRig)
+    FrameRig::FrameRig(
+        const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables,
+        const std::shared_ptr<RenderOverlays::FontRenderingManager>& fontRenderer,
+        bool isMainFrameRig)
     {
         _pimpl = std::make_unique<Pimpl>();
 
@@ -345,7 +351,7 @@ namespace PlatformRig
                     "FrameRig", DebugScreensSystem::SystemDisplay);
         }
 
-        _pimpl->_debugScreenOverlaySystem->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem, nullptr, nullptr));
+        _pimpl->_debugScreenOverlaySystem->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem, immediateDrawables, fontRenderer));
 
 		Log(Verbose) << "---- Beginning FrameRig ------------------------------------------------------------------" << std::endl;
         auto accAlloc = AccumulatedAllocations::GetInstance();

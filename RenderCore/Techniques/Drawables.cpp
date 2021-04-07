@@ -150,11 +150,7 @@ namespace RenderCore { namespace Techniques
 			//////////////////////////////////////////////////////////////////////////////
 
 			RealExecuteDrawableContext drawFnContext { &metalContext, &encoder, pipeline, boundUniforms };
-
-			drawable._drawFn(
-				parserContext, 
-				*(ExecuteDrawableContext*)&drawFnContext,
-				drawable);
+			drawable._drawFn(parserContext, *(ExecuteDrawableContext*)&drawFnContext, drawable);
 		}
 	}
 

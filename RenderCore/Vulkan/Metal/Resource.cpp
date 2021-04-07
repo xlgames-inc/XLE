@@ -884,7 +884,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         assert(src._resource && dst._resource);
 		auto dstResource = checked_cast<Resource*>(dst._resource);
-		auto srcResource = checked_cast<Resource*>(dst._resource);
+		auto srcResource = checked_cast<Resource*>(src._resource);
         if (dstResource->GetImage() && srcResource->GetImage()) {
             // image to image copy
             // In this case, we're going to generate only a single copy operation. This is 
@@ -955,8 +955,8 @@ namespace RenderCore { namespace Metal_Vulkan
             unsigned width = srcDesc._textureDesc._width, height = srcDesc._textureDesc._height, depth = srcDesc._textureDesc._depth;
             auto minDims = (GetCompressionType(srcDesc._textureDesc._format) == FormatCompressionType::BlockCompression) ? 4u : 1u;
 
-            assert(dstDesc._textureDesc._width == width);
-            assert(dstDesc._textureDesc._height == height);
+            assert(dstDesc._textureDesc._width >= width);
+            assert(dstDesc._textureDesc._height >= height);
             assert(dstDesc._textureDesc._depth == depth);
 		    assert(mips*arrayCount <= dimof(copyOps));
 
@@ -1372,12 +1372,19 @@ namespace RenderCore { namespace Metal_Vulkan
         if (!srcPixelCount)
             Throw(std::runtime_error("No source pixels in WriteSynchronized operation. The depth of the srcDataDimensions field might need to be at least 1."));
 
+		RenderCore::TextureDesc tDesc;
+		if (srcDataDimensions[2] > 1) {
+			tDesc = RenderCore::TextureDesc::Plain3D(srcDataDimensions[0], srcDataDimensions[1], srcDataDimensions[2], srcDataFormat);
+		} else {
+			tDesc = RenderCore::TextureDesc::Plain2D(srcDataDimensions[0], srcDataDimensions[1], srcDataFormat);
+		}
+
 		auto transferSrc = Internal::CreateResource(
 			GetObjectFactory(*_devContext),
             RenderCore::CreateDesc(
                 RenderCore::BindFlag::TransferSrc,
-                0, RenderCore::GPUAccess::Read,
-                RenderCore::TextureDesc::Plain3D(srcDataDimensions[0], srcDataDimensions[1], srcDataDimensions[2], srcDataFormat),
+                0, 0,
+                tDesc,
                 "blit-pass-src"),
             [srcData](SubResourceId subResId) -> SubResourceInitData {
 				assert(subResId._mip == 0 && subResId._arrayLayer == 0);

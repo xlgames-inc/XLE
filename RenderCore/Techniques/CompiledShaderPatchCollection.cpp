@@ -6,6 +6,7 @@
 #include "TechniqueUtils.h"
 #include "../Assets/ShaderPatchCollection.h"
 #include "../Assets/PredefinedDescriptorSetLayout.h"
+#include "../Assets/PredefinedPipelineLayout.h"
 #include "../Assets/IntermediateCompilers.h"
 #include "../Assets/IntermediatesStore.h"
 #include "../../ConsoleRig/GlobalServices.h"
@@ -178,6 +179,22 @@ namespace RenderCore { namespace Techniques
 
 	DescriptorSetLayoutAndBinding::~DescriptorSetLayoutAndBinding()
 	{}
+
+	DescriptorSetLayoutAndBinding FindLayout(const RenderCore::Assets::PredefinedPipelineLayoutFile& file, const std::string& pipelineLayoutName, const std::string& descriptorSetName)
+	{
+		auto pipeline = file._pipelineLayouts.find(pipelineLayoutName);
+		if (pipeline == file._pipelineLayouts.end())
+			return {};
+
+		auto i = std::find_if(pipeline->second->_descriptorSets.begin(), pipeline->second->_descriptorSets.end(),
+			[descriptorSetName](const std::pair<std::string, std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>>& c) {
+				return c.first == descriptorSetName;
+			});
+		if (i == pipeline->second->_descriptorSets.end())
+			return {};
+		
+		return DescriptorSetLayoutAndBinding { i->second, (unsigned)std::distance(pipeline->second->_descriptorSets.begin(), i) };
+	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

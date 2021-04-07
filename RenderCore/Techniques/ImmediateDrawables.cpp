@@ -118,19 +118,16 @@ namespace RenderCore { namespace Techniques
 			auto vertexDataSize = vertexCount * vStride;
 			if (!vertexDataSize) return {};	
 
-			auto vertexStorage = _workingPkt.AllocateStorage(DrawablesPacket::Storage::VB, vertexDataSize);
 			auto pipeline = GetPipelineAccelerator(inputAssembly, stateSet, topology, shaderSelectors);
 
 			// check if we can just merge it into the previous draw call. If so we're just going to
 			// increase the vertex count on that draw call
-			if (_lastQueuedDrawable && _lastQueuedDrawable->_pipeline == pipeline && topology != Topology::TriangleStrip && topology != Topology::LineStrip) {
-				#if defined(_DEBUG)
-					// We're assuming that our vertex data immediately follows on from the previous storage allocation
-					auto validateBegin = _workingPkt.GetStorage(DrawablesPacket::Storage::VB);
-					assert(PtrAdd(validateBegin.begin(), _lastQueuedDrawable->_geo->_vertexStreams[0]._vbOffset + _lastQueuedDrawable->_vertexCount * vStride) == vertexStorage._data.begin());
-				#endif
-				_lastQueuedDrawable->_vertexCount += vertexCount;
+			if (_lastQueuedDrawable && _lastQueuedDrawable->_pipeline == pipeline && _lastQueuedDrawable->_vertexStride == vStride && topology != Topology::TriangleStrip && topology != Topology::LineStrip) {
+				auto oldVertexCount = _lastQueuedDrawable->_vertexCount;
+				auto expandedRange = UpdateLastDrawCallVertexCount(oldVertexCount + vertexCount);
+				return MakeIteratorRange(PtrAdd(expandedRange.begin(), oldVertexCount*vStride), expandedRange.end());				
 			} else {
+				auto vertexStorage = _workingPkt.AllocateStorage(DrawablesPacket::Storage::VB, vertexDataSize);
 				auto* drawable = _workingPkt._drawables.Allocate<DrawableWithVertexCount>();
 				drawable->_geo = AllocateDrawableGeo();
 				drawable->_geo->_vertexStreams[0]._resource = nullptr;
@@ -145,9 +142,8 @@ namespace RenderCore { namespace Techniques
 					drawContext.Draw(((DrawableWithVertexCount&)drawable)._vertexCount);
 				};
 				_lastQueuedDrawable = drawable;
+				return vertexStorage._data;
 			}
-
-			return vertexStorage._data;
 		}
 
 		IteratorRange<void*> UpdateLastDrawCallVertexCount(size_t newVertexCount)
@@ -162,12 +158,8 @@ namespace RenderCore { namespace Techniques
 				if (allocationRequired <= _lastQueuedDrawable->_bytesAllocated) {
 					_lastQueuedDrawable->_vertexCount = newVertexCount;
 				} else {
-					auto extraStorage = _workingPkt.AllocateStorage(DrawablesPacket::Storage::VB, _lastQueuedDrawable->_bytesAllocated-allocationRequired);
-					#if defined(_DEBUG)
-						auto fullStorage = _workingPkt.GetStorage(DrawablesPacket::Storage::VB);
-						auto* endOfLastBlock = PtrAdd(fullStorage.begin(), _lastQueuedDrawable->_geo->_vertexStreams[0]._vbOffset + _lastQueuedDrawable->_bytesAllocated);
-						assert(endOfLastBlock == extraStorage._data.begin());
-					#endif
+					auto extraStorage = _workingPkt.AllocateStorage(DrawablesPacket::Storage::VB, allocationRequired-_lastQueuedDrawable->_bytesAllocated);
+					assert(_lastQueuedDrawable->_geo->_vertexStreams[0]._vbOffset + _lastQueuedDrawable->_bytesAllocated == extraStorage._startOffset);
 					_lastQueuedDrawable->_bytesAllocated = allocationRequired;
 					_lastQueuedDrawable->_vertexCount = newVertexCount;
 				}

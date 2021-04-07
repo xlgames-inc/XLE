@@ -11,8 +11,9 @@
 #include <memory>
 
 namespace RenderCore { class IThreadContext; }
-namespace RenderCore { namespace Techniques { class ParsingContext; }}
+namespace RenderCore { namespace Techniques { class ParsingContext; class IImmediateDrawables; }}
 namespace RenderOverlays { namespace DebuggingDisplay { class IWidget; class DebugScreensSystem; } }
+namespace RenderOverlays { class FontRenderingManager; }
 namespace Utility { class HierarchicalCPUProfiler; }
 
 namespace PlatformRig
@@ -52,7 +53,10 @@ namespace PlatformRig
 		const std::shared_ptr<OverlaySystemSet>& GetDebugScreensOverlaySystem();
         const std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& GetDebugSystem();
 
-        FrameRig(bool isMainFrameRig = true);
+        FrameRig(
+            const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables,
+            const std::shared_ptr<RenderOverlays::FontRenderingManager>& fontRenderer,
+            bool isMainFrameRig = true);
         ~FrameRig();
 
     protected:

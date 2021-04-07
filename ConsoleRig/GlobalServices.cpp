@@ -279,7 +279,7 @@ namespace ConsoleRig
     {
         _applicationName = "XLEApp";
         _logConfigFile = "log.dat";
-        _setWorkingDir = true;
+        _setWorkingDir = false;
         _redirectCout = true;
         _longTaskThreadPoolCount = 4;
         _shortTaskThreadPoolCount = 2;

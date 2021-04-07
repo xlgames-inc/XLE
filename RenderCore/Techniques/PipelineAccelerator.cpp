@@ -445,7 +445,7 @@ namespace RenderCore { namespace Techniques
 		bool foundPosition = false;
 
 		// Build up the geometry selectors. 
-		for (auto i = sortedIA.begin(); i!=sortedIA.end();) {
+		for (auto i = sortedIA.begin(); i!=sortedIA.end(); ++i) {
 			StringMeld<256> meld;
 			auto basicSemantic = CommonSemantics::TryDehash(i->_semanticHash);
 			if (basicSemantic.first) {

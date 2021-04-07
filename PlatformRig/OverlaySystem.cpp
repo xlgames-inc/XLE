@@ -234,9 +234,12 @@ namespace PlatformRig
         RenderCore::Techniques::ParsingContext& parserContext)
     {
 		auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, *_immediateDrawables, *_fontRenderer);
+
+        auto targetDesc = renderTarget->GetDesc();
+        Int2 viewportDims{ targetDesc._textureDesc._width, targetDesc._textureDesc._height };
+        _screens->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ {0,0}, viewportDims });
+
 		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
-		auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
-		_screens->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ {0,0}, {int(viewportDims[0]), int(viewportDims[1])} });
         _immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi.GetFrameBufferDesc(), 0);
     }
 
