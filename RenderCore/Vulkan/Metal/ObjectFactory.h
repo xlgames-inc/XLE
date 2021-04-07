@@ -21,6 +21,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		using Marker = unsigned;
 		static const Marker Marker_Invalid = ~0u;
+        static const Marker Marker_FrameContainsNoData = ~0u - 1u;
 
 		virtual Marker GetConsumerMarker() const = 0;
 		virtual Marker GetProducerMarker() const = 0;

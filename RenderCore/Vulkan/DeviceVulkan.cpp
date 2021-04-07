@@ -538,8 +538,12 @@ namespace RenderCore { namespace ImplVulkan
 		// to be tracking rendering command progress -- not compute shaders!
 		// Is ALL_COMMANDS fine?
 		if (_trackers[_producerBufferIndex]._consumerFrameMarker != _currentProducerFrame) {
-			context.GetActiveCommandList().SetEvent(_trackers[_producerBufferIndex]._event.get(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-			_trackers[_producerBufferIndex]._consumerFrameMarker = _currentProducerFrame;
+			if (context.HasActiveCommandList()) {
+				context.GetActiveCommandList().SetEvent(_trackers[_producerBufferIndex]._event.get(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+				_trackers[_producerBufferIndex]._consumerFrameMarker = _currentProducerFrame;
+			} else {
+				_trackers[_producerBufferIndex]._consumerFrameMarker = Marker_FrameContainsNoData;
+			}
 		}
 	}
 
@@ -573,16 +577,21 @@ namespace RenderCore { namespace ImplVulkan
 		for (;;) {
 			if (_trackers[_consumerBufferIndex]._consumerFrameMarker == Marker_Invalid)
 				break;
-			auto status = vkGetEventStatus(_device, _trackers[_consumerBufferIndex]._event.get());
-			if (status == VK_EVENT_RESET)
-				break;
-			assert(status == VK_EVENT_SET);
+
+			if (_trackers[_consumerBufferIndex]._consumerFrameMarker != Marker_FrameContainsNoData) {
+				auto status = vkGetEventStatus(_device, _trackers[_consumerBufferIndex]._event.get());
+				if (status == VK_EVENT_RESET)
+					break;
+				assert(status == VK_EVENT_SET);
+			}
 
 			auto res = vkResetEvent(_device, _trackers[_consumerBufferIndex]._event.get());
 			assert(res == VK_SUCCESS); (void)res;
 
-			assert(_trackers[_consumerBufferIndex]._consumerFrameMarker > _lastConsumerFrame);
-			_lastConsumerFrame = _trackers[_consumerBufferIndex]._consumerFrameMarker;
+			assert(_trackers[_consumerBufferIndex]._consumerFrameMarker == _trackers[_consumerBufferIndex]._producerFrameMarker 
+				|| _trackers[_consumerBufferIndex]._consumerFrameMarker == Marker_FrameContainsNoData);
+			assert(_trackers[_consumerBufferIndex]._producerFrameMarker > _lastConsumerFrame);
+			_lastConsumerFrame = _trackers[_consumerBufferIndex]._producerFrameMarker;
 			_trackers[_consumerBufferIndex]._consumerFrameMarker = Marker_Invalid;
 			_trackers[_consumerBufferIndex]._producerFrameMarker = Marker_Invalid;
 			_consumerBufferIndex = (_consumerBufferIndex + 1) % _bufferCount;
@@ -1055,9 +1064,7 @@ namespace RenderCore { namespace ImplVulkan
             auto resDesc = CreateDesc(
                 BindFlag::PresentationSrc, 0u, GPUAccess::Read|GPUAccess::Write, 
                 _bufferDesc, "presentationimage");
-            auto resPtr = IResourcePtr(
-				(RenderCore::Resource*)new Metal_Vulkan::Resource(i, resDesc),
-				[](RenderCore::Resource* res) { delete (Metal_Vulkan::Resource*)res; });
+            auto resPtr = std::make_shared<Metal_Vulkan::Resource>(i, resDesc);
             _images.emplace_back(
                 Image { i, Metal_Vulkan::ResourceView(*_factory, resPtr, BindFlag::RenderTarget, window) });
         }
@@ -1261,8 +1268,16 @@ namespace RenderCore { namespace ImplVulkan
 		auto nextImage = swapChain->AcquireNextImage();
 		_nextQueueShouldWaitOnAcquire = swapChain->GetSyncs()._onAcquireComplete.get();
 
-		if (_gpuTracker)
+		if (_gpuTracker) {
+			// This is a hassle... But on the very first frame, we need to call SetConsumerEndOfFrame to mark the end of
+			// all commands that happen before the first frame. However it's unsafe to do SetConsumerEndOfFrame x2, then a 
+			// IncrementProducerFrame -- so in other cases, we can't do that...
+			if (_pendingConsumerEndOfFrame) {
+				_gpuTracker->SetConsumerEndOfFrame(*_metalContext);		// generally only the very first frame marker (ie, before the first BeginFrame()) should be finished here
+				_pendingConsumerEndOfFrame = false;
+			}
 			_gpuTracker->IncrementProducerFrame();
+		}
 
 		{
 			auto cmdList = swapChain->SharePrimaryBuffer();
@@ -1445,6 +1460,7 @@ namespace RenderCore { namespace ImplVulkan
 	, _globalPools(&device->GetGlobalPools())
 	, _queue(queue)
 	, _underlyingDevice(device->GetUnderlyingDevice())
+	, _pendingConsumerEndOfFrame(true)
     {}
 
     ThreadContext::~ThreadContext() 

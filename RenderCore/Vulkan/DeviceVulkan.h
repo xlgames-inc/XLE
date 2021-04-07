@@ -164,6 +164,7 @@ namespace RenderCore { namespace ImplVulkan
         VulkanUniquePtr<VkFence>			_utilityFence;
         bool                                _nextQueueShouldWaitOnInterimBuffer = false;
         VkSemaphore                         _nextQueueShouldWaitOnAcquire = VK_NULL_HANDLE;
+        bool                                _pendingConsumerEndOfFrame = true;
 
         void QueuePrimaryContext(
 		    IteratorRange<const VkSemaphore*> completionSignals,
