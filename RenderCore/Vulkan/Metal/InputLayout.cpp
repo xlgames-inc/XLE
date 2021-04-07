@@ -356,7 +356,7 @@ namespace RenderCore { namespace Metal_Vulkan
 					[outputDescriptorSetSlot](const auto&c) { return c._descSetSlot == outputDescriptorSetSlot; });
 				if (existing != binds->end()) {
 					if (existing->_inputUniformStreamIdx != inputUniformStreamIdx)
-						Throw(std::runtime_error(""));		// Attempting to bind 2 different inputs a single descriptor set slot
+						Throw(std::runtime_error("Attempting to bind more than one different inputs to the descriptor set slot (" + std::to_string(outputDescriptorSetSlot) + ")"));
 				} else {
 					binds->push_back({outputDescriptorSetSlot, inputUniformStreamIdx});
 				}
@@ -380,7 +380,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 						// We need to got to the pipeline layout to find the signature for the descriptor set
 						if (reflectionVariable._binding._descriptorSet >= _pipelineLayout->GetDescriptorSetCount())
-							Throw(std::runtime_error(""));	// variable off pipeline layout
+							Throw(std::runtime_error("Shader input is assigned to a descriptor set that doesn't exist in the pipeline layout (variable: " + reflectionVariable._name.AsString() + ", ds index: " + std::to_string(reflectionVariable._binding._descriptorSet) + ")"));
 
 						auto descSetSigBindings = _pipelineLayout->GetDescriptorSetLayout(reflectionVariable._binding._descriptorSet)->GetDescriptorSlots();
 
@@ -396,7 +396,7 @@ namespace RenderCore { namespace Metal_Vulkan
 							// we expect
 
 							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || (descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::SampledTexture && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessTexture && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UniformBuffer && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessBuffer))
-								Throw(std::runtime_error(""));
+								Throw(std::runtime_error("Shader input assignment is off the pipeline layout, or the types do not agree (variable: " + reflectionVariable._name.AsString() + ")"));
 
 							AddLooseUniformBinding(
 								UniformStreamType::ResourceView,
@@ -405,7 +405,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 						} else if (bindingType == UniformStreamType::ImmediateData) {
 							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || (descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UniformBuffer && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessBuffer))
-								Throw(std::runtime_error(""));
+								Throw(std::runtime_error("Shader input assignment is off the pipeline layout, or the types do not agree (variable: " + reflectionVariable._name.AsString() + ")"));
 
 							AddLooseUniformBinding(
 								UniformStreamType::ImmediateData,
@@ -414,10 +414,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
 						} else if (bindingType == UniformStreamType::Sampler) {
 							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::Sampler)
-								Throw(std::runtime_error(""));
+								Throw(std::runtime_error("Shader input assignment is off the pipeline layout, or the types do not agree (variable: " + reflectionVariable._name.AsString() + ")"));
 
 							if (reflectionVariable._slotType != DescriptorType::Sampler)
-								Throw(std::runtime_error(""));
+								Throw(std::runtime_error("Attempting to bind a sampler to a non-sampler shader variable (variable: " + reflectionVariable._name.AsString() + ")"));
 
 							AddLooseUniformBinding(
 								UniformStreamType::Sampler,
@@ -440,11 +440,11 @@ namespace RenderCore { namespace Metal_Vulkan
 						auto* signature = std::get<2>(fixedDescSet->second);
 						if (signature) {
 							if (reflectionVariable._binding._bindingPoint >= signature->_slots.size())
-								Throw(std::runtime_error(""));
+								Throw(std::runtime_error("Shader input variable is off the pipeline layout (variable: " + reflectionVariable._name.AsString() + ")"));
 							
 							auto& descSetSlot = signature->_slots[reflectionVariable._binding._bindingPoint];
 							if (reflectionVariable._slotType != descSetSlot._type)
-								Throw(std::runtime_error(""));		// types should agree
+								Throw(std::runtime_error("Shader input variable type does not agree with the type in the pipeline layout (variable: " + reflectionVariable._name.AsString() + ")"));
 						}
 
 						auto groupIdx = std::get<0>(fixedDescSet->second);
@@ -457,7 +457,7 @@ namespace RenderCore { namespace Metal_Vulkan
 							[inputSlot](const auto& c) { return c._inputSlot == inputSlot; });
 						if (existing != _group[groupIdx]._fixedDescriptorSetRules.end()) {
 							if (existing->_outputSlot != reflectionVariable._binding._descriptorSet)
-								Throw(std::runtime_error(""));		// attempting the bind the same fixed descriptor set to multiple output slots
+								Throw(std::runtime_error("Attempting to a single input descriptor set to multiple descriptor sets in the shader inputs (ds index: " + std::to_string(reflectionVariable._binding._descriptorSet) + ")"));
 							existing->_shaderStageMask |= shaderStageMask;
 						} else {
 							_group[groupIdx]._fixedDescriptorSetRules.push_back(
@@ -476,7 +476,7 @@ namespace RenderCore { namespace Metal_Vulkan
 						break;
 					}
 					if (pipelineLayoutIdx >= _pipelineLayout->GetPushConstantsBindingNames().size())
-						Throw(std::runtime_error(""));		// can't find this push constants in the pipeline layout (for the name and shader stage configuration)
+						Throw(std::runtime_error("Push constants declared in shader input does not exist in pipeline layout (while binding variable name: " + reflectionVariable._name.AsString() + ")"));
 
 					// push constants must from the "loose uniforms" -- we can't extract them
 					// from a prebuilt descriptor set. Furthermore, they must be a "immediateData"
@@ -486,16 +486,16 @@ namespace RenderCore { namespace Metal_Vulkan
 					UniformStreamType bindingType = UniformStreamType::None;
 					std::tie(bindingType, groupIdx, inputSlot) = FindBinding(_looseUniforms, hashName);
 					if (bindingType == UniformStreamType::None)
-						Throw(std::runtime_error(""));		// missing push constants input
+						Throw(std::runtime_error("No input data provided for push constants used by shader (while binding variable name: " + reflectionVariable._name.AsString() + ")"));		// missing push constants input
 					if (bindingType != UniformStreamType::ImmediateData)
-						Throw(std::runtime_error(""));		// Must bind immediate data to push constants (not a fixed constant buffer)
+						Throw(std::runtime_error("Attempting to bind a non-immediate-data input to a push constants shader input (while binding variable name:" + reflectionVariable._name.AsString() + ")"));		// Must bind immediate data to push constants (not a fixed constant buffer)
 
 					for (const auto&group:_group) {
 						auto existing = std::find_if(
 							group._pushConstantsRules.begin(), group._pushConstantsRules.end(),
 							[shaderStageMask](const auto& c) { return c._shaderStageBind == shaderStageMask; });
 						if (existing != group._pushConstantsRules.end())
-							Throw(std::runtime_error(""));		// we can only have one push constants per shader stage
+							Throw(std::runtime_error("Attempting to bind multiple push constants buffers for the same shader stage (while binding variable name: " + reflectionVariable._name.AsString() + ")"));		// we can only have one push constants per shader stage
 					}
 
 					auto& pipelineRange = _pipelineLayout->GetPushConstantsRange(pipelineLayoutIdx);
