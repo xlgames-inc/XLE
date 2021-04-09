@@ -776,6 +776,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		vkCmdExecuteCommands(
 			_sharedState->_commandList.GetUnderlying().get(),
 			dimof(buffers), buffers);
+
+		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+			_sharedState->_commandList._resourcesBecomingVisible.insert(_sharedState->_commandList._resourcesBecomingVisible.end(), cmdList._resourcesBecomingVisible.begin(), cmdList._resourcesBecomingVisible.end());
+			_sharedState->_commandList._resourcesThatMustBeVisible.insert(_sharedState->_commandList._resourcesThatMustBeVisible.end(), cmdList._resourcesThatMustBeVisible.begin(), cmdList._resourcesThatMustBeVisible.end());
+		#endif
 	}
 
 	auto        DeviceContext::ResolveCommandList() -> std::shared_ptr<CommandList>
@@ -897,13 +902,14 @@ namespace RenderCore { namespace Metal_Vulkan
 	void DeviceContext::RequireResourceVisbility(IteratorRange<const uint64_t*> resourceGuids)
 	{
 		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+			auto& cmdList = _sharedState->_commandList;
 			for (auto r:resourceGuids) {
 				// Don't record the guid for any resources that are already marked as becoming visible 
 				// during this command list (this is the only way we can check relative ordering of 
 				// initialization and use within the same command list)
-				auto i = std::find(_resourcesBecomingVisible.begin(), _resourcesBecomingVisible.end(), r);
-				if (i != _resourcesBecomingVisible.end()) continue;
-				_resourcesThatMustBeVisible.push_back(r);
+				auto i = std::find(cmdList._resourcesBecomingVisible.begin(), cmdList._resourcesBecomingVisible.end(), r);
+				if (i != cmdList._resourcesBecomingVisible.end()) continue;
+				cmdList._resourcesThatMustBeVisible.push_back(r);
 			}
 		#endif
 	}
@@ -911,7 +917,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	void DeviceContext::MakeResourcesVisible(IteratorRange<const uint64_t*> resourceGuids)
 	{
 		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
-			_resourcesBecomingVisible.insert(_resourcesBecomingVisible.end(), resourceGuids.begin(), resourceGuids.end());
+			auto& cmdList = _sharedState->_commandList;
+			cmdList._resourcesBecomingVisible.insert(cmdList._resourcesBecomingVisible.end(), resourceGuids.begin(), resourceGuids.end());
 		#endif
 	}
 
@@ -924,13 +931,14 @@ namespace RenderCore { namespace Metal_Vulkan
 			//   - that the resource was never made visible on a command list
 			//   - the command list in which it was made visible hasn't yet been commited to the queue
 			//   - it's made visible after it was used on this command list
-			std::sort(_resourcesThatMustBeVisible.begin(), _resourcesThatMustBeVisible.end());
-			std::sort(_resourcesBecomingVisible.begin(), _resourcesBecomingVisible.end());
-			auto becomingVisibleEnd = std::unique(_resourcesBecomingVisible.begin(), _resourcesBecomingVisible.end());
+			auto& cmdList = _sharedState->_commandList;
+			std::sort(cmdList._resourcesThatMustBeVisible.begin(), cmdList._resourcesThatMustBeVisible.end());
+			std::sort(cmdList._resourcesBecomingVisible.begin(), cmdList._resourcesBecomingVisible.end());
+			auto becomingVisibleEnd = std::unique(cmdList._resourcesBecomingVisible.begin(), cmdList._resourcesBecomingVisible.end());
 
 			auto factoryi = _factory->_resourcesVisibleToQueue.begin();
-			auto searchi = _resourcesThatMustBeVisible.begin();
-			while (searchi != _resourcesThatMustBeVisible.end()) {
+			auto searchi = cmdList._resourcesThatMustBeVisible.begin();
+			while (searchi != cmdList._resourcesThatMustBeVisible.end()) {
 				while (factoryi != _factory->_resourcesVisibleToQueue.end() && *factoryi < *searchi)
 					++factoryi;
 
@@ -939,15 +947,15 @@ namespace RenderCore { namespace Metal_Vulkan
 
 				++searchi;
 			}
-			_resourcesThatMustBeVisible.clear();
+			cmdList._resourcesThatMustBeVisible.clear();
 
 			// Now register the resources in _resourcesBecomingVisible as visible to the queue
-			if (_resourcesBecomingVisible.begin() != becomingVisibleEnd) {
+			if (cmdList._resourcesBecomingVisible.begin() != becomingVisibleEnd) {
 				std::vector<uint64_t> newVisibleToQueue;
-				newVisibleToQueue.reserve(becomingVisibleEnd - _resourcesBecomingVisible.begin() + _factory->_resourcesVisibleToQueue.size());
+				newVisibleToQueue.reserve(becomingVisibleEnd - cmdList._resourcesBecomingVisible.begin() + _factory->_resourcesVisibleToQueue.size());
 				std::set_union(
 					_factory->_resourcesVisibleToQueue.begin(), _factory->_resourcesVisibleToQueue.end(),
-					_resourcesBecomingVisible.begin(), becomingVisibleEnd,
+					cmdList._resourcesBecomingVisible.begin(), becomingVisibleEnd,
 					std::back_inserter(newVisibleToQueue));
 
 				std::swap(newVisibleToQueue, _factory->_resourcesVisibleToQueue);

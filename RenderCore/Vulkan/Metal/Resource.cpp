@@ -365,8 +365,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			void CommitLayoutChanges()
 			{
-				SetImageLayouts(*_devContext, MakeIteratorRange(_transitions));
-				_devContext->MakeResourcesVisible(MakeIteratorRange(_makeResourcesVisible));
+				if (!_transitions.empty())
+					SetImageLayouts(*_devContext, MakeIteratorRange(_transitions));
+				if (!_makeResourcesVisible.empty())
+					_devContext->MakeResourcesVisible(MakeIteratorRange(_makeResourcesVisible));
 			}
 
 			ResourceInitializationHelper(DeviceContext& devContext) : _devContext(&devContext) {}
@@ -1388,7 +1390,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 "blit-pass-src"),
             [srcData](SubResourceId subResId) -> SubResourceInitData {
 				assert(subResId._mip == 0 && subResId._arrayLayer == 0);
-            	return SubResourceInitData{srcData};
+            	return srcData;
 			});
 
 		CopyPartial_Src srcPartial {

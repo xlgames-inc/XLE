@@ -219,6 +219,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		CommandList& operator=(CommandList&&) = default;
 	private:
 		VulkanSharedPtr<VkCommandBuffer> _underlying;
+
+		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+			std::vector<uint64_t> _resourcesBecomingVisible;
+			std::vector<uint64_t> _resourcesThatMustBeVisible;
+		#endif
+
+		friend class DeviceContext;
 	};
 
 	class VulkanEncoderSharedState;
@@ -420,11 +427,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		CommandBufferType					_cmdBufferType;
 
 		TemporaryBufferSpace*				_tempBufferSpace;
-
-		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
-			std::vector<uint64_t> _resourcesBecomingVisible;
-			std::vector<uint64_t> _resourcesThatMustBeVisible;
-		#endif
 
 		friend class BlitEncoder;
 		void EndBlitEncoder();
