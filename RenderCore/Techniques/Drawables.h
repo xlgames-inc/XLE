@@ -56,6 +56,7 @@ namespace RenderCore { namespace Techniques
 		uint64_t 	GetBoundLooseImmediateDatas() const;
 		uint64_t 	GetBoundLooseResources() const;
 		uint64_t 	GetBoundLooseSamplers() const;
+		bool		AtLeastOneBoundLooseUniform() const;
 
 		void        Draw(unsigned vertexCount, unsigned startVertexLocation=0) const;
 		void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0) const;

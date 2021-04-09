@@ -102,7 +102,11 @@ namespace RenderCore { namespace Techniques
 		::Assets::FuturePtr<GraphicsPipelineDesc> _pipelineDescFuture;
 	};
 
-	struct DrawableWithVertexCount : public Drawable { unsigned _vertexCount = 0, _vertexStride = 0, _bytesAllocated = 0; };
+	struct DrawableWithVertexCount : public Drawable 
+	{ 
+		unsigned _vertexCount = 0, _vertexStride = 0, _bytesAllocated = 0;
+		RetainedUniformsStream _uniforms;
+	};
 
 	class ImmediateDrawables : public IImmediateDrawables
 	{
@@ -110,19 +114,29 @@ namespace RenderCore { namespace Techniques
 		IteratorRange<void*> QueueDraw(
 			size_t vertexCount,
 			IteratorRange<const MiniInputElementDesc*> inputAssembly,
-			const RenderCore::Assets::RenderStateSet& stateSet,
-			Topology topology,
-			const ParameterBox& shaderSelectors)
+			const ImmediateDrawableMaterial& material,
+			Topology topology)
 		{
 			auto vStride = CalculateVertexStride(inputAssembly);
 			auto vertexDataSize = vertexCount * vStride;
 			if (!vertexDataSize) return {};	
 
-			auto pipeline = GetPipelineAccelerator(inputAssembly, stateSet, topology, shaderSelectors);
+			auto pipeline = GetPipelineAccelerator(inputAssembly, material._stateSet, topology, material._shaderSelectors);
 
 			// check if we can just merge it into the previous draw call. If so we're just going to
 			// increase the vertex count on that draw call
-			if (_lastQueuedDrawable && _lastQueuedDrawable->_pipeline == pipeline && _lastQueuedDrawable->_vertexStride == vStride && topology != Topology::TriangleStrip && topology != Topology::LineStrip) {
+			bool compatibleWithLastDraw =
+				    _lastQueuedDrawable && _lastQueuedDrawable->_pipeline == pipeline && _lastQueuedDrawable->_vertexStride == vStride
+				&& topology != Topology::TriangleStrip
+				&& topology != Topology::LineStrip
+				;
+			if (compatibleWithLastDraw) {
+				if (material._uniformStreamInterface) {
+					compatibleWithLastDraw &= _lastQueuedDrawable->_looseUniformsInterface && (material._uniformStreamInterface->GetHash() == _lastQueuedDrawable->_looseUniformsInterface->GetHash());
+				} else
+					compatibleWithLastDraw &= _lastQueuedDrawable->_looseUniformsInterface == nullptr;
+			}
+			if (compatibleWithLastDraw) {
 				auto oldVertexCount = _lastQueuedDrawable->_vertexCount;
 				auto expandedRange = UpdateLastDrawCallVertexCount(oldVertexCount + vertexCount);
 				return MakeIteratorRange(PtrAdd(expandedRange.begin(), oldVertexCount*vStride), expandedRange.end());				
@@ -139,8 +153,26 @@ namespace RenderCore { namespace Techniques
 				drawable->_vertexStride = vStride;
 				drawable->_bytesAllocated = vertexDataSize;
 				drawable->_drawFn = [](ParsingContext&, const ExecuteDrawableContext& drawContext, const Drawable& drawable) {
-					drawContext.Draw(((DrawableWithVertexCount&)drawable)._vertexCount);
+					auto* customDrawable = (DrawableWithVertexCount*)&drawable;
+					if (drawContext.AtLeastOneBoundLooseUniform()) {
+						const IResourceView* res[customDrawable->_uniforms._resourceViews.size()];
+						for (size_t c=0; c<customDrawable->_uniforms._resourceViews.size(); ++c) res[c] = customDrawable->_uniforms._resourceViews[c].get();
+						UniformsStream::ImmediateData immData[customDrawable->_uniforms._immediateData.size()];
+						for (size_t c=0; c<customDrawable->_uniforms._immediateData.size(); ++c) immData[c] = customDrawable->_uniforms._immediateData[c];
+						const ISampler* samplers[customDrawable->_uniforms._samplers.size()];
+						for (size_t c=0; c<customDrawable->_uniforms._samplers.size(); ++c) samplers[c] = customDrawable->_uniforms._samplers[c].get();
+						drawContext.ApplyLooseUniforms(
+							UniformsStream { 
+								MakeIteratorRange(res, &res[customDrawable->_uniforms._resourceViews.size()]),
+								MakeIteratorRange(immData, &immData[customDrawable->_uniforms._immediateData.size()]),
+								MakeIteratorRange(samplers, &samplers[customDrawable->_uniforms._samplers.size()]) });
+					}
+					drawContext.Draw(customDrawable->_vertexCount);
 				};
+				if (material._uniformStreamInterface) {
+					drawable->_looseUniformsInterface = material._uniformStreamInterface;
+					drawable->_uniforms = material._uniforms;
+				}
 				_lastQueuedDrawable = drawable;
 				return vertexStorage._data;
 			}

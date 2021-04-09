@@ -464,6 +464,12 @@ namespace RenderCore { namespace Techniques
 		return realContext._boundUniforms->GetBoundLooseSamplers(1);
 	}
 
+	bool ExecuteDrawableContext::AtLeastOneBoundLooseUniform() const
+	{
+		auto& realContext = *(RealExecuteDrawableContext*)this;
+		return (realContext._boundUniforms->GetBoundLooseImmediateDatas(1) | realContext._boundUniforms->GetBoundLooseResources(1) | realContext._boundUniforms->GetBoundLooseSamplers(1)) != 0;
+	}
+
 	void ExecuteDrawableContext::Draw(unsigned vertexCount, unsigned startVertexLocation) const
 	{
 		auto& realContext = *(RealExecuteDrawableContext*)this;

@@ -6,14 +6,32 @@
 #include "PipelineAccelerator.h"
 #include "../Types.h"
 #include "../StateDesc.h"
+#include "../RenderUtils.h"		// for SharedPkt
 #include <memory>
 
-namespace RenderCore { class IThreadContext; class FrameBufferDesc; }
+namespace RenderCore { class IThreadContext; class FrameBufferDesc; class SharedPkt; }
 namespace Assets { class IAsyncMarker; }
 
 namespace RenderCore { namespace Techniques
 {
 	class ParsingContext;
+
+	class RetainedUniformsStream
+	{
+	public:
+		std::vector<std::shared_ptr<IResourceView>> _resourceViews;
+		std::vector<SharedPkt> _immediateData;
+		std::vector<std::shared_ptr<ISampler>> _samplers;
+	};
+
+	class ImmediateDrawableMaterial
+	{
+	public:
+		std::shared_ptr<UniformsStreamInterface> _uniformStreamInterface;
+		RetainedUniformsStream _uniforms;
+		ParameterBox _shaderSelectors;
+		RenderCore::Assets::RenderStateSet _stateSet;
+	};
 
 	class IImmediateDrawables
 	{
@@ -21,9 +39,8 @@ namespace RenderCore { namespace Techniques
 		virtual IteratorRange<void*> QueueDraw(
 			size_t vertexCount,
 			IteratorRange<const MiniInputElementDesc*> inputAssembly,
-			const RenderCore::Assets::RenderStateSet& stateSet,
-			Topology topology = Topology::TriangleList,
-			const ParameterBox& shaderSelectors = {}) = 0;
+			const ImmediateDrawableMaterial& material = {},
+			Topology topology = Topology::TriangleList) = 0;
 		virtual IteratorRange<void*> UpdateLastDrawCallVertexCount(size_t newVertexCount) = 0;
 		virtual void ExecuteDraws(
 			IThreadContext& context,
