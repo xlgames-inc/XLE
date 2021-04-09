@@ -58,17 +58,17 @@ namespace RenderCore { namespace Techniques
 	}
 
     namespace CommonSemantics
-    {
-        extern uint64_t POSITION;
-        extern uint64_t NORMAL;
-        extern uint64_t COLOR;
-        extern uint64_t TEXCOORD;
-        extern uint64_t TEXTANGENT;
-        extern uint64_t TEXBITANGENT;
-        extern uint64_t BONEWEIGHTS;
-        extern uint64_t BONEINDICES;
-        extern uint64_t PER_VERTEX_AO;
-        extern uint64_t RADIUS;
+    {        
+        static const auto POSITION = Hash64("POSITION");
+        static const auto TEXCOORD = Hash64("TEXCOORD");
+		static const auto COLOR = Hash64("COLOR");
+		static const auto NORMAL = Hash64("NORMAL");
+		static const auto TEXTANGENT = Hash64("TEXTANGENT");
+		static const auto TEXBITANGENT = Hash64("TEXBITANGENT");
+		static const auto BONEINDICES = Hash64("BONEINDICES");
+		static const auto BONEWEIGHTS = Hash64("BONEWEIGHTS");
+		static const auto PER_VERTEX_AO = Hash64("PER_VERTEX_AO");
+        static const auto RADIUS = Hash64("RADIUS");
 
         std::pair<const char*, unsigned> TryDehash(uint64_t);
     }

@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CommonResources.h"
+#include "CommonBindings.h"
 #include "../IDevice.h"
 #include "../Metal/Metal.h"
 #include "../../Utility/MemoryUtils.h"
@@ -64,17 +65,6 @@ namespace RenderCore { namespace Techniques
 
     namespace CommonSemantics
     {
-        auto POSITION = Hash64("POSITION");
-        auto TEXCOORD = Hash64("TEXCOORD");
-		auto COLOR = Hash64("COLOR");
-		auto NORMAL = Hash64("NORMAL");
-		auto TEXTANGENT = Hash64("TEXTANGENT");
-		auto TEXBITANGENT = Hash64("TEXBITANGENT");
-		auto BONEINDICES = Hash64("BONEINDICES");
-		auto BONEWEIGHTS = Hash64("BONEWEIGHTS");
-		auto PER_VERTEX_AO = Hash64("PER_VERTEX_AO");
-        auto RADIUS = Hash64("RADIUS");
-
         std::pair<const char*, unsigned> TryDehash(uint64_t hashValue)
         {
             if ((hashValue - POSITION) < 16) return std::make_pair("POSITION", unsigned(hashValue - POSITION));
