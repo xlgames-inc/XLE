@@ -86,6 +86,7 @@ namespace Assets
 		std::vector<ICompileOperation::SerializedArtifact>    _data;
 		::Assets::AssetState		_state;
 		std::vector<DependentFileState> _deps;
+		std::shared_ptr<DependencyValidation> _depValPtr;
 		unsigned        			_pendingCommitPtr = 0;      // (only used during FlushToDisk)
 		std::function<void()> 		_onFlush;
 		std::string					_attachedStringName;
@@ -125,6 +126,7 @@ namespace Assets
 
 		i->_data = std::vector<ICompileOperation::SerializedArtifact> { artifacts.begin(), artifacts.end() };
 		i->_deps = std::vector<DependentFileState> { dependentFiles.begin(), dependentFiles.end() };
+		i->_depValPtr = AsDepVal(MakeIteratorRange(i->_deps));
 		i->_state = state;
 		i->_attachedStringName = attachedStringName;
 		i->_onFlush = std::move(onFlush);
@@ -906,7 +908,7 @@ namespace Assets
 
 			auto i = std::lower_bound(_archiveCache->_pendingCommits.begin(), _archiveCache->_pendingCommits.end(), _objectId, ComparePendingCommit());
 			if (i!=_archiveCache->_pendingCommits.end() && i->_objectId == _objectId)
-				return AsDepVal(MakeIteratorRange(i->_deps));
+				return i->_depValPtr;
 
 			// If the item doesn't exist in the archive at all (either because the item is missing or the whole archive is
 			// missing), we will return nullptr

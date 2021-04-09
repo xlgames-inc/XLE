@@ -855,20 +855,21 @@ namespace RenderCore { namespace Techniques
 					result = std::make_shared<SequencerConfig>(std::move(cfg));
 					result->_cfgId = cfgId;
 					i->second = result;
-				}
 
-				// If a pipeline accelerator was added while this sequencer config was expired, the pipeline
-				// accelerator would not have been configured. We have to check for this case and construct
-				// as necessary -- 
-				for (auto& accelerator:_pipelineAccelerators) {
-					auto a = accelerator.second.lock();
-					if (a) {
-						auto& pipeline = a->PipelineForCfgId(cfgId);
-						if (!pipeline._future)
-							pipeline = a->CreatePipelineForSequencerState(*result, _globalSelectors, _pipelineLayout, _matDescSetLayout, _sharedPools);
+					// If a pipeline accelerator was added while this sequencer config was expired, the pipeline
+					// accelerator would not have been configured. We have to check for this case and construct
+					// as necessary -- 
+					for (auto& accelerator:_pipelineAccelerators) {
+						auto a = accelerator.second.lock();
+						if (a) {
+							auto& pipeline = a->PipelineForCfgId(cfgId);
+							if (!pipeline._future || (pipeline._future->GetAssetState() != ::Assets::AssetState::Pending && pipeline._future->GetDependencyValidation()->GetValidationIndex() != 0)) {
+								pipeline = a->CreatePipelineForSequencerState(*result, _globalSelectors, _pipelineLayout, _matDescSetLayout, _sharedPools);
+							}
+						}
 					}
 				}
-				
+
 				return result;
 			}
 		}

@@ -18,7 +18,7 @@ namespace Assets
 {
 	static const auto ChunkType_Log = ConstHash64<'Log'>::Value;
 
-	Blob GetErrorMessage(IArtifactCollection& collection)
+	Blob GetErrorMessage(const IArtifactCollection& collection)
 	{
 		// Try to find an artifact named with the type "ChunkType_Log"
 		TRY {

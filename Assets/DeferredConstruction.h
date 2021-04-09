@@ -79,6 +79,11 @@ namespace Assets
 	template<typename AssetType, typename std::enable_if_t<!Internal::AssetTraits<AssetType>::HasChunkRequests>* =nullptr>
 		void AutoConstructToFuture(AssetFuture<AssetType>& future, const IArtifactCollection& artifactCollection, uint64_t defaultChunkRequestCode = AssetType::CompileProcessType)
 	{
+		if (artifactCollection.GetAssetState() == ::Assets::AssetState::Invalid) {
+			future.SetInvalidAsset(artifactCollection.GetDependencyValidation(), GetErrorMessage(artifactCollection));
+			return;
+		}
+
 		ArtifactRequest request { "default-blob", defaultChunkRequestCode, ~0u, ArtifactRequest::DataType::SharedBlob };
 		auto reqRes = artifactCollection.ResolveRequests(MakeIteratorRange(&request, &request+1));
 		if (!reqRes.empty()) {
@@ -95,6 +100,11 @@ namespace Assets
 	template<typename AssetType, typename std::enable_if_t<Internal::AssetTraits<AssetType>::HasChunkRequests>* =nullptr>
 		void AutoConstructToFuture(AssetFuture<AssetType>& future, const IArtifactCollection& artifactCollection, uint64_t defaultChunkRequestCode = AssetType::CompileProcessType)
 	{
+		if (artifactCollection.GetAssetState() == ::Assets::AssetState::Invalid) {
+			future.SetInvalidAsset(artifactCollection.GetDependencyValidation(), GetErrorMessage(artifactCollection));
+			return;
+		}
+
 		auto chunks = artifactCollection.ResolveRequests(MakeIteratorRange(AssetType::ChunkRequests));
 		AutoConstructToFutureDirect(future, MakeIteratorRange(chunks), artifactCollection.GetDependencyValidation());
 	}
@@ -143,9 +153,9 @@ namespace Assets
 			auto marker = Internal::BeginCompileOperation(targetCode, InitializerPack{std::forward<Args>(args)...});
 			if (!marker) {
 				#if defined(_DEBUG)
-					future.SetInvalidAsset(nullptr, AsBlob("No compiler found for asset " + debugLabel));
+					future.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob("No compiler found for asset " + debugLabel));
 				#else
-					future.SetInvalidAsset(nullptr, AsBlob("No compiler found for asset"));
+					future.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob("No compiler found for asset"));
 				#endif
 				return;
 			}

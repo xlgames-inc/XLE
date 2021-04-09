@@ -52,7 +52,7 @@ namespace Assets
 		virtual ~IArtifactCollection();
 	};
 
-	Blob GetErrorMessage(IArtifactCollection&);
+	Blob GetErrorMessage(const IArtifactCollection&);
 
     /// <summary>Records the state of a resource being compiled</summary>
     /// When a resource compile operation begins, we need some generic way

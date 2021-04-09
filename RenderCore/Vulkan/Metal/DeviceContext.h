@@ -40,6 +40,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 	public:
 		uint64_t GetInterfaceBindingGUID() const;
+		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _shader.GetDependencyValidation(); }
 
 		// --------------- Vulkan specific interface --------------- 
 		ShaderProgram _shader;
@@ -52,6 +53,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 	public:
 		uint64_t GetInterfaceBindingGUID() const;
+		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _shader.GetDependencyValidation(); }
 
 		// --------------- Vulkan specific interface --------------- 
 		ComputeShader _shader;

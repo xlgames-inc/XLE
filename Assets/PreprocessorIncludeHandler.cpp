@@ -24,7 +24,7 @@ namespace Assets
 
 		::Assets::DependentFileState mainFileState;
 		
-		result._fileContents = ::Assets::TryLoadFileAsMemoryBlock(result._filename, &result._fileContentsSize, &mainFileState);
+		result._fileContents = ::Assets::TryLoadFileAsMemoryBlock_TolerateSharingErrors(result._filename, &result._fileContentsSize, &mainFileState);
 		if (!result._fileContentsSize) {
 			if (!fileIncludedFrom.IsEmpty())
 				Throw(std::runtime_error("Missing or empty file when loading: " + result._filename + " (included from: " + fileIncludedFrom.AsString() + ")"));
