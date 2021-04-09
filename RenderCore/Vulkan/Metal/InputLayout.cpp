@@ -774,6 +774,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		assert(groupIdx < dimof(_group));
 		for (const auto& fixedSet:_group[groupIdx]._fixedDescriptorSetRules) {
 			auto* descSet = checked_cast<const CompiledDescriptorSet*>(descriptorSets[fixedSet._inputSlot]);
+			assert(descSet);
 			encoder.BindDescriptorSet(
 				fixedSet._outputSlot, descSet->GetUnderlying()
 				VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo{descSet->GetDescription()} ));

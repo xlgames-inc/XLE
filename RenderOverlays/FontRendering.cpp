@@ -2,35 +2,46 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "Font.h"
-#include "FT_FontTexture.h"
+#include "FontRendering.h"
+#include "FontRectanglePacking.h"
 #include "../RenderCore/Techniques/ImmediateDrawables.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
+#include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/Resource.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Types.h"
 #include "../RenderCore/Format.h"
-// #include "../RenderCore/StateDesc.h"
-// #include "../RenderCore/BufferView.h"
 #include "../Assets/Assets.h"
 #include "../Assets/AssetFutureContinuation.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Math/Vector.h"
-// #include "../Core/Exceptions.h"
-// #include "../xleres/FileList.h"
 #include <assert.h>
 #include <algorithm>
 
-/*#include "../RenderCore/Metal/Shader.h"
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/Metal/ObjectFactory.h"
-
-#include "../RenderCore/Techniques/CommonResources.h"*/
-
 namespace RenderOverlays
 {
+	class FontTexture2D
+	{
+	public:
+		void UpdateToTexture(RenderCore::IThreadContext& threadContext, IteratorRange<const uint8_t*> data, const RenderCore::Box2D& destBox);
+		const std::shared_ptr<RenderCore::IResource>& GetUnderlying() const { return _resource; }
+		const std::shared_ptr<RenderCore::IResourceView>& GetSRV() const { return _srv; }
+
+		FontTexture2D(
+			RenderCore::IDevice& dev,
+			unsigned width, unsigned height, RenderCore::Format pixelFormat);
+		~FontTexture2D();
+
+		FontTexture2D(FontTexture2D&&) = default;
+		FontTexture2D& operator=(FontTexture2D&&) = default;
+
+	private:
+		std::shared_ptr<RenderCore::IResource>			_resource;
+		std::shared_ptr<RenderCore::IResourceView>		_srv;
+		RenderCore::Format _format;
+	};
 
 	class WorkingVertexSetPCT
 	{
@@ -51,10 +62,12 @@ namespace RenderOverlays
 
 		WorkingVertexSetPCT(
 			RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
+			std::shared_ptr<RenderCore::IResourceView> textureView,
 			unsigned reservedQuads);
 
 	private:
 		RenderCore::Techniques::IImmediateDrawables* _immediateDrawables;
+		RenderCore::Techniques::ImmediateDrawableMaterial _material;
 		IteratorRange<Vertex*> 	_currentAllocation;
 		Vertex*            		_currentIterator;
 	};
@@ -109,29 +122,6 @@ namespace RenderOverlays
 		*_currentIterator++ = Vertex(p3, color, Float2( textureCoords.max[0], textureCoords.max[1] ));
 	}
 
-	/*
-	RenderCore::Metal::Resource WorkingVertexSetPCT::CreateBuffer(RenderCore::Metal::ObjectFactory& objectFactory) const
-	{
-		// todo -- we shouldn't create temporary buffers this small. We need a better way to push
-		// small amounts of temporary buffer space
-		unsigned size = unsigned(size_t(_currentIterator) - size_t(_vertices));
-		return RenderCore::Metal::Resource {
-			objectFactory, 
-			RenderCore::CreateDesc(RenderCore::BindFlag::VertexBuffer, 0, RenderCore::GPUAccess::Read, RenderCore::LinearBufferDesc::Create(size), "tmp-font-buffer"),
-			RenderCore::SubResourceInitData { MakeIteratorRange(_vertices, PtrAdd(_vertices, size)) } };
-	}
-
-	size_t          WorkingVertexSetPCT::VertexCount() const
-	{
-		return _currentIterator - _vertices;
-	}
-
-	void            WorkingVertexSetPCT::Reset()
-	{
-		_currentIterator = _vertices;
-	}
-	*/
-
 	void WorkingVertexSetPCT::Complete()
 	{
 		// Update the vertex count to be where we ended up
@@ -140,14 +130,24 @@ namespace RenderOverlays
 
 	WorkingVertexSetPCT::WorkingVertexSetPCT(
 		RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
+		std::shared_ptr<RenderCore::IResourceView> textureView,
 		unsigned reservedQuads)
 	: _immediateDrawables(&immediateDrawables)
 	{
+		static std::shared_ptr<RenderCore::UniformsStreamInterface> usi;
+		if (!usi) {
+			usi = std::make_shared<RenderCore::UniformsStreamInterface>();
+			usi->BindResourceView(0, Hash64("InputTexture"));
+		}
 		assert(reservedQuads != 0);
+		_material._uniformStreamInterface = usi;
+		_material._uniforms._resourceViews.push_back(std::move(textureView));
+		_material._stateSet = RenderCore::Assets::RenderStateSet{};
+		_material._shaderSelectors.SetParameter("FONT_RENDERER", 1);
 		_currentAllocation = _immediateDrawables->QueueDraw(
 			reservedQuads * 6,
 			MakeIteratorRange(s_inputElements), 
-			RenderCore::Assets::RenderStateSet{}).Cast<Vertex*>();
+			_material).Cast<Vertex*>();
 		_currentIterator = _currentAllocation.begin();
 	}
 
@@ -180,110 +180,6 @@ namespace RenderOverlays
 		}
 		return 0;
 	}
-
-#if 0
-	class TextStyleResources
-	{
-	public:
-		std::shared_ptr<RenderCore::Metal::GraphicsPipeline> _pipeline;
-		RenderCore::Metal::BoundUniforms _boundUniforms;
-
-		~TextStyleResources();
-
-		struct Desc 
-		{
-			uint64_t GetHash() const { return 0; }
-		};
-		static void ConstructToFuture(
-			::Assets::AssetFuture<TextStyleResources>&,
-			const std::shared_ptr<RenderCore::ICompiledPipelineLayout>& pipelineLayout,
-			const Desc&);
-
-		const std::shared_ptr<Assets::DependencyValidation>& GetDependencyValidation() const   { return _depVal; }
-	protected:
-		TextStyleResources();
-		std::shared_ptr<Assets::DependencyValidation> _depVal;
-	};
-
-	struct ReciprocalViewportDimensions
-	{
-	public:
-		float _reciprocalWidth, _reciprocalHeight;
-		float _pad[2];
-	};
-
-	void TextStyleResources::ConstructToFuture(
-		::Assets::AssetFuture<TextStyleResources>& future,
-		const std::shared_ptr<RenderCore::ICompiledPipelineLayout>& pipelineLayout,
-		const Desc& desc)
-	{
-		using namespace RenderCore;
-		const char vertexShaderSource[]   = BASIC2D_VERTEX_HLSL ":P2CT:" VS_DefShaderModel;
-		const char pixelShaderSource[]    = BASIC_PIXEL_HLSL ":PCT_Text:" PS_DefShaderModel;
-		const auto& shaderFuture = ::Assets::MakeAsset<Metal::ShaderProgram>(pipelineLayout, vertexShaderSource, pixelShaderSource);
-
-		::Assets::WhenAll(shaderFuture).ThenConstructToFuture<TextStyleResources>(
-			future,
-			[](const std::shared_ptr<Metal::ShaderProgram>& shader) {
-
-				auto result = std::make_shared<TextStyleResources>();
-
-				Metal::GraphicsPipelineBuilder builder;
-				Metal::BoundInputLayout boundInputLayout(RenderCore::GlobalInputLayouts::PCT, *shader);
-				builder.Bind(boundInputLayout, Topology::TriangleList);
-				builder.Bind(Techniques::CommonResourceBox::s_dsDisable);
-				builder.Bind(Techniques::CommonResourceBox::s_rsCullDisable);
-				AttachmentBlendDesc attachmentBlends[] = { Techniques::CommonResourceBox::s_abStraightAlpha };
-				builder.Bind(MakeIteratorRange(attachmentBlends));
-
-				// We have to make an assumption about the render pass we're going to be drawing onto
-				// in particular, we need to know the format we'll render to
-				{
-					SubpassDesc expectingSubpass;
-					expectingSubpass.AppendOutput(AttachmentViewDesc{0});
-					FrameBufferDesc::Attachment expectingAttachment;
-					expectingAttachment._desc._format = Format::R8G8B8A8_UNORM_SRGB;
-					FrameBufferDesc expectingRenderPass { 
-						std::vector<FrameBufferDesc::Attachment>{ expectingAttachment },
-						std::vector<SubpassDesc>{ expectingSubpass }
-					};
-					builder.SetRenderPassConfiguration(expectingRenderPass, 0);
-				}
-
-				result->_pipeline = builder.CreatePipeline(Metal::GetObjectFactory());
-
-				ConstantBufferElementDesc elements[] = {
-					{ Hash64("ReciprocalViewportDimensions"), RenderCore::Format::R32G32_FLOAT, offsetof(ReciprocalViewportDimensions, _reciprocalWidth) }
-				};
-
-				UniformsStreamInterface usi;
-				usi.BindImmediateData(0, Hash64("ReciprocalViewportDimensionsCB"), MakeIteratorRange(elements));
-				usi.BindResourceView(0, Hash64("InputTexture"));
-				result->_boundUniforms = Metal::BoundUniforms{*shader, usi};
-				result->_depVal = shader->GetDependencyValidation();
-				return result;
-			});
-	}
-
-	TextStyleResources::TextStyleResources() {}
-	TextStyleResources::~TextStyleResources() {}
-
-	static void Flush(
-		RenderCore::Metal::GraphicsEncoder_Optimized& encoder, 
-		const RenderCore::Metal::GraphicsPipeline& pipeline,
-		WorkingVertexSetPCT& vertices)
-	{
-		using namespace RenderCore;
-		if (vertices.VertexCount()) {
-			auto vertexBuffer = vertices.CreateBuffer(Metal::GetObjectFactory());
-			VertexBufferView vbvs[] = { &vertexBuffer };
-			encoder.Bind(MakeIteratorRange(vbvs), {});
-			encoder.Draw(pipeline, (unsigned)vertices.VertexCount(), 0);
-			vertices.Reset();
-		}
-	}
-#endif
-
 	float Draw(
 		RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
@@ -294,7 +190,7 @@ namespace RenderOverlays
 		unsigned colorARGB, bool applyDescender, Quad* q)
 	{
 		using namespace RenderCore;
-		// auto& metalContext = *Metal::DeviceContext::Get(threadContext);
+		if (text.IsEmpty()) return 0.f;
 
 		int prevGlyph = 0;
 		float xScale = scale;
@@ -305,38 +201,18 @@ namespace RenderOverlays
 			y = yScale * (int)(0.5f + y / yScale);
 		}
 
-		/*
-		auto resFuture = ::Assets::MakeAsset<TextStyleResources>(
-			pipelineLayout,
-			TextStyleResources::Desc());
-		auto* res = resFuture->TryActualize().get();
-		if (!res) return 0.f;
-		
-		auto encoder = metalContext.BeginGraphicsEncoder(pipelineLayout);
-
-		auto viewportDesc = metalContext.GetBoundViewport();
-		ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc.Width), 1.f / float(viewportDesc.Height), 0.f, 0.f };
-		*/
+		auto* res = textureMan.GetFontTexture().GetUnderlying().get();
+		Metal::CompleteInitialization(
+			*Metal::DeviceContext::Get(threadContext),
+			{&res, &res+1});
 			
-		auto* texSRV = textureMan.GetFontTexture().GetSRV().get();
 		auto texDims = textureMan.GetTextureDimensions();
 		auto estimatedQuadCount = text.size();
 		if (style._options.shadow)
 			estimatedQuadCount += text.size();
 		if (style._options.outline)
 			estimatedQuadCount += 8 * text.size();
-		WorkingVertexSetPCT workingVertices(immediateDrawables, estimatedQuadCount);
-
-		/*
-		const IResourceView* srvs[] = { texSRV };
-		IteratorRange<const void*> cbvs[] = { MakeOpaqueIteratorRange(reciprocalViewportDimensions) };
-		res->_boundUniforms.ApplyLooseUniforms(
-			metalContext, encoder,
-			UniformsStream{
-				MakeIteratorRange(srvs),
-				MakeIteratorRange(cbvs)
-			});
-		*/
+		WorkingVertexSetPCT workingVertices(immediateDrawables, textureMan.GetFontTexture().GetSRV(), estimatedQuadCount);
 
 		float descent = 0.0f;
 		if (applyDescender) {
@@ -479,6 +355,147 @@ namespace RenderOverlays
 
 		workingVertices.Complete();
 		return x;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class FontRenderingManager::Pimpl
+	{
+	public:
+		RectanglePacker_FontCharArray	_rectanglePacker;
+		std::unique_ptr<FontTexture2D>  _texture;
+
+		unsigned _texWidth, _texHeight;
+
+		Pimpl(RenderCore::IDevice& device, unsigned texWidth, unsigned texHeight)
+		: _rectanglePacker({texWidth, texHeight})
+		, _texWidth(texWidth), _texHeight(texHeight) 
+		{
+			_texture = std::make_unique<FontTexture2D>(device, texWidth, texHeight, RenderCore::Format::R8_UNORM);
+		}
+	};
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	FontRenderingManager::FontRenderingManager(RenderCore::IDevice& device) { _pimpl = std::make_unique<Pimpl>(device, 512, 2048); }
+	FontRenderingManager::~FontRenderingManager() {}
+
+	FontTexture2D::FontTexture2D(
+		RenderCore::IDevice& dev,
+		unsigned width, unsigned height, RenderCore::Format pixelFormat)
+	: _format(pixelFormat)
+	{
+		using namespace RenderCore;
+		ResourceDesc desc;
+		desc._type = ResourceDesc::Type::Texture;
+		desc._bindFlags = BindFlag::ShaderResource | BindFlag::TransferDst;
+		desc._cpuAccess = CPUAccess::Write;
+		desc._gpuAccess = GPUAccess::Read;
+		desc._allocationRules = 0;
+		desc._textureDesc = TextureDesc::Plain2D(width, height, pixelFormat, 1);
+		XlCopyString(desc._name, "Font");
+		_resource = dev.CreateResource(desc);
+		_srv = _resource->CreateTextureView();
+	}
+
+	FontTexture2D::~FontTexture2D()
+	{
+	}
+
+	void FontTexture2D::UpdateToTexture(
+		RenderCore::IThreadContext& threadContext,
+		IteratorRange<const uint8_t*> data, const RenderCore::Box2D& destBox)
+	{
+		using namespace RenderCore;
+		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
+		auto blitEncoder = metalContext.BeginBlitEncoder();
+		blitEncoder.Write(
+			Metal::BlitEncoder::CopyPartial_Dest {
+				_resource.get(), {}, VectorPattern<unsigned, 3>{ unsigned(destBox._left), unsigned(destBox._top), 0u }
+			},
+			SubResourceInitData { data },
+			_format,
+			VectorPattern<unsigned, 3>{ unsigned(destBox._right - destBox._left), unsigned(destBox._bottom - destBox._top), 1u });
+	}
+
+	static std::vector<uint8_t> GlyphAsDataPacket(
+		unsigned srcWidth, unsigned srcHeight,
+		IteratorRange<const void*> srcData,
+		int offX, int offY, int width, int height)
+	{
+		std::vector<uint8_t> packet(width*height);
+
+		int j = 0;
+		for (; j < std::min(height, (int)srcHeight); ++j) {
+			int i = 0;
+			for (; i < std::min(width, (int)srcWidth); ++i)
+				packet[i + j*width] = ((const uint8_t*)srcData.begin())[i + srcWidth * j];
+			for (; i < width; ++i)
+				packet[i + j*width] = 0;
+		}
+		for (; j < height; ++j)
+			for (int i=0; i < width; ++i)
+				packet[i + j*width] = 0;
+
+		return packet;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	auto FontRenderingManager::InitializeNewGlyph(
+		RenderCore::IThreadContext& threadContext,
+		const Font& font,
+		ucs4 ch,
+		std::vector<std::pair<uint64_t, Bitmap>>::iterator insertPoint,
+		uint64_t code) -> Bitmap
+	{
+		auto newData = font.GetBitmap(ch);
+		if ((newData._width * newData._height) == 0) {
+			Bitmap result = {};
+			_glyphs.insert(insertPoint, std::make_pair(code, result));
+			return result;
+		}
+
+		auto rect = _pimpl->_rectanglePacker.Allocate({newData._width, newData._height});
+		if (rect.second[0] <= rect.first[0] || rect.second[1] <= rect.first[1])
+			return {};
+
+		if (_pimpl->_texture) {
+			auto pkt = GlyphAsDataPacket(newData._width, newData._height, newData._data, rect.first[0], rect.first[1], rect.second[0]-rect.first[0], rect.second[1]-rect.first[1]);
+			_pimpl->_texture->UpdateToTexture(
+				threadContext,
+				pkt, 
+				RenderCore::Box2D{
+					(int)rect.first[0], (int)rect.first[1], 
+					(int)rect.second[0], (int)rect.second[1]});
+		}
+
+		assert(rect.second[0] > rect.first[0]);
+		assert(rect.second[1] > rect.first[1]);
+
+		Bitmap result;
+		result._xAdvance = newData._xAdvance;
+		result._bitmapOffsetX = newData._bitmapOffsetX;
+		result._bitmapOffsetY = newData._bitmapOffsetY;
+		result._width = rect.second[0] - rect.first[0];
+		result._height = rect.second[1] - rect.first[1];
+		result._tcTopLeft[0] = rect.first[0] / float(_pimpl->_texWidth);
+		result._tcTopLeft[1] = rect.first[1] / float(_pimpl->_texHeight);
+		result._tcBottomRight[0] = rect.second[0] / float(_pimpl->_texWidth);
+		result._tcBottomRight[1] = rect.second[1] / float(_pimpl->_texHeight);
+
+		_glyphs.insert(insertPoint, std::make_pair(code, result));
+		return result;
+	}
+
+	const FontTexture2D& FontRenderingManager::GetFontTexture()
+	{
+		return *_pimpl->_texture;
+	}
+
+	UInt2 FontRenderingManager::GetTextureDimensions()
+	{
+		return UInt2{_pimpl->_texWidth, _pimpl->_texHeight};
 	}
 
 }

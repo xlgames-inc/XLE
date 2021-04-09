@@ -6,6 +6,7 @@
 
 #include "DebuggingDisplay.h"
 #include "../RenderOverlays/Font.h"
+#include "../RenderOverlays/FontRendering.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"

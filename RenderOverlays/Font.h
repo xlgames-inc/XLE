@@ -16,9 +16,6 @@
 #include <memory>
 #include <utility>
 
-namespace RenderCore { class IThreadContext; }
-namespace RenderCore { namespace Techniques { class IImmediateDrawables; }}
-
 namespace RenderOverlays
 {
     class Font
@@ -65,7 +62,7 @@ namespace RenderOverlays
 	std::shared_ptr<Font> GetX2Font(StringSection<> path, int size);
 	std::shared_ptr<Font> GetDefaultFont(unsigned points=16);
 
-	float CharWidth(		const Font& font, ucs4 ch, ucs4 prev);
+	float CharWidth(const Font& font, ucs4 ch, ucs4 prev);
 
 	template<typename CharType>
 		float StringWidth(      const Font& font,
@@ -89,7 +86,10 @@ namespace RenderOverlays
 								float spaceExtra     = 0.0f,
 								bool outline         = false);
 
-    struct DrawTextOptions 
+    Float2		AlignText(const Font& font, const Quad& q, TextAlignment align, StringSection<ucs4> text);
+    Float2		AlignText(const Font& font, const Quad& q, TextAlignment align, float width, float indent);
+
+	struct DrawTextOptions 
     {
         uint32 shadow : 1;
         uint32 snap : 1;
@@ -118,19 +118,6 @@ namespace RenderOverlays
     public:
 		DrawTextOptions			_options;
 	};
-
-	class FontRenderingManager;
-        
-    float       Draw(   RenderCore::IThreadContext& threadContext,
-						RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
-						FontRenderingManager& textureMan,
-						const Font& font, const TextStyle& style,
-                        float x, float y, StringSection<ucs4> text,
-                        float spaceExtra, float scale, float mx, float depth,
-                        unsigned colorARGB, bool applyDescender, Quad* q);
-
-    Float2		AlignText(const Font& font, const Quad& q, TextAlignment align, StringSection<ucs4> text);
-    Float2		AlignText(const Font& font, const Quad& q, TextAlignment align, float width, float indent);
 
 }
 

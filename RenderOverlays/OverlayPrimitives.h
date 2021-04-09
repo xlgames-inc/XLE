@@ -15,9 +15,6 @@ namespace RenderOverlays
         BottomLeft, Bottom, BottomRight
     };
 
-	using FontBitmapId = unsigned;
-	static const FontBitmapId FontBitmapId_Invalid = ~FontBitmapId(0x0);
-
 	class ColorB
     {
     public:

@@ -18,15 +18,6 @@ namespace RenderCore { class IDevice; }
 
 namespace RenderOverlays
 {
-	/*struct FontCharTable
-	{
-		std::vector<std::vector<std::pair<ucs4, FontBitmapId>>>  _table;
-		FontBitmapId&         operator[](ucs4 ch);
-		void                ClearTable();
-		FontCharTable();
-		~FontCharTable();
-	};*/
-
 	class FTFontResources;
 
 	class FTFont : public Font 
@@ -50,13 +41,8 @@ namespace RenderOverlays
 		::Assets::Blob _pBuffer;
 		::Assets::DepValPtr _depVal;
 
-		// mutable std::vector<Bitmap> _bitmaps;
-		// mutable FontCharTable _lookupTable;
-
 		mutable std::vector<std::pair<ucs4, GlyphProperties>> _cachedGlyphProperties;
 		FontProperties _fontProperties;
-
-		FontBitmapId InitializeBitmap(ucs4 ch) const;
 	};
 
 	std::shared_ptr<FTFontResources> CreateFTFontResources();

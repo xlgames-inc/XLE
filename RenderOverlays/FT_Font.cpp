@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "FT_Font.h"
-#include "FT_FontTexture.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -172,56 +171,6 @@ namespace RenderOverlays
 		return 0.0f;
 	}
 
-#if 0
-	FontBitmapId FTFont::InitializeBitmap(ucs4 ch) const
-	{
-		FontBitmapId& id = _lookupTable[ch];
-		if (id != FontBitmapId_Invalid)
-			return id;
-
-		FT_Error error = FT_Load_Char(_face.get(), ch, FT_LOAD_RENDER | FT_LOAD_NO_AUTOHINT);
-		if (error)
-			return FontBitmapId_Invalid;
-
-		FT_GlyphSlot glyph = _face->glyph;
-
-		Bitmap glyphEntry;
-		glyphEntry._glyph = { (float)glyph->advance.x / 64.0f };
-		glyphEntry._bitmapOffsetX = glyph->bitmap_left;
-		glyphEntry._bitmapOffsetY = -glyph->bitmap_top;
-
-		if (glyph->bitmap.width!=0 && glyph->bitmap.rows!=0) {
-			assert(0);
-			/*auto textureGlyph = _resources->_fontTexMgr->CreateChar(
-				glyph->bitmap.width, glyph->bitmap.rows,
-				MakeIteratorRange(glyph->bitmap.buffer, PtrAdd(glyph->bitmap.buffer, glyph->bitmap.width*glyph->bitmap.rows)));
-
-			glyphEntry._topLeft = textureGlyph._topLeft;
-			glyphEntry._bottomRight = textureGlyph._bottomRight;
-			glyphEntry._textureId = textureGlyph._glyphId;*/
-		}
-
-		id = (FontBitmapId)_bitmaps.size();
-		_bitmaps.push_back(glyphEntry);
-
-		return id;
-	}
-
-	auto FTFont::GetBitmap(ucs4 ch) const -> Bitmap
-	{
-		auto internalTable = InitializeBitmap(ch);
-		if (internalTable == FontBitmapId_Invalid) return {};
-		return _bitmaps[internalTable];
-	}
-
-	auto FTFont::GetGlyphProperties(ucs4 ch) const -> GlyphProperties
-	{
-		auto internalTable = InitializeBitmap(ch);
-		if (internalTable == FontBitmapId_Invalid) return {};
-		return _bitmaps[internalTable]._glyph;
-	}
-#endif
-
 	auto FTFont::GetGlyphProperties(ucs4 ch) const -> GlyphProperties
 	{
 		auto i = LowerBound(_cachedGlyphProperties, ch);
@@ -354,58 +303,6 @@ namespace RenderOverlays
 	{
 		FT_Done_FreeType(_ftLib);
 	}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-	#define FONT_TABLE_SIZE (256+1024)
-
-	FontCharTable::FontCharTable()
-	{
-		_table.resize(FONT_TABLE_SIZE);
-	}
-
-	FontCharTable::~FontCharTable()
-	{
-
-	}
-
-	void FontCharTable::ClearTable()
-	{
-		_table.clear();
-	}
-
-	static inline unsigned TableEntryForChar(ucs4 ch)
-	{
-		unsigned a =  ch &  (1024-1);
-		unsigned b = (ch & ~(1024-1))/683;
-		unsigned entry = (a^b)&(1024-1);
-		entry += (b!=0)*256;
-		return entry;
-	}
-
-	FontBitmapId& FontCharTable::operator[](ucs4 ch)
-	{
-			//
-			//      DavidJ --   Simple hashing method optimised for when the input is
-			//                  largely ASCII characters and Korean characters.
-			//                  It should work fine for other unicode character
-			//                  sets as well (so long as the character values are
-			//                  generally 16 bits long).
-			//                  Maps 16 bit unicode value onto a value between 0 and (1024+256)
-			//                  
-		unsigned entry = TableEntryForChar(ch);
-		entry = entry%unsigned(_table.size());
-    
-		auto& list = _table[entry];
-		auto i = std::lower_bound(list.begin(), list.end(), ch, CompareFirst<ucs4, FontBitmapId>());
-		if (i == list.end() || i->first != ch) {
-			auto i2 = list.insert(i, std::make_pair(ch, FontBitmapId_Invalid));
-			return i2->second;
-		}
-		return i->second;
-	}
-#endif
 
 }
 

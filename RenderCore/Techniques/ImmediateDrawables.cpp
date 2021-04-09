@@ -70,7 +70,7 @@ namespace RenderCore { namespace Techniques
 		{
 			_usi.BindImmediateData(0, Hash64("ReciprocalViewportDimensionsCB"), MakeIteratorRange(ReciprocalViewportDimensions_Elements));
 
-			_rvd = ReciprocalViewportDimensions { 1.f / 25.f, 1.f / 25.f };
+			_rvd = ReciprocalViewportDimensions { 1.f / 1264.f, 1.f / 681.f };
 		}
 	};
 
@@ -87,8 +87,8 @@ namespace RenderCore { namespace Techniques
 		ImmediateRendererTechniqueDelegate() 
 		{
 			auto nascentDesc = std::make_shared<GraphicsPipelineDesc>();
-			nascentDesc->_shaders[(unsigned)ShaderStage::Vertex] = BASIC2D_VERTEX_HLSL ":P2C:vs_*";
-			nascentDesc->_shaders[(unsigned)ShaderStage::Pixel] = BASIC_PIXEL_HLSL ":P:ps_*";
+			nascentDesc->_shaders[(unsigned)ShaderStage::Vertex] = BASIC2D_VERTEX_HLSL ":P2CT:vs_*";
+			nascentDesc->_shaders[(unsigned)ShaderStage::Pixel] = BASIC_PIXEL_HLSL ":PCT:ps_*";
 
 			nascentDesc->_depthStencil = CommonResourceBox::s_dsDisable;
 			nascentDesc->_rasterization = CommonResourceBox::s_rsCullDisable;
@@ -214,6 +214,7 @@ namespace RenderCore { namespace Techniques
 			auto sequencerConfig = _pipelineAcceleratorPool->CreateSequencerConfig(
 				_techniqueDelegate, ParameterBox{},
 				fbDesc, subpassIndex);
+
 			SequencerContext sequencerContext;
 			sequencerContext._sequencerResources.push_back(_resourceDelegate);
 			sequencerContext._sequencerConfig = sequencerConfig.get();
@@ -297,6 +298,8 @@ namespace RenderCore { namespace Techniques
 				nullptr, 
 				shaderSelectors, inputAssembly,
 				topology, stateSet);
+			// Note that we keep this pipeline accelerator alive indefinitely 
+			_pipelineAccelerators.insert(existing, std::make_pair(hashCode, newAccelerator));
 			return newAccelerator;
 		}
 	};

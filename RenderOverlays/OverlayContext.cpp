@@ -4,33 +4,18 @@
 
 #include "OverlayContext.h"
 #include "Font.h"
-/*#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/DeviceContextImpl.h"
-#include "../RenderCore/Metal/Buffer.h"
-#include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/Metal/State.h"
-#include "../RenderCore/Metal/TextureView.h"
-#include "../RenderCore/Metal/Shader.h"
-#include "../RenderCore/Metal/ObjectFactory.h"*/
-#include "../RenderCore/RenderUtils.h"
-// #include "../RenderCore/Techniques/DeferredShaderResource.h"
-// #include "../RenderCore/Techniques/CommonResources.h"
+#include "FontRendering.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ImmediateDrawables.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Types.h"
 #include "../RenderCore/StateDesc.h"
-// #include "../RenderCore/BufferView.h"
-// #include "../RenderCore/UniformsStream.h"
 #include "../Assets/Assets.h"
 #include "../OSServices/Log.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/StringUtils.h"
-#include "../xleres/FileList.h"
-
-#include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
 namespace RenderOverlays
 {
@@ -45,35 +30,6 @@ namespace RenderOverlays
 	{
 		return (uint32(input.a) << 24) | (uint32(input.b) << 16) | (uint32(input.g) << 8) | uint32(input.r);
 	}
-
-	/*InputElementDesc Vertex_PC::inputElements[] = 
-	{
-		InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT ),
-		InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM  )
-	};
-
-	InputElementDesc Vertex_PCR::inputElements[] = 
-	{
-		InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT ),
-		InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM  ),
-		InputElementDesc( "RADIUS",     0, Format::R32_FLOAT )
-	};
-
-	InputElementDesc Vertex_PCT::inputElements[] = 
-	{
-		InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT ),
-		InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM  ),
-		InputElementDesc( "TEXCOORD",   0, Format::R32G32_FLOAT    )
-	};
-
-	InputElementDesc Vertex_PCCTT::inputElements[] = 
-	{
-		InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT ),
-		InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM  ),
-		InputElementDesc( "COLOR",      1, Format::R8G8B8A8_UNORM  ),
-		InputElementDesc( "TEXCOORD",   0, Format::R32G32_FLOAT    ),
-		InputElementDesc( "TEXCOORD",   1, Format::R32G32_FLOAT    )
-	};*/
 
 	MiniInputElementDesc Vertex_PC::inputElements[] = 
 	{
@@ -104,7 +60,6 @@ namespace RenderOverlays
 		MiniInputElementDesc{ Techniques::CommonSemantics::TEXCOORD + 1, Format::R32G32_FLOAT }
 	};
 
-	// enum VertexFormat { PC, PCT, PCR, PCCTT };
 	class ImmediateOverlayContext::DrawCall
 	{
 	public:
@@ -114,23 +69,6 @@ namespace RenderOverlays
 		ProjectionMode	        _projMode = ProjectionMode::P2D;
 		StringSection<>			_shaderSelectorTable;
 	};
-
-	/*template<typename T> VertexFormat AsVertexFormat();
-	template<> auto AsVertexFormat<Vertex_PC>() -> VertexFormat      { return PC ; }
-	template<> auto AsVertexFormat<Vertex_PCR>() -> VertexFormat     { return PCR; }
-	template<> auto AsVertexFormat<Vertex_PCT>() -> VertexFormat     { return PCT; }
-	template<> auto AsVertexFormat<Vertex_PCCTT>() -> VertexFormat   { return PCCTT; }
-
-	static unsigned  VertexSize(VertexFormat format)
-	{
-		switch (format) {
-		case PC:    return sizeof(Vertex_PC);
-		case PCT:   return sizeof(Vertex_PCT);
-		case PCR:   return sizeof(Vertex_PCR);
-		case PCCTT: return sizeof(Vertex_PCCTT);
-		}
-		return 0;
-	}*/
 	
 	void ImmediateOverlayContext::DrawPoint      (ProjectionMode proj, const Float3& v,     const ColorB& col,      uint8 size)
 	{
@@ -295,77 +233,12 @@ namespace RenderOverlays
 	{
 	}
 
-	/*
-	struct ReciprocalViewportDimensions
-	{
-	public:
-		float _reciprocalWidth, _reciprocalHeight;
-		float _pad[2];
-	};
-
-	RenderCore::ConstantBufferElementDesc ReciprocalViewportDimensions_Elements[] = {
-		{ Hash64("ReciprocalViewportDimensions"), Format::R32G32_FLOAT, offsetof(ReciprocalViewportDimensions, _reciprocalWidth) }
-	};
-	*/
-	
 	void ImmediateOverlayContext::SetState(const OverlayState& state) 
 	{
 		_currentState = state;
-		/*
-		_encoder.Bind(Techniques::CommonResourceBox::s_dsReadWrite);
-		_encoder.Bind(Techniques::CommonResourceBox::s_abStraightAlpha);
-		_encoder.Bind(Techniques::CommonResourceBox::s_rsDefault);
-
-		Viewport viewportDesc = _metalContext->GetBoundViewport();
-		ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc._width), 1.f / float(viewportDesc._height), 0.f, 0.f };
-		_viewportConstantBuffer = MakeSharedPkt(
-			(const uint8*)&reciprocalViewportDimensions, 
-			(const uint8*)PtrAdd(&reciprocalViewportDimensions, sizeof(reciprocalViewportDimensions)));
-		*/
 	}
 
-	/*
-	void ImmediateOverlayContext::Flush()
-	{
-		if (_writePointer != 0) {
-
-			// todo -- use a better scheme than just creating new temporary buffers each time
-			auto dataToUpload = MakeIteratorRange(_workingBuffer.get(), PtrAdd(_workingBuffer.get(), _writePointer));
-			RenderCore::Metal::Resource temporaryBuffer {
-				Metal::GetObjectFactory(), 
-				RenderCore::CreateDesc(RenderCore::BindFlag::VertexBuffer, 0, RenderCore::GPUAccess::Read, RenderCore::LinearBufferDesc::Create(dataToUpload.size()), "tmp-imm-context-buffer"),
-				RenderCore::SubResourceInitData { dataToUpload } };
-
-			for (auto i=_drawCalls.cbegin(); i!=_drawCalls.cend(); ++i) {
-				_metalContext->Bind(i->_topology);
-
-					//
-					//      Rebind the vertex buffer for each draw call
-					//          (because we need to reset offset and vertex stride
-					//          information)
-					//
-				const VertexBufferView vbs[] = { VertexBufferView{ &temporaryBuffer, i->_vertexOffset } };
-
-					//
-					//      The shaders we need to use (and the vertex input
-					//      layout) are determined by the vertex format and 
-					//      topology selected.
-					//
-				SetShader(i->_topology, i->_vertexFormat, i->_projMode, i->_pixelShaderName, MakeIteratorRange(vbs));
-				if (!i->_textureName.empty()) {
-					_metalContext->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
-						::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(i->_textureName.c_str())->Actualize()->GetShaderResource()));
-				}
-				_metalContext->Draw(i->_vertexCount);
-			}
-		}
-
-		_drawCalls.clear();
-		_writePointer = 0;
-	}
-	*/
-
-	static RenderCore::Assets::RenderStateSet AsRenderStateSet(const OverlayState& state)
+	static RenderCore::Techniques::ImmediateDrawableMaterial AsMaterial(const OverlayState& state)
 	{
 		return {};
 	}
@@ -377,7 +250,7 @@ namespace RenderOverlays
 		return _immediateDrawables->QueueDraw(
 			drawCall._vertexCount,
 			drawCall._inputAssembly,
-			AsRenderStateSet(_currentState),
+			AsMaterial(_currentState),
 			drawCall._topology);
 	}
 
@@ -520,55 +393,6 @@ namespace RenderOverlays
 	}
 #endif
 
-	/*
-	void            ImmediateOverlayContext::SetShader(
-		Topology topology, VertexFormat format, ProjectionMode projMode, const std::string& pixelShaderName, 
-		IteratorRange<const VertexBufferView*> vertexBuffers)
-	{
-				// \todo --     we should cache the input layout result
-				//              (since it's just the same every time)
-		auto& box = ConsoleRig::FindCachedBoxDep<ShaderBox>(
-			ShaderBox::Desc(topology, format, projMode, pixelShaderName));
-
-		if (box._shaderProgram) {
-			if (box._shaderProgram->DynamicLinkingEnabled()) {
-				_metalContext->Bind(*box._shaderProgram, box._boundClassInterfaces);
-			} else {
-				_metalContext->Bind(*box._shaderProgram);
-			}
-			box._boundInputLayout.Apply(*_metalContext, vertexBuffers);
-
-			ConstantBufferView stream0CBVs[] = { _globalTransformConstantBuffer };
-			box._boundUniforms.Apply(*_metalContext.get(), 0, { MakeIteratorRange(stream0CBVs) });
-
-			ConstantBufferView stream1CBVs[] = { _viewportConstantBuffer };
-			box._boundUniforms.Apply(*_metalContext.get(), 1, { MakeIteratorRange(stream1CBVs) });
-		} else {
-			assert(0);
-		}
-	}
-	*/
-
-	/*IThreadContext*   ImmediateOverlayContext::GetDeviceContext()
-	{
-		return _deviceContext;
-	}
-
-	Techniques::ProjectionDesc    ImmediateOverlayContext::GetProjectionDesc() const
-	{
-		return _projDesc;
-	}
-
-	RenderCore::Techniques::AttachmentPool*     ImmediateOverlayContext::GetNamedResources() const
-	{
-		return _namedResources;
-	}
-
-	const Metal::UniformsStream&    ImmediateOverlayContext::GetGlobalUniformsStream() const
-	{
-		return _globalUniformsStream;
-	}*/
-
 	class DefaultFontBox
 	{
 	public:
@@ -589,22 +413,11 @@ namespace RenderOverlays
 	, _threadContext(&threadContext)
 	, _fontRenderingManager(&fontRenderingManager)
 	{
-		// _drawCalls.reserve(64);
-
-		/*auto trans = Techniques::BuildGlobalTransformConstants(projDesc);
-		_globalTransformConstantBuffer = MakeSharedPkt(
-			(const uint8*)&trans, (const uint8*)PtrAdd(&trans, sizeof(trans)));*/
 	}
 
 	ImmediateOverlayContext::~ImmediateOverlayContext()
 	{
-		/*TRY {
-			Flush();
-		} CATCH(...) {
-			// suppressed exception during ~ImmediateOverlayContext
-		} CATCH_END*/
 	}
-
 
 	std::unique_ptr<ImmediateOverlayContext>
 		MakeImmediateOverlayContext(
@@ -617,11 +430,3 @@ namespace RenderOverlays
 
 	IOverlayContext::~IOverlayContext() {}
 }
-
-/*namespace ConsoleRig
-{
-	template<> uint64 CalculateCachedBoxHash(const RenderOverlays::ImmediateOverlayContext::ShaderBox::Desc& desc)
-	{
-		return (uint64(desc._format) << 32) ^ (uint64(desc._projMode) << 16) ^ uint64(desc._topology) ^ Hash64(desc._pixelShaderName);
-	}
-}*/

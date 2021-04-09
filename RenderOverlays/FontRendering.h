@@ -15,33 +15,22 @@
 #include <vector>
 #include <memory>
 
-namespace RenderCore { class IResource; class IResourceView; class Box2D; class IThreadContext; class IDevice; }
-namespace BufferUploads { class IManager; class ResourceLocator; class DataPacket; using TransactionID = uint64_t; }
+namespace RenderCore { class IResource; class IResourceView; class IThreadContext; class IDevice; }
+namespace RenderCore { namespace Techniques { class IImmediateDrawables; }}
 
 namespace RenderOverlays
 {
-	class FontTexture2D
-	{
-	public:
-		void UpdateToTexture(RenderCore::IThreadContext& threadContext, IteratorRange<const uint8_t*> data, const RenderCore::Box2D& destBox);
-		const std::shared_ptr<RenderCore::IResource>& GetUnderlying() const { return _resource; }
-		const std::shared_ptr<RenderCore::IResourceView>& GetSRV() const { return _srv; }
-
-		FontTexture2D(
-			RenderCore::IDevice& dev,
-			unsigned width, unsigned height, RenderCore::Format pixelFormat);
-		~FontTexture2D();
-
-		FontTexture2D(FontTexture2D&&) = default;
-		FontTexture2D& operator=(FontTexture2D&&) = default;
-
-	private:
-		std::shared_ptr<RenderCore::IResource>			_resource;
-		std::shared_ptr<RenderCore::IResourceView>		_srv;
-		RenderCore::Format _format;
-	};
-
 	class Font;
+	class FontTexture2D;
+	class FontRenderingManager;
+        
+    float       Draw(   RenderCore::IThreadContext& threadContext,
+						RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
+						FontRenderingManager& textureMan,
+						const Font& font, const TextStyle& style,
+                        float x, float y, StringSection<ucs4> text,
+                        float spaceExtra, float scale, float mx, float depth,
+                        unsigned colorARGB, bool applyDescender, Quad* q);
 
 	class FontRenderingManager
 	{

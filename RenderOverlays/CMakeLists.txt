@@ -8,7 +8,6 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         FontRectanglePacking.cpp
         FontRendering.cpp
         FT_Font.cpp
-        FT_FontTexture.cpp
         #HighlightEffects.cpp
         OverlayContext.cpp
         OverlayPrimitives.cpp
@@ -17,9 +16,9 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         AnimationVisualization.h
         DebuggingDisplay.h
         Font.h
+        FontRendering.h
         FontRectanglePacking.h
         FT_Font.h
-        FT_FontTexture.h
         HighlightEffects.h
         IOverlayContext_Forward.h
         IOverlayContext.h
