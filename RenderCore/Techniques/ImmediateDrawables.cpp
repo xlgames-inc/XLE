@@ -137,9 +137,8 @@ namespace RenderCore { namespace Techniques
 					compatibleWithLastDraw &= _lastQueuedDrawable->_looseUniformsInterface == nullptr;
 			}
 			if (compatibleWithLastDraw) {
-				auto oldVertexCount = _lastQueuedDrawable->_vertexCount;
-				auto expandedRange = UpdateLastDrawCallVertexCount(oldVertexCount + vertexCount);
-				return MakeIteratorRange(PtrAdd(expandedRange.begin(), oldVertexCount*vStride), expandedRange.end());				
+				_lastQueuedDrawVertexCountOffset = _lastQueuedDrawable->_vertexCount;
+				return UpdateLastDrawCallVertexCount(vertexCount);
 			} else {
 				auto vertexStorage = _workingPkt.AllocateStorage(DrawablesPacket::Storage::VB, vertexDataSize);
 				auto* drawable = _workingPkt._drawables.Allocate<DrawableWithVertexCount>();
@@ -174,6 +173,7 @@ namespace RenderCore { namespace Techniques
 					drawable->_uniforms = material._uniforms;
 				}
 				_lastQueuedDrawable = drawable;
+				_lastQueuedDrawVertexCountOffset = 0;
 				return vertexStorage._data;
 			}
 		}
@@ -183,26 +183,27 @@ namespace RenderCore { namespace Techniques
 			if (!_lastQueuedDrawable)
 				Throw(std::runtime_error("Calling UpdateLastDrawCallVertexCount, but no previous draw call to update"));
 
-			if (newVertexCount == _lastQueuedDrawable->_vertexCount) {
+			auto offsetPlusNewCount = _lastQueuedDrawVertexCountOffset + newVertexCount;
+			if (offsetPlusNewCount == _lastQueuedDrawable->_vertexCount) {
 				// no update necessary			
-			} else if (newVertexCount > _lastQueuedDrawable->_vertexCount) {
-				size_t allocationRequired = newVertexCount * _lastQueuedDrawable->_vertexStride;
+			} else if (offsetPlusNewCount > _lastQueuedDrawable->_vertexCount) {
+				size_t allocationRequired = offsetPlusNewCount * _lastQueuedDrawable->_vertexStride;
 				if (allocationRequired <= _lastQueuedDrawable->_bytesAllocated) {
-					_lastQueuedDrawable->_vertexCount = newVertexCount;
+					_lastQueuedDrawable->_vertexCount = offsetPlusNewCount;
 				} else {
 					auto extraStorage = _workingPkt.AllocateStorage(DrawablesPacket::Storage::VB, allocationRequired-_lastQueuedDrawable->_bytesAllocated);
 					assert(_lastQueuedDrawable->_geo->_vertexStreams[0]._vbOffset + _lastQueuedDrawable->_bytesAllocated == extraStorage._startOffset);
 					_lastQueuedDrawable->_bytesAllocated = allocationRequired;
-					_lastQueuedDrawable->_vertexCount = newVertexCount;
+					_lastQueuedDrawable->_vertexCount = offsetPlusNewCount;
 				}
 			} else {
-				_lastQueuedDrawable->_vertexCount = newVertexCount;
+				_lastQueuedDrawable->_vertexCount = offsetPlusNewCount;
 			}
 
 			auto fullStorage = _workingPkt.GetStorage(DrawablesPacket::Storage::VB);
 			return MakeIteratorRange(
-				const_cast<void*>(PtrAdd(fullStorage.begin(), _lastQueuedDrawable->_geo->_vertexStreams[0]._vbOffset)),
-				const_cast<void*>(PtrAdd(fullStorage.begin(), _lastQueuedDrawable->_geo->_vertexStreams[0]._vbOffset + newVertexCount * _lastQueuedDrawable->_vertexStride)));
+				const_cast<void*>(PtrAdd(fullStorage.begin(), _lastQueuedDrawable->_geo->_vertexStreams[0]._vbOffset + _lastQueuedDrawVertexCountOffset * _lastQueuedDrawable->_vertexStride)),
+				const_cast<void*>(PtrAdd(fullStorage.begin(), _lastQueuedDrawable->_geo->_vertexStreams[0]._vbOffset + offsetPlusNewCount * _lastQueuedDrawable->_vertexStride)));
 		}
 
 		void ExecuteDraws(
@@ -227,6 +228,7 @@ namespace RenderCore { namespace Techniques
 			_reservedDrawableGeos.insert(_reservedDrawableGeos.end(), _drawableGeosInWorkingPkt.begin(), _drawableGeosInWorkingPkt.end());
 			_drawableGeosInWorkingPkt.clear();
 			_lastQueuedDrawable = nullptr;
+			_lastQueuedDrawVertexCountOffset = 0;
 		}
 
 		std::shared_ptr<::Assets::IAsyncMarker> PrepareResources(
@@ -249,6 +251,7 @@ namespace RenderCore { namespace Techniques
 			_resourceDelegate = std::make_shared<ImmediateRendererResourceDelegate>();
 			_techniqueDelegate = std::make_shared<ImmediateRendererTechniqueDelegate>();
 			_lastQueuedDrawable = nullptr;
+			_lastQueuedDrawVertexCountOffset = 0;
 		}
 
 	protected:
@@ -259,7 +262,8 @@ namespace RenderCore { namespace Techniques
 		std::shared_ptr<ImmediateRendererResourceDelegate> _resourceDelegate;
 		std::vector<std::pair<uint64_t, std::shared_ptr<PipelineAccelerator>>> _pipelineAccelerators;
 		std::shared_ptr<ITechniqueDelegate> _techniqueDelegate;
-		DrawableWithVertexCount* _lastQueuedDrawable;
+		DrawableWithVertexCount* _lastQueuedDrawable = nullptr;
+		unsigned _lastQueuedDrawVertexCountOffset = 0;
 
 		std::shared_ptr<DrawableGeo> AllocateDrawableGeo()
 		{
