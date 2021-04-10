@@ -41,6 +41,7 @@ namespace RenderCore { namespace Metal_Vulkan
         VkImageView							GetImageView() const { return _imageView.get(); }
         VkBufferView						GetBufferView() const { return _bufferView.get(); }
         std::pair<unsigned, unsigned>       GetBufferRangeOffsetAndSize() const { return _bufferRange; }
+        const VkImageSubresourceRange&      GetImageSubresourceRange() const { return (VkImageSubresourceRange&)_imageSubresourceRange; }
 
         enum class Type { ImageView, BufferView, BufferAndRange };
         Type GetType() const { return _type; }
@@ -50,6 +51,7 @@ namespace RenderCore { namespace Metal_Vulkan
         VulkanSharedPtr<VkBufferView>	_bufferView;        // used for VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT
         Type                            _type;
         std::pair<unsigned, unsigned>   _bufferRange;       // used for basic VkBuffer bindings (eg, with VkDescriptorBufferInfo)
+        uint8_t                         _imageSubresourceRange[5*4];
 		std::shared_ptr<Resource>		_resource;
     };
 }}

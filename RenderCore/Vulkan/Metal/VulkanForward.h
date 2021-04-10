@@ -86,6 +86,8 @@ extern "C"
     typedef struct VkPhysicalDeviceProperties VkPhysicalDeviceProperties;
     typedef struct VkAllocationCallbacks VkAllocationCallbacks;
 
+    typedef struct VkImageSubresourceRange VkImageSubresourceRange;
+
     using VkFormat_ = uint32_t;
     using VkDescriptorType_ = uint32_t;
 	using VkQueryType_ = uint32_t;

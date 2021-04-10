@@ -183,6 +183,18 @@ namespace RenderCore { namespace Metal_Vulkan
 			VkBuffer dstBuffer,
 			uint32_t regionCount,
 			const VkBufferImageCopy* pRegions);
+		void ClearColorImage(
+			VkImage image,
+			VkImageLayout imageLayout,
+			const VkClearColorValue* pColor,
+			uint32_t rangeCount,
+			const VkImageSubresourceRange* pRanges);
+		void ClearDepthStencilImage(
+			VkImage image,
+			VkImageLayout imageLayout,
+			const VkClearDepthStencilValue* pDepthStencil,
+			uint32_t rangeCount,
+			const VkImageSubresourceRange* pRanges);
 		void PipelineBarrier(
 			VkPipelineStageFlags            srcStageMask,
 			VkPipelineStageFlags            dstStageMask,
@@ -233,13 +245,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	class GraphicsEncoder
 	{
 	public:
-		//	------ Draw & Clear -------
-		void        Clear(const ResourceView& renderTarget, const VectorPattern<float,4>& clearColour);
-		void        Clear(const ResourceView& depthStencil, ClearFilter::BitField clearFilter, float depth, unsigned stencil);
-		void        ClearUInt(const ResourceView& unorderedAccess, const VectorPattern<unsigned,4>& clearColour);
-		void        ClearFloat(const ResourceView& unorderedAccess, const VectorPattern<float,4>& clearColour);
-		void        ClearStencil(const ResourceView& depthStencil, unsigned stencil);
-
 		//	------ Non-pipeline states (that can be changed mid-render pass) -------
 		void        Bind(IteratorRange<const VertexBufferView*> vbViews, const IndexBufferView& ibView);
 		void		SetStencilRef(unsigned stencilRef);
@@ -370,6 +375,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		GraphicsEncoder_ProgressivePipeline BeginGraphicsEncoder_ProgressivePipeline(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
 		ComputeEncoder_ProgressivePipeline BeginComputeEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
 		BlitEncoder BeginBlitEncoder();
+
+		void Clear(const IResourceView& renderTarget, const VectorPattern<float,4>& clearColour);
+		void Clear(const IResourceView& depthStencil, ClearFilter::BitField clearFilter, float depth, unsigned stencil);
+		void ClearUInt(const IResourceView& unorderedAccess, const VectorPattern<unsigned,4>& clearColour);
+		void ClearFloat(const IResourceView& unorderedAccess, const VectorPattern<float,4>& clearColour);
+		void ClearStencil(const IResourceView& depthStencil, unsigned stencil);
 
 		static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
 

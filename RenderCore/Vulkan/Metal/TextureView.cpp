@@ -122,6 +122,8 @@ namespace RenderCore { namespace Metal_Vulkan
         // of the relevant information.
         auto createInfo = MakeImageViewCreateInfo(window, image, true);
         _imageView = factory.CreateImageView(createInfo);
+        static_assert(sizeof(_imageSubresourceRange) >= sizeof(VkImageSubresourceRange));
+        ((VkImageSubresourceRange&)_imageSubresourceRange) = createInfo.subresourceRange;
     }
 
 	ResourceView::ResourceView(
@@ -153,6 +155,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
             auto createInfo = MakeImageViewCreateInfo(adjWindow, res->GetImage(), true);
             _imageView = factory.CreateImageView(createInfo);
+            static_assert(sizeof(_imageSubresourceRange) >= sizeof(VkImageSubresourceRange));
+            ((VkImageSubresourceRange&)_imageSubresourceRange) = createInfo.subresourceRange;
         } else {
             assert(res->GetBuffer());
             auto finalFmt = ResolveVkFormat(tDesc._format, window._format, formatUsage);

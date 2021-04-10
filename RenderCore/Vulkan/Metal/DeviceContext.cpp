@@ -532,9 +532,10 @@ namespace RenderCore { namespace Metal_Vulkan
 	: _pipelineLayout(pipelineLayout)
 	, _sharedState(sharedState)
 	{
-		if (_pipelineLayout && _sharedState) {
+		if (_sharedState) {
 			assert(_sharedState->_currentEncoder == nullptr && _sharedState->_currentEncoderType == VulkanEncoderSharedState::EncoderType::None);
 			assert(_sharedState->_renderPass != nullptr);
+			assert(_pipelineLayout);
 			_sharedState->_currentEncoder = this;
 			_sharedState->_currentEncoderType = VulkanEncoderSharedState::EncoderType::Graphics;
 
@@ -683,9 +684,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	ComputeEncoder_ProgressivePipeline::~ComputeEncoder_ProgressivePipeline()
 	{
-		assert(_sharedState->_currentEncoder == this);
-		_sharedState->_currentEncoder = nullptr;
-		_sharedState->_currentEncoderType = VulkanEncoderSharedState::EncoderType::None;
+		if (_sharedState) {
+			assert(_sharedState->_currentEncoder == this);
+			_sharedState->_currentEncoder = nullptr;
+			_sharedState->_currentEncoderType = VulkanEncoderSharedState::EncoderType::None;
+		}
 	}
 
 	GraphicsEncoder_Optimized DeviceContext::BeginGraphicsEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
@@ -888,6 +891,50 @@ namespace RenderCore { namespace Metal_Vulkan
 		_sharedState->_inBltPass = false;
 	}
 
+	void        DeviceContext::Clear(const IResourceView& renderTarget, const VectorPattern<float,4>& clearColour)
+	{
+		// 
+		auto& resView = *checked_cast<const ResourceView*>(&renderTarget);
+		auto& res = *resView.GetResource();
+		if (res.GetImage()) {
+			VkClearColorValue clearValue;
+			clearValue.float32[0] = clearColour[0];
+			clearValue.float32[1] = clearColour[1];
+			clearValue.float32[2] = clearColour[2];
+			clearValue.float32[3] = clearColour[3];
+			VkImageSubresourceRange subResRange = resView.GetImageSubresourceRange();
+			_sharedState->_commandList.ClearColorImage(
+				res.GetImage(),
+				(VkImageLayout)Internal::AsVkImageLayout(res._steadyStateLayout),
+				&clearValue, 1, &subResRange);
+		} else {
+			Throw(std::runtime_error("Attempting to clear non-image resource with GraphicsEncoder::Clear"));
+		}
+	}
+
+	void        DeviceContext::Clear(const IResourceView& depthStencil, ClearFilter::BitField clearFilter, float depth, unsigned stencil)
+	{
+		auto& resView = *checked_cast<const ResourceView*>(&depthStencil);
+		auto& res = *resView.GetResource();
+		if (res.GetImage()) {
+			VkClearDepthStencilValue clearValue;
+			clearValue.depth = depth;
+			clearValue.stencil = stencil;
+			VkImageSubresourceRange subResRange = resView.GetImageSubresourceRange();
+			if (!(clearFilter & ClearFilter::Depth))
+				subResRange.aspectMask &= ~VK_IMAGE_ASPECT_DEPTH_BIT;
+			if (!(clearFilter & ClearFilter::Stencil))
+				subResRange.aspectMask &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
+			if (!subResRange.aspectMask) return;
+			_sharedState->_commandList.ClearDepthStencilImage(
+				res.GetImage(),
+				(VkImageLayout)Internal::AsVkImageLayout(res._steadyStateLayout),
+				&clearValue, 1, &subResRange);
+		} else {
+			Throw(std::runtime_error("Attempting to clear non-image resource with GraphicsEncoder::Clear"));
+		}
+	}
+
 	CommandList& DeviceContext::GetActiveCommandList()
 	{
 		assert(_sharedState->_commandList.GetUnderlying());
@@ -1085,6 +1132,32 @@ namespace RenderCore { namespace Metal_Vulkan
 			srcImage, srcImageLayout,
 			dstBuffer,
 			regionCount, pRegions);
+	}
+
+	void CommandList::ClearColorImage(
+		VkImage image,
+		VkImageLayout imageLayout,
+		const VkClearColorValue* pColor,
+		uint32_t rangeCount,
+		const VkImageSubresourceRange* pRanges)
+	{
+		vkCmdClearColorImage(
+			_underlying.get(),
+			image, imageLayout, 
+			pColor, rangeCount, pRanges);
+	}
+
+	void CommandList::ClearDepthStencilImage(
+		VkImage image,
+		VkImageLayout imageLayout,
+		const VkClearDepthStencilValue* pDepthStencil,
+		uint32_t rangeCount,
+		const VkImageSubresourceRange* pRanges)
+	{
+		vkCmdClearDepthStencilImage(
+			_underlying.get(),
+			image, imageLayout, 
+			pDepthStencil, rangeCount, pRanges);
 	}
 
 	void CommandList::PipelineBarrier(
