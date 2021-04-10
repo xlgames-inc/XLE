@@ -7,9 +7,6 @@
 #pragma once
 
 #include "../IDevice_Forward.h"
-#include "../Init.h"
-#include "../../Assets/AssetUtils.h"
-#include "../../Assets/IntermediateCompilers.h"
 #include <memory>
 #include <vector>
 
@@ -23,10 +20,6 @@ namespace RenderCore { namespace Assets
     public:
         static RenderCore::IDevice& GetDevice() { return *s_instance->_device; }
         static bool HasInstance() { return s_instance != nullptr; }
-        // static const ::Assets::DirectorySearchRules& GetTechniqueConfigDirs() { return s_instance->_techConfDirs; }
-
-        void InitModelCompilers();
-		void ShutdownModelCompilers();
 
         Services(const std::shared_ptr<RenderCore::IDevice>& device);
         ~Services();
@@ -38,13 +31,7 @@ namespace RenderCore { namespace Assets
         const Services& operator=(const Services&) = delete;
     protected:
         std::shared_ptr<RenderCore::IDevice> _device;
-        std::unique_ptr<ShaderService> _shaderService;
-        // ::Assets::DirectorySearchRules _techConfDirs;
-        ::Assets::IntermediateCompilers::RegisteredCompilerId _shaderCompilerRegistration;
         static Services* s_instance;
-
-		std::vector<::Assets::IntermediateCompilers::RegisteredCompilerId> _modelCompilers;
-        bool _modelCompilersLoaded = false;
     };
 }}
 

@@ -2,6 +2,7 @@
 foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
 
     set(Src
+        Apparatuses.cpp
         BasicDelegates.cpp
         CommonResources.cpp
         CommonUtils.cpp
@@ -27,6 +28,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         TextureLoaders.cpp
         )
     set(Headers
+        Apparatuses.h
         BasicDelegates.h
         CommonBindings.h
         CommonResources.h
@@ -46,6 +48,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         SimpleModelDeform.h
         SimpleModelRenderer.h
         SkinDeformer.h
+        SubFrameEvents.h
         TechniqueDelegates.h
         TechniqueMaterial.h
         Techniques.h

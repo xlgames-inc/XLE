@@ -14,6 +14,9 @@
 #define ILLUM_LEGACY_TECH "xleres/TechniqueLibrary/Config/Legacy/IllumLegacy.tech"
 #define ILLUM_LEGACY_DS "xleres/TechniqueLibrary/Config/Legacy/IllumLegacy.ds"
 
+#define MAIN_PIPELINE "xleres/TechniqueLibrary/Config/main.pipeline"
+#define IMMEDIATE_PIPELINE "xleres/TechniqueLibrary/Config/immediate.pipeline"
+
 #define ROOT_SIGNATURE_CFG "xleres/TechniqueLibrary/System/RootSignature.cfg"
 #define ROOT_SIGNATURE_COMPUTE_CFG "xleres/TechniqueLibrary/System/RootSignatureCS.cfg"
 

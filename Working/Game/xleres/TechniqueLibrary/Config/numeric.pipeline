@@ -1,0 +1,34 @@
+DescriptorSet Numeric
+{
+	SampledTexture tex0;
+	SampledTexture tex1;
+	SampledTexture tex2;
+	SampledTexture tex3;
+	SampledTexture tex4;
+	SampledTexture tex5;
+	SampledTexture tex6;
+	SampledTexture tex7;
+	SampledTexture tex8;
+	SampledTexture tex9;
+	SampledTexture tex10;
+	SampledTexture tex11;
+	SampledTexture tex12;
+	SampledTexture tex13;
+	SampledTexture tex14;
+	SampledTexture tex15;
+
+	Sampler sampler0;
+	Sampler sampler1;
+	Sampler sampler2;
+	Sampler sampler3;
+	Sampler sampler4;
+	Sampler sampler5;
+	Sampler sampler6;
+
+	UniformBuffer cb0;
+	UniformBuffer cb1;
+	UniformBuffer cb2;
+	UniformBuffer cb3;
+
+	Sampler sampler0;
+};
