@@ -26,7 +26,7 @@ namespace UnitTests
 
 		std::shared_ptr<RenderCore::IDevice> _device;
 		std::unique_ptr<RenderCore::ShaderService> _shaderService;
-		std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
+		std::shared_ptr<RenderCore::IShaderSource> _shaderSource;
 
         std::shared_ptr<RenderCore::ICompiledPipelineLayout> _pipelineLayout;
         std::unique_ptr<RenderCore::LegacyRegisterBindingDesc> _defaultLegacyBindings;
@@ -42,10 +42,10 @@ namespace UnitTests
     std::unique_ptr<MetalTestHelper> MakeTestHelper();
 
     RenderCore::CompiledShaderByteCode MakeShader(
-        const std::shared_ptr<RenderCore::ShaderService::IShaderSource>& shaderSource, 
+        const std::shared_ptr<RenderCore::IShaderSource>& shaderSource, 
         StringSection<> shader, StringSection<> shaderModel, StringSection<> defines = {});
     RenderCore::Metal::ShaderProgram MakeShaderProgram(
-        const std::shared_ptr<RenderCore::ShaderService::IShaderSource>& shaderSource,
+        const std::shared_ptr<RenderCore::IShaderSource>& shaderSource,
         const std::shared_ptr<RenderCore::ICompiledPipelineLayout>& pipelineLayout,
         StringSection<> vs, StringSection<> ps);
 

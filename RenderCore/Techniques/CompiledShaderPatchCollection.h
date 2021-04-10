@@ -133,7 +133,7 @@ namespace RenderCore { namespace Techniques
 	};
 
 	::Assets::IntermediateCompilers::CompilerRegistration RegisterInstantiateShaderGraphCompiler(
-		const std::shared_ptr<ShaderService::IShaderSource>& shaderSource,
+		const std::shared_ptr<IShaderSource>& shaderSource,
 		::Assets::IntermediateCompilers& intermediateCompilers);
 
 }}

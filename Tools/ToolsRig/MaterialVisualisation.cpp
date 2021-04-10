@@ -364,7 +364,7 @@ namespace ToolsRig
 
 		const RenderCore::Techniques::CompiledShaderPatchCollection* _patchCollection;
 		IteratorRange<const uint64_t*> _patchExpansions;
-		std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
+		std::shared_ptr<RenderCore::IShaderSource> _shaderSource;
 		std::string _vsTechniqueCode;
 		std::string _psTechniqueCode;
 
@@ -437,7 +437,7 @@ namespace ToolsRig
 				RenderCore::MinimalShaderSource::Flags::CompileInBackground);
 		}
 	private:
-		std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
+		std::shared_ptr<RenderCore::IShaderSource> _shaderSource;
 		ShaderSourceParser::PreviewOptions _previewOptions;
 	};
 

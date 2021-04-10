@@ -122,21 +122,10 @@ namespace RenderCore
         return _shaderSource;
     }
 
-    ShaderService* ShaderService::s_instance = nullptr;
-    void ShaderService::SetInstance(ShaderService* instance)
-    {
-        if (instance) {
-            assert(!s_instance);
-            s_instance = instance;
-        } else {
-            s_instance = nullptr;
-        }
-    }
-
     ShaderService::ShaderService() {}
     ShaderService::~ShaderService() {}
 
-    ShaderService::IShaderSource::~IShaderSource() {}
+    IShaderSource::~IShaderSource() {}
     ILowLevelCompiler::~ILowLevelCompiler() {}
 
 

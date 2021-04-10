@@ -44,7 +44,7 @@ namespace RenderCore { namespace Metal_DX11
         virtual void AdaptShaderModel(
             ResChar destination[], 
             const size_t destinationCount,
-			StringSection<ResChar> inputShaderModel) const;
+			StringSection<ResChar> inputShaderModel) const override;
 
         virtual bool DoLowLevelCompile(
             /*out*/ Payload& payload,
@@ -53,10 +53,12 @@ namespace RenderCore { namespace Metal_DX11
             const void* sourceCode, size_t sourceCodeLength,
             const ResId& shaderPath,
 			StringSection<::Assets::ResChar> definesTable,
-			IteratorRange<const SourceLineMarker*> sourceLineMarkers) const;
+			IteratorRange<const SourceLineMarker*> sourceLineMarkers) const override;
 
         virtual std::string MakeShaderMetricsString(
-            const void* byteCode, size_t byteCodeSize) const;
+            const void* byteCode, size_t byteCodeSize) const override;
+
+        virtual ShaderLanguage GetShaderLanguage() const override { return ShaderLanguage::HLSL; }
 
         HRESULT D3DReflect_Wrapper(
             const void* pSrcData, size_t SrcDataSize, 

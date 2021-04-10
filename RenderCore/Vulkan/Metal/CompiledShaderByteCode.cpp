@@ -509,6 +509,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		virtual std::string MakeShaderMetricsString(
 			const void* byteCode, size_t byteCodeSize) const override;
 
+		virtual ShaderLanguage GetShaderLanguage() const override;
+
 		GLSLToSPIRVCompiler(
 			const VulkanCompilerConfiguration& cfg);
 		~GLSLToSPIRVCompiler();
@@ -582,6 +584,11 @@ namespace RenderCore { namespace Metal_Vulkan
 			return "<<error: buffer is too small>>";
 		}
 	}
+
+	ShaderLanguage GLSLToSPIRVCompiler::GetShaderLanguage() const
+	{
+		return ShaderLanguage::GLSL;
+	}
 	
 	GLSLToSPIRVCompiler::GLSLToSPIRVCompiler(const VulkanCompilerConfiguration& cfg) 
 	: _cfg(cfg)
@@ -621,6 +628,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			const ResId& shaderPath,
 			StringSection<::Assets::ResChar> definesTable,
 			IteratorRange<const SourceLineMarker*> sourceLineMarkers) const override;
+
+		virtual ShaderLanguage GetShaderLanguage() const override;
 
 		HLSLCCToSPIRVCompiler(
 			std::shared_ptr<ILowLevelCompiler> hlslCompiler, 
@@ -720,6 +729,11 @@ namespace RenderCore { namespace Metal_Vulkan
 #else
 		return false;
 #endif
+	}
+
+	ShaderLanguage HLSLCCToSPIRVCompiler::GetShaderLanguage() const
+	{
+		return ShaderLanguage::HLSL;
 	}
 
 	HLSLCCToSPIRVCompiler::HLSLCCToSPIRVCompiler(

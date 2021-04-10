@@ -185,7 +185,7 @@ namespace RenderCore
 		}
 
 		ShaderCompileOperation(
-			ShaderService::IShaderSource& shaderSource,
+			IShaderSource& shaderSource,
 			const ILowLevelCompiler::ResId& resId,
 			StringSection<> definesTable)
 		: _byteCode { shaderSource.CompileFromFile(resId, definesTable) }
@@ -201,12 +201,12 @@ namespace RenderCore
 		{
 		}
 
-		ShaderService::IShaderSource::ShaderByteCodeBlob _byteCode;
+		IShaderSource::ShaderByteCodeBlob _byteCode;
 		::Assets::Blob _metrics;
 	};
 
 	::Assets::IntermediateCompilers::CompilerRegistration RegisterShaderCompiler(
-		const std::shared_ptr<ShaderService::IShaderSource>& shaderSource,
+		const std::shared_ptr<IShaderSource>& shaderSource,
 		::Assets::IntermediateCompilers& intermediateCompilers)
 	{
 		auto result = intermediateCompilers.RegisterCompiler(

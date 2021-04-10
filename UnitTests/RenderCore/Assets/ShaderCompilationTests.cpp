@@ -142,7 +142,7 @@ namespace UnitTests
 		::Assets::MainFileSystem::GetMountingTree()->Unmount(mnt);
 	}
 
-	class CountingShaderSource : public RenderCore::ShaderService::IShaderSource
+	class CountingShaderSource : public RenderCore::IShaderSource
 	{
 	public:
 		ShaderByteCodeBlob CompileFromFile(
@@ -172,9 +172,9 @@ namespace UnitTests
 			return _chain->GenerateMetrics(byteCodeBlob);
 		}
 
-		CountingShaderSource(const std::shared_ptr<RenderCore::ShaderService::IShaderSource>& chain)
+		CountingShaderSource(const std::shared_ptr<RenderCore::IShaderSource>& chain)
 		: _chain(chain), _compileFromFileCount(0) {}
-		std::shared_ptr<RenderCore::ShaderService::IShaderSource> _chain;
+		std::shared_ptr<RenderCore::IShaderSource> _chain;
 		mutable std::atomic<unsigned> _compileFromFileCount = 0;
 	};
 

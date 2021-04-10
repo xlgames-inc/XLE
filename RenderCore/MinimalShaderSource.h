@@ -31,7 +31,7 @@ namespace RenderCore
             const ::Assets::DirectorySearchRules& searchRules) = 0;
     };
 
-	class MinimalShaderSource : public ShaderService::IShaderSource
+	class MinimalShaderSource : public IShaderSource
 	{
 	public:
 		ShaderByteCodeBlob CompileFromFile(
@@ -64,7 +64,7 @@ namespace RenderCore
 	};
 
 	::Assets::IntermediateCompilers::CompilerRegistration RegisterShaderCompiler(
-		const std::shared_ptr<ShaderService::IShaderSource>& shaderSource,
+		const std::shared_ptr<IShaderSource>& shaderSource,
 		::Assets::IntermediateCompilers& intermediateCompilers);
 }
 

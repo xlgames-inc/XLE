@@ -237,7 +237,7 @@ namespace UnitTests
 		auto testStorageTexture = CreateTestStorageTexture(*testHelper->_device, *threadContext);
 		auto testStorageBuffer = CreateTestStorageBuffer(*testHelper->_device);
 		
-		std::shared_ptr<RenderCore::ShaderService::IShaderSource> customShaderSource;
+		std::shared_ptr<RenderCore::IShaderSource> customShaderSource;
 
 		auto* vulkanDevice  = (RenderCore::IDeviceVulkan*)testHelper->_device->QueryInterface(typeid(RenderCore::IDeviceVulkan).hash_code());
 		if (vulkanDevice) {

@@ -290,11 +290,11 @@ namespace RenderCore { namespace Techniques
 	}
 
 	static auto InstantiateShaderGraph_CompileFromFile(
-		ShaderService::IShaderSource& internalShaderSource,
+		IShaderSource& internalShaderSource,
 		const ILowLevelCompiler::ResId& resId, 
 		StringSection<> definesTable,
 		const CompiledShaderPatchCollection& patchCollection,
-		IteratorRange<const uint64_t*> redirectedPatchFunctions) -> ShaderService::IShaderSource::ShaderByteCodeBlob
+		IteratorRange<const uint64_t*> redirectedPatchFunctions) -> IShaderSource::ShaderByteCodeBlob
 	{
 		if (patchCollection.GetInterface().GetPatches().empty())
 			return internalShaderSource.CompileFromFile(resId, definesTable);
@@ -352,7 +352,7 @@ namespace RenderCore { namespace Techniques
 		}
 
 		ShaderGraphCompileOperation(
-			ShaderService::IShaderSource& shaderSource,
+			IShaderSource& shaderSource,
 			const ILowLevelCompiler::ResId& resId,
 			StringSection<> definesTable,
 			const CompiledShaderPatchCollection& patchCollection,
@@ -367,11 +367,11 @@ namespace RenderCore { namespace Techniques
 		{
 		}
 
-		ShaderService::IShaderSource::ShaderByteCodeBlob _byteCode;
+		IShaderSource::ShaderByteCodeBlob _byteCode;
 	};
 
 	::Assets::IntermediateCompilers::CompilerRegistration RegisterInstantiateShaderGraphCompiler(
-		const std::shared_ptr<ShaderService::IShaderSource>& shaderSource,
+		const std::shared_ptr<IShaderSource>& shaderSource,
 		::Assets::IntermediateCompilers& intermediateCompilers)
 	{
 		auto result = intermediateCompilers.RegisterCompiler(

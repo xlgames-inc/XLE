@@ -334,7 +334,7 @@ namespace UnitTests
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 			//    U T I L I T Y    F N S
 
-	RenderCore::CompiledShaderByteCode MakeShader(const std::shared_ptr<RenderCore::ShaderService::IShaderSource>& shaderSource, StringSection<> shader, StringSection<> shaderModel, StringSection<> defines)
+	RenderCore::CompiledShaderByteCode MakeShader(const std::shared_ptr<RenderCore::IShaderSource>& shaderSource, StringSection<> shader, StringSection<> shaderModel, StringSection<> defines)
 	{
 		auto codeBlob = shaderSource->CompileFromMemory(shader, "main", shaderModel, defines);
 		if (!codeBlob._payload || codeBlob._payload->empty()) {
@@ -349,7 +349,7 @@ namespace UnitTests
 	}
 
 	RenderCore::Metal::ShaderProgram MakeShaderProgram(
-        const std::shared_ptr<RenderCore::ShaderService::IShaderSource>& shaderSource,
+        const std::shared_ptr<RenderCore::IShaderSource>& shaderSource,
         const std::shared_ptr<RenderCore::ICompiledPipelineLayout>& pipelineLayout,
         StringSection<> vs, StringSection<> ps)
 	{

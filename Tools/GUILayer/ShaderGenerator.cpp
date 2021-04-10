@@ -64,7 +64,7 @@ namespace GUILayer
 	}
 
 	static RenderCore::CompiledShaderByteCode MakeCompiledShaderByteCode(
-		RenderCore::ShaderService::IShaderSource& shaderSource,
+		RenderCore::IShaderSource& shaderSource,
 		StringSection<> sourceCode, StringSection<> definesTable,
 		RenderCore::ShaderStage stage)
 	{
@@ -151,7 +151,7 @@ namespace GUILayer
 				
 	private:
 		ShaderSourceParser::InstantiatedShader _previewShader;
-		std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
+		std::shared_ptr<RenderCore::IShaderSource> _shaderSource;
 		bool _pretransformedFlag;
 	};
 #endif

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Types.h"
+#include "ShaderLangUtil.h"
 #include "../Assets/AssetsCore.h"
 #include "../Assets/DepVal.h"
 #include "../Utility/StringUtils.h"
@@ -87,7 +88,35 @@ namespace RenderCore
         virtual std::string MakeShaderMetricsString(
             const void* byteCode, size_t byteCodeSize) const = 0;
 
+        virtual ShaderLanguage GetShaderLanguage() const = 0;
+
         virtual ~ILowLevelCompiler();
+    };
+
+    class IShaderSource
+    {
+    public:
+        struct ShaderByteCodeBlob
+        {
+            ::Assets::Blob _payload, _errors;
+            std::vector<::Assets::DependentFileState> _deps;
+        };
+
+        virtual ShaderByteCodeBlob CompileFromFile(
+            const ILowLevelCompiler::ResId& resId, 
+            StringSection<> definesTable) const = 0;
+        
+        virtual ShaderByteCodeBlob CompileFromMemory(
+            StringSection<> shaderInMemory, StringSection<> entryPoint, 
+            StringSection<> shaderModel, StringSection<> definesTable) const = 0;
+
+        virtual ILowLevelCompiler::ResId MakeResId(
+            StringSection<> initializer) const = 0;
+
+        virtual std::string GenerateMetrics(
+            IteratorRange<const void*> byteCodeBlob) const = 0;
+
+        virtual ~IShaderSource();
     };
 
     class ShaderService
@@ -108,43 +137,13 @@ namespace RenderCore
 			ShaderHeader(StringSection<char> identifier, StringSection<char> shaderModel, bool dynamicLinkageEnabled = false);
         };
 
-        class IShaderSource
-        {
-        public:
-            struct ShaderByteCodeBlob
-            {
-		        ::Assets::Blob _payload, _errors;
-                std::vector<::Assets::DependentFileState> _deps;
-            };
-
-            virtual ShaderByteCodeBlob CompileFromFile(
-                const ILowLevelCompiler::ResId& resId, 
-                StringSection<> definesTable) const = 0;
-            
-            virtual ShaderByteCodeBlob CompileFromMemory(
-                StringSection<> shaderInMemory, StringSection<> entryPoint, 
-				StringSection<> shaderModel, StringSection<> definesTable) const = 0;
-
-            virtual ILowLevelCompiler::ResId MakeResId(
-                StringSection<> initializer) const = 0;
-
-            virtual std::string GenerateMetrics(
-                IteratorRange<const void*> byteCodeBlob) const = 0;
-
-            virtual ~IShaderSource();
-        };
-
         void SetShaderSource(std::shared_ptr<IShaderSource> shaderSource);
         const std::shared_ptr<IShaderSource>& GetShaderSource();
-
-        static ShaderService& GetInstance() { assert(s_instance); return *s_instance; }
-        static void SetInstance(ShaderService*);
 
         ShaderService();
         ~ShaderService();
 
     protected:
-        static ShaderService* s_instance;
         std::shared_ptr<IShaderSource> _shaderSource;
     };
 
