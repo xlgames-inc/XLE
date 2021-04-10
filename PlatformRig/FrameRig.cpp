@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -7,7 +5,7 @@
 #include "FrameRig.h"
 #include "AllocationProfiler.h"
 #include "OverlaySystem.h"
-#include "MainInputHandler.h"
+// #include "MainInputHandler.h"
 
 #include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/IAnnotator.h"
@@ -21,17 +19,19 @@
 #include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/ImmediateDrawables.h"
+#include "../RenderCore/Techniques/SubFrameEvents.h"
+#include "../RenderCore/Techniques/Techniques.h"
 
-#include "../Assets/CompileAndAsyncManager.h"
-#include "../Assets/AssetServices.h"
-#include "../Assets/AssetSetManager.h"
+// #include "../Assets/CompileAndAsyncManager.h"
+// #include "../Assets/AssetServices.h"
+// #include "../Assets/AssetSetManager.h"
 
 #include "../ConsoleRig/ResourceBox.h"
 
 #include "../Utility/IntrusivePtr.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/Profiling/CPUProfiler.h"
-#include "../Utility/Threading/ThreadingUtils.h"
+// #include "../Utility/Threading/ThreadingUtils.h"
 
 #include "../OSServices/Log.h"
 #include "../OSServices/TimeUtils.h"
@@ -40,8 +40,6 @@
 
 #include <tuple>
 #include <iomanip>
-
-#include "../ConsoleRig/IncludeLUA.h"
 
 namespace PlatformRig
 {
@@ -63,24 +61,6 @@ namespace PlatformRig
         unsigned    _bufferStart, _bufferEnd;
     };
 
-    class FrameRigDisplay : public RenderOverlays::DebuggingDisplay::IWidget
-    {
-    public:
-        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
-        bool    ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input);
-
-        FrameRigDisplay(
-            std::shared_ptr<DebugScreensSystem> debugSystem,
-            const AccumulatedAllocations::Snapshot& prevFrameAllocationCount, const FrameRateRecorder& frameRate);
-        ~FrameRigDisplay();
-    protected:
-        const AccumulatedAllocations::Snapshot* _prevFrameAllocationCount;
-        const FrameRateRecorder* _frameRate;
-        unsigned _subMenuOpen;
-
-        std::weak_ptr<DebugScreensSystem> _debugSystem;
-    };
-
     class FrameRig::Pimpl
     {
     public:
@@ -91,19 +71,13 @@ namespace PlatformRig
         unsigned    _frameRenderCount;
         uint64_t      _frameLimiter;
         uint64_t      _timerFrequency;
-        bool        _updateAsyncMan;
 
-        std::shared_ptr<OverlaySystemSet> _mainOverlaySys;
-		std::shared_ptr<OverlaySystemSet> _debugScreenOverlaySystem;
-        std::shared_ptr<DebugScreensSystem> _debugSystem;
-        std::vector<PostPresentCallback> _postPresentCallbacks;
-
+        
         Pimpl()
         : _prevFrameStartTime(0) 
         , _timerFrequency(OSServices::GetPerformanceCounterFrequency())
         , _frameRenderCount(0)
         , _frameLimiter(0)
-        , _updateAsyncMan(false)
         {
             _timerToSeconds = 1.0f / float(_timerFrequency);
         }
@@ -134,58 +108,8 @@ namespace PlatformRig
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    class DebugScreensOverlay : public IOverlaySystem
-    {
-    public:
-        DebugScreensOverlay(
-            std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem,
-            std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> immediateDrawables,
-            std::shared_ptr<RenderOverlays::FontRenderingManager> fontRenderer)
-        : _debugScreensSystem(debugScreensSystem)
-        , _inputListener(std::make_shared<PlatformRig::DebugScreensInputHandler>(std::move(debugScreensSystem)))
-        , _immediateDrawables(std::move(immediateDrawables))
-        , _fontRenderer(std::move(fontRenderer))
-        {
-        }
-
-        std::shared_ptr<IInputListener> GetInputListener()  { return _inputListener; }
-
-        void Render(
-            RenderCore::IThreadContext& threadContext,
-			const RenderCore::IResourcePtr& renderTarget,
-            RenderCore::Techniques::ParsingContext& parserContext)
-        {
-            auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, *_immediateDrawables, *_fontRenderer);
-            
-            auto targetDesc = renderTarget->GetDesc();
-            Int2 viewportDims{ targetDesc._textureDesc._width, targetDesc._textureDesc._height };
-            _debugScreensSystem->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ {0,0}, viewportDims });
-
-            auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
-            _immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi.GetFrameBufferDesc(), 0);
-        }
-
-        void SetActivationState(bool) {}
-
-    private:
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> _debugScreensSystem;
-        std::shared_ptr<DebugScreensInputHandler> _inputListener;
-        std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> _immediateDrawables;
-        std::shared_ptr<RenderOverlays::FontRenderingManager> _fontRenderer;
-    };
-
-    static std::shared_ptr<IOverlaySystem> CreateDebugScreensOverlay(
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem,
-        std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> immediateDrawables,
-        std::shared_ptr<RenderOverlays::FontRenderingManager> fontRenderer)
-    {
-        return std::make_shared<DebugScreensOverlay>(std::move(debugScreensSystem), std::move(immediateDrawables), std::move(fontRenderer));
-    }
-
-///////////////////////////////////////////////////////////////////////////////
-
     auto FrameRig::ExecuteFrame(
-        RenderCore::IThreadContext& context,
+        std::shared_ptr<RenderCore::IThreadContext> context,
         RenderCore::IPresentationChain* presChain,
 		RenderCore::Techniques::ParsingContext& parserContext,
         HierarchicalCPUProfiler* cpuProfiler) -> FrameResult
@@ -209,19 +133,17 @@ namespace PlatformRig
         }
         _pimpl->_prevFrameStartTime = startTime;
 
-
-        if (_pimpl->_updateAsyncMan)
-            Assets::Services::GetAsyncMan().Update();
-
-		auto presentationTarget = context.BeginFrame(*presChain);
+		auto presentationTarget = context->BeginFrame(*presChain);
 		auto presentationTargetDesc = presentationTarget->GetDesc();
 
-		context.GetAnnotator().Frame_Begin(_pimpl->_frameRenderCount);		// (on Vulkan, we must do this after IThreadContext::BeginFrame(), because that primes the command list in the vulkan device)
+		context->GetAnnotator().Frame_Begin(_pimpl->_frameRenderCount);		// (on Vulkan, we must do this after IThreadContext::BeginFrame(), because that primes the command list in the vulkan device)
 
             //  We must invalidate the cached state at least once per frame.
             //  It appears that the driver might forget bound constant buffers
             //  during the begin frame or present
-        context.InvalidateCachedState();
+        context->InvalidateCachedState();
+
+        RenderCore::Techniques::SetThreadContext(context);
 
 		TRY {
 
@@ -236,7 +158,8 @@ namespace PlatformRig
 			////////////////////////////////
 
 			TRY {
-				_pimpl->_mainOverlaySys->Render(context, presentationTarget, parserContext);
+				if (_mainOverlaySys)
+                    _mainOverlaySys->Render(*context, presentationTarget, parserContext);
 			}
 			CATCH_ASSETS(parserContext)
 			CATCH(const std::exception& e) {
@@ -245,7 +168,8 @@ namespace PlatformRig
 			CATCH_END
 
 			TRY {
-				_pimpl->_debugScreenOverlaySystem->Render(context, presentationTarget, parserContext);
+				if (_debugScreenOverlaySystem)
+                    _debugScreenOverlaySystem->Render(*context, presentationTarget, parserContext);
 			}
 			CATCH_ASSETS(parserContext)
 			CATCH(const std::exception& e) {
@@ -275,22 +199,27 @@ namespace PlatformRig
 
 			parserContext.GetNamedResources().UnbindAll();
 
-			{
-				CPUProfileEvent_Conditional pEvnt2("Present", cpuProfiler);
-				context.Present(*presChain);
-			}
+            if (_subFrameEvents)
+                _subFrameEvents->_onPrePresent.Invoke(*context);
 
 			{
-				for (auto i=_pimpl->_postPresentCallbacks.begin(); i!=_pimpl->_postPresentCallbacks.end(); ++i) {
-					(*i)(context);
-				}
+				CPUProfileEvent_Conditional pEvnt2("Present", cpuProfiler);
+				context->Present(*presChain);
 			}
+
+            if (_subFrameEvents)
+                _subFrameEvents->_onPostPresent.Invoke(*context);
 
 		} CATCH(const std::exception& e) {
 			Log(Error) << "Suppressed error in frame rig render: " << e.what() << std::endl;
 		} CATCH_END
 
-		context.GetAnnotator().Frame_End();
+		context->GetAnnotator().Frame_End();
+
+        if (_subFrameEvents)
+            _subFrameEvents->_onFrameBarrier.Invoke();
+
+        RenderCore::Techniques::SetThreadContext(nullptr);
 
         uint64_t duration = OSServices::GetPerformanceCounter() - startTime;
         _pimpl->_frameRate.PushFrameDuration(duration);
@@ -300,20 +229,13 @@ namespace PlatformRig
             _pimpl->_prevFrameAllocationCount = accAlloc->GetAndClear();
         }
 
-		PlatformRig::FrameRig::RenderResult renderResult { parserContext.HasPendingAssets() };
-
-        if (renderResult._hasPendingResources) {
+        if (parserContext.HasPendingAssets()) {
             ::Threading::Sleep(16);  // slow down while we're building pending resources
         } else {
             Threading::YieldTimeSlice();    // this might be too extreme. We risk not getting execution back for a long while
         }
 
-		::Assets::Services::GetAssetSets().OnFrameBarrier();
-
-        FrameResult result;
-        result._elapsedTime = frameElapsedTime;
-        result._renderResult = renderResult._hasPendingResources;
-        return result;
+        return { frameElapsedTime, parserContext.HasPendingAssets() };
     }
 
     void FrameRig::SetFrameLimiter(unsigned maxFPS)
@@ -322,36 +244,22 @@ namespace PlatformRig
         else { _pimpl->_frameLimiter = 0; }
     }
 
-    void FrameRig::AddPostPresentCallback(const PostPresentCallback& postPresentCallback)
+    void FrameRig::SetMainOverlaySystem(std::shared_ptr<IOverlaySystem> overlaySystem)
     {
-        _pimpl->_postPresentCallbacks.push_back(postPresentCallback);
+        _mainOverlaySys = std::move(overlaySystem);
+    }
+    
+    void FrameRig::SetDebugScreensOverlaySystem(std::shared_ptr<IOverlaySystem> overlaySystem)
+    {
+        _debugScreenOverlaySystem = std::move(overlaySystem);
     }
 
-    const std::shared_ptr<OverlaySystemSet>& FrameRig::GetMainOverlaySystem() { return _pimpl->_mainOverlaySys; }
-    const std::shared_ptr<OverlaySystemSet>& FrameRig::GetDebugScreensOverlaySystem() { return _pimpl->_debugScreenOverlaySystem; }
-    const std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& FrameRig::GetDebugSystem() { return _pimpl->_debugSystem; }
-    void FrameRig::SetUpdateAsyncMan(bool updateAsyncMan) { _pimpl->_updateAsyncMan = updateAsyncMan; }
-
     FrameRig::FrameRig(
-        const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables,
-        const std::shared_ptr<RenderOverlays::FontRenderingManager>& fontRenderer,
-        bool isMainFrameRig)
+        const std::shared_ptr<RenderCore::Techniques::SubFrameEvents>& subFrameEvents)
+    : _subFrameEvents(subFrameEvents)
     {
+        const bool isMainFrameRig = true;
         _pimpl = std::make_unique<Pimpl>();
-
-        _pimpl->_mainOverlaySys = std::make_shared<OverlaySystemSet>();
-		_pimpl->_debugScreenOverlaySystem = std::make_shared<OverlaySystemSet>();
-        _pimpl->_updateAsyncMan = isMainFrameRig;   // only the main frame rig should update the async man (in gui tools the async man update happens in a background thread)
-
-        {
-            _pimpl->_debugSystem = std::make_shared<DebugScreensSystem>();
-            if (isMainFrameRig)
-                _pimpl->_debugSystem->Register(
-                    std::make_shared<FrameRigDisplay>(_pimpl->_debugSystem, _pimpl->_prevFrameAllocationCount, _pimpl->_frameRate),
-                    "FrameRig", DebugScreensSystem::SystemDisplay);
-        }
-
-        _pimpl->_debugScreenOverlaySystem->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem, immediateDrawables, fontRenderer));
 
 		Log(Verbose) << "---- Beginning FrameRig ------------------------------------------------------------------" << std::endl;
         auto accAlloc = AccumulatedAllocations::GetInstance();
@@ -363,35 +271,10 @@ namespace PlatformRig
             if (metrics._blockCount)
                 Log(Verbose) << "(" << metrics._blockCount << ") active normal block allocations in (" << metrics._usage / (1024.f*1024.f) << "M bytes). Ave: (" << metrics._usage / metrics._blockCount << ")." << std::endl;
         }
-
-        if (isMainFrameRig) {
-            using namespace luabridge;
-            auto* luaState = ConsoleRig::Console::GetInstance().GetLuaState();
-            getGlobalNamespace(luaState)
-                .beginClass<FrameRig>("FrameRig")
-                    .addFunction("SetFrameLimiter", &FrameRig::SetFrameLimiter)
-                .endClass();
-            
-            setGlobal(luaState, this, "MainFrameRig");
-        }
     }
 
     FrameRig::~FrameRig() 
     {
-        auto* luaState = ConsoleRig::Console::GetInstance().GetLuaState();
-        
-        bool resetGlobal = false;
-
-        {
-            auto existingValue = luabridge::getGlobal(luaState, "MainFrameRig");
-            resetGlobal = (existingValue.isUserdata() && ((FrameRig*)existingValue) == this);
-        }
-    
-        if (resetGlobal) {
-            // luabridge::setGlobal(luaState, nullptr, "MainFrameRig");
-            lua_pushnil(luaState);
-            lua_setglobal(luaState, "MainFrameRig");
-        }
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -446,6 +329,24 @@ namespace PlatformRig
 
     static const std::string String_IconBegin("xleres/defaultresources/icon_");
     static const std::string String_IconEnd(".png");
+
+    class FrameRigDisplay : public RenderOverlays::DebuggingDisplay::IWidget
+    {
+    public:
+        void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
+        bool    ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input);
+
+        FrameRigDisplay(
+            std::shared_ptr<DebugScreensSystem> debugSystem,
+            const AccumulatedAllocations::Snapshot& prevFrameAllocationCount, const FrameRateRecorder& frameRate);
+        ~FrameRigDisplay();
+    protected:
+        const AccumulatedAllocations::Snapshot* _prevFrameAllocationCount;
+        const FrameRateRecorder* _frameRate;
+        unsigned _subMenuOpen;
+
+        std::weak_ptr<DebugScreensSystem> _debugSystem;
+    };
 
     void    FrameRigDisplay::Render(IOverlayContext& context, Layout& layout, 
                                     Interactables&interactables, InterfaceState& interfaceState)
@@ -644,6 +545,11 @@ namespace PlatformRig
 
     FrameRigDisplay::~FrameRigDisplay()
     {}
+
+    std::shared_ptr<IWidget> FrameRig::CreateDisplay(std::shared_ptr<DebugScreensSystem> debugSystem)
+    {
+        return std::make_shared<FrameRigDisplay>(std::move(debugSystem), _pimpl->_prevFrameAllocationCount, _pimpl->_frameRate);
+    }
 
 }
 

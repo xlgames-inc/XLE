@@ -21,6 +21,7 @@ namespace Utility
 {
     template<typename Type> class InputStreamFormatter;
 }
+namespace Assets { class DirectorySearchRules; }
 
 namespace PlatformRig
 {

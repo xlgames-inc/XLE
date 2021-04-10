@@ -12,6 +12,7 @@
 #include "../../RenderCore/Techniques/RenderPassUtils.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Techniques/ImmediateDrawables.h"
+#include "../../RenderCore/Techniques/Apparatuses.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
@@ -267,6 +268,12 @@ namespace PlatformRig
         std::shared_ptr<RenderOverlays::FontRenderingManager> fontRenderer)
     {
         return std::make_shared<ConsoleOverlaySystem>(std::move(immediateDrawables), std::move(fontRenderer));
+    }
+
+    std::shared_ptr<IOverlaySystem> CreateConsoleOverlaySystem(
+        RenderCore::Techniques::ImmediateDrawingApparatus& immediateDrawing)
+    {
+        return std::make_shared<ConsoleOverlaySystem>(immediateDrawing._immediateDrawables, immediateDrawing._fontRenderingManager);
     }
 
 }

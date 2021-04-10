@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "../PlatformRig/OverlaySystem.h"
+#include "../../PlatformRig/OverlaySystem.h"
 #include <memory>
 
 namespace RenderCore
@@ -23,12 +23,6 @@ namespace Sample
 	{
 	public:
 		std::shared_ptr<RenderCore::IDevice>				_renderDevice;
-		std::shared_ptr<RenderCore::IPresentationChain>		_presentationChain;
-		
-		std::shared_ptr<RenderCore::Techniques::TechniqueContext>	_techniqueContext;
-
-		std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>	_debugScreens;
-		std::shared_ptr<PlatformRig::MainInputHandler>							_mainInputHander;
 	};
 
 	class ISampleOverlay : public PlatformRig::IOverlaySystem

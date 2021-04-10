@@ -447,7 +447,6 @@ namespace RenderCore { namespace Techniques
 
 	TechniqueContext::TechniqueContext()
 	{
-		_defaultRenderStateDelegate = CreateRenderStateDelegate_Default();
 	}
 
 	UnderlyingAPI GetTargetAPI()

@@ -101,4 +101,6 @@ xcuserdata/
 xcshareddata/
 project.xcworkspace/
 
-build
+build/
+.ccls-cache/
+compile_commands.json

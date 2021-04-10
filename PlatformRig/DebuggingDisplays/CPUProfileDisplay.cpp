@@ -7,6 +7,7 @@
 #include "CPUProfileDisplay.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../ConsoleRig/ResourceBox.h"
+#include "../../OSServices/TimeUtils.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/Threading/Mutex.h"
 #include "../../Utility/StringFormat.h"
@@ -23,13 +24,13 @@ namespace PlatformRig { namespace Overlays
 
     static float AsMilliseconds(uint64 profilerTime)
     {
-        static float freqMult = 1000.f / GetPerformanceCounterFrequency();
+        static float freqMult = 1000.f / OSServices::GetPerformanceCounterFrequency();
         return float(profilerTime) * freqMult;
     }
 
     static uint64 MillisecondsAsTimerValue(float milliseconds)
     {
-        static float converter = GetPerformanceCounterFrequency() / 1000.f;
+        static float converter = OSServices::GetPerformanceCounterFrequency() / 1000.f;
         return uint64(milliseconds * converter);
     }
 

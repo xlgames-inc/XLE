@@ -32,7 +32,6 @@
 #include "catch2/catch_approx.hpp"
 
 #include "../../../RenderCore/Techniques/Techniques.h"
-#include "../../../RenderCore/Assets/LocalCompiledShaderSource.h"
 #include "../../../ShaderParser/ShaderInstantiation.h"
 #include "../../../ShaderParser/GraphSyntax.h"
 

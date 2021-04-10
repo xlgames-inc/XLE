@@ -8,23 +8,30 @@
 
 #include "OverlappedWindow.h"
 #include "../RenderCore/IDevice_Forward.h"
-#include "../RenderCore/Techniques/Techniques.h"
+#include "../Utility/StringUtils.h"
+#include "../Utility/FunctionUtils.h"
 
 namespace RenderOverlays { namespace DebuggingDisplay { class DebugScreensSystem; }}
 namespace SceneEngine { class ShadowProjectionDesc; class LightDesc; class ShadowGeneratorDesc; }
-namespace RenderCore { namespace Techniques { class ProjectionDesc; class FrameBufferPool; } }
+namespace RenderCore { namespace Techniques { class ProjectionDesc; class TechniqueContext; } }
 
 namespace PlatformRig
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class GlobalTechniqueContext : public RenderCore::Techniques::TechniqueContext
+    class FrameRig;
+
+    class ScriptInterface
     {
     public:
-        void SetInteger(const char name[], uint32 value);
+        void BindTechniqueContext(const std::string& name, std::shared_ptr<RenderCore::Techniques::TechniqueContext>);
+        void BindFrameRig(const std::string& name, std::shared_ptr<FrameRig>);
 
-        GlobalTechniqueContext();
-        ~GlobalTechniqueContext();
+        ScriptInterface();
+        ~ScriptInterface();
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -37,12 +44,12 @@ namespace PlatformRig
     public:
         void    OnResize(unsigned newWidth, unsigned newHeight);
 
+        Signal<unsigned, unsigned> _onResize;
+
         ResizePresentationChain(
-            const std::shared_ptr<RenderCore::IPresentationChain>& presentationChain,
-			const std::shared_ptr<RenderCore::Techniques::FrameBufferPool>& fbPool);
+            const std::shared_ptr<RenderCore::IPresentationChain>& presentationChain);
     protected:
         std::weak_ptr<RenderCore::IPresentationChain> _presentationChain;
-		std::shared_ptr<RenderCore::Techniques::FrameBufferPool> _fbPool;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

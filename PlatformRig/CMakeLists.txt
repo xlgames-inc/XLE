@@ -9,9 +9,11 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         InputListener.cpp
         MainInputHandler.cpp
         OverlaySystem.cpp
+        PlatformApparatuses.cpp
         PlatformRigUtil.cpp
         Screenshot.cpp
-        UnitCamera.cpp)
+        UnitCamera.cpp
+        DebugScreensOverlay.cpp)
     set(Headers 
         AllocationProfiler.h
         BasicSceneParser.h
@@ -23,17 +25,19 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         MainInputHandler.h
         OverlappedWindow.h
         OverlaySystem.h
+        PlatformApparatuses.h
         PlatformRigUtil.h
         Screenshot.h
-        UnitCamera.h)
+        UnitCamera.h
+        DebugScreensOverlay.h)
 
     set(DebuggingDisplaysSrc 
         #InitDebugDisplays.cpp
         #DebuggingDisplays/BufferUploadDisplay.cpp
         DebuggingDisplays/ConsoleDisplay.cpp
-        #DebuggingDisplays/CPUProfileDisplay.cpp
+        DebuggingDisplays/CPUProfileDisplay.cpp
         #DebuggingDisplays/DynamicImpostersDisplay.cpp
-        #DebuggingDisplays/GPUProfileDisplay.cpp
+        DebuggingDisplays/GPUProfileDisplay.cpp
         #DebuggingDisplays/HierarchicalSpikesDisplay.cpp
         #DebuggingDisplays/HistoricalProfilerDisplay.cpp
         #DebuggingDisplays/PlacementsDisplay.cpp
