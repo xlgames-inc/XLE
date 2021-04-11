@@ -8,6 +8,8 @@
 #define BASIC2D_VSH
 
 #include "../Framework/SystemUniforms.hlsl"
+#include "../Framework/VSIN.hlsl"
+#include "../Framework/VSOUT.hlsl"
 
 #define NDC_POSITIVE 1
 #define NDC_POSITIVE_RIGHT_HANDED 2
@@ -17,6 +19,8 @@
 #else
 	#define NDC NDC_POSITIVE
 #endif
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct ViewFrustumInterpolator
 {
@@ -45,6 +49,57 @@ FullscreenCorner MakeFullscreenCorner(uint vertexId)
 	result.texCoord = result.coord;
 
 	return result;
+}
+
+float4 PixelCoordToSVPosition(float2 pixelCoord)
+{
+	// This is a kind of viewport transform -- unfortunately it needs to
+	// be customized for vulkan because of the different NDC space
+#if NDC == NDC_POSITIVE_RIGHT_HANDED
+	return float4(	pixelCoord.x * SysUniform_ReciprocalViewportDimensions().x *  2.f - 1.f,
+					pixelCoord.y * SysUniform_ReciprocalViewportDimensions().y *  2.f - 1.f,
+					0.f, 1.f);
+#else
+	return float4(	pixelCoord.x * SysUniform_ReciprocalViewportDimensions().x *  2.f - 1.f,
+					pixelCoord.y * SysUniform_ReciprocalViewportDimensions().y * -2.f + 1.f,
+					0.f, 1.f);
+#endif
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+VSOUT frameworkEntry(VSIN vsin)
+{
+	VSOUT output;
+	output.position = PixelCoordToSVPosition(VSIN_GetLocalPosition(vsin).xy);
+
+	#if VSOUT_HAS_COLOR>=1
+		output.color = VSIN_GetColor0(vsin);
+	#endif
+
+	#if VSOUT_HAS_TEXCOORD>=1
+		output.texCoord = VSIN_GetTexCoord0(vsin);
+	#endif
+	
+	#if VSOUT_HAS_TANGENT_FRAME==1
+		output.tangent = VSIN_GetLocalTangent(vsin);
+		output.bitangent = VSIN_GetLocalBitangent(vsin);
+	#endif
+
+	#if (VSOUT_HAS_NORMAL==1)
+		output.normal = VSIN_GetLocalNormal(vsin);
+	#endif
+
+	#if VSOUT_HAS_LOCAL_TANGENT_FRAME==1
+		output.localTangent = VSIN_GetLocalTangent(vsin);
+		output.localBitangent = VSIN_GetLocalBitangent(vsin);
+	#endif
+
+	#if (VSOUT_HAS_LOCAL_NORMAL==1)
+		output.localNormal = VSIN_GetLocalNormal(vsin);
+	#endif
+
+	return output;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -110,7 +165,6 @@ void screenspacerect(
 		 0.f, 1.f);
 }
 
-
 //////////////
 
 struct PSInput_Basic
@@ -119,26 +173,6 @@ struct PSInput_Basic
 	float4 _color	 : COLOR0;
 	float2 _texCoord : TEXCOORD0;
 };
-
-cbuffer ReciprocalViewportDimensionsCB BIND_SEQ_B2
-{
-	float2 ReciprocalViewportDimensions;
-}
-
-float4 PixelCoordToSVPosition(float2 pixelCoord)
-{
-	// This is a kind of viewport transform -- unfortunately it needs to
-	// be customized for vulkan because of the different NDC space
-#if NDC == NDC_POSITIVE_RIGHT_HANDED
-	return float4(	pixelCoord.x * ReciprocalViewportDimensions.x *  2.f - 1.f,
-					pixelCoord.y * ReciprocalViewportDimensions.y *  2.f - 1.f,
-					0.f, 1.f);
-#else
-	return float4(	pixelCoord.x * ReciprocalViewportDimensions.x *  2.f - 1.f,
-					pixelCoord.y * ReciprocalViewportDimensions.y * -2.f + 1.f,
-					0.f, 1.f);
-#endif
-}
 
 float4 P2C(		float2 iPosition : POSITION0,
 				float4 iColor	 : COLOR0,
@@ -194,7 +228,7 @@ void P2CTT(	float2 iPosition	: POSITION0,
 	oColor		= iColor;
 	oTexCoord0	= iTexCoord0;
 	oTexCoord1	= iTexCoord1;
-	oOutputDimensions = 1.0f / ReciprocalViewportDimensions.xy;
+	oOutputDimensions = 1.0f / SysUniform_ReciprocalViewportDimensions().xy;
 }
 
 void P2CCTT(float2 iPosition	: POSITION0,
@@ -215,7 +249,7 @@ void P2CCTT(float2 iPosition	: POSITION0,
 	oColor1		= iColor1;
 	oTexCoord0	= iTexCoord0;
 	oTexCoord1	= iTexCoord1;
-	oOutputDimensions = 1.0f / ReciprocalViewportDimensions.xy;
+	oOutputDimensions = 1.0f / SysUniform_ReciprocalViewportDimensions().xy;
 }
 
 #endif

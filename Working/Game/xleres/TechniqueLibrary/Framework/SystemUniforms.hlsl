@@ -44,4 +44,11 @@ float 		SysUniform_GetGlobalTime() { return GlobalTime; }
 uint 		SysUniform_GetGlobalSamplingPassIndex() { return GlobalSamplingPassIndex; }
 uint 		SysUniform_GetGlobalSamplingPassCount() { return GlobalSamplingPassCount; }
 
+cbuffer ReciprocalViewportDimensionsCB BIND_SEQ_B2
+{
+	float2 ReciprocalViewportDimensions;
+}
+
+float2 		SysUniform_ReciprocalViewportDimensions() { return ReciprocalViewportDimensions; }
+
 #endif

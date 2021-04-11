@@ -87,8 +87,9 @@ namespace RenderCore { namespace Techniques
 		ImmediateRendererTechniqueDelegate() 
 		{
 			auto nascentDesc = std::make_shared<GraphicsPipelineDesc>();
-			nascentDesc->_shaders[(unsigned)ShaderStage::Vertex] = BASIC2D_VERTEX_HLSL ":P2CT:vs_*";
-			nascentDesc->_shaders[(unsigned)ShaderStage::Pixel] = BASIC_PIXEL_HLSL ":PCT:ps_*";
+			nascentDesc->_shaders[(unsigned)ShaderStage::Vertex] = BASIC2D_VERTEX_HLSL ":frameworkEntry:vs_*";
+			nascentDesc->_shaders[(unsigned)ShaderStage::Pixel] = BASIC_PIXEL_HLSL ":frameworkEntry:ps_*";
+			nascentDesc->_selectorPreconfigurationFile = "xleres/TechniqueLibrary/Framework/SelectorPreconfiguration.hlsl";
 
 			nascentDesc->_depthStencil = CommonResourceBox::s_dsDisable;
 			nascentDesc->_rasterization = CommonResourceBox::s_rsCullDisable;

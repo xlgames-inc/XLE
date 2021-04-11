@@ -8,6 +8,8 @@
 #define BASIC3D_VSH
 
 #include "../Framework/SystemUniforms.hlsl"
+#include "../Framework/MainGeometry.hlsl"
+#include "../Framework/Surface.hlsl"
 
 struct PSInput_Basic
 {
@@ -16,16 +18,49 @@ struct PSInput_Basic
 	float2 _texCoord : TEXCOORD0;
 };
 
-cbuffer ReciprocalViewportDimensions
-{
-	float2 ReciprocalViewportDimensions;
-}
-
 float4 TransformPosition(float3 localPosition)
 {
 	float3 worldPosition = localPosition; // mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
 	return mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+VSOUT frameworkEntry(VSIN vsin)
+{
+	VSOUT output;
+	output.position = TransformPosition(VSIN_GetLocalPosition(vsin));
+
+	#if VSOUT_HAS_COLOR>=1
+		output.color = VSIN_GetColor0(vsin);
+	#endif
+
+	#if VSOUT_HAS_TEXCOORD>=1
+		output.texCoord = VSIN_GetTexCoord0(vsin);
+	#endif
+	
+	#if VSOUT_HAS_TANGENT_FRAME==1
+		output.tangent = VSIN_GetLocalTangent(vsin);
+		output.bitangent = VSIN_GetLocalBitangent(vsin);
+	#endif
+
+	#if (VSOUT_HAS_NORMAL==1)
+		output.normal = VSIN_GetLocalNormal(vsin);
+	#endif
+
+	#if VSOUT_HAS_LOCAL_TANGENT_FRAME==1
+		output.localTangent = VSIN_GetLocalTangent(vsin);
+		output.localBitangent = VSIN_GetLocalBitangent(vsin);
+	#endif
+
+	#if (VSOUT_HAS_LOCAL_NORMAL==1)
+		output.localNormal = VSIN_GetLocalNormal(vsin);
+	#endif
+
+	return output;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 float4 PC(		float3 iPosition : POSITION0,
 				float4 iColor	 : COLOR0,

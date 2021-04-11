@@ -7,6 +7,9 @@
 #if !defined(SHADOW_PROJECTION_H)
 #define SHADOW_PROJECTION_H
 
+#define SHADOW_CASCADE_MODE_ARBITRARY 1
+#define SHADOW_CASCADE_MODE_ORTHOGONAL 2
+
 #include "../../Framework/MainGeometry.hlsl"
 #include "../../Framework/Binding.hlsl"
 
@@ -77,7 +80,7 @@ float4 ShadowProjection_GetOutput(float3 position, uint cascadeIndex, uint casca
     }
 }
 
-float4 ShadowProjection_GetOutput(VSIN geo, uint cascadeIndex, uint cascadeMode)
+float4 ShadowProjection_GetOutputGeo(VSIN geo, uint cascadeIndex, uint cascadeMode)
 {
 	#if !defined(GEO_NO_POSITION)
 		return ShadowProjection_GetOutput(geo.position, cascadeIndex, cascadeMode);

@@ -22,8 +22,6 @@ struct VSShadowOutput /////////////////////////////////////////////////////
 	#if (VSOUT_HAS_SHADOW_PROJECTION_COUNT>0)
 		uint shadowFrustumFlags : SHADOWFLAGS;
 	#endif
-
-	VSSHADOWOUTPUT_EXTRA
 }; //////////////////////////////////////////////////////////////////
 
 #endif

@@ -129,4 +129,28 @@ float3x3 AutoCotangentFrame(float3 inputNormal, float3 negativeViewVector, float
 	return float3x3(T * invmax, B * invmax, inputNormal);
 }
 
+CompressedTangentFrame TransformLocalToWorld(CompressedTangentFrame inputFrame)
+{
+	CompressedTangentFrame result;
+	result.basisVector0 = LocalToWorldUnitVector(inputFrame.basisVector0);
+	result.basisVector1 = LocalToWorldUnitVector(inputFrame.basisVector1);
+	#if LOCAL_TO_WORLD_HAS_FLIP==1
+		result.handiness = sign(-inputFrame.handiness);
+	#else
+		result.handiness = sign(inputFrame.handiness);
+	#endif
+	return result;
+}
+
+float3 GetNormal(CompressedTangentFrame inputFrame)
+{
+	return NormalFromTangents(inputFrame.basisVector0, inputFrame.basisVector1, inputFrame.handiness);
+}
+
+TangentFrame AsTangentFrame(CompressedTangentFrame inputFrame)
+{
+	float3 normal = NormalFromTangents(inputFrame.basisVector0, inputFrame.basisVector1, inputFrame.handiness);
+	return BuildTangentFrame(inputFrame.basisVector0, inputFrame.basisVector1, normal, inputFrame.handiness);
+}
+
 #endif

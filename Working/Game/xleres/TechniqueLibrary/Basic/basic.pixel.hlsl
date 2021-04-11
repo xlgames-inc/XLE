@@ -5,11 +5,34 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../Framework/CommonResources.hlsl"
-#include "../Utility/Colour.hlsl"
 #include "../Framework/Binding.hlsl"
+#include "../Framework/VSOUT.hlsl"
+#include "../Utility/Colour.hlsl"
 
-// Texture2D		InputTexture BIND_MAT_T3;
 Texture2D		InputTexture BIND_NUMERIC_T0;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+float4 frameworkEntry(VSOUT vsin) : SV_Target0
+{
+	float4 result = 1.0.rrrr;
+
+	#if VSOUT_HAS_TEXCOORD>=1
+		#if defined(FONT_RENDERER)
+			result.a *= InputTexture.Sample(DefaultSampler, VSOUT_GetTexCoord0(vsin)).r;
+		#else
+			result *= InputTexture.Sample(DefaultSampler, VSOUT_GetTexCoord0(vsin));
+		#endif
+	#endif
+
+	#if VSOUT_HAS_COLOR>=1
+		result *= VSOUT_GetColor0(vsin);
+	#endif
+
+	return result;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 float4 copy(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
