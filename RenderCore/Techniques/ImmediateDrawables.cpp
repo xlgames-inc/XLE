@@ -28,7 +28,7 @@ namespace RenderCore { namespace Techniques
 	};
 
 	RenderCore::ConstantBufferElementDesc ReciprocalViewportDimensions_Elements[] = {
-		{ Hash64("ReciprocalViewportDimensions"), Format::R32G32_FLOAT, offsetof(ReciprocalViewportDimensions, _reciprocalWidth) }
+		{ Hash64("ReciprocalViewportDimensions"), Format::R32G32_FLOAT, (unsigned)offsetof(ReciprocalViewportDimensions, _reciprocalWidth) }
 	};
 
 	class ImmediateRendererResourceDelegate : public IShaderResourceDelegate
@@ -56,11 +56,9 @@ namespace RenderCore { namespace Techniques
 			}
 		}
 
-		void Configure(IThreadContext& context)
+		void Configure(IThreadContext& context, Float2 viewportDimensions)
 		{
-			assert(0);
-			// Viewport viewportDesc = _metalContext->GetBoundViewport();
-			// _rvd = ReciprocalViewportDimensions { 1.f / float(viewportDesc._width), 1.f / float(viewportDesc._height), 0.f, 0.f };
+			_rvd = ReciprocalViewportDimensions { 1.f / viewportDimensions[0], 1.f / viewportDimensions[1], 0.f, 0.f };
 		}
 
 		UniformsStreamInterface _usi;
@@ -69,8 +67,7 @@ namespace RenderCore { namespace Techniques
 		ImmediateRendererResourceDelegate()
 		{
 			_usi.BindImmediateData(0, Hash64("ReciprocalViewportDimensionsCB"), MakeIteratorRange(ReciprocalViewportDimensions_Elements));
-
-			_rvd = ReciprocalViewportDimensions { 1.f / 1264.f, 1.f / 681.f };
+			_rvd = ReciprocalViewportDimensions { 1.f / 256.f, 1.f / 256.f };
 		}
 	};
 
@@ -211,11 +208,14 @@ namespace RenderCore { namespace Techniques
 			IThreadContext& context,
 			ParsingContext& parserContext,
 			const FrameBufferDesc& fbDesc,
-			unsigned subpassIndex)
+			unsigned subpassIndex,
+			Float2 viewportDimensions)
 		{
 			auto sequencerConfig = _pipelineAcceleratorPool->CreateSequencerConfig(
 				_techniqueDelegate, ParameterBox{},
 				fbDesc, subpassIndex);
+
+			_resourceDelegate->Configure(context, viewportDimensions);
 
 			SequencerContext sequencerContext;
 			sequencerContext._sequencerResources.push_back(_resourceDelegate);

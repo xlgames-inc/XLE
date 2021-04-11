@@ -9,6 +9,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Resource.h"
 #include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/ResourceUtils.h"
 #include "../RenderCore/Types.h"
 #include "../RenderCore/Format.h"
 #include "../Assets/Assets.h"
@@ -452,6 +453,7 @@ namespace RenderOverlays
 		auto newData = font.GetBitmap(ch);
 		if ((newData._width * newData._height) == 0) {
 			Bitmap result = {};
+			result._xAdvance = newData._xAdvance;		// still need xAdvance here for characters that aren't drawn (ie, whitespace)
 			_glyphs.insert(insertPoint, std::make_pair(code, result));
 			return result;
 		}

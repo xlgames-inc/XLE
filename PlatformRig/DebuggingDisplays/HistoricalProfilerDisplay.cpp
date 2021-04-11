@@ -14,7 +14,7 @@ namespace PlatformRig { namespace Overlays
 
     static float AsMilliseconds(uint64 profilerTime)
     {
-        static float freqMult = 1000.f / GetPerformanceCounterFrequency();
+        static float freqMult = 1000.f / OSServices::GetPerformanceCounterFrequency();
         return float(profilerTime) * freqMult;
     }
 

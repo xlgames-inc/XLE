@@ -22,24 +22,18 @@
 #include "../RenderCore/Techniques/SubFrameEvents.h"
 #include "../RenderCore/Techniques/Techniques.h"
 
-// #include "../Assets/CompileAndAsyncManager.h"
-// #include "../Assets/AssetServices.h"
-// #include "../Assets/AssetSetManager.h"
-
+#include "../OSServices/Log.h"
+#include "../OSServices/TimeUtils.h"
 #include "../ConsoleRig/ResourceBox.h"
-
+#include "../ConsoleRig/Console.h"
 #include "../Utility/IntrusivePtr.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/Profiling/CPUProfiler.h"
-// #include "../Utility/Threading/ThreadingUtils.h"
-
-#include "../OSServices/Log.h"
-#include "../OSServices/TimeUtils.h"
-#include "../ConsoleRig/Console.h"
-#include "../Core/Types.h"
 
 #include <tuple>
 #include <iomanip>
+
+#include "../RenderCore/Metal/DeviceContext.h"
 
 namespace PlatformRig
 {
@@ -158,8 +152,12 @@ namespace PlatformRig
 			////////////////////////////////
 
 			TRY {
-				if (_mainOverlaySys)
+				if (_mainOverlaySys) {
                     _mainOverlaySys->Render(*context, presentationTarget, parserContext);
+                } else {
+                    // We must at least clear, because the _debugScreenOverlaySystem might have something to render
+                    RenderCore::Metal::DeviceContext::Get(*context)->Clear(*presentationTarget->CreateTextureView(RenderCore::BindFlag::RenderTarget), Float4(0,0,0,1));
+                }
 			}
 			CATCH_ASSETS(parserContext)
 			CATCH(const std::exception& e) {

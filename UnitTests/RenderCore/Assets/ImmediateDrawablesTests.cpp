@@ -117,7 +117,7 @@ namespace UnitTests
 				auto rpi = fbHelper.BeginRenderPass(*threadContext);
 				RenderCore::Techniques::TechniqueContext techniqueContext;
 				RenderCore::Techniques::ParsingContext parsingContext { techniqueContext };
-				immediateDrawables->ExecuteDraws(*threadContext, parsingContext, fbHelper.GetDesc(), 0);
+				immediateDrawables->ExecuteDraws(*threadContext, parsingContext, fbHelper.GetDesc(), 0, Float2(targetDesc._textureDesc._width, targetDesc._textureDesc._height));
 			}
 
 			auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);
@@ -164,7 +164,7 @@ namespace UnitTests
 				auto rpi = fbHelper.BeginRenderPass(*threadContext);
 				RenderCore::Techniques::TechniqueContext techniqueContext;
 				RenderCore::Techniques::ParsingContext parsingContext { techniqueContext };
-				immediateDrawables->ExecuteDraws(*threadContext, parsingContext, fbHelper.GetDesc(), 0);
+				immediateDrawables->ExecuteDraws(*threadContext, parsingContext, fbHelper.GetDesc(), 0, Float2(targetDesc._textureDesc._width, targetDesc._textureDesc._height));
 			}
 
 			auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);

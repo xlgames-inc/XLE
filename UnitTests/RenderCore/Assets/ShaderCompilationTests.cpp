@@ -322,7 +322,7 @@ namespace UnitTests
 
 		::Assets::Services::GetAsyncMan().GetIntermediateStore()->FlushToDisk();
 		compilers.DeregisterCompiler(shaderCompilerRegistration._registrationId);
-		Assets::MainFileSystem::GetMountingTree()->Unmount(xleresmnt);
+		::Assets::MainFileSystem::GetMountingTree()->Unmount(xleresmnt);
 	}
 	
 }

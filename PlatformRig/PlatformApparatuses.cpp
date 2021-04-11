@@ -12,6 +12,7 @@
 #include "DebugScreensOverlay.h"
 #include "DebuggingDisplays/GPUProfileDisplay.h"
 #include "DebuggingDisplays/CPUProfileDisplay.h"
+#include "DebuggingDisplays/InvalidAssetDisplay.h"
 #include "../RenderCore/Techniques/Apparatuses.h"
 #include "../RenderCore/IAnnotator.h"
 #include "../RenderCore/IDevice.h"
@@ -87,6 +88,9 @@ namespace PlatformRig
 		debugSys.Register(
 			std::make_shared<PlatformRig::Overlays::HierarchicalProfilerDisplay>(&cpuProfiler),
 			"[Profiler] CPU Profiler");
+
+		debugSys.Register(std::make_shared<PlatformRig::Overlays::InvalidAssetDisplay>(), "[Assets] Invalid asset display");
+		debugSys.SwitchToScreen("[Assets] Invalid asset display");
 	}
 
 }

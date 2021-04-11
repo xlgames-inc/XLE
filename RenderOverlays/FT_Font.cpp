@@ -200,7 +200,7 @@ namespace RenderOverlays
 		result._bitmapOffsetY = -glyph->bitmap_top;
 		result._width = glyph->bitmap.width;
 		result._height = glyph->bitmap.rows;
-		result._data =MakeIteratorRange(glyph->bitmap.buffer, PtrAdd(glyph->bitmap.buffer, glyph->bitmap.width*glyph->bitmap.rows));
+		result._data = MakeIteratorRange(glyph->bitmap.buffer, PtrAdd(glyph->bitmap.buffer, glyph->bitmap.width*glyph->bitmap.rows));
 		return result;
 	}
 

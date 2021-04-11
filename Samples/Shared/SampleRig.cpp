@@ -88,7 +88,7 @@ namespace Sample
         auto debugOverlaysApparatus = std::make_shared<PlatformRig::DebugOverlaysApparatus>(immediateDrawingApparatus, frameRig);
         PlatformRig::InitProfilerDisplays(*debugOverlaysApparatus->_debugSystem, &windowApparatus->_immediateContext->GetAnnotator(), cpuProfiler);
         frameRig.SetDebugScreensOverlaySystem(debugOverlaysApparatus->_debugScreensOverlaySystem);
-        frameRig.SetMainOverlaySystem(sampleOverlay);
+        // frameRig.SetMainOverlaySystem(sampleOverlay); (disabled temporarily)
 
             //  Setup input:
             //      * We create a main input handler, and tie that to the window to receive inputs

@@ -38,10 +38,11 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         DebuggingDisplays/CPUProfileDisplay.cpp
         #DebuggingDisplays/DynamicImpostersDisplay.cpp
         DebuggingDisplays/GPUProfileDisplay.cpp
-        #DebuggingDisplays/HierarchicalSpikesDisplay.cpp
-        #DebuggingDisplays/HistoricalProfilerDisplay.cpp
+        DebuggingDisplays/HierarchicalSpikesDisplay.cpp
+        DebuggingDisplays/HistoricalProfilerDisplay.cpp
         #DebuggingDisplays/PlacementsDisplay.cpp
         #DebuggingDisplays/TestDisplays.cpp
+        DebuggingDisplays/InvalidAssetDisplay.cpp
         )
     set(DebuggingDisplaysHeaders 
         DebuggingDisplays/BufferUploadDisplay.h

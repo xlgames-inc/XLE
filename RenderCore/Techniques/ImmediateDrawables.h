@@ -7,6 +7,7 @@
 #include "../Types.h"
 #include "../StateDesc.h"
 #include "../RenderUtils.h"		// for SharedPkt
+#include "../../Math/Vector.h"
 #include <memory>
 
 namespace RenderCore { class IThreadContext; class FrameBufferDesc; class SharedPkt; }
@@ -46,7 +47,8 @@ namespace RenderCore { namespace Techniques
 			IThreadContext& context,
 			ParsingContext& parserContext,
 			const FrameBufferDesc& fbDesc,
-			unsigned subpassIndex) = 0;
+			unsigned subpassIndex,
+			Float2 viewportDimensions) = 0;
 		virtual std::shared_ptr<::Assets::IAsyncMarker> PrepareResources(
 			const FrameBufferDesc& fbDesc,
 			unsigned subpassIndex) = 0;

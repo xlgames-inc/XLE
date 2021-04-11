@@ -21,13 +21,24 @@ namespace Utility
 			str << "\t" << analysis._tokenDictionary.AsString({r.first}) << " = " << analysis._tokenDictionary.AsString(r.second) << std::endl;
 
 		str << "-------- Substitutions --------" << std::endl;
-		auto& subst = analysis._substitutionSideEffects;
-		for (const auto&r:subst._items)
-			str << "\t" << r.first << " = " << subst._dictionary.AsString(r.second) << std::endl;
-			
-		str << "-------- Default Sets --------" << std::endl;
-		for (const auto&r:subst._defaultSets)
-			str << "\t" << r.first << " = " << subst._dictionary.AsString(r.second) << std::endl;
+		auto& subst = analysis._sideEffects;
+		for (const auto&i:subst._substitutions) {
+			str << "\t" << i._symbol << " is ";
+			if (i._type == Utility::Internal::PreprocessorSubstitutions::Type::Undefine) {
+				str << "undefined";
+			} else {
+				if (i._type == Utility::Internal::PreprocessorSubstitutions::Type::Define) str << "defined to ";
+				else if (i._type == Utility::Internal::PreprocessorSubstitutions::Type::DefaultDefine) str << "default defined to ";
+				else str << "<<unknown operation>> ";
+				str << subst._dictionary.AsString(i._substitution);
+			}
+			if (i._condition.empty() || (i._condition.size() == 1 && i._condition[0] == 1)) {
+				// unconditional
+			} else 
+				str << ", if " << subst._dictionary.AsString(i._condition);
+			str << std::endl;
+		}
+
 		return str;
 	}
 }
@@ -38,15 +49,15 @@ namespace UnitTests
 	TEST_CASE( "Utilities-ExpressionRelevance", "[utility]" )
 	{
 		const char* inputExpression0 = "(SEL0 || SEL1) && SEL2";
-		auto expression0Relevance = GeneratePreprocessorAnalysis(inputExpression0);
+		auto expression0Relevance = GeneratePreprocessorAnalysisFromString(inputExpression0);
 		std::cout << "Expression0 result: " << std::endl << expression0Relevance;
 
 		const char* inputExpression0a = "(SEL0 || defined(SEL1) || SEL2<5) && (SEL3 || defined(SEL4) || SEL5>=7)";
-		auto expression0aRelevance = GeneratePreprocessorAnalysis(inputExpression0a);
+		auto expression0aRelevance = GeneratePreprocessorAnalysisFromString(inputExpression0a);
 		std::cout << "Expression0a result: " << std::endl << expression0aRelevance;
 
 		const char* inputExpression1 = "(SEL0 || SEL1) && SEL2 && !SEL3 && (SEL4==2 || SEL5 < SEL6) || defined(SEL7)";
-		auto expression1Relevance = GeneratePreprocessorAnalysis(inputExpression1);
+		auto expression1Relevance = GeneratePreprocessorAnalysisFromString(inputExpression1);
 		std::cout << "Expression1 result: " << std::endl << expression1Relevance;
 	}
 
@@ -301,7 +312,7 @@ struct VSOUT /////////////////////////////////////////////////////
 
 	TEST_CASE( "Utilities-FileRelevance", "[utility]" )
 	{
-		auto preprocAnalysis = GeneratePreprocessorAnalysis(s_testFile);
+		auto preprocAnalysis = GeneratePreprocessorAnalysisFromString(s_testFile);
 
 		// We only care about AUTO_COTANGENT is GEO_HAS_NORMAL==1 or GEO_HAS_TEXTANGENT==1
 		auto autoCotangentRelevance = preprocAnalysis._relevanceTable[
