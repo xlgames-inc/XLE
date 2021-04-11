@@ -205,6 +205,7 @@ namespace RenderCore { namespace Techniques
 	public:
 		std::shared_ptr<ITechniqueDelegate::GraphicsPipelineDesc> _pipelineDesc;
 		std::shared_ptr<ShaderSourceParser::SelectorFilteringRules> _automaticFiltering[3];
+		std::shared_ptr<ShaderSourceParser::SelectorPreconfiguration> _preconfiguration;
 
 		static ::Assets::FuturePtr<GraphicsPipelineDescWithFilteringRules> CreateFuture(
 			const ::Assets::FuturePtr<ITechniqueDelegate::GraphicsPipelineDesc>& pipelineDescFuture)
@@ -223,38 +224,76 @@ namespace RenderCore { namespace Techniques
 
 					if (pipelineDesc->_shaders[(unsigned)ShaderStage::Geometry].empty()) {
 
-						::Assets::WhenAll(vsFilteringFuture, psFilteringFuture).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
-							resultFuture,
-							[pipelineDesc](
-								const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
-								const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& psFiltering) {
-								
-								auto finalObject = std::make_shared<GraphicsPipelineDescWithFilteringRules>();
-								finalObject->_pipelineDesc = pipelineDesc;
-								finalObject->_automaticFiltering[(unsigned)ShaderStage::Vertex] = vsFiltering;
-								finalObject->_automaticFiltering[(unsigned)ShaderStage::Pixel] = psFiltering;
-								return finalObject;
-							});
+						if (pipelineDesc->_selectorPreconfigurationFile.empty()) {
+							::Assets::WhenAll(vsFilteringFuture, psFilteringFuture).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
+								resultFuture,
+								[pipelineDesc](
+									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
+									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& psFiltering) {
+									
+									auto finalObject = std::make_shared<GraphicsPipelineDescWithFilteringRules>();
+									finalObject->_pipelineDesc = pipelineDesc;
+									finalObject->_automaticFiltering[(unsigned)ShaderStage::Vertex] = vsFiltering;
+									finalObject->_automaticFiltering[(unsigned)ShaderStage::Pixel] = psFiltering;
+									return finalObject;
+								});
+						} else {
+							auto preconfigurationFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorPreconfiguration>(pipelineDesc->_selectorPreconfigurationFile);
+							::Assets::WhenAll(vsFilteringFuture, psFilteringFuture, preconfigurationFuture).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
+								resultFuture,
+								[pipelineDesc](
+									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
+									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& psFiltering,
+									const std::shared_ptr<ShaderSourceParser::SelectorPreconfiguration>& preconfiguration) {
+									
+									auto finalObject = std::make_shared<GraphicsPipelineDescWithFilteringRules>();
+									finalObject->_pipelineDesc = pipelineDesc;
+									finalObject->_automaticFiltering[(unsigned)ShaderStage::Vertex] = vsFiltering;
+									finalObject->_automaticFiltering[(unsigned)ShaderStage::Pixel] = psFiltering;
+									finalObject->_preconfiguration = preconfiguration;
+									return finalObject;
+								});
+						}
 
 					} else {
 
 						auto gsfn = MakeFileNameSplitter(pipelineDesc->_shaders[(unsigned)ShaderStage::Geometry]).AllExceptParameters();
 						auto gsFilteringFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(gsfn);
 
-						::Assets::WhenAll(vsFilteringFuture, psFilteringFuture, gsFilteringFuture).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
-							resultFuture,
-							[pipelineDesc](
-								const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
-								const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& psFiltering,
-								const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& gsFiltering) {
-								
-								auto finalObject = std::make_shared<GraphicsPipelineDescWithFilteringRules>();
-								finalObject->_pipelineDesc = pipelineDesc;
-								finalObject->_automaticFiltering[(unsigned)ShaderStage::Vertex] = vsFiltering;
-								finalObject->_automaticFiltering[(unsigned)ShaderStage::Pixel] = psFiltering;
-								finalObject->_automaticFiltering[(unsigned)ShaderStage::Geometry] = gsFiltering;
-								return finalObject;
-							});
+						if (pipelineDesc->_selectorPreconfigurationFile.empty()) {
+							::Assets::WhenAll(vsFilteringFuture, psFilteringFuture, gsFilteringFuture).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
+								resultFuture,
+								[pipelineDesc](
+									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
+									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& psFiltering,
+									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& gsFiltering) {
+									
+									auto finalObject = std::make_shared<GraphicsPipelineDescWithFilteringRules>();
+									finalObject->_pipelineDesc = pipelineDesc;
+									finalObject->_automaticFiltering[(unsigned)ShaderStage::Vertex] = vsFiltering;
+									finalObject->_automaticFiltering[(unsigned)ShaderStage::Pixel] = psFiltering;
+									finalObject->_automaticFiltering[(unsigned)ShaderStage::Geometry] = gsFiltering;
+									return finalObject;
+								});
+						} else {
+							auto preconfigurationFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorPreconfiguration>(pipelineDesc->_selectorPreconfigurationFile);
+							::Assets::WhenAll(vsFilteringFuture, psFilteringFuture, gsFilteringFuture, preconfigurationFuture).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
+								resultFuture,
+								[pipelineDesc](
+									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
+									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& psFiltering,
+									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& gsFiltering,
+									const std::shared_ptr<ShaderSourceParser::SelectorPreconfiguration>& preconfiguration) {
+									
+									auto finalObject = std::make_shared<GraphicsPipelineDescWithFilteringRules>();
+									finalObject->_pipelineDesc = pipelineDesc;
+									finalObject->_automaticFiltering[(unsigned)ShaderStage::Vertex] = vsFiltering;
+									finalObject->_automaticFiltering[(unsigned)ShaderStage::Pixel] = psFiltering;
+									finalObject->_automaticFiltering[(unsigned)ShaderStage::Geometry] = gsFiltering;
+									finalObject->_preconfiguration = preconfiguration;
+									return finalObject;
+								});
+						}
 
 					}
 
@@ -333,7 +372,8 @@ namespace RenderCore { namespace Techniques
 									filteredSelectors[c] = sharedPools->_selectorVariationsSet.FilterSelectors(
 										MakeIteratorRange(paramBoxes),
 										pipelineDesc->_manualSelectorFiltering,
-										*pipelineDescWithFiltering->_automaticFiltering[c]);
+										*pipelineDescWithFiltering->_automaticFiltering[c],
+										pipelineDescWithFiltering->_preconfiguration.get());
 						}
 
 						auto shaderProgram = MakeShaderProgram(*pipelineDesc, pipelineLayout, compiledPatchCollection, MakeIteratorRange(filteredSelectors));

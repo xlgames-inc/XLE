@@ -50,7 +50,7 @@ namespace Utility
 			unsigned GetToken(TokenType type, const std::string& value = {});
 			std::optional<unsigned> TryGetToken(TokenType type, StringSection<> value) const;
 
-			bool EvaluateExpression(
+			int EvaluateExpression(
 				const ExpressionTokenList& tokenList,
 				IteratorRange<ParameterBox const*const*> environment) const;
 			std::string AsString(const ExpressionTokenList& tokenList) const;
@@ -79,8 +79,15 @@ namespace Utility
 		struct PreprocessorSubstitutions
 		{
 			TokenDictionary _dictionary;
-			std::unordered_map<std::string, ExpressionTokenList> _items;
-			std::unordered_map<std::string, ExpressionTokenList> _defaultSets;
+			enum class Type { Define, Undefine, DefaultDefine };
+			struct ConditionalSubstitutions
+			{	
+				std::string _symbol;
+				Type _type;
+				ExpressionTokenList _condition;
+				ExpressionTokenList _substitution;
+			};
+			std::vector<ConditionalSubstitutions> _substitutions;
 		};
 
 		ExpressionTokenList AsExpressionTokenList(
@@ -98,7 +105,7 @@ namespace Utility
     public:
         Internal::TokenDictionary _tokenDictionary;
         std::map<unsigned, Internal::ExpressionTokenList> _relevanceTable;
-        Internal::PreprocessorSubstitutions _substitutionSideEffects;
+        Internal::PreprocessorSubstitutions _sideEffects;
     };
 
 	class IPreprocessorIncludeHandler;

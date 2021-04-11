@@ -21,7 +21,7 @@
 
 namespace RenderCore { namespace Techniques
 {
-	static uint64_t Hash(IteratorRange<const ParameterBox**> shaderSelectors)
+	static uint64_t Hash(IteratorRange<const ParameterBox* const*> shaderSelectors)
 	{
 		uint64_t inputHash = 0;
 		const bool simpleHash = false;
@@ -41,29 +41,52 @@ namespace RenderCore { namespace Techniques
 	}
 
 	static std::string MakeFilteredDefinesTable(
-		IteratorRange<const ParameterBox**> selectors,
+		IteratorRange<const ParameterBox* const*> selectors,
 		const ShaderSourceParser::ManualSelectorFiltering& techniqueFiltering,
-		const ShaderSourceParser::SelectorFilteringRules& automaticFiltering)
+		const ShaderSourceParser::SelectorFilteringRules& automaticFiltering,
+		const ShaderSourceParser::SelectorPreconfiguration* preconfiguration)
 	{
-		return BuildFlatStringTable(ShaderSourceParser::FilterSelectors(
-			selectors, techniqueFiltering, automaticFiltering));
+		if (!preconfiguration) {
+			return BuildFlatStringTable(ShaderSourceParser::FilterSelectors(selectors, techniqueFiltering, automaticFiltering));
+		} else {
+			// If we have a preconfiguration file, we need to run that over the selectors first. It will define or undefine
+			// selectors based on it's script. Because it can also undefine, we need to be working with non-const parameter boxes
+			// and so we might as well just merge together all of the param boxes here to make the next few steps a little
+			// easier
+			if (selectors.empty()) {
+				ParameterBox empty;
+				ParameterBox* p = &empty;
+				return MakeFilteredDefinesTable({&p, &p+1}, techniqueFiltering, automaticFiltering, preconfiguration);
+			}
+
+			ParameterBox mergedSelectors = *selectors[0];
+			for (auto i=selectors.begin()+1; i!=selectors.end(); ++i)
+				mergedSelectors.MergeIn(**i);
+
+			mergedSelectors = preconfiguration->Preconfigure(std::move(mergedSelectors));
+			ParameterBox* p = &mergedSelectors;
+			return MakeFilteredDefinesTable({&p, &p+1}, techniqueFiltering, automaticFiltering, nullptr);
+		}
 	}
 
 	auto UniqueShaderVariationSet::FilterSelectors(
-		IteratorRange<const ParameterBox**> selectors,
+		IteratorRange<const ParameterBox* const*> selectors,
 		const ShaderSourceParser::ManualSelectorFiltering& techniqueFiltering,
-		const ShaderSourceParser::SelectorFilteringRules& automaticFiltering) -> const FilteredSelectorSet&
+		const ShaderSourceParser::SelectorFilteringRules& automaticFiltering,
+		const ShaderSourceParser::SelectorPreconfiguration* preconfiguration) -> const FilteredSelectorSet&
 	{
 		auto inputHash = Hash(selectors);
 		inputHash = HashCombine(techniqueFiltering.GetHash(), inputHash);
 		inputHash = HashCombine(automaticFiltering.GetHash(), inputHash);
+		if (preconfiguration)
+			inputHash = HashCombine(preconfiguration->GetHash(), inputHash);
 
 		auto i = LowerBound(_globalToFiltered, inputHash);
 		if (i!=_globalToFiltered.cend() && i->first == inputHash) {
 			return i->second;
 		} else {
 			FilteredSelectorSet result;
-			result._selectors = MakeFilteredDefinesTable(selectors, techniqueFiltering, automaticFiltering);
+			result._selectors = MakeFilteredDefinesTable(selectors, techniqueFiltering, automaticFiltering, preconfiguration);
 			result._hashValue = Hash64(result._selectors);
 			i = _globalToFiltered.insert(i, {inputHash, result});
 			return i->second;
@@ -88,7 +111,7 @@ namespace RenderCore { namespace Techniques
 		const auto& techEntry = _technique->GetEntry(techniqueIndex);
 		auto& filteredSelectors = _variationSet.FilterSelectors(
 			MakeIteratorRange(shaderSelectors, &shaderSelectors[SelectorStages::Max]),
-			techEntry._selectorFiltering, {});
+			techEntry._selectorFiltering, {}, nullptr);
 
 		auto i = LowerBound(_filteredSelectorsToVariation, filteredSelectors._hashValue);
 		if (i != _filteredSelectorsToVariation.end() && i->first == filteredSelectors._hashValue) {

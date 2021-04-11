@@ -371,6 +371,9 @@ namespace Utility
 			return lhs._value < rhs._value;
 		}
 
+		static bool IsTrue(const ExpressionTokenList& expr) { return expr.size() == 1 && expr[0] == 1; }
+		static bool IsFalse(const ExpressionTokenList& expr) { return expr.size() == 1 && expr[0] == 0; }
+
 		static const unsigned s_fixedTokenFalse = 0;
 		static const unsigned s_fixedTokenTrue = 1;
 		static const unsigned s_fixedTokenLogicalAnd = 2;
@@ -405,8 +408,8 @@ namespace Utility
 				} else if (base.type == VAR) {
 
 					std::string key = static_cast<Token<std::string>*>(&base)->val;
-					auto sub = substitutions._items.find(key);
-					if (sub == substitutions._items.end()) {
+					auto sub = std::find_if(substitutions._substitutions.rbegin(), substitutions._substitutions.rend(), [key](const auto& c) { return c._symbol == key; });
+					if (sub == substitutions._substitutions.rend() || !IsTrue(sub->_condition) || sub->_type == PreprocessorSubstitutions::Type::Undefine) {
 						dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::Variable, key);
 					} else {
 						// We need to substitute in the expression provided in the substitutions table
@@ -414,7 +417,8 @@ namespace Utility
 						// Note that "key" never becomes a token in our output. So no relevance information
 						// will be calculated for it -- but if the expression substituted in refers to variables,
 						// then we can get relevance information for them
-						auto translated = dictionary.Translate(substitutions._dictionary, sub->second);
+						assert(sub->_type == PreprocessorSubstitutions::Type::Define || sub->_type == PreprocessorSubstitutions::Type::DefaultDefine);
+						auto translated = dictionary.Translate(substitutions._dictionary, sub->_substitution);
 						reversePolishOrdering.insert(
 							reversePolishOrdering.end(),
 							translated.begin(), translated.end());
@@ -447,12 +451,13 @@ namespace Utility
 						Throw(std::runtime_error("Missing call token for defined() function in token stream"));
 					// (final pop still happens below)
 
-					auto sub = substitutions._items.find(key);
-					if (sub == substitutions._items.end()) {
+					auto sub = std::find_if(substitutions._substitutions.rbegin(), substitutions._substitutions.rend(), [key](const auto& c) { return c._symbol == key; });
+					if (sub == substitutions._substitutions.rend() || !IsTrue(sub->_condition) || sub->_type == PreprocessorSubstitutions::Type::Undefine) {
 						dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::IsDefinedTest, key);
 					} else {
 						// This is actually doing a defined(...) check on one of our substitutions. We can treat it
 						// as just "true"
+						assert(sub->_type == PreprocessorSubstitutions::Type::Define || sub->_type == PreprocessorSubstitutions::Type::DefaultDefine);
 						reversePolishOrdering.push_back(s_fixedTokenTrue);
 					}
 					
@@ -738,7 +743,7 @@ namespace Utility
 			return evaluation.top().first;
 		}
 
-		bool TokenDictionary::EvaluateExpression(
+		int TokenDictionary::EvaluateExpression(
 			const ExpressionTokenList& tokenList,
 			IteratorRange<ParameterBox const*const*> environment) const
 		{

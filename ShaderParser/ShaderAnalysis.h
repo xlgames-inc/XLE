@@ -34,7 +34,7 @@ namespace ShaderSourceParser
 	class SelectorFilteringRules;
 
 	ParameterBox FilterSelectors(
-		IteratorRange<const ParameterBox**> selectors,
+		IteratorRange<const ParameterBox* const*> selectors,
 		const ManualSelectorFiltering& manualFiltering,
 		const SelectorFilteringRules& automaticFiltering);
 
@@ -42,30 +42,5 @@ namespace ShaderSourceParser
 		const ParameterBox& selectors,
 		const ManualSelectorFiltering& manualFiltering,
 		const SelectorFilteringRules& automaticFiltering);
-
-#if 0
-	class ShaderSelectorAnalysis
-	{
-	public:
-		std::unordered_map<std::string, std::string> _selectorRelevance;
-	};
-
-	ShaderSelectorAnalysis AnalyzeSelectors(const std::string& sourceCode);
-
-	ParameterBox FilterSelectors(
-		const ParameterBox& unfiltered,
-		const std::unordered_map<std::string, std::string>& relevance);
-
-	namespace Utility
-	{
-		void MergeRelevance(
-			std::unordered_map<std::string, std::string>& result,
-			const std::unordered_map<std::string, std::string>& src);
-
-		::Assets::DepValPtr MergeRelevanceFromShaderFiles(
-			std::unordered_map<std::string, std::string>& result,
-			const std::set<std::string>& shaderFileSet);
-	}
-#endif
 
 }

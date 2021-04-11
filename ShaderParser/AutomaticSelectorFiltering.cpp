@@ -19,8 +19,13 @@
 #include "../Utility/Conversion.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/FastParseValue.h"
+#include "../Utility/ParameterBox.h"
+#include "../Utility/ArithmeticUtils.h"
 #include <stdexcept>
 #include <set>
+#include <sstream>
+
+#include "../OSServices/Log.h"
 #include <sstream>
 
 namespace ShaderSourceParser
@@ -199,6 +204,11 @@ namespace ShaderSourceParser
 	SelectorFilteringRules::SelectorFilteringRules() {}
 	SelectorFilteringRules::~SelectorFilteringRules() {}
 
+	static bool IsTrue(const Utility::Internal::ExpressionTokenList& expr)
+    {
+        return expr.size() == 1 && expr[0] == 1;
+    }
+
 	SelectorFilteringRules GenerateSelectorFilteringRules(StringSection<> sourceCode)
 	{
 		auto analysis = Utility::GeneratePreprocessorAnalysisFromString(sourceCode, {}, nullptr);
@@ -207,10 +217,15 @@ namespace ShaderSourceParser
 		filteringRules._tokenDictionary = analysis._tokenDictionary;
 		filteringRules._relevanceTable = analysis._relevanceTable;
 
-		for (const auto&s:analysis._substitutionSideEffects._defaultSets)
+		for (const auto&s:analysis._sideEffects._substitutions) {
+			if (s._type != Utility::Internal::PreprocessorSubstitutions::Type::DefaultDefine
+				|| !IsTrue(s._condition))
+				continue;
+
 			filteringRules._defaultSets.insert(std::make_pair(
-				filteringRules._tokenDictionary.GetToken(Utility::Internal::TokenDictionary::TokenType::Variable, s.first),
-				filteringRules._tokenDictionary.Translate(analysis._substitutionSideEffects._dictionary, s.second)));
+				filteringRules._tokenDictionary.GetToken(Utility::Internal::TokenDictionary::TokenType::Variable, s._symbol),
+				filteringRules._tokenDictionary.Translate(analysis._sideEffects._dictionary, s._substitution)));
+		}
 
 		return filteringRules;
 	}
@@ -246,6 +261,8 @@ namespace ShaderSourceParser
 		virtual std::vector<SerializedArtifact>	SerializeTarget(unsigned idx) override
 		{
 			assert(idx == 0);
+			if (_compilationException)
+				std::rethrow_exception(_compilationException);
 			return _artifacts;
 		}
 
@@ -259,52 +276,63 @@ namespace ShaderSourceParser
 			auto fn = initializer.GetInitializer<std::string>(0);
 
 			::Assets::PreprocessorIncludeHandler handler;
-			auto analysis = GeneratePreprocessorAnalysisFromFile(fn, &handler);
+			TRY {
+				auto analysis = GeneratePreprocessorAnalysisFromFile(fn, &handler);
 
-			SelectorFilteringRules filteringRules;
-			filteringRules._tokenDictionary = analysis._tokenDictionary;
-			filteringRules._relevanceTable = analysis._relevanceTable;
+				SelectorFilteringRules filteringRules;
+				filteringRules._tokenDictionary = analysis._tokenDictionary;
+				filteringRules._relevanceTable = analysis._relevanceTable;
 
-			for (auto& s:filteringRules._relevanceTable)
-				filteringRules._tokenDictionary.Simplify(s.second);
+				for (auto& s:filteringRules._relevanceTable)
+					filteringRules._tokenDictionary.Simplify(s.second);
 
-			for (const auto&s:analysis._substitutionSideEffects._defaultSets) {
-				auto trans = filteringRules._tokenDictionary.Translate(analysis._substitutionSideEffects._dictionary, s.second);
-				filteringRules._tokenDictionary.Simplify(trans);
-				filteringRules._defaultSets.insert(std::make_pair(
-					filteringRules._tokenDictionary.GetToken(Utility::Internal::TokenDictionary::TokenType::Variable, s.first),
-					trans));
-			}
+				for (const auto&s:analysis._sideEffects._substitutions) {
+					if (s._type != Utility::Internal::PreprocessorSubstitutions::Type::DefaultDefine
+						|| !IsTrue(s._condition))
+						continue;
 
-			MemoryOutputStream<> memStream;
-			OutputStreamFormatter fmttr(memStream);
-			fmttr << filteringRules;
+					auto trans = filteringRules._tokenDictionary.Translate(analysis._sideEffects._dictionary, s._substitution);
+					filteringRules._tokenDictionary.Simplify(trans);
+					filteringRules._defaultSets.insert(std::make_pair(
+						filteringRules._tokenDictionary.GetToken(Utility::Internal::TokenDictionary::TokenType::Variable, s._symbol),
+						trans));
+				}
 
-			{
-				SerializedArtifact artifact;
-				artifact._chunkTypeCode = SelectorFilteringRules::CompileProcessType;
-				artifact._name = "filtering-rules";
-				artifact._version = 1;
-				artifact._data = ::Assets::AsBlob(memStream.AsString());
-				_artifacts.push_back(std::move(artifact));
-			}
+				MemoryOutputStream<> memStream;
+				OutputStreamFormatter fmttr(memStream);
+				fmttr << filteringRules;
 
-			{
-				SerializedArtifact artifact;
-				artifact._chunkTypeCode = ChunkType_Metrics;
-				artifact._name = "metrics";
-				artifact._version = 1;
-				std::stringstream str;
-				str << filteringRules;
-				artifact._data = ::Assets::AsBlob(str.str());
-				_artifacts.push_back(std::move(artifact));
-			}
+				{
+					SerializedArtifact artifact;
+					artifact._chunkTypeCode = SelectorFilteringRules::CompileProcessType;
+					artifact._name = "filtering-rules";
+					artifact._version = 1;
+					artifact._data = ::Assets::AsBlob(memStream.AsString());
+					_artifacts.push_back(std::move(artifact));
+				}
 
-			_depFileStates.insert(_depFileStates.begin(), handler._depFileStates.begin(), handler._depFileStates.end());
+				{
+					SerializedArtifact artifact;
+					artifact._chunkTypeCode = ChunkType_Metrics;
+					artifact._name = "metrics";
+					artifact._version = 1;
+					std::stringstream str;
+					str << filteringRules;
+					artifact._data = ::Assets::AsBlob(str.str());
+					_artifacts.push_back(std::move(artifact));
+				}
+
+				_depFileStates.insert(_depFileStates.begin(), handler._depFileStates.begin(), handler._depFileStates.end());
+			} CATCH(...) {
+				_depFileStates.clear();
+				_depFileStates.insert(_depFileStates.begin(), handler._depFileStates.begin(), handler._depFileStates.end());
+				_compilationException = std::current_exception();
+			} CATCH_END
 		}
 
 		std::vector<::Assets::DependentFileState> _depFileStates;
 		std::vector<SerializedArtifact> _artifacts;
+		std::exception_ptr _compilationException;
 	};
 
 	::Assets::IntermediateCompilers::CompilerRegistration RegisterShaderSelectorFilteringCompiler(
@@ -336,5 +364,78 @@ namespace ShaderSourceParser
 			MakeIteratorRange(outputAssetTypes));
 		return result;
 	}
-	
+
+	ParameterBox SelectorPreconfiguration::Preconfigure(ParameterBox&& input) const
+	{
+		ParameterBox output = std::move(input);
+
+		Log(Warning) << "Prior to filtering: " << std::endl;
+		for (auto v:output)
+			Log(Warning) << "\t" << v.Name() << " = " << v.ValueAsString() << std::endl;
+
+		for (const auto&subst:_preconfigurationSideEffects._substitutions) {
+			const ParameterBox* o = &output;
+			auto conditionEval = _preconfigurationSideEffects._dictionary.EvaluateExpression(subst._condition, MakeIteratorRange(&o, &o+1));
+			if (!conditionEval) continue;
+
+			if (subst._type == Utility::Internal::PreprocessorSubstitutions::Type::Define || subst._type == Utility::Internal::PreprocessorSubstitutions::Type::DefaultDefine) {
+				auto evaluated = _preconfigurationSideEffects._dictionary.EvaluateExpression(subst._substitution, MakeIteratorRange(&o, &o+1));
+				output.SetParameter(subst._symbol, evaluated);
+			} else {
+				assert(subst._type == Utility::Internal::PreprocessorSubstitutions::Type::Undefine);
+				output.RemoveParameter(MakeStringSection(subst._symbol));
+			}
+		}
+
+		Log(Warning) << "After filtering: " << std::endl;
+		for (auto v:output)
+			Log(Warning) << "\t" << v.Name() << " = " << v.ValueAsString() << std::endl;
+
+		return output;
+	}
+
+	SelectorPreconfiguration::SelectorPreconfiguration(StringSection<> filename)
+	{
+		::Assets::PreprocessorIncludeHandler handler;
+		TRY {
+			auto analysis = GeneratePreprocessorAnalysisFromFile(filename, &handler);
+			_preconfigurationSideEffects = analysis._sideEffects;
+			_depVal = handler.MakeDependencyValidation();
+
+			_hash = _preconfigurationSideEffects._dictionary.CalculateHash();
+			for (const auto& i:_preconfigurationSideEffects._substitutions) {
+				_hash = Hash64(i._symbol, _hash);
+				_hash = Hash64(AsPointer(i._condition.begin()), AsPointer(i._condition.end()), _hash);
+				_hash = Hash64(AsPointer(i._substitution.begin()), AsPointer(i._substitution.end()), _hash);
+				_hash = rotl64(_hash, (int8_t)i._type);
+			}
+
+			std::stringstream metrics;
+			for (const auto& i:_preconfigurationSideEffects._substitutions) {
+				metrics << i._symbol << " is ";
+				if (i._type == Utility::Internal::PreprocessorSubstitutions::Type::Undefine) {
+					metrics << "undefined";
+				} else {
+					if (i._type == Utility::Internal::PreprocessorSubstitutions::Type::Define) metrics << "defined to ";
+					else if (i._type == Utility::Internal::PreprocessorSubstitutions::Type::DefaultDefine) metrics << "default defined to ";
+					else metrics << "<<unknown operation>> ";
+					metrics << _preconfigurationSideEffects._dictionary.AsString(i._substitution);
+				}
+				if (i._condition.empty() || (i._condition.size() == 1 && i._condition[0] == 1)) {
+					// unconditional
+				} else 
+					metrics << ", if " << _preconfigurationSideEffects._dictionary.AsString(i._condition);
+				metrics << std::endl;
+			}
+
+			Log(Warning) << metrics.str() << std::endl;
+		} CATCH (const std::exception& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, handler.MakeDependencyValidation()));
+		} CATCH_END
+	}
+
+	SelectorPreconfiguration::~SelectorPreconfiguration()
+	{
+
+	}	
 }

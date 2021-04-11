@@ -13,6 +13,7 @@ namespace ShaderSourceParser
 {
 	class ManualSelectorFiltering;
 	class SelectorFilteringRules;
+	class SelectorPreconfiguration;
 }
 
 namespace RenderCore { class ICompiledPipelineLayout; }
@@ -38,9 +39,10 @@ namespace RenderCore { namespace Techniques
 		};
 
 		const FilteredSelectorSet& FilterSelectors(
-			IteratorRange<const ParameterBox**> selectors,
+			IteratorRange<const ParameterBox* const*> selectors,
 			const ShaderSourceParser::ManualSelectorFiltering& techniqueFiltering,
-			const ShaderSourceParser::SelectorFilteringRules& automaticFiltering);
+			const ShaderSourceParser::SelectorFilteringRules& automaticFiltering,
+			const ShaderSourceParser::SelectorPreconfiguration* preconfiguration);
 
 		UniqueShaderVariationSet();
 		~UniqueShaderVariationSet();

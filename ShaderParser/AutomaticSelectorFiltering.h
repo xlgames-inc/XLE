@@ -53,6 +53,23 @@ namespace ShaderSourceParser
 		void RecalculateHash();
 	};
 
+	class SelectorPreconfiguration
+	{
+	public:
+		Utility::Internal::PreprocessorSubstitutions _preconfigurationSideEffects;
+
+		uint64_t GetHash() const { return _hash; }
+
+		ParameterBox Preconfigure(ParameterBox&&) const;
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		
+		SelectorPreconfiguration(StringSection<> filename);
+		~SelectorPreconfiguration();
+	private:
+		::Assets::DepValPtr _depVal;
+		uint64_t _hash = 0ull;
+	};
+
 	::Assets::IntermediateCompilers::CompilerRegistration RegisterShaderSelectorFilteringCompiler(
 		::Assets::IntermediateCompilers& intermediateCompilers);
 

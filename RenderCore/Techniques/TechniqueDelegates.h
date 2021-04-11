@@ -25,6 +25,7 @@ namespace RenderCore { namespace Techniques
 		{
 			std::string				_shaders[3];		// indexed by RenderCore::ShaderStage
 			ShaderSourceParser::ManualSelectorFiltering _manualSelectorFiltering;
+			std::string				_selectorPreconfigurationFile;
 
 			std::vector<uint64_t>	_patchExpansions;
 

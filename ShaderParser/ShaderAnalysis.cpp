@@ -302,7 +302,7 @@ namespace ShaderSourceParser
 	}
 
 	ParameterBox FilterSelectors(
-		IteratorRange<const ParameterBox**> selectors,
+		IteratorRange<const ParameterBox* const*> selectors,
 		const ManualSelectorFiltering& manualFiltering,
 		const SelectorFilteringRules& automaticFiltering)
 	{

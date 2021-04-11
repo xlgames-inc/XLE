@@ -527,6 +527,16 @@ namespace Utility
             && token2._type == Internal::TokenDictionary::TokenType::Operation && XlEqString(token2._value, "!");
     }
 
+    static bool IsTrue(const Internal::ExpressionTokenList& expr)
+    {
+        return expr.size() == 1 && expr[0] == 1;
+    }
+
+    static bool IsFalse(const Internal::ExpressionTokenList& expr)
+    {
+        return expr.size() == 1 && expr[0] == 0;
+    }
+
     class PreprocessAnalysisIncludeHelper
     {
     public:
@@ -648,7 +658,7 @@ namespace Utility
                     auto prevCondition = *(conditionsStack.end()-1);
                     conditionsStack.erase(conditionsStack.end()-1);
 
-                    // The "_negativeCond" must be false for this section to be value
+                    // The "_negativeCond" must be false for this section to be used
                     auto negCondition = Internal::AndExpression(prevCondition._positiveCond, prevCondition._negativeCond);
 
                     if (XlEqStringI(directive._value, "elif")) {
@@ -691,23 +701,20 @@ namespace Utility
                     bool unconditionalSet = true;
                     bool gotNotDefinedCheck = false;
                     for (auto condition=conditionsStack.rbegin(); condition!=conditionsStack.rend(); ++condition) {
-                        if (!condition->_negativeCond.empty()) {
+                        if (!condition->_negativeCond.empty() && !IsFalse(condition->_negativeCond)) {
                             unconditionalSet = false;
                             break;
                         }
                         // We're looking for "just true" or "just !defined(X)"
-                        if (condition->_positiveCond.size() == 1) {
-                            if (condition->_positiveCond[0] != 1) {
+                        if (!IsTrue(condition->_positiveCond)) {
+                            if (definedCheck.has_value() && IsNotDefinedCheck(tokenDictionary, condition->_positiveCond, definedCheck.value())) {
+                                // Note that "gotNotDefinedCheck" will not be set to true if there are any non-true condition closer to the top
+                                // of the stack
+                                gotNotDefinedCheck = true;
+                            } else {
                                 unconditionalSet = false;
                                 break;
                             }
-                        } else if (definedCheck.has_value() && IsNotDefinedCheck(tokenDictionary, condition->_positiveCond, definedCheck.value())) {
-                            // Note that "gotNotDefinedCheck" will not be set to true if there are any non-true condition closer to the top
-                            // of the stack
-                            gotNotDefinedCheck = true;
-                        } else {
-                            unconditionalSet = false;
-                            break;
                         }
                     }
 
@@ -721,62 +728,44 @@ namespace Utility
                     // a header guard inside of some conditional check
                     auto headerGuardDetection = !foundNonWhitespaceChar && XlEqStringI(directive._value, "define") && gotNotDefinedCheck;
                     if (!headerGuardDetection) {
-                        if (unconditionalSet) {
+
+                        Internal::PreprocessorSubstitutions::ConditionalSubstitutions subst;
+                        subst._symbol = symbol._value.AsString();
+                        subst._type = XlEqStringI(directive._value, "define") ? Internal::PreprocessorSubstitutions::Type::Define : Internal::PreprocessorSubstitutions::Type::Undefine;
+                        subst._condition = activeSubstitutions._dictionary.Translate(tokenDictionary, GetCurrentCondition(conditionsStack));
+                        bool expressionSubstitution = false;
+                        try {
+                            if (foundNonWhitespaceChar)
+                                subst._substitution = Internal::AsExpressionTokenList(activeSubstitutions._dictionary, remainingLine._value, activeSubstitutions);
+                            expressionSubstitution = true;
+                        } catch (const std::exception& e) {
                             #if defined(_DEBUG)
-                                if (XlEndsWith(symbol._value, MakeStringSection("_H"))) {
+                                std::cout << "Substitution for " << symbol._value << " is not an expression" << std::endl;
+                            #endif
+                        }
+
+                        if (expressionSubstitution) {
+                            #if defined(_DEBUG)
+                                if (XlEqStringI(directive._value, "define") && XlEndsWith(symbol._value, MakeStringSection("_H"))) {
                                     std::cout << "Suspicious define for variable " << symbol._value << " found" << std::endl;
                                 }
                             #endif
 
-                            // It could be an unconditional substitution, or it could be set in different ways
-                            // depending on the conditions on the stack.
-                            // Conditional sets add some complexity -- we can't actually think of it as just a straight
-                            // substitution anymore; but instead just something that pulls in an extra relevance table
-                            if (XlEqStringI(directive._value, "define")) {
-                                if (foundNonWhitespaceChar) {
-                                    try {
-                                        auto expr = Internal::AsExpressionTokenList(
-                                            activeSubstitutions._dictionary, remainingLine._value, activeSubstitutions);
-
-                                        // Note that we don't want to calculate any relevance information yet. We will do
-                                        // that if the substitution is used, however
-                                        if (!gotNotDefinedCheck) {
-                                            activeSubstitutions._items.insert(std::make_pair(symbol._value.AsString(), expr));
-                                        } else {
-                                            activeSubstitutions._defaultSets.insert(std::make_pair(symbol._value.AsString(), expr));
-                                        }
-                                    } catch (const std::exception& e) {
-                                        #if defined(_DEBUG)
-                                            std::cout << "Substitution for " << symbol._value << " is not an expression" << std::endl;
-                                        #endif
-                                    }
+                            if (!gotNotDefinedCheck) {
+                                activeSubstitutions._substitutions.push_back(subst);
+                            } else {
+                                if (subst._type == Internal::PreprocessorSubstitutions::Type::Define) {
+                                    subst._type = Internal::PreprocessorSubstitutions::Type::DefaultDefine;
+                                    activeSubstitutions._substitutions.push_back(subst);
                                 } else {
-                                    if (!gotNotDefinedCheck) {
-                                        activeSubstitutions._items.insert(std::make_pair(symbol._value.AsString(), Internal::ExpressionTokenList{}));
-                                    } else {
-                                        activeSubstitutions._defaultSets.insert(std::make_pair(symbol._value.AsString(), Internal::ExpressionTokenList{}));
-                                    }
+                                    // We should only get here for something like "#ifdef SYMBOL\n #undef SYMBOL" -- which doesn't make much sense
+                                    #if defined(_DEBUG)
+                                        std::cout << "Found unusual #undef construction for " << symbol._value << ". Ignoring." << std::endl;
+                                    #endif
                                 }
-                            } else {
-                                auto subs = activeSubstitutions._items.find(symbol._value.AsString());
-                                if (subs != activeSubstitutions._items.end())
-                                    activeSubstitutions._items.erase(subs);
-                            }
-                        } else {
-                            // The state of this variable will vary based on
-                            // We can still support this, but it requires building a relevance table for
-                            // the symbol here; and then any expression that uses this symbol should then
-                            // merge in the relevance information for it
-                            if (XlEndsWith(symbol._value, MakeStringSection("_H"))) {
-                                #if defined(_DEBUG)
-                                    std::cout << "Conditional substitution for suspicious variable " << symbol._value << " ignored." << std::endl;
-                                #endif
-                            } else {
-                                #if defined(_DEBUG)
-                                    std::cout << "Conditional substitution for variable " << symbol._value << " ignored." << std::endl;
-                                #endif
                             }
                         }
+
                     } else {
                         auto i = relevanceTable.find(definedCheck.value());
                         if (i != relevanceTable.end())
@@ -809,23 +798,20 @@ namespace Utility
                             tokenDictionary.Translate(includedAnalysis._tokenDictionary, relevance.first),
                             tokenDictionary.Translate(includedAnalysis._tokenDictionary, relevance.second)));
                     }
+                    auto currentCondition = GetCurrentCondition(conditionsStack);
                     relevanceTable = Internal::MergeRelevanceTables(
                         relevanceTable, {},
-                        translatedRelevanceTable, GetCurrentCondition(conditionsStack));
+                        translatedRelevanceTable, currentCondition);
 
-                    for (const auto& sideEffect:includedAnalysis._substitutionSideEffects._items) {
-                        activeSubstitutions._items.insert(std::make_pair(
-                            sideEffect.first,
-                            activeSubstitutions._dictionary.Translate(includedAnalysis._substitutionSideEffects._dictionary, sideEffect.second)));
-                    }
-
-                    for (const auto& sideEffect:includedAnalysis._substitutionSideEffects._defaultSets) {
-                        if (    activeSubstitutions._items.find(sideEffect.first) != activeSubstitutions._items.end()
-                            ||  activeSubstitutions._defaultSets.find(sideEffect.first) != activeSubstitutions._defaultSets.end())
-                            continue;
-                        activeSubstitutions._defaultSets.insert(std::make_pair(
-                            sideEffect.first,
-                            activeSubstitutions._dictionary.Translate(includedAnalysis._substitutionSideEffects._dictionary, sideEffect.second)));
+                    if (!includedAnalysis._sideEffects._substitutions.empty()) {
+                        auto currentConditionInSideEffectDictionary = activeSubstitutions._dictionary.Translate(tokenDictionary, currentCondition);
+                        for (const auto& sideEffect:includedAnalysis._sideEffects._substitutions) {
+                            auto newSubst = sideEffect;
+                            newSubst._condition = activeSubstitutions._dictionary.Translate(includedAnalysis._sideEffects._dictionary, newSubst._condition);
+                            newSubst._condition = Internal::AndExpression(currentConditionInSideEffectDictionary, newSubst._condition);
+                            newSubst._substitution = activeSubstitutions._dictionary.Translate(includedAnalysis._sideEffects._dictionary, newSubst._substitution);
+                            activeSubstitutions._substitutions.push_back(newSubst);
+                        }
                     }
 
                 } else if (XlEqStringI(directive._value, "line") || XlEqStringI(directive._value, "error") || XlEqStringI(directive._value, "pragma")) {
@@ -845,7 +831,7 @@ namespace Utility
             PreprocessorAnalysis result;
             result._tokenDictionary = std::move(tokenDictionary);
             result._relevanceTable = std::move(relevanceTable);
-            result._substitutionSideEffects = std::move(activeSubstitutions);
+            result._sideEffects = std::move(activeSubstitutions);
             return result;
         }
     };
