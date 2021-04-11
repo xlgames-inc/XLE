@@ -289,7 +289,7 @@ namespace UnitTests
 				RequireReady(*finalPipeline);
 
 				auto rpi = fbHelper.BeginRenderPass(*threadContext);
-				RenderQuad(*testHelper, *threadContext, *vertexBuffer, (unsigned)dimof(vertices_fullViewport), *finalPipeline->Actualize());
+				RenderQuad(*testHelper, *threadContext, *vertexBuffer, (unsigned)dimof(vertices_fullViewport), *finalPipeline->Actualize()->_metalPipeline);
 			}
 
 			// We should have filled the entire framebuffer with red 
@@ -310,7 +310,7 @@ namespace UnitTests
 				RequireReady(*finalPipeline);
 
 				auto rpi = fbHelper.BeginRenderPass(*threadContext);
-				RenderQuad(*testHelper, *threadContext, *vertexBuffer, (unsigned)dimof(vertices_fullViewport), *finalPipeline->Actualize());
+				RenderQuad(*testHelper, *threadContext, *vertexBuffer, (unsigned)dimof(vertices_fullViewport), *finalPipeline->Actualize()->_metalPipeline);
 			}
 
 			auto breakdown1 = fbHelper.GetFullColorBreakdown(*threadContext);
@@ -512,7 +512,7 @@ namespace UnitTests
 				REQUIRE(!boundTextureI->_binding.empty());
 				
 				auto rpi = fbHelper.BeginRenderPass(*threadContext);
-				RenderQuad(*testHelper, *threadContext, *vertexBuffer, (unsigned)dimof(vertices_fullViewport), *finalPipeline->Actualize(), descriptorSetFuture->Actualize().get());
+				RenderQuad(*testHelper, *threadContext, *vertexBuffer, (unsigned)dimof(vertices_fullViewport), *finalPipeline->Actualize()->_metalPipeline, descriptorSetFuture->Actualize().get());
 			}
 
 			auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);
@@ -612,7 +612,7 @@ namespace UnitTests
 				
 				{
 					auto rpi = fbHelper.BeginRenderPass(*threadContext);
-					RenderQuad(*testHelper, *threadContext, *vertexBuffer, (unsigned)dimof(vertices_fullViewport), *finalPipeline->Actualize(), descriptorSetFuture->Actualize().get());
+					RenderQuad(*testHelper, *threadContext, *vertexBuffer, (unsigned)dimof(vertices_fullViewport), *finalPipeline->Actualize()->_metalPipeline, descriptorSetFuture->Actualize().get());
 				}
 
 				auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);

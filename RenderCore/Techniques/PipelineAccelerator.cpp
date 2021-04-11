@@ -67,7 +67,7 @@ namespace RenderCore { namespace Techniques
 	
 		struct Pipeline
 		{
-			::Assets::FuturePtr<Metal::GraphicsPipeline> _future;
+			::Assets::FuturePtr<IPipelineAcceleratorPool::Pipeline> _future;
 		};
 		std::vector<Pipeline> _finalPipelines;
 
@@ -310,7 +310,7 @@ namespace RenderCore { namespace Techniques
 		const std::shared_ptr<SharedPools>& sharedPools) -> Pipeline
 	{
 		Pipeline result;
-		result._future = std::make_shared<::Assets::AssetFuture<Metal::GraphicsPipeline>>("PipelineAccelerator Pipeline");
+		result._future = std::make_shared<::Assets::AssetFuture<IPipelineAcceleratorPool::Pipeline>>("PipelineAccelerator Pipeline");
 		ParameterBox copyGlobalSelectors = globalSelectors;
 		std::weak_ptr<PipelineAccelerator> weakThis = shared_from_this();
 
@@ -325,10 +325,13 @@ namespace RenderCore { namespace Techniques
 		//
 		//    CompiledShaderPatchCollection -> GraphicsPipelineDesc -> Metal::GraphicsPipeline
 		//
-		::Assets::WhenAll(patchCollectionFuture).ThenConstructToFuture<Metal::GraphicsPipeline>(
+		// Note there may be an issue here in that if the shader compile fails, the dep val for the 
+		// final pipeline will only contain the dependencies for the shader. So if the root problem
+		// is actually something about the configuration, we won't get the proper recompile functionality 
+		::Assets::WhenAll(patchCollectionFuture).ThenConstructToFuture<IPipelineAcceleratorPool::Pipeline>(
 			*result._future,
 			[sharedPools, pipelineLayout, copyGlobalSelectors, cfg, weakThis](
-				::Assets::AssetFuture<Metal::GraphicsPipeline>& resultFuture,
+				::Assets::AssetFuture<IPipelineAcceleratorPool::Pipeline>& resultFuture,
 				const std::shared_ptr<CompiledShaderPatchCollection>& compiledPatchCollection) {
 
 				auto containingPipelineAccelerator = weakThis.lock();
@@ -340,10 +343,10 @@ namespace RenderCore { namespace Techniques
 				auto pipelineDescFuture = cfg._delegate->Resolve(compiledPatchCollection->GetInterface(), containingPipelineAccelerator->_stateSet);
 				auto resolvedTechnique = GraphicsPipelineDescWithFilteringRules::CreateFuture(pipelineDescFuture);
 				
-				::Assets::WhenAll(resolvedTechnique).ThenConstructToFuture<Metal::GraphicsPipeline>(
+				::Assets::WhenAll(resolvedTechnique).ThenConstructToFuture<IPipelineAcceleratorPool::Pipeline>(
 					resultFuture,
 					[sharedPools, pipelineLayout, copyGlobalSelectors, cfg, weakThis, compiledPatchCollection](
-						::Assets::AssetFuture<Metal::GraphicsPipeline>& resultFuture,
+						::Assets::AssetFuture<IPipelineAcceleratorPool::Pipeline>& resultFuture,
 						const std::shared_ptr<GraphicsPipelineDescWithFilteringRules>& pipelineDescWithFiltering) {
 
 						const auto& pipelineDesc = pipelineDescWithFiltering->_pipelineDesc;
@@ -355,7 +358,7 @@ namespace RenderCore { namespace Techniques
 						auto containingPipelineAccelerator = weakThis.lock();
 						if (!containingPipelineAccelerator)
 							Throw(std::runtime_error("Containing GraphicsPipeline builder has been destroyed"));
-						
+
 						{
 							// The list here defines the override order. Note that the global settings are last
 							// because they can actually override everything
@@ -376,20 +379,34 @@ namespace RenderCore { namespace Techniques
 										pipelineDescWithFiltering->_preconfiguration.get());
 						}
 
+						auto configurationDepVal = std::make_shared<::Assets::DependencyValidation>();
+						if (pipelineDesc->GetDependencyValidation())
+							::Assets::RegisterAssetDependency(configurationDepVal, pipelineDesc->GetDependencyValidation());
+						::Assets::RegisterAssetDependency(configurationDepVal, compiledPatchCollection->GetDependencyValidation());
+						for (unsigned c=0; c<dimof(ITechniqueDelegate::GraphicsPipelineDesc::_shaders); ++c)
+							if (!pipelineDesc->_shaders[c].empty() && pipelineDescWithFiltering->_automaticFiltering[c])
+								::Assets::RegisterAssetDependency(configurationDepVal, pipelineDescWithFiltering->_automaticFiltering[c]->GetDependencyValidation());
+						if (pipelineDescWithFiltering->_preconfiguration)
+							::Assets::RegisterAssetDependency(configurationDepVal, pipelineDescWithFiltering->_preconfiguration->GetDependencyValidation());
+
 						auto shaderProgram = MakeShaderProgram(*pipelineDesc, pipelineLayout, compiledPatchCollection, MakeIteratorRange(filteredSelectors));
-						::Assets::WhenAll(shaderProgram).ThenConstructToFuture<Metal::GraphicsPipeline>(
+						::Assets::WhenAll(shaderProgram).ThenConstructToFuture<IPipelineAcceleratorPool::Pipeline>(
 							resultFuture,
-							[cfg, pipelineDesc, weakThis](const std::shared_ptr<Metal::ShaderProgram>& shaderProgram) {
+							[cfg, pipelineDesc, configurationDepVal, weakThis](const std::shared_ptr<Metal::ShaderProgram>& shaderProgram) {
 								auto containingPipelineAccelerator = weakThis.lock();
 								if (!containingPipelineAccelerator)
 									Throw(std::runtime_error("Containing GraphicsPipeline builder has been destroyed"));
 
-								return containingPipelineAccelerator->InternalCreatePipeline(
+								auto result = std::make_shared<IPipelineAcceleratorPool::Pipeline>();
+								result->_metalPipeline = containingPipelineAccelerator->InternalCreatePipeline(
 									*shaderProgram, 
 									pipelineDesc->_depthStencil, 
 									pipelineDesc->_blend[0], 
 									pipelineDesc->_rasterization, 
 									cfg);
+								result->_depVal = configurationDepVal;
+								::Assets::RegisterAssetDependency(result->_depVal, result->_metalPipeline->GetDependencyValidation());
+								return result;
 							});
 					});
 			});
@@ -564,7 +581,7 @@ namespace RenderCore { namespace Techniques
 			const FrameBufferDesc& fbDesc,
 			unsigned subpassIndex = 0) override;
 
-		const ::Assets::FuturePtr<Metal::GraphicsPipeline>& GetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const override;
+		const ::Assets::FuturePtr<Pipeline>& GetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const override;
 		const Metal::GraphicsPipeline* TryGetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const override;
 
 		const ::Assets::FuturePtr<IDescriptorSet>& GetDescriptorSet(DescriptorSetAccelerator& accelerator) const override;
@@ -614,9 +631,9 @@ namespace RenderCore { namespace Techniques
 		PipelineAcceleratorPoolFlags::BitField _flags;
 	};
 
-	const ::Assets::FuturePtr<Metal::GraphicsPipeline>& PipelineAcceleratorPool::GetPipeline(
+	auto PipelineAcceleratorPool::GetPipeline(
 		PipelineAccelerator& pipelineAccelerator, 
-		const SequencerConfig& sequencerConfig) const
+		const SequencerConfig& sequencerConfig) const -> const ::Assets::FuturePtr<Pipeline>&
 	{
 		unsigned sequencerIdx = unsigned(sequencerConfig._cfgId);
 		#if defined(_DEBUG)
@@ -643,7 +660,9 @@ namespace RenderCore { namespace Techniques
 				Throw(std::runtime_error("Bad sequencer config id"));
 		#endif
 		
-		return pipelineAccelerator._finalPipelines[sequencerIdx]._future->TryActualize().get();
+		auto p = pipelineAccelerator._finalPipelines[sequencerIdx]._future->TryActualize().get();
+		if (p) return p->_metalPipeline.get();
+		return nullptr;
 	}
 
 	const ::Assets::FuturePtr<IDescriptorSet>& PipelineAcceleratorPool::GetDescriptorSet(DescriptorSetAccelerator& accelerator) const

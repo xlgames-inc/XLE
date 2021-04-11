@@ -67,7 +67,15 @@ namespace RenderCore { namespace Techniques
 			const FrameBufferDesc& fbDesc,
 			unsigned subpassIndex = 0) = 0;
 
-		virtual const ::Assets::FuturePtr<Metal::GraphicsPipeline>& GetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const = 0;
+		class Pipeline
+		{
+		public:
+			std::shared_ptr<Metal::GraphicsPipeline> _metalPipeline;
+			::Assets::DepValPtr _depVal;
+			const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		};
+
+		virtual const ::Assets::FuturePtr<Pipeline>& GetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const = 0;
 		virtual const Metal::GraphicsPipeline* TryGetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const = 0;
 
 		virtual const ::Assets::FuturePtr<IDescriptorSet>& GetDescriptorSet(DescriptorSetAccelerator& accelerator) const = 0;

@@ -371,7 +371,7 @@ namespace UnitTests
 		usi.BindImmediateData(0, Hash64("GlobalTransform"));
 		if (descriptorSet)
 			usi.BindFixedDescriptorSet(0, Hash64("Material"));
-		Metal::BoundUniforms uniforms { *pipeline, usi };
+		Metal::BoundUniforms uniforms { *pipeline->_metalPipeline, usi };
 
 		{
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
@@ -389,7 +389,7 @@ namespace UnitTests
 
 			VertexBufferView vbvs[] = { &vb };
 			encoder.Bind(MakeIteratorRange(vbvs), {});
-			encoder.Draw(*pipeline, (unsigned)vertexCount);
+			encoder.Draw(*pipeline->_metalPipeline, (unsigned)vertexCount);
 		}
 
 		static unsigned counter = 0;
