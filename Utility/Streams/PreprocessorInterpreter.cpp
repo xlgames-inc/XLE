@@ -691,7 +691,7 @@ namespace Utility
 			return result;
 		}
 
-		std::string TokenDictionary::AsString(const ExpressionTokenList& subExpression) const
+		std::string TokenDictionary::AsString(IteratorRange<const unsigned*> subExpression) const
 		{
 			OppMap_t& opp = calculator::Default().opPrecedence;
 			std::stack<std::pair<std::string, unsigned>> evaluation;
@@ -744,7 +744,7 @@ namespace Utility
 		}
 
 		int TokenDictionary::EvaluateExpression(
-			const ExpressionTokenList& tokenList,
+			IteratorRange<const unsigned*> tokenList,
 			IteratorRange<ParameterBox const*const*> environment) const
 		{
 			struct IntToken

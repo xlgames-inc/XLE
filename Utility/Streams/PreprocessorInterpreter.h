@@ -51,9 +51,9 @@ namespace Utility
 			std::optional<unsigned> TryGetToken(TokenType type, StringSection<> value) const;
 
 			int EvaluateExpression(
-				const ExpressionTokenList& tokenList,
+				IteratorRange<const unsigned*> tokenList,
 				IteratorRange<ParameterBox const*const*> environment) const;
-			std::string AsString(const ExpressionTokenList& tokenList) const;
+			std::string AsString(IteratorRange<const unsigned*> tokenList) const;
 			void Simplify(ExpressionTokenList&);
 
 			uint64_t CalculateHash() const;
