@@ -35,7 +35,7 @@ namespace Assets
 		using RegisteredCompilerId = uint64_t;
 		struct  CompilerRegistration
 		{
-			RegisteredCompilerId _registrationId;
+			RegisteredCompilerId _registrationId = ~0ull;
 		};
 		CompilerRegistration RegisterCompiler(
 			const std::string& name,										///< string name for the compiler, usually something user-presentable

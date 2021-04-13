@@ -124,7 +124,7 @@ namespace Assets
 					if (artifactCollection) {
 						thatFuture.SetInvalidAsset(artifactCollection->GetDependencyValidation(), GetErrorMessage(*artifactCollection));
 					} else {
-						thatFuture.SetInvalidAsset(nullptr, nullptr);
+						thatFuture.SetInvalidAsset(nullptr, AsBlob("No artifact collection of the requested type was found"));
 					}
 					return false;
 				}

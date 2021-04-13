@@ -60,6 +60,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         ../SceneEngine/LightInternal.cpp
         ../SceneEngine/PreparedScene.cpp
         ../SceneEngine/RenderStepUtils.cpp
+        ../Tools/ToolsRig/PreviewSceneRegistry.cpp
     )
 
     if (WIN32)

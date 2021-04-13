@@ -33,6 +33,8 @@ namespace RenderCore { namespace Techniques
 		unsigned 	RegisterTextureLoader(const std::basic_regex<char, std::regex_traits<char>>& initializerMatcher, std::function<TextureLoaderSignature>&& loader);
 		void 		DeregisterTextureLoader(unsigned pluginId);
 		std::shared_ptr<BufferUploads::IAsyncDataSource> CreateTextureDataSource(StringSection<> identifier, TextureLoaderFlags::BitField flags);
+
+		void 		SetBufferUploads(const std::shared_ptr<BufferUploads::IManager>&);
 		
 		Services(const std::shared_ptr<RenderCore::IDevice>& device);
 		~Services();
@@ -43,7 +45,7 @@ namespace RenderCore { namespace Techniques
 	protected:
 		std::shared_ptr<RenderCore::IDevice> _device;
 		std::shared_ptr<DeformOperationFactory> _deformOpsFactory;
-		std::unique_ptr<BufferUploads::IManager> _bufferUploads;
+		std::shared_ptr<BufferUploads::IManager> _bufferUploads;
 
 		class Pimpl;
 		std::unique_ptr<Pimpl> _pimpl;

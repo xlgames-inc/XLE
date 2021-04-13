@@ -493,7 +493,7 @@ namespace SceneEngine
 		auto pipelineAcceleratorPool = technique._pipelineAccelerators.get();
 		pipelineAcceleratorPool->RebuildAllOutOfDatePipelines();
 
-		std::set<::Assets::FuturePtr<Metal::GraphicsPipeline>> pendingPipelines;
+		std::set<::Assets::FuturePtr<Techniques::IPipelineAcceleratorPool::Pipeline>> pendingPipelines;
 
 		for (const auto&rp:technique._renderPasses) {
 			
@@ -629,11 +629,11 @@ namespace SceneEngine
 #endif
     }
 
-#if 0
 	void LightingParser_Overlays(   IThreadContext& context,
 									Techniques::ParsingContext& parsingContext,
                                     LightingParserContext& lightingParserContext)
     {
+#if 0
         GPUAnnotation anno(context, "Overlays");
 
 		auto metalContext = Metal::DeviceContext::Get(context);
@@ -683,8 +683,8 @@ namespace SceneEngine
 
             CATCH_ASSETS_END(parsingContext)
         }
-    }
 #endif
+    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

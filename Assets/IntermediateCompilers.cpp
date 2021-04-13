@@ -158,7 +158,7 @@ namespace Assets
 				finalCollections.push_back(std::make_pair(target._targetCode, artifactCollection));
 
 				// Write out the intermediate file that lists the products of this compile operation
-				if (destinationStore && !serializedArtifacts.empty()) {
+				if (destinationStore) {
 					bool storedInArchive = false;
 					if (delegate._archiveNameDelegate) {
 						auto archiveEntry = delegate._archiveNameDelegate(target._targetCode, initializers);

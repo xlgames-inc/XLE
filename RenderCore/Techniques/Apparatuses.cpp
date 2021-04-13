@@ -11,6 +11,8 @@
 #include "ImmediateDrawables.h"
 #include "RenderPass.h"
 #include "SubFrameEvents.h"
+#include "SimpleModelDeform.h"
+#include "SkinDeformer.h"
 #include "../Assets/PredefinedPipelineLayout.h"
 #include "../Assets/PipelineConfigurationUtils.h"
 #include "../IDevice.h"
@@ -163,9 +165,12 @@ namespace RenderCore { namespace Techniques
 
 		_continuationExecutor = std::make_unique<ContinuationExecutor>();
 		_bufferUploads = BufferUploads::CreateManager(*device);
+		_techniqueServices->SetBufferUploads(_bufferUploads);
 
 		_techniqueServices->RegisterTextureLoader(std::regex{R"(.*\.[dD][dD][sS])"}, Techniques::CreateDDSTextureLoader());
 		_techniqueServices->RegisterTextureLoader(std::regex{R"(.*)"}, Techniques::CreateWICTextureLoader());
+
+		_techniqueServices->GetDeformOperationFactory().RegisterDeformOperation("skin", SkinDeformer::InstantiationFunction);
 
 		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
 		_modelCompilers = ::Assets::DiscoverCompileOperations(compilers, "*Conversion.dll");

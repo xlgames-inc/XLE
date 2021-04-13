@@ -334,7 +334,9 @@ namespace Assets
 		std::string mountPoint;
 		{
 			auto mountPointSplitPath = MakeSplitPath(mountPointInput);
-			mountPointSplitPath.BeginsWithSeparator() = true;
+			// We should avoid beginning with a separator, because this would mean that the "mounted path" returned from GetDesc, or GetMountPoint will also begin with a separator
+			// The runs into issues with AbsolutePathMode::RawOS, because it means that those returned paths can't be fed back into the mounting tree 
+			mountPointSplitPath.BeginsWithSeparator() = false;
 			mountPointSplitPath.EndsWithSeparator() = true;
 			mountPoint = mountPointSplitPath.Simplify().Rebuild(_pimpl->_rules);
 		}
@@ -411,7 +413,7 @@ namespace Assets
 			bool match = true;
 			auto minCount = std::min(mount._depth, splitInitial.GetSectionCount());
 			for (unsigned c=0; c<minCount; ++c)
-				if (HashFilenameAndPath(splitInitial.GetSections()[c]) != HashFilenameAndPath(mount._mountPoint.GetSections()[c])) {
+				if (HashFilename(splitInitial.GetSections()[c]) != HashFilename(mount._mountPoint.GetSections()[c])) {
 					match = false;
 					break;
 				}

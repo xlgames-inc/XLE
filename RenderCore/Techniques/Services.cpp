@@ -4,7 +4,6 @@
 
 #include "Services.h"
 #include "SimpleModelDeform.h"
-#include "SkinDeformer.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/AttachablePtr.h"
 #include <vector>
@@ -54,23 +53,20 @@ namespace RenderCore { namespace Techniques
 		return nullptr;
 	}
 
+	void Services::SetBufferUploads(const std::shared_ptr<BufferUploads::IManager>& manager)
+	{
+		_bufferUploads = manager;
+	}
+
 	Services::Services(const std::shared_ptr<RenderCore::IDevice>& device)
 	{
 		_pimpl = std::make_unique<Pimpl>();
 		_device = device;
 		_deformOpsFactory = std::make_shared<DeformOperationFactory>();
-		_deformOpsFactory->RegisterDeformOperation("skin", SkinDeformer::InstantiationFunction);
-
-		if (device) {
-            _bufferUploads = BufferUploads::CreateManager(*device);
-        }
 	}
 
 	Services::~Services()
 	{
-		if (_bufferUploads) {
-            _bufferUploads.reset();
-        }
 	}
 
 	// Our "s_instance" pointer to services must act as a weak pointer (otherwise clients can't control

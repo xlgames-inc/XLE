@@ -70,12 +70,13 @@ namespace RenderOverlays
         void ReleaseState();
         void SetState(const OverlayState& state);
 
-        // RenderCore::IThreadContext*                 GetDeviceContext();
-
         ImmediateOverlayContext(
             RenderCore::IThreadContext& threadContext,
             RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
             FontRenderingManager& fontRenderingManager);
+        ImmediateOverlayContext(
+            RenderCore::IThreadContext& threadContext,
+            RenderCore::Techniques::IImmediateDrawables& immediateDrawables);
         ~ImmediateOverlayContext();
 
         class ShaderBox;
@@ -88,10 +89,6 @@ namespace RenderOverlays
         OverlayState _currentState;
 
         class DrawCall;
-        // std::vector<DrawCall>   _drawCalls;
-        // void                    Flush();
-        // void                    SetShader(RenderCore::Topology topology, VertexFormat format, ProjectionMode projMode, const std::string& pixelShaderName, IteratorRange<const RenderCore::VertexBufferView*> vertexBuffers);
-
         IteratorRange<void*>    BeginDrawCall(const DrawCall& drawCall);
     };
 

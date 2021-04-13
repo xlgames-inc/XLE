@@ -54,6 +54,11 @@ namespace ToolsRig
 		RegistrySetId _nextRegistrySetId = 1;
 	};
 
+	std::shared_ptr<IPreviewSceneRegistry> CreatePreviewSceneRegistry()
+	{
+		return std::make_shared<MainPreviewSceneRegistry>();
+	}
+
 	static ConsoleRig::WeakAttachablePtr<IPreviewSceneRegistry> s_previewSceneRegistry;
 	IPreviewSceneRegistry* GetPreviewSceneRegistry()
 	{

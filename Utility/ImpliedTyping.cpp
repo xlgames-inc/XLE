@@ -431,7 +431,7 @@ namespace Utility { namespace ImpliedTyping
         case 'F':
             if (XlEqString(expression, "false") || XlEqString(expression, "False") || XlEqString(expression, "FALSE")) {
                 boolValue = false;
-                boolCandidateLength = 4;
+                boolCandidateLength = 5;
             }
             goto finalizeBoolCandidate;
 

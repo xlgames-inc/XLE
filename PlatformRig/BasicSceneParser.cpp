@@ -14,6 +14,8 @@
 #include "../../Utility/Conversion.h"
 #include "../../Utility/Meta/AccessorSerialize.h"
 
+#include "../../SceneEngine/LightingParserStandardPlugin.h"     // (for stubbing out)
+
 namespace PlatformRig
 {
     using namespace SceneEngine;
@@ -355,6 +357,23 @@ namespace SceneEngine
 	{
 		return nullptr;
 	}
+
+    std::vector<std::shared_ptr<IRenderStep>> CreateStandardRenderSteps(LightingModel lightingModel)
+    {
+        return {};
+    }
+
+    void LightingParserStandardPlugin::OnPreScenePrepare(
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&) const {}
+    void LightingParserStandardPlugin::OnLightingResolvePrepare(
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&,  LightingParserContext& parserContext,
+        LightingResolveContext& resolveContext) const {}
+    void LightingParserStandardPlugin::OnPostSceneRender(
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext& parserContext, 
+        RenderCore::Techniques::BatchFilter filter, unsigned techniqueIndex) const {}
+    void LightingParserStandardPlugin::InitBasicLightEnvironment(
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+        ShaderLightDesc::BasicEnvironment& env) const {}
 }
 
 template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::ToneMapSettings>()

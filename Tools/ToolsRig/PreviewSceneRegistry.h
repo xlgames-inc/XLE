@@ -35,6 +35,7 @@ namespace ToolsRig
 		virtual ~IPreviewSceneRegistry();
 	};
 
+	std::shared_ptr<IPreviewSceneRegistry> CreatePreviewSceneRegistry();
 	IPreviewSceneRegistry* GetPreviewSceneRegistry();
 }
 

@@ -369,9 +369,9 @@ namespace ShaderSourceParser
 	{
 		ParameterBox output = std::move(input);
 
-		Log(Warning) << "Prior to filtering: " << std::endl;
+		/*Log(Warning) << "Prior to filtering: " << std::endl;
 		for (auto v:output)
-			Log(Warning) << "\t" << v.Name() << " = " << v.ValueAsString() << std::endl;
+			Log(Warning) << "\t" << v.Name() << " = " << v.ValueAsString() << std::endl;*/
 
 		for (const auto&subst:_preconfigurationSideEffects._substitutions) {
 			const ParameterBox* o = &output;
@@ -387,9 +387,9 @@ namespace ShaderSourceParser
 			}
 		}
 
-		Log(Warning) << "After filtering: " << std::endl;
+		/*Log(Warning) << "After filtering: " << std::endl;
 		for (auto v:output)
-			Log(Warning) << "\t" << v.Name() << " = " << v.ValueAsString() << std::endl;
+			Log(Warning) << "\t" << v.Name() << " = " << v.ValueAsString() << std::endl;*/
 
 		return output;
 	}
@@ -428,7 +428,7 @@ namespace ShaderSourceParser
 				metrics << std::endl;
 			}
 
-			Log(Warning) << metrics.str() << std::endl;
+			// Log(Warning) << metrics.str() << std::endl;
 		} CATCH (const std::exception& e) {
 			Throw(::Assets::Exceptions::ConstructionError(e, handler.MakeDependencyValidation()));
 		} CATCH_END

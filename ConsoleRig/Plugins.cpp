@@ -37,16 +37,20 @@ namespace ConsoleRig
 			ConsoleRig::AttachableLibrary library{c};
 			std::string errorMsg;
 			if (library.TryAttach(errorMsg)) {
-				using PluginFn = std::shared_ptr<ConsoleRig::IStartupShutdownPlugin>();
-				auto fn = library.GetFunction<PluginFn*>("GetStartupShutdownPlugin");
-				if (fn) {
-					auto plugin = (*fn)();
-					plugin->Initialize();
-					_pimpl->_plugins.emplace_back(std::move(plugin));
-				}
-				_pimpl->_pluginLibraries.emplace_back(std::move(library));
+				TRY {
+					using PluginFn = std::shared_ptr<ConsoleRig::IStartupShutdownPlugin>();
+					auto fn = library.GetFunction<PluginFn*>("GetStartupShutdownPlugin");
+					if (fn) {
+						auto plugin = (*fn)();
+						plugin->Initialize();
+						_pimpl->_plugins.emplace_back(std::move(plugin));
+					}
+					_pimpl->_pluginLibraries.emplace_back(std::move(library));
+				} CATCH(const std::exception& e) {
+					Log(Error) << "Plugin failed during the Initialize method with error msg (" << e.what() << ")" << std::endl;
+				} CATCH_END
 			} else {
-				Log(Warning) << "Plugin failed to attach with error msg (" << errorMsg << ")" << std::endl;
+				Log(Error) << "Plugin failed to attach with error msg (" << errorMsg << ")" << std::endl;
 			}
 		}
 	}

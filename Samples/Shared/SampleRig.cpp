@@ -14,9 +14,12 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderCore/Techniques/Services.h"
 #include "../../RenderCore/Init.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/IThreadContext.h"
+
+#include "../../Tools/ToolsRig/PreviewSceneRegistry.h"
 
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/MountingTree.h"
@@ -55,6 +58,8 @@ namespace Sample
 
         auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>();
         auto rawosmnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("rawos", ::Assets::CreateFileSystem_OS({}, ConsoleRig::GlobalServices::GetInstance().GetPollingThread()));
+        auto techniqueServices = ConsoleRig::MakeAttachablePtr<RenderCore::Techniques::Services>(sampleGlobals._renderDevice);
+        ConsoleRig::AttachablePtr<ToolsRig::IPreviewSceneRegistry> previewSceneRegistry = ToolsRig::CreatePreviewSceneRegistry();
 
 		::ConsoleRig::GlobalServices::GetInstance().LoadDefaultPlugins();
 
@@ -88,7 +93,7 @@ namespace Sample
         auto debugOverlaysApparatus = std::make_shared<PlatformRig::DebugOverlaysApparatus>(immediateDrawingApparatus, frameRig);
         PlatformRig::InitProfilerDisplays(*debugOverlaysApparatus->_debugSystem, &windowApparatus->_immediateContext->GetAnnotator(), cpuProfiler);
         frameRig.SetDebugScreensOverlaySystem(debugOverlaysApparatus->_debugScreensOverlaySystem);
-        // frameRig.SetMainOverlaySystem(sampleOverlay); (disabled temporarily)
+        frameRig.SetMainOverlaySystem(sampleOverlay); // (disabled temporarily)
 
             //  Setup input:
             //      * We create a main input handler, and tie that to the window to receive inputs

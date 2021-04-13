@@ -73,7 +73,7 @@ namespace Utility
                 void* dest, size_t destSize);
 
         template <typename Type>
-            std::optional<Type> Parse(StringSection<> expression);
+            std::optional<Type> ParseFullMatch(StringSection<> expression);
 
         bool Cast(
             IteratorRange<void*> dest, TypeDesc destType,

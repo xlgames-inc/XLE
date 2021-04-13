@@ -17,6 +17,7 @@
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderOverlays/HighlightEffects.h"
+#include "../../RenderOverlays/Font.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
@@ -121,6 +122,7 @@ namespace ToolsRig
 		std::shared_ptr<VisCameraSettings> _camera;
 
 		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
+		std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> _immediateDrawables;
 		std::shared_ptr<::Assets::IAsyncMarker> _pendingPipelines;
 
 		std::vector<std::shared_ptr<SceneEngine::ILightingParserPlugin>> _lightingPlugins;
@@ -278,9 +280,7 @@ namespace ToolsRig
 			// Draw a loading indicator, 
 			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext, RenderCore::LoadStore::Clear);
 			using namespace RenderOverlays::DebuggingDisplay;
-			RenderOverlays::ImmediateOverlayContext overlays(
-				threadContext, &parserContext.GetNamedResources(),
-				parserContext.GetProjectionDesc());
+			RenderOverlays::ImmediateOverlayContext overlays(threadContext, *_pimpl->_immediateDrawables);
 			overlays.CaptureState();
 			auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
 			Rect rect { Coord2{0, 0}, Coord2(viewportDims[0], viewportDims[1]) };
@@ -349,11 +349,14 @@ namespace ToolsRig
 		return { refreshMode };
 	}
 	
-    SimpleSceneLayer::SimpleSceneLayer(const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators)
+    SimpleSceneLayer::SimpleSceneLayer(
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
+		const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables)
     {
         _pimpl = std::make_unique<Pimpl>();
 		_pimpl->_camera = std::make_shared<VisCameraSettings>();
 		_pimpl->_pipelineAccelerators = pipelineAccelerators;
+		_pimpl->_immediateDrawables = immediateDrawables;
 
 		_pimpl->_lightingPlugins.push_back(std::make_shared<SceneEngine::LightingParserStandardPlugin>());
 		_pimpl->_renderSteps = SceneEngine::CreateStandardRenderSteps(SceneEngine::LightingModel::Deferred);
@@ -469,6 +472,7 @@ namespace ToolsRig
 		std::shared_ptr<VisCameraSettings> _cameraSettings;
 		std::shared_ptr<VisAnimationState> _animState;
 		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
+		std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> _immediateDrawables;
 
 		std::shared_ptr<SceneEngine::IScene> _scene;
 
@@ -574,7 +578,7 @@ namespace ToolsRig
 					auto sequencerConfig = _pimpl->_pipelineAccelerators->CreateSequencerConfig(visWireframeDelegate, ParameterBox{}, fbDesc);
 					sequencerTechnique._sequencerConfig = sequencerConfig.get();
 					SceneEngine::ExecuteSceneRaw(
-						threadContext, parserContext, 
+						threadContext, parserContext, *_pimpl->_pipelineAccelerators,
 						sequencerTechnique,
 						sceneView,
 						*_pimpl->_scene);
@@ -586,7 +590,7 @@ namespace ToolsRig
 					auto sequencerConfig = _pimpl->_pipelineAccelerators->CreateSequencerConfig(visNormals, ParameterBox{}, fbDesc);
 					sequencerTechnique._sequencerConfig = sequencerConfig.get();
 					SceneEngine::ExecuteSceneRaw(
-						threadContext, parserContext, 
+						threadContext, parserContext, *_pimpl->_pipelineAccelerators,
 						sequencerTechnique,
 						sceneView,
 						*_pimpl->_scene);
@@ -614,7 +618,7 @@ namespace ToolsRig
 					auto sequencerCfg = _pimpl->_pipelineAccelerators->CreateSequencerConfig(primeStencilBuffer, ParameterBox{}, fbDesc);
 					sequencerTechnique._sequencerConfig = sequencerCfg.get();
 					SceneEngine::ExecuteSceneRaw(
-						threadContext, parserContext, 
+						threadContext, parserContext, *_pimpl->_pipelineAccelerators,
 						sequencerTechnique,
 						sceneView,
 						*_pimpl->_scene);
@@ -629,6 +633,8 @@ namespace ToolsRig
             //  containing debugging / profiling information
         if (doColorByMaterial) {
 
+			assert(0);	// not updated
+#if 0
 			CATCH_ASSETS_BEGIN
                 RenderOverlays::HighlightByStencilSettings settings;
 
@@ -646,6 +652,7 @@ namespace ToolsRig
                     threadContext, parserContext, 
                     settings, _pimpl->_settings._colourByMaterial==2);
             CATCH_ASSETS_END(parserContext)
+#endif
         }
 
 		bool writeMaterialName = 
@@ -658,9 +665,7 @@ namespace ToolsRig
 				{
 					auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
 					using namespace RenderOverlays::DebuggingDisplay;
-					RenderOverlays::ImmediateOverlayContext overlays(
-						threadContext, &parserContext.GetNamedResources(),
-						parserContext.GetProjectionDesc());
+					RenderOverlays::ImmediateOverlayContext overlays(threadContext, *_pimpl->_immediateDrawables);
 					overlays.CaptureState();
 					auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
 					Rect rect { Coord2{0, 0}, Coord2(viewportDims[0], viewportDims[1]) };
@@ -728,12 +733,14 @@ namespace ToolsRig
 	}
 
     VisualisationOverlay::VisualisationOverlay(
-		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
+		const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables,
 		const VisOverlaySettings& overlaySettings,
         std::shared_ptr<VisMouseOver> mouseOver)
     {
         _pimpl = std::make_unique<Pimpl>();
 		_pimpl->_pipelineAccelerators = pipelineAccelerators;
+		_pimpl->_immediateDrawables = immediateDrawables;
         _pimpl->_settings = overlaySettings;
         _pimpl->_mouseOver = std::move(mouseOver);
     }
@@ -762,7 +769,7 @@ namespace ToolsRig
 		
 			auto sequencerTechnique = stateContext.MakeRayTestSequencerTechnique();
 			SceneEngine::ExecuteSceneRaw(
-				threadContext, parserContext, 
+				threadContext, parserContext, pipelineAccelerators,
 				sequencerTechnique,
 				{SceneEngine::SceneView::Type::Other},
 				scene);
@@ -862,6 +869,8 @@ namespace ToolsRig
 			const PlatformRig::InputContext& context,
 			PlatformRig::Coord2 mousePosition)
 		{
+			assert(0);	// not updated
+#if 0
             auto worldSpaceRay = SceneEngine::IntersectionTestContext::CalculateWorldSpaceRay(
 				AsCameraDesc(*_camera), mousePosition, context._viewMins, context._viewMaxs);
 
@@ -884,6 +893,7 @@ namespace ToolsRig
 					}
 				}
 			}
+#endif
         }
 
 		void Set(const std::shared_ptr<SceneEngine::IScene>& scene) { _scene = scene; }
