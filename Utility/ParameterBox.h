@@ -46,6 +46,7 @@ namespace Utility
             ParameterName(StringSection<> name);
             ParameterName(ParameterNameHash hash);
             ParameterName(const char name[]);
+            ParameterName(const std::string& name);
         };
 
         static ParameterNameHash    MakeParameterNameHash(StringSection<> name);
@@ -210,6 +211,11 @@ namespace Utility
     inline ParameterBox::ParameterName::ParameterName(const char name[])
     {
         _hash = ParameterBox::MakeParameterNameHash(name);
+    }
+
+    inline ParameterBox::ParameterName::ParameterName(const std::string& name)
+    {
+        _hash = ParameterBox::MakeParameterNameHash(MakeStringSection(name));
     }
 
     inline ParameterBox::ParameterName::ParameterName(ParameterNameHash hash)

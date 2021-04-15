@@ -359,12 +359,12 @@ namespace Utility
 			return TokenDictionary::TokenType::Operation;
 		}
 
-		static bool operator==(const TokenDictionary::Token& lhs, const TokenDictionary::Token& rhs)
+		static bool operator==(const TokenDictionary::TokenDefinition& lhs, const TokenDictionary::TokenDefinition& rhs)
 		{
 			return lhs._type == rhs._type && lhs._value == rhs._value;
 		}
 
-		static bool operator<(const TokenDictionary::Token& lhs, const TokenDictionary::Token& rhs)
+		static bool operator<(const TokenDictionary::TokenDefinition& lhs, const TokenDictionary::TokenDefinition& rhs)
 		{
 			if (lhs._type < rhs._type) return true;
 			if (lhs._type > rhs._type) return false;
@@ -374,12 +374,12 @@ namespace Utility
 		static bool IsTrue(const ExpressionTokenList& expr) { return expr.size() == 1 && expr[0] == 1; }
 		static bool IsFalse(const ExpressionTokenList& expr) { return expr.size() == 1 && expr[0] == 0; }
 
-		static const unsigned s_fixedTokenFalse = 0;
-		static const unsigned s_fixedTokenTrue = 1;
-		static const unsigned s_fixedTokenLogicalAnd = 2;
-		static const unsigned s_fixedTokenLogicalOr = 3;
-		static const unsigned s_fixedTokenNot = 4;
-		static const unsigned s_fixedTokenUnaryMarker = 5;
+		static const Token s_fixedTokenFalse = 0;
+		static const Token s_fixedTokenTrue = 1;
+		static const Token s_fixedTokenLogicalAnd = 2;
+		static const Token s_fixedTokenLogicalOr = 3;
+		static const Token s_fixedTokenNot = 4;
+		static const Token s_fixedTokenUnaryMarker = 5;
 
 		ExpressionTokenList AsAbstractExpression(
 			TokenDictionary& dictionary,
@@ -393,7 +393,7 @@ namespace Utility
 				TokenBase& base  = *input.front();
 				
 				if (base.type == OP) {
-					auto op = static_cast<Token<std::string>*>(&base)->val;
+					auto op = static_cast<::Token<std::string>*>(&base)->val;
 
 					if (op == "()") {
 						Throw(std::runtime_error("Only defined() is supported in relevance checks. Other functions are not supported"));
@@ -407,7 +407,7 @@ namespace Utility
 				
 				} else if (base.type == VAR) {
 
-					std::string key = static_cast<Token<std::string>*>(&base)->val;
+					std::string key = static_cast<::Token<std::string>*>(&base)->val;
 					auto sub = std::find_if(substitutions._substitutions.rbegin(), substitutions._substitutions.rend(), [key](const auto& c) { return c._symbol == key; });
 					if (sub == substitutions._substitutions.rend() || !IsTrue(sub->_condition) || sub->_type == PreprocessorSubstitutions::Type::Undefine) {
 						dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::Variable, key);
@@ -442,12 +442,12 @@ namespace Utility
 					TokenBase& varToTest  = *input.front();
 					if (varToTest.type != VAR)
 						Throw(std::runtime_error("Missing parameters to defined() function in token stream"));
-					std::string key = static_cast<Token<std::string>*>(&varToTest)->val;
+					std::string key = static_cast<::Token<std::string>*>(&varToTest)->val;
 					input.pop();
 					if (input.empty())
 						Throw(std::runtime_error("Missing parameters to defined() function in token stream"));
 					TokenBase& callOp  = *input.front();
-					if (callOp.type != OP || static_cast<Token<std::string>*>(&callOp)->val != "()")
+					if (callOp.type != OP || static_cast<::Token<std::string>*>(&callOp)->val != "()")
 						Throw(std::runtime_error("Missing call token for defined() function in token stream"));
 					// (final pop still happens below)
 
@@ -570,7 +570,7 @@ namespace Utility
 			return result;
 		}
 
-		bool Equal(IteratorRange<std::vector<unsigned>::iterator> lhs, IteratorRange<std::vector<unsigned>::iterator> rhs)
+		bool Equal(IteratorRange<std::vector<Token>::iterator> lhs, IteratorRange<std::vector<Token>::iterator> rhs)
 		{
 			if (lhs.size() != rhs.size()) return false;
 			auto l = lhs.begin(), r = rhs.begin();
@@ -584,7 +584,7 @@ namespace Utility
 			struct Subexpression
 			{
 				size_t _begin, _end;
-				unsigned _tokenWeight;
+				Token _tokenWeight;
 			};
 			std::stack<Subexpression> evaluation;
 			for (size_t idx=0; idx<expr.size();) {
@@ -613,7 +613,7 @@ namespace Utility
 							// to be the most important ones
 							auto reversedOperator = preprocessor_operations::NumeralOperation_FlippedOperandOperator(token._value);
 							if (!reversedOperator.IsEmpty()) {
-								std::vector<unsigned> reversedPart;
+								std::vector<Token> reversedPart;
 								reversedPart.reserve(rrange.end() - lrange.begin());
 								reversedPart.insert(reversedPart.end(), rrange.begin(), rrange.end());
 								reversedPart.insert(reversedPart.end(), lrange.begin(), lrange.end());
@@ -621,7 +621,7 @@ namespace Utility
 								expr[idx] = GetToken(TokenType::Operation, reversedOperator.AsString());
 
 								// notice lsub & rsub reversed when calculating the "tokenWeight" just below
-								Subexpression subexpr { lsub._begin, idx + 1, lsub._tokenWeight ^ (rsub._tokenWeight << 3u) };
+								Subexpression subexpr { lsub._begin, idx + 1, lsub._tokenWeight ^ (rsub._tokenWeight << Token(3)) };
 								evaluation.push(subexpr);
 					 			++idx;
 								continue;
@@ -691,10 +691,10 @@ namespace Utility
 			return result;
 		}
 
-		std::string TokenDictionary::AsString(IteratorRange<const unsigned*> subExpression) const
+		std::string TokenDictionary::AsString(IteratorRange<const Token*> subExpression) const
 		{
 			OppMap_t& opp = calculator::Default().opPrecedence;
-			std::stack<std::pair<std::string, unsigned>> evaluation;
+			std::stack<std::pair<std::string, Token>> evaluation;
 			for (auto tokenIdx:subExpression) {
 				const auto& token = _tokenDefinitions[tokenIdx];
 
@@ -743,14 +743,14 @@ namespace Utility
 			return evaluation.top().first;
 		}
 
-		int TokenDictionary::EvaluateExpression(
-			IteratorRange<const unsigned*> tokenList,
-			IteratorRange<ParameterBox const*const*> environment) const
+		int64_t TokenDictionary::EvaluateExpression(
+			IteratorRange<const Token*> tokenList,
+			const std::function<std::optional<int64_t>(const TokenDefinition&, Token)>& lookupVariableFn) const
 		{
 			struct IntToken
 			{
 				TokenType _type;
-				int _value;
+				int64_t _value;
 			};
 
 			IntToken evaluatedVariables[_tokenDefinitions.size()];
@@ -769,29 +769,24 @@ namespace Utility
 					if (l_token._type == TokenType::UnaryMarker) {
 						auto val = preprocessor_operations::UnaryNumeralOperation_Internal(
 							packToken(r_token._value), token._value);
-						evaluation.push(IntToken { TokenType::Literal, (int)val.asInt() });
+						evaluation.push(IntToken { TokenType::Literal, (int64_t)val.asInt() });
 					} else {
 						auto val = preprocessor_operations::NumeralOperation_Internal(
 							packToken{l_token._value}, packToken{r_token._value}, token._value);
-						evaluation.push(IntToken { TokenType::Literal, (int)val.asInt() });
+						evaluation.push(IntToken { TokenType::Literal, (int64_t)val.asInt() });
 					}
 
 				} else if (token._type == TokenType::Variable) {
 
 					if (!hasBeenEvaluated[tokenIdx]) {
-						bool foundEvaluation = false;
-						for (const auto&b:environment) {
-							auto val = b->GetParameter<int>(MakeStringSection(token._value));
-							if (val.has_value()) {
-								evaluatedVariables[tokenIdx] = IntToken { TokenType::Literal, val.value() };
-								foundEvaluation = true;
-								break;
-							}
-						}
-
-						// undefined variables treated as 0
-						if (!foundEvaluation)
+						
+						auto lookup = lookupVariableFn(token, tokenIdx);
+						if (lookup.has_value()) {
+							evaluatedVariables[tokenIdx] = IntToken { TokenType::Literal, lookup.value() };
+						} else {
+							// undefined variables treated as 0
 							evaluatedVariables[tokenIdx] = IntToken { TokenType::Literal, 0 };
+						}
 						hasBeenEvaluated[tokenIdx] = true;
 					}
 
@@ -800,13 +795,8 @@ namespace Utility
 				} else if (token._type == TokenType::IsDefinedTest) {
 
 					if (!hasBeenEvaluated[tokenIdx]) {
-						evaluatedVariables[tokenIdx] = IntToken { TokenType::Literal, 0 };
-						for (const auto&b:environment) {
-							if (b->HasParameter(MakeStringSection(token._value))) {
-								evaluatedVariables[tokenIdx] = IntToken { TokenType::Literal, 1 };
-								break;
-							}
-						}
+						auto lookup = lookupVariableFn(token, tokenIdx);
+						evaluatedVariables[tokenIdx] = IntToken { TokenType::Literal, !!lookup.has_value() };
 					}
 
 					evaluation.push(evaluatedVariables[tokenIdx]);
@@ -832,25 +822,40 @@ namespace Utility
 			return res._value;
 		}
 
-		unsigned TokenDictionary::GetToken(TokenType type, const std::string& value)
+		int64_t TokenDictionary::EvaluateExpression(
+			IteratorRange<const Token*> tokenList,
+			IteratorRange<ParameterBox const*const*> environment) const
 		{
-			TokenDictionary::Token token { type, value };
+			auto lookupVariableFn = [environment](const TokenDefinition& token, Token) -> std::optional<int64_t> {
+				for (const auto&b:environment) {
+					auto val = b->GetParameter<int>(MakeStringSection(token._value));
+					if (val.has_value())
+						return val.value();
+				}
+				return {};
+			};
+			return EvaluateExpression(tokenList, lookupVariableFn);
+		}
+
+		Token TokenDictionary::GetToken(TokenType type, const std::string& value)
+		{
+			TokenDictionary::TokenDefinition token { type, value };
 			auto existing = std::find(_tokenDefinitions.begin(), _tokenDefinitions.end(), token);
 			if (existing == _tokenDefinitions.end()) {
 				_tokenDefinitions.push_back(token);
-				return (unsigned)_tokenDefinitions.size() - 1;
+				return (Token)_tokenDefinitions.size() - 1;
 			} else {
-				return (unsigned)std::distance(_tokenDefinitions.begin(), existing);
+				return (Token)std::distance(_tokenDefinitions.begin(), existing);
 			}
 		}
 
-		std::optional<unsigned> TokenDictionary::TryGetToken(TokenType type, StringSection<> value) const
+		std::optional<Token> TokenDictionary::TryGetToken(TokenType type, StringSection<> value) const
 		{
 			auto existing = std::find_if(
 				_tokenDefinitions.begin(), _tokenDefinitions.end(), 
 				[type, value](const auto& c) { return c._type == type && XlEqString(value, c._value); });
 			if (existing != _tokenDefinitions.end())
-				return (unsigned)std::distance(_tokenDefinitions.begin(), existing);
+				return (Token)std::distance(_tokenDefinitions.begin(), existing);
 			return {};
 		}
 
@@ -865,7 +870,7 @@ namespace Utility
 		{
 			ExpressionTokenList result;
 			result.reserve(tokenListForOtherDictionary.size());
-			std::vector<unsigned> translated;
+			std::vector<Token> translated;
 			translated.resize(otherDictionary._tokenDefinitions.size(), ~0u);
 			for (const auto&token:tokenListForOtherDictionary) {
 				auto& trns = translated[token];
@@ -876,9 +881,9 @@ namespace Utility
 			return result;
 		}
 
-		unsigned TokenDictionary::Translate(
+		Token TokenDictionary::Translate(
 			const TokenDictionary& otherDictionary,
-			unsigned tokenForOtherDictionary)
+			Token tokenForOtherDictionary)
 		{
 			return GetToken(otherDictionary._tokenDefinitions[tokenForOtherDictionary]._type, otherDictionary._tokenDefinitions[tokenForOtherDictionary]._value);
 		}
@@ -915,7 +920,7 @@ namespace Utility
 			struct PartialExpression
 			{
 				Internal::WorkingRelevanceTable _relevance;
-				std::vector<unsigned> _subExpression;
+				std::vector<Token> _subExpression;
 			};
 
 			using TokenType = Internal::TokenDictionary::TokenType;

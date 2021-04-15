@@ -96,7 +96,7 @@ namespace ShaderSourceParser
 
 	void SelectorFilteringRules::MergeIn(const SelectorFilteringRules& source)
 	{
-		std::map<unsigned, Utility::Internal::ExpressionTokenList> translatedRelevance;
+		std::map<Utility::Internal::Token, Utility::Internal::ExpressionTokenList> translatedRelevance;
 		for (const auto& e:source._relevanceTable) {
 			translatedRelevance.insert(std::make_pair(
 				_tokenDictionary.Translate(source._tokenDictionary, e.first),
@@ -160,7 +160,7 @@ namespace ShaderSourceParser
 					if (colon == value.end())
 						Throw(Utility::FormatException("Missing colon in token", formatter.GetLocation()));
 
-					Utility::Internal::TokenDictionary::Token token;
+					Utility::Internal::TokenDictionary::TokenDefinition token;
 					token._type = Utility::Internal::AsTokenType({value.begin(), colon});
 					token._value = std::string(colon+1, value.end());
 					_tokenDictionary._tokenDefinitions.push_back(token);

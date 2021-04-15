@@ -515,8 +515,8 @@ namespace Utility
 
     static bool IsNotDefinedCheck(
         const Internal::TokenDictionary& dictionary,
-        IteratorRange<const unsigned*> expression,
-        unsigned definedCheckToken)
+        IteratorRange<const Internal::Token*> expression,
+        Internal::Token definedCheckToken)
     {
         if (expression.size() != 3 || expression[1] != definedCheckToken) return false;
 
@@ -792,7 +792,7 @@ namespace Utility
                     auto includedAnalysis = GeneratePreprocessorAnalysisFromFile(symbol._value, filenameForRelativeIncludeSearch);
 
                     // merge in the results we got from this included file
-                    std::map<unsigned, Internal::ExpressionTokenList> translatedRelevanceTable;
+                    std::map<Internal::Token, Internal::ExpressionTokenList> translatedRelevanceTable;
                     for (const auto& relevance:includedAnalysis._relevanceTable) {
                         translatedRelevanceTable.insert(std::make_pair(
                             tokenDictionary.Translate(includedAnalysis._tokenDictionary, relevance.first),

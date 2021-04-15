@@ -8,6 +8,7 @@
 #include "../IteratorUtils.h"
 #include <unordered_map>
 #include <map>
+#include <functional>
 
 namespace Utility
 {
@@ -23,18 +24,19 @@ namespace Utility
 
 	namespace Internal
 	{
-		using ExpressionTokenList = std::vector<unsigned>;
+		using Token = unsigned;
+		using ExpressionTokenList = std::vector<Token>;
 
 		class TokenDictionary
 		{
 		public:
 			enum class TokenType { UnaryMarker, Literal, Variable, IsDefinedTest, Operation };
-			struct Token
+			struct TokenDefinition
 			{
 				TokenType _type;
 				std::string _value;
 			};
-			std::vector<Token> _tokenDefinitions;
+			std::vector<TokenDefinition> _tokenDefinitions;
 
 			void PushBack(
 				ExpressionTokenList& tokenList,
@@ -43,17 +45,20 @@ namespace Utility
 			ExpressionTokenList Translate(
 				const TokenDictionary& otherDictionary,
 				const ExpressionTokenList& tokenListForOtherDictionary);
-			unsigned Translate(
+			Token Translate(
 				const TokenDictionary& otherDictionary,
-				unsigned tokenForOtherDictionary);
+				Token tokenForOtherDictionary);
 
-			unsigned GetToken(TokenType type, const std::string& value = {});
-			std::optional<unsigned> TryGetToken(TokenType type, StringSection<> value) const;
+			Token GetToken(TokenType type, const std::string& value = {});
+			std::optional<Token> TryGetToken(TokenType type, StringSection<> value) const;
 
-			int EvaluateExpression(
-				IteratorRange<const unsigned*> tokenList,
+			int64_t EvaluateExpression(
+				IteratorRange<const Token*> tokenList,
 				IteratorRange<ParameterBox const*const*> environment) const;
-			std::string AsString(IteratorRange<const unsigned*> tokenList) const;
+			int64_t EvaluateExpression(
+				IteratorRange<const Token*> tokenList,
+				const std::function<std::optional<int64_t>(const TokenDefinition&, Token)>& lookupVariableFn) const;
+			std::string AsString(IteratorRange<const Token*> tokenList) const;
 			void Simplify(ExpressionTokenList&);
 
 			uint64_t CalculateHash() const;
@@ -65,7 +70,7 @@ namespace Utility
 		const char* AsString(TokenDictionary::TokenType);
 		TokenDictionary::TokenType AsTokenType(StringSection<>);
 
-		using WorkingRelevanceTable = std::map<unsigned, ExpressionTokenList>;
+		using WorkingRelevanceTable = std::map<Token, ExpressionTokenList>;
 
 		WorkingRelevanceTable MergeRelevanceTables(
 			const WorkingRelevanceTable& lhs, const ExpressionTokenList& lhsCondition,
@@ -104,7 +109,7 @@ namespace Utility
     {
     public:
         Internal::TokenDictionary _tokenDictionary;
-        std::map<unsigned, Internal::ExpressionTokenList> _relevanceTable;
+        std::map<Internal::Token, Internal::ExpressionTokenList> _relevanceTable;
         Internal::PreprocessorSubstitutions _sideEffects;
     };
 

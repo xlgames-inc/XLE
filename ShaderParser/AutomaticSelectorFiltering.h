@@ -21,8 +21,8 @@ namespace ShaderSourceParser
 	{
 	public:
 		Utility::Internal::TokenDictionary _tokenDictionary;
-		std::map<unsigned, Utility::Internal::ExpressionTokenList> _relevanceTable;
-		std::map<unsigned, Utility::Internal::ExpressionTokenList> _defaultSets;
+		std::map<Utility::Internal::Token, Utility::Internal::ExpressionTokenList> _relevanceTable;
+		std::map<Utility::Internal::Token, Utility::Internal::ExpressionTokenList> _defaultSets;
 
 		uint64_t GetHash() const { return _hash; }
 
