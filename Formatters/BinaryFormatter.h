@@ -23,6 +23,7 @@ namespace Formatters
 		
 		Blob PeekNext();
 		bool TryKeyedItem(StringSection<>& name);
+		bool TryPeekKeyedItem(StringSection<>& name);
 		bool TryBeginBlock(unsigned& evaluatedTypeId);
 		bool TryEndBlock();
 		bool TryBeginArray(unsigned& count, unsigned& evaluatedTypeId);

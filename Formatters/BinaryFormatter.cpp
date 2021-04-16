@@ -443,10 +443,11 @@ namespace Formatters
 	{
 		if (_blockStack.empty()) return false;
 		auto& workingBlock = _blockStack.top();
-		if (workingBlock._pendingArrayMembers || workingBlock._pendingEndArray) return false;
-
 		auto& cmds = workingBlock._cmdsIterator;
 		if (cmds.empty()) return false;
+
+		if (PeekNext() != Blob::KeyedItem) return false;
+		if (workingBlock._pendingArrayMembers || workingBlock._pendingEndArray) return false;
 
 		const auto& evalType = _evalContext->GetEvaluatedTypeDesc(workingBlock._typeStack.top());
 		if (cmds[0] == (unsigned)Cmd::InlineIndividualMember) {
@@ -471,10 +472,21 @@ namespace Formatters
 		return true;
 	}
 
+	bool BinaryFormatter::TryPeekKeyedItem(StringSection<>& name)
+	{
+		// TryKeyedItem only changes _queuedNext -- so we can efectively "peek"
+		// at it by just changing _queuedNext back ....
+		auto res = TryKeyedItem(name);
+		if (!res) return false;
+		_queuedNext = Blob::KeyedItem;
+		return true;
+	}
+
 	bool BinaryFormatter::TryBeginBlock(unsigned& evaluatedTypeId)
 	{
 		if (_blockStack.empty()) return false;
 
+		PeekNext();
 		auto& workingBlock = _blockStack.top();
 		auto& cmds = workingBlock._cmdsIterator;
 		auto& def = *workingBlock._definition;
@@ -532,6 +544,7 @@ namespace Formatters
 	{
 		if (_blockStack.empty()) return false;
 
+		PeekNext();
 		auto& workingBlock = _blockStack.top();
 		auto& cmds = workingBlock._cmdsIterator;
 		auto& def = *workingBlock._definition;
@@ -604,6 +617,7 @@ namespace Formatters
 	{
 		if (_blockStack.empty()) return false;
 
+		PeekNext();
 		auto& workingBlock = _blockStack.top();
 		auto& cmds = workingBlock._cmdsIterator;
 		auto& def = *workingBlock._definition;

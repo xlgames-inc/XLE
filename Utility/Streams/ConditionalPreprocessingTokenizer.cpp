@@ -466,6 +466,21 @@ namespace Utility
         _fileStates.push_back(std::move(initialState));
     }
 
+    ConditionalProcessingTokenizer::ConditionalProcessingTokenizer(
+        IPreprocessorIncludeHandler::Result&& initialFile,
+        IPreprocessorIncludeHandler* includeHandler)
+    : _includeHandler(includeHandler)
+    {
+        FileState initialState;
+        initialState._helper._input = MakeStringSection((const char*)initialFile._fileContents.get(), (const char*)PtrAdd(initialFile._fileContents.get(), initialFile._fileContentsSize));
+        initialState._helper._lineIndex = 0;
+        initialState._helper._lineStart = (const char*)initialFile._fileContents.get();
+        initialState._filenameHash = HashFilenameAndPath(MakeStringSection(initialFile._filename));
+        initialState._filenameForRelativeIncludeSearch = initialFile._filename;
+        initialState._savedBlock = std::move(initialFile._fileContents);
+        _fileStates.push_back(std::move(initialState));
+    }
+
     ConditionalProcessingTokenizer::~ConditionalProcessingTokenizer()
     {
     }

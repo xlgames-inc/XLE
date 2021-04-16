@@ -79,6 +79,9 @@ namespace Utility
             StringSection<> input,
             StringSection<> filenameForRelativeIncludeSearch = {},
             IPreprocessorIncludeHandler* includeHandler = nullptr);
+        ConditionalProcessingTokenizer(
+            IPreprocessorIncludeHandler::Result&& initialFile,
+            IPreprocessorIncludeHandler* includeHandler = nullptr);
         ~ConditionalProcessingTokenizer();
 
     private:

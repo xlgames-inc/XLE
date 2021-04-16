@@ -33,6 +33,9 @@ namespace Formatters
 			StringSection<> inputData,
 			const ::Assets::DirectorySearchRules& searchRules,
 			const std::shared_ptr<::Assets::DependencyValidation>& depVal);
+		BinarySchemata(
+			Utility::IPreprocessorIncludeHandler::Result&& initialFile,
+			Utility::IPreprocessorIncludeHandler* includeHandler);
 		BinarySchemata();
 		~BinarySchemata();
 
@@ -59,6 +62,7 @@ namespace Formatters
 		std::string ParseExpressionStr(ConditionalProcessingTokenizer& tokenizer);
 		void PushExpression(BlockDefinition& workingDefinition, ConditionalProcessingTokenizer& tokenizer);
 		void PushComplexType(BlockDefinition& workingDefinition, ConditionalProcessingTokenizer& tokenizer);
+		void Parse(ConditionalProcessingTokenizer& tokenizer);
 
 		std::vector<std::pair<std::string, ParameterBox>> _literals;
 		std::vector<std::pair<std::string, Alias>> _aliases;

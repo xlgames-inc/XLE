@@ -307,13 +307,8 @@ namespace Formatters
 		Require(tokenizer, ";");
 	}
 
-	BinarySchemata::BinarySchemata(
-		StringSection<> inputData,
-		const ::Assets::DirectorySearchRules& searchRules,
-		const std::shared_ptr<::Assets::DependencyValidation>& depVal)
+	void BinarySchemata::Parse(ConditionalProcessingTokenizer& tokenizer)
 	{
-		ConditionalProcessingTokenizer tokenizer(inputData);
-		
 		for (;;) {
 			auto token = tokenizer.GetNextToken();
 			if (token._value.IsEmpty())
@@ -334,6 +329,23 @@ namespace Formatters
 
 		if (!tokenizer.Remaining().IsEmpty())
 			Throw(FormatException("Additional tokens found, expecting end of file", tokenizer.GetLocation()));
+	}
+
+	BinarySchemata::BinarySchemata(
+		StringSection<> inputData,
+		const ::Assets::DirectorySearchRules& searchRules,
+		const std::shared_ptr<::Assets::DependencyValidation>& depVal)
+	{
+		ConditionalProcessingTokenizer tokenizer(inputData);
+		Parse(tokenizer);
+	}
+
+	BinarySchemata::BinarySchemata(
+		Utility::IPreprocessorIncludeHandler::Result&& initialFile,
+		Utility::IPreprocessorIncludeHandler* includeHandler)
+	{
+		ConditionalProcessingTokenizer tokenizer(std::move(initialFile), includeHandler);
+		Parse(tokenizer);
 	}
 
 	BinarySchemata::BinarySchemata() {}
