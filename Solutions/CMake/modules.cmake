@@ -12,6 +12,7 @@ add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../RenderCore/Metal RenderCoreMetal)
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../RenderCore/Techniques RenderCoreTechniques)
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../RenderCore/Assets RenderCoreAssets)
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../ShaderParser ShaderParser)
+add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../Formatters Formatters)
 
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../PlatformRig PlatformRig)
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../RenderOverlays RenderOverlays)

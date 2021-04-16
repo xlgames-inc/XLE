@@ -16,11 +16,12 @@ add_executable(
     Assets/MountingTreeTests.cpp
     Assets/AssetCompilerTests.cpp
     Assets/ArchiveCacheTests.cpp
+    Formatters/BinaryFormatterTests.cpp
     )
 
 xle_configure_executable(UnitTests-Core)
 target_link_libraries(UnitTests-Core PRIVATE Catch2WithMain)
-target_link_libraries(UnitTests-Core PRIVATE ConsoleRig Assets OSServices Math Utility tiny-process-library)
+target_link_libraries(UnitTests-Core PRIVATE Formatters ConsoleRig Assets OSServices Math Utility tiny-process-library)
 
 #
 # Also add a dynamic library as a dependency. This will be loaded at runtime by some of the unit tests
