@@ -9,7 +9,7 @@
 
 namespace Formatters
 {
-	auto BinarySchemata::FindBlockDefinition(StringSection<> name) -> BlockDefinitionId
+	auto BinarySchemata::FindBlockDefinition(StringSection<> name) const -> BlockDefinitionId
 	{
 		auto i = std::find_if(_blockDefinitions.begin(), _blockDefinitions.end(), [name](const auto& c) { return XlEqString(name, c.first); });
 		if (i == _blockDefinitions.end())
@@ -17,12 +17,28 @@ namespace Formatters
 		return (BlockDefinitionId)std::distance(_blockDefinitions.begin(), i);
 	}
 
-	auto BinarySchemata::FindAlias(StringSection<> name) -> AliasId
+	auto BinarySchemata::FindAlias(StringSection<> name) const -> AliasId
 	{
 		auto i = std::find_if(_aliases.begin(), _aliases.end(), [name](const auto& c) { return XlEqString(name, c.first); });
 		if (i == _aliases.end())
 			return AliasId_Invalid;
 		return (AliasId)std::distance(_aliases.begin(), i);
+	}
+
+	auto BinarySchemata::FindBitField(StringSection<> name) const -> BitFieldId
+	{
+		auto i = std::find_if(_bitFields.begin(), _bitFields.end(), [name](const auto& c) { return XlEqString(name, c.first); });
+		if (i == _bitFields.end())
+			return ~0u;
+		return (BitFieldId)std::distance(_bitFields.begin(), i);
+	}
+
+	auto BinarySchemata::FindLiterals(StringSection<> name) const -> LiteralsId
+	{
+		auto i = std::find_if(_literals.begin(), _literals.end(), [name](const auto& c) { return XlEqString(name, c.first); });
+		if (i == _literals.end())
+			return ~0u;
+		return (BitFieldId)std::distance(_literals.begin(), i);
 	}
 
 	static void Require(ConditionalProcessingTokenizer& tokenizer, StringSection<> next)
@@ -251,6 +267,23 @@ namespace Formatters
 
 		Require(tokenizer, "=");
 		workingDefinition._aliasedType = ParseTypeBaseName(tokenizer);
+
+		if (tokenizer.PeekNextToken() == "decoder") {
+			tokenizer.GetNextToken();
+			Require(tokenizer, "(");
+			auto decoderName = tokenizer.GetNextToken();
+			auto bitField = FindBitField(decoderName._value);
+			if (bitField != ~0u) {
+				workingDefinition._bitFieldDecoder = bitField;
+			} else {
+				auto literals = FindLiterals(decoderName._value);
+				if (literals == ~0u)
+					Throw(FormatException(("Unknown decoder (" + decoderName._value.AsString() + ")").c_str(), tokenizer.GetLocation()));
+				workingDefinition._enumDecoder = literals;
+			}
+			Require(tokenizer, ")");
+		}
+
 		Require(tokenizer, ";");
 		_aliases.push_back(std::make_pair(name._value.AsString(), workingDefinition));
 	}
@@ -281,6 +314,7 @@ namespace Formatters
 		auto name = tokenizer.GetNextToken();
 		Require(tokenizer, "{");
 
+		BitFieldDefinition bitField;
 		for (;;) {
 			auto next = tokenizer.GetNextToken();
 			if (next == "}") break;
@@ -298,13 +332,37 @@ namespace Formatters
 			if (next != "}" && next != ")" && next != "}")
 				Throw(FormatException("Expecting close brace", next._start));
 
+			if (openBrace == "{") {
+				if (next != "}" || secondLimit.has_value())
+					Throw(FormatException("Bitfield entries that start with '{' must close with '}' and contain only a single bit", next._start));
+			} else if (next == "}") {
+				Throw(FormatException("Bitfield entries that start with '(' or '[' must close with ')' or ']'", next._start));
+			} else if (!secondLimit.has_value())
+				Throw(FormatException("Bitfield entries that start with '(' or '[' must have an upper bound specified", next._start));
+
+			BitFieldDefinition::BitRange range;
+			if (openBrace == "{") {
+				range._min = firstLimit;
+				range._count = 1;
+			} else {
+				range._min = (openBrace == "[") ? firstLimit : firstLimit+1;
+				auto lastPlusOne = (next == "]") ? secondLimit.value() : secondLimit.value()-1;
+				if (lastPlusOne <= range._min)
+					Throw(FormatException("Bit range specified does not include any bits, or is inverted", next._start));
+				range._count = lastPlusOne - range._min;
+			}
+
 			Require(tokenizer, ":");
 
-			auto type = ParseTypeBaseName(tokenizer);
-			auto name = tokenizer.GetNextToken();
+			range._storageType = ParseTypeBaseName(tokenizer);
+			range._name = tokenizer.GetNextToken()._value.AsString();
 			Require(tokenizer, ";");
+
+			bitField._bitRanges.push_back(range);
 		}
 		Require(tokenizer, ";");
+
+		_bitFields.push_back(std::make_pair(name._value.AsString(), std::move(bitField)));
 	}
 
 	void BinarySchemata::Parse(ConditionalProcessingTokenizer& tokenizer)

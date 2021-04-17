@@ -20,6 +20,7 @@ namespace Formatters
 	{
 	public:
 		enum class Blob { KeyedItem, ValueMember, BeginBlock, EndBlock, BeginArray, EndArray, None };
+		using InteriorSection = StringSection<>;
 		
 		Blob PeekNext();
 		bool TryKeyedItem(StringSection<>& name);
@@ -64,6 +65,7 @@ namespace Formatters
 		Blob _queuedNext = Blob::None;
 	};
 
+	void SkipUntilEndBlock(BinaryFormatter&);
 	std::ostream& SerializeBlock(std::ostream& str, BinaryFormatter& formatter, unsigned indent = 0);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -151,13 +153,15 @@ namespace Formatters
 		BinaryMemberToken operator[](const std::string& name) const;
 		BinaryMemberToken operator[](unsigned idx) const;
 
+		void ParseBlock(BinaryFormatter& formatter, unsigned parentId = ~0u);
+		void ParseValue(BinaryFormatter& formatter, const std::string& name, unsigned parentId = ~0u);
+
 		BinaryBlockMatch(BinaryFormatter& formatter);
+		BinaryBlockMatch(const EvaluationContext& evalContext);
+		BinaryBlockMatch();
 
 	private:
 		const EvaluationContext* _evalContext;
-
-		void ParseBlock(BinaryFormatter& formatter, unsigned parentId);
-		void ParseValue(BinaryFormatter& formatter, const std::string& name, unsigned parentId);
 	};
 
 	class BinaryMemberIterator
@@ -201,6 +205,7 @@ namespace Formatters
 	public:
 		const EvaluationContext::EvaluatedType& GetType() const { return _evalContext->GetEvaluatedTypeDesc(_i->second._type); }
 		EvaluationContext::EvaluatedTypeToken GetTypeToken() const { return _i->second._type; }
+		const std::string& GetTypeBaseName() const;
 
 		const std::string& GetStringName() const { return _i->second._stringName; }
 		IteratorRange<const void*> GetData() const { return _i->second._data; }
@@ -211,6 +216,7 @@ namespace Formatters
 		template<typename Result>
 			std::optional<Result> As()
 		{
+			if (_evalContext == nullptr) return {};
 			Result result;
 			if (!ImpliedTyping::Cast(MakeOpaqueIteratorRange(result), ImpliedTyping::TypeOf<Result>(), GetData(), _i->second._typeDesc))
 				return {};
@@ -220,6 +226,7 @@ namespace Formatters
 		template<>
 			std::optional<std::string> As()
 		{
+			if (_evalContext == nullptr) return {};
 			return ImpliedTyping::AsString(GetData(), _i->second._typeDesc);
 		}
 

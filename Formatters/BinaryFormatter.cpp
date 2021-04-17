@@ -486,7 +486,8 @@ namespace Formatters
 	{
 		if (_blockStack.empty()) return false;
 
-		PeekNext();
+		auto next = PeekNext();
+		if (next != Blob::BeginBlock) return false;
 		auto& workingBlock = _blockStack.top();
 		auto& cmds = workingBlock._cmdsIterator;
 		auto& def = *workingBlock._definition;
@@ -806,7 +807,51 @@ namespace Formatters
 	BinaryBlockMatch::BinaryBlockMatch(BinaryFormatter& formatter)
 	: _evalContext(&formatter.GetEvaluationContext())
 	{
+		unsigned blockType = 0;
+		bool startWithBeginBlock = formatter.TryBeginBlock(blockType);
 		ParseBlock(formatter, Member::RootParentMarker);
+		if (startWithBeginBlock && !formatter.TryEndBlock())
+			Throw(std::runtime_error("Expecting end block in BinaryBlockMatch"));
+	}
+
+	BinaryBlockMatch::BinaryBlockMatch(const EvaluationContext& evalContext)
+	: _evalContext(&evalContext)
+	{
+	}
+
+	BinaryBlockMatch::BinaryBlockMatch() : _evalContext(nullptr) {}
+
+	const std::string& BinaryMemberToken::GetTypeBaseName() const
+	{
+		const auto& type = GetType();
+		if (type._alias != BinarySchemata::BlockDefinitionId_Invalid)
+			return GetEvaluationContext().GetSchemata().GetAliasName(type._alias);
+		if (type._blockDefinition != BinarySchemata::BlockDefinitionId_Invalid)
+			return GetEvaluationContext().GetSchemata().GetBlockDefinitionName(type._blockDefinition);
+		static std::string dummy;
+		return dummy;
+	}
+
+	void SkipUntilEndBlock(BinaryFormatter& formatter)
+	{
+		for (;;) {
+			auto next = formatter.PeekNext();
+			switch (next) {
+			case BinaryFormatter::Blob::KeyedItem:
+				formatter.SkipNextBlob();
+				break;
+
+			case BinaryFormatter::Blob::BeginBlock:
+			case BinaryFormatter::Blob::BeginArray:
+			case BinaryFormatter::Blob::EndArray:
+			case BinaryFormatter::Blob::ValueMember:
+				Throw(std::runtime_error("Unexpected blob in SerializeBlock"));
+
+			case BinaryFormatter::Blob::EndBlock:
+			case BinaryFormatter::Blob::None:
+				return;
+			}
+		}
 	}
 
 	static std::ostream& SerializeValue(std::ostream& str, BinaryFormatter& formatter, StringSection<> name, unsigned indent = 0)
@@ -859,7 +904,6 @@ namespace Formatters
 			case BinaryFormatter::Blob::EndArray:
 			case BinaryFormatter::Blob::ValueMember:
 				Throw(std::runtime_error("Unexpected blob in SerializeBlock"));
-				break;
 
 			case BinaryFormatter::Blob::EndBlock:
 			case BinaryFormatter::Blob::None:
