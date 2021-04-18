@@ -15,6 +15,7 @@
 #include "SkinDeformer.h"
 #include "../Assets/PredefinedPipelineLayout.h"
 #include "../Assets/PipelineConfigurationUtils.h"
+#include "../Assets/MaterialCompiler.h"
 #include "../IDevice.h"
 #include "../MinimalShaderSource.h"
 #include "../ShaderService.h"
@@ -173,6 +174,7 @@ namespace RenderCore { namespace Techniques
 		_techniqueServices->GetDeformOperationFactory().RegisterDeformOperation("skin", SkinDeformer::InstantiationFunction);
 
 		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+		_materialCompilerRegistration = RenderCore::Assets::RegisterMaterialCompiler(compilers);
 		_modelCompilers = ::Assets::DiscoverCompileOperations(compilers, "*Conversion.dll");
 
 		_subFrameEvents = std::make_shared<SubFrameEvents>();
@@ -196,6 +198,7 @@ namespace RenderCore { namespace Techniques
 	PrimaryResourcesApparatus::~PrimaryResourcesApparatus()
 	{
 		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+		compilers.DeregisterCompiler(_materialCompilerRegistration._registrationId);
 		for (const auto&m:_modelCompilers)
 			compilers.DeregisterCompiler(m);
 	}
