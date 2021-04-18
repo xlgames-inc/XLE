@@ -687,9 +687,13 @@ namespace Assets
                 if (i->_future != future)
                     continue;
 
-                auto newState = i->_checkStatusFn(i->_future);
-                assert(newState == AssetState::Ready || newState == AssetState::Invalid);
+                // _checkStatusFn could potentially modify the s_activeFutureResolutionMoments array. So to be safe we should erase
+                // before we call it
+                auto checkStatusFn = std::move(i->_checkStatusFn);
                 s_activeFutureResolutionMoments.erase((i+1).base());
+
+                auto newState = checkStatusFn(future);
+                assert(newState == AssetState::Ready || newState == AssetState::Invalid);
                 return;
             }
             assert(0);      // didn't find this resolution item
