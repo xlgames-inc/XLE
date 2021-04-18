@@ -66,6 +66,8 @@ namespace Formatters
 	};
 
 	void SkipUntilEndBlock(BinaryFormatter&);
+	unsigned RequireBeginBlock(BinaryFormatter&);
+	void RequireEndBlock(BinaryFormatter&);
 	std::ostream& SerializeBlock(std::ostream& str, BinaryFormatter& formatter, unsigned indent = 0);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

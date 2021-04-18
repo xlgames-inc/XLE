@@ -854,6 +854,19 @@ namespace Formatters
 		}
 	}
 
+	unsigned RequireBeginBlock(BinaryFormatter& formatter)
+	{
+		unsigned res = ~0u;
+		if (!formatter.TryBeginBlock(res))
+			Throw(std::runtime_error("Unexpected blob while looking for begin block in binary formatter"));
+		return res;
+	}
+	void RequireEndBlock(BinaryFormatter& formatter)
+	{
+		if (!formatter.TryEndBlock())
+			Throw(std::runtime_error("Unexpected blob while looking for end block in binary formatter"));
+	}
+
 	static std::ostream& SerializeValue(std::ostream& str, BinaryFormatter& formatter, StringSection<> name, unsigned indent = 0)
 	{
 		unsigned evaluatedTypeId;

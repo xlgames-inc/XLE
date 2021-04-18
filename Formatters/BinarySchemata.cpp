@@ -45,7 +45,7 @@ namespace Formatters
 	{
 		auto token = tokenizer.GetNextToken();
 		if (!XlEqString(token._value, next))
-			Throw(FormatException(("Expecting '" + next.AsString() + "'").c_str(), token._start));
+			Throw(FormatException(("Expecting '" + next.AsString() + "', but got '" + token._value.AsString() + "'").c_str(), token._start));
 	}
 
 	static bool operator==(const ConditionalProcessingTokenizer::Token& t, const char* comparison) { return XlEqString(t._value, comparison); }
@@ -259,30 +259,36 @@ namespace Formatters
 		auto condition = tokenizer._preprocessorContext.GetCurrentConditionString();
 
 		Alias workingDefinition;
-		auto name = tokenizer.GetNextToken();
-		if (name == "template") {
-			ParseTemplateDeclaration(tokenizer, workingDefinition._tokenDictionary, workingDefinition._templateParameterNames, workingDefinition._templateParameterTypeField);
-			name = tokenizer.GetNextToken();
+		bool gotTemplate = false, gotDecoder = false;
+		for (;;) {
+			if (tokenizer.PeekNextToken() == "template") {
+				if (gotTemplate) Throw(FormatException("Multiple template declarations while parsing alias", tokenizer.GetLocation()));
+				gotTemplate = true;
+				tokenizer.GetNextToken();
+				ParseTemplateDeclaration(tokenizer, workingDefinition._tokenDictionary, workingDefinition._templateParameterNames, workingDefinition._templateParameterTypeField);			
+			} else if (tokenizer.PeekNextToken() == "decoder") {
+				if (gotDecoder) Throw(FormatException("Multiple decoder declarations while parsing alias", tokenizer.GetLocation()));
+				gotDecoder = true;
+				tokenizer.GetNextToken();
+				Require(tokenizer, "(");
+				auto decoderName = tokenizer.GetNextToken();
+				auto bitField = FindBitField(decoderName._value);
+				if (bitField != ~0u) {
+					workingDefinition._bitFieldDecoder = bitField;
+				} else {
+					auto literals = FindLiterals(decoderName._value);
+					if (literals == ~0u)
+						Throw(FormatException(("Unknown decoder (" + decoderName._value.AsString() + ")").c_str(), tokenizer.GetLocation()));
+					workingDefinition._enumDecoder = literals;
+				}
+				Require(tokenizer, ")");
+			} else break;
 		}
+
+		auto name = tokenizer.GetNextToken();
 
 		Require(tokenizer, "=");
 		workingDefinition._aliasedType = ParseTypeBaseName(tokenizer);
-
-		if (tokenizer.PeekNextToken() == "decoder") {
-			tokenizer.GetNextToken();
-			Require(tokenizer, "(");
-			auto decoderName = tokenizer.GetNextToken();
-			auto bitField = FindBitField(decoderName._value);
-			if (bitField != ~0u) {
-				workingDefinition._bitFieldDecoder = bitField;
-			} else {
-				auto literals = FindLiterals(decoderName._value);
-				if (literals == ~0u)
-					Throw(FormatException(("Unknown decoder (" + decoderName._value.AsString() + ")").c_str(), tokenizer.GetLocation()));
-				workingDefinition._enumDecoder = literals;
-			}
-			Require(tokenizer, ")");
-		}
 
 		Require(tokenizer, ";");
 		_aliases.push_back(std::make_pair(name._value.AsString(), workingDefinition));
