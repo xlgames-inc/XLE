@@ -305,7 +305,12 @@ namespace Assets
 		if (groupi == _pimpl->_groups.end())
 			Throw(std::runtime_error("GroupId has not be registered in intermediates store during retrieve operation"));
 
-		groupi->second._looseFilesStorage->StoreCompileProducts(archivableName, artifacts, state, dependencies);
+		// Make sure the dependencies are unique, because we tend to get a lot of dupes from certain compile operations
+		std::vector<DependentFileState> uniqueDependencies { dependencies.begin(), dependencies.end() };
+		std::sort(uniqueDependencies.begin(), uniqueDependencies.end());
+		auto i = std::unique(uniqueDependencies.begin(), uniqueDependencies.end());
+
+		groupi->second._looseFilesStorage->StoreCompileProducts(archivableName, artifacts, state, {uniqueDependencies.begin(), i});
 	}
 
 	std::shared_ptr<IArtifactCollection> IntermediatesStore::RetrieveCompileProducts(
@@ -352,7 +357,12 @@ namespace Assets
 		if (!archive)
 			Throw(std::runtime_error("Failed to create archive when storing compile products"));
 
-		archive->Commit(entryId, entryDescriptiveName.AsString(), artifacts, state, dependencies);
+		// Make sure the dependencies are unique, because we tend to get a lot of dupes from certain compile operations
+		std::vector<DependentFileState> uniqueDependencies { dependencies.begin(), dependencies.end() };
+		std::sort(uniqueDependencies.begin(), uniqueDependencies.end());
+		auto i = std::unique(uniqueDependencies.begin(), uniqueDependencies.end());
+
+		archive->Commit(entryId, entryDescriptiveName.AsString(), artifacts, state, {uniqueDependencies.begin(), i});
 	}
 
 	void IntermediatesStore::FlushToDisk()
