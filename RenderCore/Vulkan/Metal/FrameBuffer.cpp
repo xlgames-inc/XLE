@@ -593,7 +593,7 @@ namespace RenderCore { namespace Metal_Vulkan
         for (const auto&a:uniqueAttachments) {
 			// Note that we can't support TextureViewDesc properly here, because we don't support 
 			// the same resource being used with more than one view
-			auto resource = namedResources.GetResource(a.first, fbAttachments[a.first]._desc);
+			auto resource = namedResources.GetResource(a.first, fbAttachments[a.first]._desc, fbDesc.GetProperties());
 			auto rtv = viewPool.GetTextureView(resource, AsBindFlag(a.second), TextureViewDesc{});
 			rawViews[rawViewCount++] = checked_cast<ResourceView*>(rtv.get())->GetImageView();
 

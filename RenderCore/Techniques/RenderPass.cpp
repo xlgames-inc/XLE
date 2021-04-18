@@ -61,6 +61,30 @@ namespace RenderCore
         else { str << "<<none>> }"; }
         return str;
     }
+
+    inline std::ostream& operator<<(std::ostream& str, const ResourceDesc& desc)
+    {
+        str << "ResourceDesc { ";
+        if (desc._type == ResourceDesc::Type::Texture) {
+            str << "[Texture] ";
+            switch (desc._textureDesc._dimensionality) {
+                case TextureDesc::Dimensionality::T1D: str << desc._textureDesc._width; break;
+                case TextureDesc::Dimensionality::T2D: str << desc._textureDesc._width << "x" << desc._textureDesc._height; break;
+                case TextureDesc::Dimensionality::T3D: str << desc._textureDesc._width << "x" << desc._textureDesc._height << "x" << desc._textureDesc._depth; break;
+                case TextureDesc::Dimensionality::CubeMap: str << desc._textureDesc._width << "x" << desc._textureDesc._height << " cube"; break;
+                default: str << "<<unknown dimensionality>>";
+            }
+            str << ", " << AsString(desc._textureDesc._format)
+                << ", " << desc._textureDesc._arrayCount
+                << ", " << desc._textureDesc._arrayCount
+                << ", " << desc._textureDesc._arrayCount
+                << ", 0x" << std::hex << desc._bindFlags << std::dec;
+        } else {
+            str << "[Buffer] " << Utility::ByteCount(desc._linearBufferDesc._sizeInBytes)
+                << ", 0x" << std::hex << desc._bindFlags << std::dec;
+        }
+        return str;
+    }
 }
 
 namespace RenderCore { namespace Techniques
@@ -86,9 +110,9 @@ namespace RenderCore { namespace Techniques
     class NamedAttachmentsWrapper : public INamedAttachments
     {
     public:
-		virtual IResourcePtr GetResource(AttachmentName resName, const AttachmentDesc& requestDesc) const override;
-		virtual const AttachmentDesc* GetDesc(AttachmentName resName) const;
-		virtual const FrameBufferProperties& GetFrameBufferProperties() const;
+		virtual IResourcePtr GetResource(AttachmentName resName, const AttachmentDesc& requestDesc, const FrameBufferProperties& props) const override;
+		// virtual const AttachmentDesc* GetDesc(AttachmentName resName) const;
+		// virtual const FrameBufferProperties& GetFrameBufferProperties() const;
 
         NamedAttachmentsWrapper(
             AttachmentPool& pool,
@@ -99,24 +123,35 @@ namespace RenderCore { namespace Techniques
         const std::vector<AttachmentName>* _poolMapping;
     };
 
-    IResourcePtr NamedAttachmentsWrapper::GetResource(AttachmentName resName, const AttachmentDesc& requestDesc) const
+    IResourcePtr NamedAttachmentsWrapper::GetResource(AttachmentName resName, const AttachmentDesc& requestDesc, const FrameBufferProperties& props) const
     {
         assert(resName < _poolMapping->size());
         auto result = _pool->GetResource((*_poolMapping)[resName]);
 
-        // Validate that the "desc" for the returned resource matches what the caller was requesting
-        auto expectedDesc = RenderCore::AsAttachmentDesc(result->GetDesc());
-        assert(requestDesc._format == expectedDesc._format);
-        assert(requestDesc._width == expectedDesc._width);
-        assert(requestDesc._height == expectedDesc._height);
-        assert(requestDesc._arrayLayerCount == expectedDesc._arrayLayerCount);
-        assert(requestDesc._flags == expectedDesc._flags);
-        assert(requestDesc._bindFlagsForFinalLayout == expectedDesc._bindFlagsForFinalLayout);
-        assert(requestDesc.CalculateHash() == expectedDesc.CalculateHash());
+        #if defined(_DEBUG)
+            // Validate that the "desc" for the returned resource matches what the caller was requesting
+            auto resultDesc = result->GetDesc();
+
+            unsigned requestAttachmentWidth, requestAttachmentHeight;
+            if (!(requestDesc._flags & AttachmentDesc::Flags::OutputRelativeDimensions)) {
+                requestAttachmentWidth = unsigned(requestDesc._width);
+                requestAttachmentHeight = unsigned(requestDesc._height);
+            } else {
+                requestAttachmentWidth = unsigned(std::floor(props._outputWidth * requestDesc._width));
+                requestAttachmentHeight = unsigned(std::floor(props._outputHeight * requestDesc._height));
+            }
+
+            assert(AsTypelessFormat(requestDesc._format) == AsTypelessFormat(resultDesc._textureDesc._format));
+            assert(requestAttachmentWidth == resultDesc._textureDesc._width);
+            assert(requestAttachmentHeight == resultDesc._textureDesc._height);
+            assert(requestDesc._arrayLayerCount == resultDesc._textureDesc._arrayCount);
+            assert((requestDesc._bindFlagsForFinalLayout & resultDesc._bindFlags) == requestDesc._bindFlagsForFinalLayout);
+        #endif
 
         return result;
     }
 
+#if 0
     auto NamedAttachmentsWrapper::GetDesc(AttachmentName resName) const -> const AttachmentDesc*
     {
         assert(resName < _poolMapping->size());
@@ -127,6 +162,7 @@ namespace RenderCore { namespace Techniques
 	{
 		return _pool->GetFrameBufferProperties();
 	}
+#endif
 
     NamedAttachmentsWrapper::NamedAttachmentsWrapper(
         AttachmentPool& pool,
@@ -171,7 +207,7 @@ namespace RenderCore { namespace Techniques
         const FrameBufferDesc& desc,
         AttachmentPool& attachmentPool) -> Result
     {
-        auto poolAttachments = attachmentPool.Request(desc.GetAttachments());
+        auto poolAttachments = attachmentPool.Request(desc);
 		assert(poolAttachments.size() == desc.GetAttachments().size());
 
         uint64_t hashValue = desc.GetHash();
@@ -265,6 +301,7 @@ namespace RenderCore { namespace Techniques
 		}
     }
 
+#if 0
     auto RenderPassInstance::GetDescForAttachmentName(AttachmentName resName) const -> const AttachmentDesc*
     {
         assert(_attachmentPool);
@@ -272,6 +309,7 @@ namespace RenderCore { namespace Techniques
             return _attachmentPool->GetDesc(_attachmentPoolRemapping[resName]);
         return nullptr;
     }
+#endif
 
     auto RenderPassInstance::GetResourceForAttachmentName(AttachmentName resName) const -> IResourcePtr
     {
@@ -289,6 +327,7 @@ namespace RenderCore { namespace Techniques
         return nullptr;
     }
 
+#if 0
 	auto RenderPassInstance::GetInputAttachmentDesc(unsigned inputAttachmentSlot) const -> const AttachmentDesc*
 	{
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
@@ -298,6 +337,7 @@ namespace RenderCore { namespace Techniques
             return _attachmentPool->GetDesc(_attachmentPoolRemapping[resName]);
         return nullptr;
 	}
+#endif
 
     auto RenderPassInstance::GetInputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr
 	{
@@ -329,6 +369,7 @@ namespace RenderCore { namespace Techniques
         return nullptr;
 	}
 
+#if 0
 	auto RenderPassInstance::GetOutputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*
 	{
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
@@ -338,6 +379,7 @@ namespace RenderCore { namespace Techniques
             return _attachmentPool->GetDesc(_attachmentPoolRemapping[resName]);
         return nullptr;
 	}
+#endif
 
 	auto RenderPassInstance::GetOutputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr
 	{
@@ -441,7 +483,7 @@ namespace RenderCore { namespace Techniques
 		// This is used with compute pipelines sometimes -- since in Vulkan, those have some similarities with
 		// graphics pipelines, but are incompatible with the vulkan render passes
 		_attachedContext = nullptr;
-		_attachmentPoolRemapping = attachmentPool.Request(layout.GetAttachments());
+		_attachmentPoolRemapping = attachmentPool.Request(layout);
 		assert(_attachmentPoolRemapping.size() == layout.GetAttachments().size());
 		_attachmentPool = &attachmentPool;
 	}
@@ -494,7 +536,7 @@ namespace RenderCore { namespace Techniques
         struct Attachment
         {
             IResourcePtr		    _resource;
-            AttachmentDesc		    _desc;
+            ResourceDesc		    _desc;
         };
         std::vector<Attachment>                         _attachments;
 
@@ -511,6 +553,7 @@ namespace RenderCore { namespace Techniques
         bool BuildAttachment(AttachmentName attach);
     };
 
+#if 0
     static std::shared_ptr<IResource> CreateFromAttachmentDesc(IDevice& device, const AttachmentDesc& a, const FrameBufferProperties& props)
     {
         // We need to calculate the dimensions, format, samples and bind flags for this
@@ -572,6 +615,7 @@ namespace RenderCore { namespace Techniques
         // note -- it might be handy to have a cache of "device memory" that could be reused here?
         return device.CreateResource(desc);
     }
+#endif
 
     bool AttachmentPool::Pimpl::BuildAttachment(AttachmentName attachName)
     {
@@ -585,10 +629,11 @@ namespace RenderCore { namespace Techniques
         assert(attach);
         if (!attach) return false;
 
-        attach->_resource = CreateFromAttachmentDesc(*_device, attach->_desc, _props);
+        attach->_resource = _device->CreateResource(attach->_desc);
         return attach->_resource != nullptr;
     }
 
+#if 0
     auto AttachmentPool::GetDesc(AttachmentName attachName) const -> const AttachmentDesc*
     {
         Pimpl::Attachment* attach = nullptr;
@@ -603,6 +648,7 @@ namespace RenderCore { namespace Techniques
         assert(attach);
         return &attach->_desc;
     }
+#endif
     
     IResourcePtr AttachmentPool::GetResource(AttachmentName attachName) const
     {
@@ -621,6 +667,14 @@ namespace RenderCore { namespace Techniques
         return attach->_resource;
 	}
 
+    static TextureViewDesc CompleteTextureViewDesc(const TextureViewDesc& viewDesc, TextureViewDesc::Aspect defaultAspect)
+	{
+		TextureViewDesc result = viewDesc;
+		if (result._format._aspect == TextureViewDesc::Aspect::UndefinedAspect)
+			result._format._aspect = defaultAspect;
+		return result;
+	}
+
 	IResourceView* AttachmentPool::GetSRV(AttachmentName attachName, const TextureViewDesc& window) const
 	{
         Pimpl::Attachment* attach = nullptr;
@@ -635,26 +689,20 @@ namespace RenderCore { namespace Techniques
         assert(attach);
 		assert(attach->_resource);
 		auto defaultAspect = TextureViewDesc::Aspect::ColorLinear;
-		auto formatComponents = GetComponents(attach->_desc._format);
+		auto formatComponents = GetComponents(attach->_desc._textureDesc._format);
 		if (formatComponents == FormatComponents::Depth || formatComponents == FormatComponents::DepthStencil) {
 			defaultAspect = TextureViewDesc::Aspect::Depth;	// can only choose depth or stencil -- so DepthStencil defaults to Depth
 		} else if (formatComponents == FormatComponents::Stencil) {
 			defaultAspect = TextureViewDesc::Aspect::Stencil;
 		}
-		auto completeView = CompleteTextureViewDesc(attach->_desc, window, defaultAspect);
+		auto completeView = CompleteTextureViewDesc(window, defaultAspect);
 		return _pimpl->_srvPool.GetTextureView(attach->_resource, BindFlag::ShaderResource, completeView).get();
 	}
 
-    static bool DimsEqual(const AttachmentDesc& lhs, const AttachmentDesc& rhs, const FrameBufferProperties& props)
+    static bool DimsEqual(const AttachmentDesc& lhs, const TextureDesc& rhs, const FrameBufferProperties& props)
     {
         bool lhsRelativeMode = !!(lhs._flags & AttachmentDesc::Flags::OutputRelativeDimensions);
-        bool rhsRelativeMode = !!(rhs._flags & AttachmentDesc::Flags::OutputRelativeDimensions);
-        if (lhsRelativeMode == rhsRelativeMode)
-            return lhs._width == rhs._width && lhs._height == rhs._height;
-
         unsigned lhsWidth, lhsHeight;
-        unsigned rhsWidth, rhsHeight;
-
         if (!lhsRelativeMode) {
             lhsWidth = unsigned(lhs._width);
             lhsHeight = unsigned(lhs._height);
@@ -663,29 +711,50 @@ namespace RenderCore { namespace Techniques
             lhsHeight = unsigned(std::floor(props._outputHeight * lhs._height));
         }
 
-        if (!rhsRelativeMode) {
-            rhsWidth = unsigned(rhs._width);
-            rhsHeight = unsigned(rhs._height);
-        } else {
-            rhsWidth = unsigned(std::floor(props._outputWidth * rhs._width));
-            rhsHeight = unsigned(std::floor(props._outputHeight * rhs._height));
-        }
-
-        return lhsWidth == rhsWidth && lhsHeight == rhsHeight;
+        return lhsWidth == rhs._width && lhsHeight == rhs._height;
     }
 
     static unsigned GetArrayCount(const AttachmentDesc& lhs) { return (lhs._arrayLayerCount == 0) ? 1 : lhs._arrayLayerCount; }
+    static unsigned GetArrayCount(const TextureDesc& lhs) { return (lhs._arrayCount == 0) ? 1 : lhs._arrayCount; }
 
-    static bool MatchRequest(const AttachmentDesc& lhs, const AttachmentDesc& rhs, const FrameBufferProperties& props)
+    static bool MatchRequest(const AttachmentDesc& lhs, BindFlag::BitField lhsBindFlags, const ResourceDesc& rhs, const FrameBufferProperties& props)
     {
+        assert(rhs._type == ResourceDesc::Type::Texture);
+        auto requestSamples = lhs._flags & AttachmentDesc::Flags::Multisampled ? props._samples : TextureSamples::Create();
         return
-            GetArrayCount(lhs) == GetArrayCount(rhs)
-            && (AsTypelessFormat(lhs._format) == AsTypelessFormat(rhs._format) || lhs._format == Format::Unknown || rhs._format == Format::Unknown)
-            && DimsEqual(lhs, rhs, props)
+            GetArrayCount(lhs) == GetArrayCount(rhs._textureDesc)
+            && (AsTypelessFormat(lhs._format) == AsTypelessFormat(rhs._textureDesc._format) || lhs._format == Format::Unknown)
+            && DimsEqual(lhs, rhs._textureDesc, props)
+            && requestSamples == rhs._textureDesc._samples
+            && (rhs._bindFlags & lhsBindFlags) == lhsBindFlags
             ;
     }
 
-    std::vector<AttachmentName> AttachmentPool::Request(IteratorRange<const FrameBufferDesc::Attachment*> requests)
+    static ResourceDesc AsResourceDesc(const AttachmentDesc& attachmentDesc, BindFlag::BitField bindFlags, const FrameBufferProperties& props)
+    {
+        // Prefer "typeless" formats when creating the actual attachments
+        // This ensures that we can have complete freedom when we create views
+        TextureDesc tDesc;
+        if (attachmentDesc._flags & AttachmentDesc::Flags::OutputRelativeDimensions) {
+            tDesc._width = unsigned(std::floor(props._outputWidth * attachmentDesc._width));
+            tDesc._height = unsigned(std::floor(props._outputHeight * attachmentDesc._height));
+        } else {
+            tDesc._width = (unsigned)attachmentDesc._width;
+            tDesc._height = (unsigned)attachmentDesc._height;
+        }
+        tDesc._depth = 1;
+        tDesc._format = attachmentDesc._format;
+        #if (GFXAPI_TARGET != GFXAPI_OPENGLES) && (GFXAPI_TARGET != GFXAPI_APPLEMETAL)        // OpenGLES can't handle the typeless formats current (and they are useless since there aren't "views" on OpenGL) -- so just skip this
+            tDesc._format = AsTypelessFormat(tDesc._format);
+        #endif
+        tDesc._dimensionality = TextureDesc::Dimensionality::T2D;
+        tDesc._mipCount = 1;
+        tDesc._arrayCount = 0;
+        tDesc._samples = attachmentDesc._flags & AttachmentDesc::Flags::Multisampled ? props._samples : TextureSamples::Create();
+        return CreateDesc(bindFlags, 0, 0, tDesc, "attachment-pool");
+    }
+
+    std::vector<AttachmentName> AttachmentPool::Request(const FrameBufferDesc& fbDesc)
     {
         std::vector<bool> consumed(_pimpl->_attachments.size(), false);
         std::vector<bool> consumedSemantic(_pimpl->_semanticAttachments.size(), false);
@@ -706,18 +775,33 @@ namespace RenderCore { namespace Techniques
         if (_pimpl->_props._samples._sampleCount <= 1)
             relevantFlags &= ~AttachmentDesc::Flags::Multisampled;
 
+        std::vector<BindFlag::BitField> attachmentBindFlags(fbDesc.GetAttachments().size(), 0);
+        for (const auto& spDesc:fbDesc.GetSubpasses()) {
+            for (const auto& r:spDesc.GetOutputs())
+                attachmentBindFlags[r._resourceName] |= BindFlag::RenderTarget;
+			if (spDesc.GetDepthStencil()._resourceName != SubpassDesc::Unused._resourceName)
+				attachmentBindFlags[spDesc.GetDepthStencil()._resourceName] |= BindFlag::DepthStencil;
+			for (const auto& r:spDesc.GetInputs())
+                // \todo -- shader resource or input attachment bind flag here?
+				attachmentBindFlags[spDesc.GetDepthStencil()._resourceName] |= BindFlag::ShaderResource;
+        }
+
         std::vector<AttachmentName> result;
-        for (const auto&r:requests) {
+        auto bindFlagI = attachmentBindFlags.begin();
+        for (auto request=fbDesc.GetAttachments().begin(); request!=fbDesc.GetAttachments().end(); ++request, ++bindFlagI) {
+            auto requestDesc = request->_desc;
+            requestDesc._flags &= relevantFlags;
+
             // If a semantic value is set, we should first check to see if the request can match
             // one of the bound attachments.
             bool foundMatch = false;
-            if (r._semantic) {
+            if (request->_semantic) {
                 for (unsigned q=0; q<_pimpl->_semanticAttachments.size(); ++q) {
-                    if (r._semantic == _pimpl->_semanticAttachments[q]._semantic && !consumedSemantic[q] && _pimpl->_semanticAttachments[q]._resource) {
+                    if (request->_semantic == _pimpl->_semanticAttachments[q]._semantic && !consumedSemantic[q] && _pimpl->_semanticAttachments[q]._resource) {
                         #if defined(_DEBUG)
-							if (!MatchRequest(r._desc, _pimpl->_semanticAttachments[q]._desc, _pimpl->_props)) {
-                            	Log(Warning) << "Attachment bound to the pool for semantic (0x" << std::hex << r._semantic << std::dec << ") does not match the request for this semantic. Attempting to use it anyway. Request: "
-                                	<< r._desc << ", Bound to pool: " << _pimpl->_semanticAttachments[q]._desc
+							if (!MatchRequest(requestDesc, *bindFlagI, _pimpl->_semanticAttachments[q]._desc, fbDesc.GetProperties())) {
+                            	Log(Warning) << "Attachment bound to the pool for semantic (0x" << std::hex << request->_semantic << std::dec << ") does not match the request for this semantic. Attempting to use it anyway. Request: "
+                                	<< requestDesc << ", Bound to pool: " << _pimpl->_semanticAttachments[q]._desc
                                 	<< std::endl;
                         	}
 						#endif
@@ -737,30 +821,16 @@ namespace RenderCore { namespace Techniques
             // If we haven't found a match yet, we must treat the request as a temporary buffer
             // We will go through and either find an existing buffer or create a new one
             for (unsigned q=0; q<_pimpl->_attachments.size(); ++q) {
-                if (MatchRequest(r._desc, _pimpl->_attachments[q]._desc, _pimpl->_props) && q < consumed.size() && !consumed[q]) {
-                    // We must ensure that the attachment matches all of the flags in the request.
-                    // However, we can ignore the "multisampled" flag if FrameBufferProps doesn't have any
-                    // multisampling enabled
-                    auto requestFlags = r._desc._flags & relevantFlags;
-                    auto attachmentFlags = _pimpl->_attachments[q]._desc._flags;
-                    if ((attachmentFlags&requestFlags) == requestFlags) {
-                        consumed[q] = true;
-                        result.push_back(q);
-                        foundMatch = true;
-                        break;
-                    }
+                if (MatchRequest(requestDesc, *bindFlagI, _pimpl->_attachments[q]._desc, _pimpl->_props) && q < consumed.size() && !consumed[q]) {
+                    consumed[q] = true;
+                    result.push_back(q);
+                    foundMatch = true;
+                    break;
                 }
             }
 
             if (!foundMatch) {
-				// Prefer "typeless" formats when creating the actual attachments
-				// This ensures that we can have complete freedom when we create views
-				auto typelessDesc = r._desc;
-                #if (GFXAPI_TARGET != GFXAPI_OPENGLES) && (GFXAPI_TARGET != GFXAPI_APPLEMETAL)        // OpenGLES can't handle the typeless formats current (and they are useless since there aren't "views" on OpenGL) -- so just skip this
-				    typelessDesc._format = AsTypelessFormat(typelessDesc._format);
-                #endif
-                _pimpl->_attachments.push_back(
-                    Pimpl::Attachment{nullptr, typelessDesc});
+                _pimpl->_attachments.push_back(Pimpl::Attachment{nullptr, AsResourceDesc(requestDesc, *bindFlagI, fbDesc.GetProperties())});
                 result.push_back((unsigned)(_pimpl->_attachments.size()-1));
             }
         }
@@ -791,8 +861,8 @@ namespace RenderCore { namespace Techniques
                 newAttach);
         }
 
-        existingBinding->_desc = AsAttachmentDesc(resource->GetDesc());
-		assert(existingBinding->_desc._format != Format::Unknown);
+        existingBinding->_desc = resource->GetDesc();
+		assert(existingBinding->_desc._textureDesc._format != Format::Unknown);
         existingBinding->_resource = resource;
     }
 
@@ -824,6 +894,7 @@ namespace RenderCore { namespace Techniques
 		return nullptr;
 	}
 
+#if 0
 	auto AttachmentPool::GetBoundResourceDesc(uint64_t semantic) -> const AttachmentDesc*
 	{
 		auto existingBinding = std::find_if(
@@ -870,6 +941,7 @@ namespace RenderCore { namespace Techniques
     {
         return _pimpl->_props;
     }
+#endif
 
     void AttachmentPool::ResetActualized()
     {
@@ -913,6 +985,7 @@ namespace RenderCore { namespace Techniques
     
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 	RenderCore::IResourcePtr SemanticNamedAttachments::GetResource(RenderCore::AttachmentName resName) const
 	{
 		assert(resName < _semanticMapping.size());
@@ -938,11 +1011,13 @@ namespace RenderCore { namespace Techniques
 
     SemanticNamedAttachments::~SemanticNamedAttachments()
 	{}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     FrameBufferDesc BuildFrameBufferDesc(
-        FrameBufferDescFragment&& fragment)
+        FrameBufferDescFragment&& fragment,
+        const FrameBufferProperties& props)
     {
         //
         // Convert a frame buffer fragment to a discrete FrameBufferDesc. We actually don't need
@@ -1001,7 +1076,8 @@ namespace RenderCore { namespace Techniques
         // into a final FrameBufferDesc, so it makes sense to move the subpasses from the input
         return FrameBufferDesc {
             std::move(fbAttachments),
-            std::move(fragment._subpasses) };
+            std::move(fragment._subpasses),
+            props };
     }
 
     static bool FormatCompatible(Format lhs, Format rhs)
@@ -1012,12 +1088,41 @@ namespace RenderCore { namespace Techniques
         return lhsTypeless == rhsTypeless;
     }
 
-    bool IsCompatible(const AttachmentDesc& testAttachment, const AttachmentDesc& request, UInt2 dimensions)
+    static bool DimsEqual(const AttachmentDesc& lhs, const AttachmentDesc& rhs, UInt2 dimensionsForSizeComparison)
+    {
+        bool lhsRelativeMode = !!(lhs._flags & AttachmentDesc::Flags::OutputRelativeDimensions);
+        bool rhsRelativeMode = !!(rhs._flags & AttachmentDesc::Flags::OutputRelativeDimensions);
+        if (lhsRelativeMode == rhsRelativeMode)
+            return lhs._width == rhs._width && lhs._height == rhs._height;
+
+        unsigned lhsWidth, lhsHeight;
+        unsigned rhsWidth, rhsHeight;
+
+        if (!lhsRelativeMode) {
+            lhsWidth = unsigned(lhs._width);
+            lhsHeight = unsigned(lhs._height);
+        } else {
+            lhsWidth = unsigned(std::floor(dimensionsForSizeComparison[0] * lhs._width));
+            lhsHeight = unsigned(std::floor(dimensionsForSizeComparison[1] * lhs._height));
+        }
+
+        if (!rhsRelativeMode) {
+            rhsWidth = unsigned(rhs._width);
+            rhsHeight = unsigned(rhs._height);
+        } else {
+            rhsWidth = unsigned(std::floor(dimensionsForSizeComparison[0] * rhs._width));
+            rhsHeight = unsigned(std::floor(dimensionsForSizeComparison[1] * rhs._height));
+        }
+
+        return lhsWidth == rhsWidth && lhsHeight == rhsHeight;
+    }
+
+    bool IsCompatible(const AttachmentDesc& testAttachment, const AttachmentDesc& request, UInt2 dimensionsForSizeComparison)
     {
         return
             ( (FormatCompatible(testAttachment._format, request._format)) || (testAttachment._format == Format::Unknown) || (request._format == Format::Unknown) )
             && GetArrayCount(testAttachment) == GetArrayCount(request)
-			&& DimsEqual(testAttachment, request, FrameBufferProperties{dimensions[0], dimensions[1]})
+			&& DimsEqual(testAttachment, request, dimensionsForSizeComparison)
             && (testAttachment._flags & request._flags) == request._flags
             ;
     }

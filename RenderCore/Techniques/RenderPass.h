@@ -55,7 +55,7 @@ namespace RenderCore { namespace Techniques
 		PipelineType				_pipelineType = PipelineType::Graphics;
     };
 
-    FrameBufferDesc BuildFrameBufferDesc(FrameBufferDescFragment&& fragment);
+    FrameBufferDesc BuildFrameBufferDesc(FrameBufferDescFragment&& fragment, const FrameBufferProperties& props);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -66,14 +66,9 @@ namespace RenderCore { namespace Techniques
         void Unbind(const IResource& resource);
         void UnbindAll();
 		auto GetBoundResource(uint64_t semantic) -> IResourcePtr;
-		auto GetBoundResourceDesc(uint64_t semantic) -> const AttachmentDesc*;
 
-        std::vector<AttachmentName> Request(IteratorRange<const FrameBufferDesc::Attachment*> requests);
+        std::vector<AttachmentName> Request(const FrameBufferDesc& fbDesc);
 
-        void Bind(FrameBufferProperties props);
-        const FrameBufferProperties& GetFrameBufferProperties() const;
-
-        auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
         auto GetResource(AttachmentName resName) const -> IResourcePtr;
         auto GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const -> IResourceView*;
 
@@ -157,12 +152,10 @@ namespace RenderCore { namespace Techniques
         const Metal::FrameBuffer& GetFrameBuffer() const { return *_frameBuffer; }
         const FrameBufferDesc& GetFrameBufferDesc() const { return _layout; }
 
-		auto GetInputAttachmentDesc(unsigned inputAttachmentSlot) const -> const AttachmentDesc*;
         auto GetInputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
         auto GetInputAttachmentSRV(unsigned inputAttachmentSlot) const -> IResourceView*;
 		auto GetInputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> IResourceView*;
 
-		auto GetOutputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*;
 		auto GetOutputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
 		auto GetOutputAttachmentSRV(unsigned inputAttachmentSlot) const -> IResourceView*;
 		auto GetOutputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> IResourceView*;
@@ -173,7 +166,6 @@ namespace RenderCore { namespace Techniques
 		auto GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> IResourceView*;
 
 		// The "AttachmentNames" here map onto the names used by the FrameBufferDesc used to initialize this RPI
-        auto GetDescForAttachmentName(AttachmentName resName) const -> const AttachmentDesc*;
         auto GetResourceForAttachmentName(AttachmentName resName) const -> IResourcePtr;
         auto GetSRVForAttachmentName(AttachmentName resName, const TextureViewDesc& window = {}) const -> IResourceView*;
 
@@ -229,22 +221,6 @@ namespace RenderCore { namespace Techniques
 		UInt2 dimenionsForCompatibilityTests = UInt2(1024, 1024));
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class SemanticNamedAttachments : public RenderCore::INamedAttachments
-    {
-    public:
-        virtual IResourcePtr GetResource(AttachmentName resName) const;
-        virtual const AttachmentDesc* GetDesc(AttachmentName resName) const;
-		virtual const FrameBufferProperties& GetFrameBufferProperties() const;
-
-        SemanticNamedAttachments(
-			AttachmentPool& pool, 
-			IteratorRange<const uint64_t*> semanticMapping);
-        ~SemanticNamedAttachments();
-    private:
-        AttachmentPool* _pool;
-        std::vector<uint64_t> _semanticMapping;
-    };
 
     /// <summary>Tests to see if the attachment usage of the given fragment can be optimized</summary>
     /// Sometimes of the number of attachments used by a fragment can be reduced by reusing

@@ -68,14 +68,6 @@ namespace RenderCore
         }
     }
 
-	TextureViewDesc CompleteTextureViewDesc(const AttachmentDesc& attachmentDesc, const TextureViewDesc& viewDesc, TextureViewDesc::Aspect defaultAspect)
-	{
-		TextureViewDesc result = viewDesc;
-		if (result._format._aspect == TextureViewDesc::Aspect::UndefinedAspect)
-			result._format._aspect = defaultAspect;
-		return result;
-	}
-
     uint64_t AttachmentDesc::CalculateHash() const
     {
         assert((unsigned(_format) & ((1<<8)-1)) == unsigned(_format));

@@ -128,6 +128,7 @@ namespace RenderCore
             result._samplingQuality = samplingQuality;
             return result;
         }
+        friend bool operator==(const TextureSamples& lhs, const TextureSamples& rhs) { return lhs._sampleCount == rhs._sampleCount && lhs._samplingQuality == rhs._samplingQuality; }
     };
 
     class TextureDesc
