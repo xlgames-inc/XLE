@@ -203,6 +203,15 @@ namespace Assets
 				bool pollingResult = false;
 				TRY {
 					pollingResult = pollingFunction(*this);
+				} CATCH (const Exceptions::ConstructionError& e) {
+					lock = std::unique_lock<decltype(_lock)>(_lock);
+					_pendingState = AssetState::Invalid;
+					_pendingActualizationLog = AsBlob(e);
+					_pendingDepVal = e.GetDependencyValidation();
+					actualized = _pending;
+					depVal = _pendingDepVal;
+					actualizationLog = _pendingActualizationLog;
+					return _pendingState;
 				} CATCH (const std::exception& e) {
 					lock = std::unique_lock<decltype(_lock)>(_lock);
 					_pendingState = AssetState::Invalid;
@@ -251,6 +260,11 @@ namespace Assets
 					assert(!_pollingFunction);
 					std::swap(pollingFunction, _pollingFunction);
 				}
+			} CATCH (const Exceptions::ConstructionError& e) {
+				lock = std::unique_lock<decltype(_lock)>(_lock);
+				_pendingState = AssetState::Invalid;
+				_pendingActualizationLog = AsBlob(e);
+				_pendingDepVal = e.GetDependencyValidation();
 			} CATCH (const std::exception& e) {
 				lock = std::unique_lock<decltype(_lock)>(_lock);
 				_pendingState = AssetState::Invalid;
@@ -337,6 +351,13 @@ namespace Assets
 
 				TRY {
 					pollingResult = pollingFunction(*that);
+				} CATCH (const Exceptions::ConstructionError& e) {
+					lock = std::unique_lock<decltype(_lock)>(_lock);
+					that->_pendingState = AssetState::Invalid;
+					that->_pendingActualizationLog = AsBlob(e);
+					that->_pendingDepVal = e.GetDependencyValidation();
+					isInLock = true;		// already locked "that->_lock"
+					break;
 				} CATCH (const std::exception& e) {
 					lock = std::unique_lock<decltype(that->_lock)>(that->_lock);
 					that->_pendingState = AssetState::Invalid;
