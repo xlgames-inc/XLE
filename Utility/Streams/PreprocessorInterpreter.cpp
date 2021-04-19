@@ -419,9 +419,14 @@ namespace Utility
 						// then we can get relevance information for them
 						assert(sub->_type == PreprocessorSubstitutions::Type::Define || sub->_type == PreprocessorSubstitutions::Type::DefaultDefine);
 						auto translated = dictionary.Translate(substitutions._dictionary, sub->_substitution);
-						reversePolishOrdering.insert(
-							reversePolishOrdering.end(),
-							translated.begin(), translated.end());
+						if (!translated.empty()) {
+							reversePolishOrdering.insert(
+								reversePolishOrdering.end(),
+								translated.begin(), translated.end());
+						} else {
+							// a symbol that is defined to nothing is treated as if it's defined to 1
+							reversePolishOrdering.push_back(s_fixedTokenTrue);
+						}
 					}
 
 				} else if (base.type & REF) {
