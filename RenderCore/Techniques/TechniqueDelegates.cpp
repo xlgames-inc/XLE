@@ -165,6 +165,7 @@ namespace RenderCore { namespace Techniques
 		nascentDesc->_shaders[(unsigned)ShaderStage::Pixel] = entry._pixelShaderName;
 		nascentDesc->_shaders[(unsigned)ShaderStage::Geometry] = entry._geometryShaderName;
 		nascentDesc->_manualSelectorFiltering = entry._selectorFiltering;
+		nascentDesc->_selectorPreconfigurationFile = entry._preconfigurationFileName;
 	}
 
 	auto TechniqueDelegate_Legacy::Resolve(

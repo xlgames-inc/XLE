@@ -138,6 +138,8 @@ namespace RenderCore { namespace Techniques
 				result._pixelShaderName = RequireValue(formatter).AsString();
 			} else if (XlEqString(name, "GeometryShader")) {
 				result._geometryShaderName = RequireValue(formatter).AsString();
+			} else if (XlEqString(name, "Preconfiguration")) {
+				result._preconfigurationFileName = RequireValue(formatter).AsString();
 			} else {
 				Throw(FormatException("Unknown mapped item while reading technique", formatter.GetLocation()));
 			}
@@ -196,6 +198,7 @@ namespace RenderCore { namespace Techniques
 		if (!source._vertexShaderName.empty()) _vertexShaderName = source._vertexShaderName;
 		if (!source._pixelShaderName.empty()) _pixelShaderName = source._pixelShaderName;
 		if (!source._geometryShaderName.empty()) _geometryShaderName = source._geometryShaderName;
+		if (!source._preconfigurationFileName.empty()) _preconfigurationFileName = source._preconfigurationFileName;
 
 		_selectorFiltering._setValues.MergeIn(source._selectorFiltering._setValues);
 		for (const auto&i:source._selectorFiltering._relevanceMap)
@@ -214,6 +217,8 @@ namespace RenderCore { namespace Techniques
 			_shaderNamesHash = Hash64(_pixelShaderName, _shaderNamesHash);
 		if (!_geometryShaderName.empty())
 			_shaderNamesHash = Hash64(_geometryShaderName, _shaderNamesHash);
+		if (!_preconfigurationFileName.empty())
+			_shaderNamesHash = Hash64(_preconfigurationFileName, _shaderNamesHash);
 	}
 
 	template<typename Char>
@@ -237,6 +242,7 @@ namespace RenderCore { namespace Techniques
 		ReplaceInString(entry._vertexShaderName, selfRef, filename);
 		ReplaceInString(entry._pixelShaderName, selfRef, filename);
 		ReplaceInString(entry._geometryShaderName, selfRef, filename);
+		ReplaceInString(entry._preconfigurationFileName, selfRef, filename);
 		entry.GenerateHash();
 	}
 
