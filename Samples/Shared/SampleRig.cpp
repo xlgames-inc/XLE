@@ -68,19 +68,19 @@ namespace Sample
             // as they go along
             // We separate this initialization work like this to provide some flexibility. It's only necessary to
             // construct as much as will be required for the specific use case 
-        auto windowApparatus = std::make_shared<PlatformRig::WindowApparatus>(sampleGlobals._renderDevice);
-        auto drawingApparatus = std::make_shared<RenderCore::Techniques::DrawingApparatus>(sampleGlobals._renderDevice);
-        auto immediateDrawingApparatus = std::make_shared<RenderCore::Techniques::ImmediateDrawingApparatus>(drawingApparatus);
-        auto primaryResourcesApparatus = std::make_shared<RenderCore::Techniques::PrimaryResourcesApparatus>(sampleGlobals._renderDevice);
-        auto frameRenderingApparatus = std::make_shared<RenderCore::Techniques::FrameRenderingApparatus>(sampleGlobals._renderDevice);
-        windowApparatus->_windowHandler->_onResize.Bind(
-            [fra = std::weak_ptr<RenderCore::Techniques::FrameRenderingApparatus>{frameRenderingApparatus}](unsigned, unsigned) {
+        sampleGlobals._windowApparatus = std::make_shared<PlatformRig::WindowApparatus>(sampleGlobals._renderDevice);
+        sampleGlobals._drawingApparatus = std::make_shared<RenderCore::Techniques::DrawingApparatus>(sampleGlobals._renderDevice);
+        sampleGlobals._immediateDrawingApparatus = std::make_shared<RenderCore::Techniques::ImmediateDrawingApparatus>(sampleGlobals._drawingApparatus);
+        sampleGlobals._primaryResourcesApparatus = std::make_shared<RenderCore::Techniques::PrimaryResourcesApparatus>(sampleGlobals._renderDevice);
+        sampleGlobals._frameRenderingApparatus = std::make_shared<RenderCore::Techniques::FrameRenderingApparatus>(sampleGlobals._renderDevice);
+        sampleGlobals._windowApparatus->_windowHandler->_onResize.Bind(
+            [fra = std::weak_ptr<RenderCore::Techniques::FrameRenderingApparatus>{sampleGlobals._frameRenderingApparatus}](unsigned, unsigned) {
                 auto apparatus = fra.lock();
                 if (apparatus)
                     apparatus->_frameBufferPool->Reset();
             });
         auto v = sampleGlobals._renderDevice->GetDesc();
-        windowApparatus->_osWindow->SetTitle(StringMeld<128>() << "XLE sample [RenderCore: " << v._buildVersion << ", " << v._buildDate << "]");
+        sampleGlobals._windowApparatus->_osWindow->SetTitle(StringMeld<128>() << "XLE sample [RenderCore: " << v._buildVersion << ", " << v._buildDate << "]");
 
         Utility::HierarchicalCPUProfiler cpuProfiler;
 
@@ -89,9 +89,9 @@ namespace Sample
             //  useful to create a debugging display to go along with any new feature. 
             //  It just provides a convenient architecture for visualizing important information.
         Log(Verbose) << "Setup tools and debugging" << std::endl;
-        PlatformRig::FrameRig frameRig(primaryResourcesApparatus->_subFrameEvents);
-        auto debugOverlaysApparatus = std::make_shared<PlatformRig::DebugOverlaysApparatus>(immediateDrawingApparatus, frameRig);
-        PlatformRig::InitProfilerDisplays(*debugOverlaysApparatus->_debugSystem, &windowApparatus->_immediateContext->GetAnnotator(), cpuProfiler);
+        PlatformRig::FrameRig frameRig(sampleGlobals._primaryResourcesApparatus->_subFrameEvents);
+        auto debugOverlaysApparatus = std::make_shared<PlatformRig::DebugOverlaysApparatus>(sampleGlobals._immediateDrawingApparatus, frameRig);
+        PlatformRig::InitProfilerDisplays(*debugOverlaysApparatus->_debugSystem, &sampleGlobals._windowApparatus->_immediateContext->GetAnnotator(), cpuProfiler);
         frameRig.SetDebugScreensOverlaySystem(debugOverlaysApparatus->_debugScreensOverlaySystem);
         frameRig.SetMainOverlaySystem(sampleOverlay); // (disabled temporarily)
 
@@ -100,9 +100,9 @@ namespace Sample
             //      * We can add secondary input handles to the main input handler as required
             //      * The order in which we add handlers determines their priority in intercepting messages
         Log(Verbose) << "Setup input" << std::endl;        
-        windowApparatus->_mainInputHandler->AddListener(PlatformRig::MakeHotKeysHandler("xleres/hotkey.txt"));
-        windowApparatus->_mainInputHandler->AddListener(sampleOverlay->GetInputListener());
-        windowApparatus->_mainInputHandler->AddListener(debugOverlaysApparatus->_debugScreensOverlaySystem->GetInputListener());
+        sampleGlobals._windowApparatus->_mainInputHandler->AddListener(PlatformRig::MakeHotKeysHandler("xleres/hotkey.txt"));
+        sampleGlobals._windowApparatus->_mainInputHandler->AddListener(sampleOverlay->GetInputListener());
+        sampleGlobals._windowApparatus->_mainInputHandler->AddListener(debugOverlaysApparatus->_debugScreensOverlaySystem->GetInputListener());
 
         Log(Verbose) << "Call OnStartup and start the frame loop" << std::endl;
         sampleOverlay->OnStartup(sampleGlobals);
@@ -111,11 +111,11 @@ namespace Sample
         while (PlatformRig::OverlappedWindow::DoMsgPump() != PlatformRig::OverlappedWindow::PumpResult::Terminate) {
                 // ------- Render ----------------------------------------
             RenderCore::Techniques::ParsingContext parserContext(
-                *drawingApparatus->_techniqueContext, 
-                frameRenderingApparatus->_attachmentPool.get(), 
-                frameRenderingApparatus->_frameBufferPool.get());
+                *sampleGlobals._drawingApparatus->_techniqueContext, 
+                sampleGlobals._frameRenderingApparatus->_attachmentPool.get(), 
+                sampleGlobals._frameRenderingApparatus->_frameBufferPool.get());
             auto frameResult = frameRig.ExecuteFrame(
-                windowApparatus->_immediateContext, windowApparatus->_presentationChain.get(), 
+                sampleGlobals._windowApparatus->_immediateContext, sampleGlobals._windowApparatus->_presentationChain.get(), 
                 parserContext, &cpuProfiler);
 
                 // ------- Update ----------------------------------------
@@ -131,7 +131,7 @@ namespace Sample
             //  an unhandled exception)
             //  Before we go too far, though, let's log a list of active assets.
         Log(Verbose) << "Starting shutdown" << std::endl;
-        RenderCore::Metal::DeviceContext::PrepareForDestruction(sampleGlobals._renderDevice.get(), windowApparatus->_presentationChain.get());
+        RenderCore::Metal::DeviceContext::PrepareForDestruction(sampleGlobals._renderDevice.get(), sampleGlobals._windowApparatus->_presentationChain.get());
         ::Assets::Services::GetAssetSets().Clear();
         
         ::Assets::MainFileSystem::GetMountingTree()->Unmount(rawosmnt);
