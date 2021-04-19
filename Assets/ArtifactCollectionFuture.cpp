@@ -39,6 +39,7 @@ namespace Assets
 	void ArtifactCollectionFuture::SetArtifactCollections(
 		IteratorRange<const std::pair<TargetCode, std::shared_ptr<IArtifactCollection>>*> artifacts)
 	{
+		assert(!artifacts.empty());
 		assert(_artifactCollections.empty());
 		_artifactCollections = std::vector<std::pair<TargetCode, std::shared_ptr<IArtifactCollection>>>{
 			artifacts.begin(), artifacts.end()

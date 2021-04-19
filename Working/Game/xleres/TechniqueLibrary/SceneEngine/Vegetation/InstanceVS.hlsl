@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../../Framework/SystemUniforms.hlsl"
-#include "../../Framework/MainGeometry.hlsl"
+#include "../../Framework/VSIN.hlsl"
 
 #if GEO_HAS_INSTANCE_ID==1
     struct InstanceDef

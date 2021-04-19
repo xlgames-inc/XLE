@@ -88,7 +88,7 @@ namespace RenderCore { namespace Techniques
 			_interface._patches.emplace_back(std::move(p));
 		}
 
-		_interface._descriptorSet = inst._descriptorSet;
+		_interface._descriptorSet = inst._descriptorSet ? inst._descriptorSet : materialDescSetLayout.GetLayout();
 		_interface._materialDescriptorSetSlotIndex = materialDescSetLayout.GetSlotIndex();
 
 		for (const auto&d:inst._depVals)

@@ -3,9 +3,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../Framework/SystemUniforms.hlsl"
-#include "../Framework/MainGeometry.hlsl"
+#include "../Framework/VSOUT.hlsl"
+#include "../Framework/VSIN.hlsl"
 #include "../Framework/DeformVertex.hlsl"
-#include "../Framework/Surface.hlsl"
 #include "../SceneEngine/Lighting/resolvefog.hlsl"
 
 VSOUT BuildVSOUT(

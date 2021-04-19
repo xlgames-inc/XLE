@@ -2,11 +2,11 @@
 #if !defined(DEFORM_VERTEX_HLSL)
 #define DEFORM_VERTEX_HLSL
 
-#if !defined(MAIN_GEOMETRY_H)
-	#error Include TechniqueLibrary/Framework/MainGeometry.hlsl before including this file
+#if !defined(VSIN_H)
+	#error Include TechniqueLibrary/Framework/VSIN.hlsl before including this file
 #endif
 
-#include "Surface.hlsl"
+#include "../Math/SurfaceAlgorithm.hlsl"
 
 struct DeformedVertex
 {

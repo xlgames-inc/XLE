@@ -367,6 +367,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		{
 			assert(_looseUniforms.size() <= 4);
 
+			unsigned groupIdxForDummies = 0;
+			for (unsigned c=0; c<_looseUniforms.size(); ++c)
+				if (!_looseUniforms[c]->_immediateDataBindings.empty() || !_looseUniforms[c]->_resourceViewBindings.empty() || !_looseUniforms[c]->_samplerBindings.empty()) {
+					groupIdxForDummies = c;	// assign this to the first group that is not just fixed descriptor sets
+					break;
+				}
+
 			// We'll need an input value for every binding in the shader reflection
 			for (const auto&v:reflection._variables) {
 				auto reflectionVariable = GetReflectionVariableInformation(reflection, v.first);
@@ -426,11 +433,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
 						} else {
 							// no binding found -- just mark it as an input variable we need, it will get filled in with a default binding
-							groupIdx = 0;
 							AddLooseUniformBinding(
 								UniformStreamType::Dummy,
 								reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
-								groupIdx, ~0u, shaderStageMask);
+								groupIdxForDummies, ~0u, shaderStageMask);
 						}
 					} else {
 

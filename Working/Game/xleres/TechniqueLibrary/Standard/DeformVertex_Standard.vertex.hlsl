@@ -2,7 +2,7 @@
 #if !defined(ILLUM_STANDARD_VERTEX_HLSL)
 #define ILLUM_STANDARD_VERTEX_HLSL
 
-#if !defined(MAIN_GEOMETRY_H)
+#if !defined(DEFORM_VERTEX_HLSL)
 	#error Include TechniqueLibrary/Core/DeformVertex.hlsl before including this file
 #endif
 

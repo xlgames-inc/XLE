@@ -84,6 +84,7 @@ DescriptorSet Numeric
 	SampledTexture tex12;
 	SampledTexture tex13;
 	SampledTexture tex14;
+	SampledTexture tex15;
 
 	Sampler sampler0;
 	Sampler sampler1;
@@ -98,7 +99,7 @@ DescriptorSet Numeric
 	UniformBuffer cb2;
 	UniformBuffer cb3;
 
-	Sampler sampler0;
+	Sampler hlslccDummySampler;
 };
 
 PipelineLayout ImmediateDrawables

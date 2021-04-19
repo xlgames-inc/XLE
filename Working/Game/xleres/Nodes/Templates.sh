@@ -1,5 +1,7 @@
 
-#include "../TechniqueLibrary/Framework/MainGeometry.hlsl"
+// \todo -- we should split this between vertex and pixel shader stuff
+#include "../TechniqueLibrary/Framework/VSOUT.hlsl"
+#include "../TechniqueLibrary/Framework/VSIN.hlsl"
 #include "../TechniqueLibrary/Framework/DeformVertex.hlsl"
 #include "../TechniqueLibrary/Framework/gbuffer.hlsl"
 #include "MaterialParam.sh"

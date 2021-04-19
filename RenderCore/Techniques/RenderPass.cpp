@@ -800,7 +800,7 @@ namespace RenderCore { namespace Techniques
                     if (request->_semantic == _pimpl->_semanticAttachments[q]._semantic && !consumedSemantic[q] && _pimpl->_semanticAttachments[q]._resource) {
                         #if defined(_DEBUG)
 							if (!MatchRequest(requestDesc, *bindFlagI, _pimpl->_semanticAttachments[q]._desc, fbDesc.GetProperties())) {
-                            	Log(Warning) << "Attachment bound to the pool for semantic (0x" << std::hex << request->_semantic << std::dec << ") does not match the request for this semantic. Attempting to use it anyway. Request: "
+                            	Log(Warning) << "Attachment bound to the pool for semantic (0x" << std::hex << request->_semantic << ", bind flag: 0x" << *bindFlagI << std::dec << ") does not match the request for this semantic. Attempting to use it anyway. Request: "
                                 	<< requestDesc << ", Bound to pool: " << _pimpl->_semanticAttachments[q]._desc
                                 	<< std::endl;
                         	}

@@ -7,7 +7,7 @@
 #if !defined(SKIN_TRANSFORM_H)
 #define SKIN_TRANSFORM_H
 
-#include "../../Framework/MainGeometry.hlsl"
+#include "../../Framework/VSIN.hlsl"
 
 #define SKIN_TRANSFORMS_MATRICES	0
 #define SKIN_TRANSFORMS_QT			1

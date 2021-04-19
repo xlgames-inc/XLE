@@ -398,12 +398,11 @@ namespace RenderCore { namespace Assets
             Throw(::Exceptions::BasicLabel("Missing or empty file"));
 
         InputStreamFormatter<utf8> formatter(MakeIteratorRange(*blob).template Cast<const void*>());
-        StreamDOM<decltype(formatter)> doc(formatter);
-            
-        for (auto config:doc.RootElement().children()) {
-            auto name = config.Name();
-            if (name.IsEmpty()) continue;
-            _configurations.push_back(name.AsString());
+
+        StringSection<> keyName;
+        while (formatter.TryKeyedItem(keyName)) {
+            _configurations.push_back(keyName.AsString());
+            SkipValueOrElement(formatter);
         }
 
         _validationCallback = depVal;

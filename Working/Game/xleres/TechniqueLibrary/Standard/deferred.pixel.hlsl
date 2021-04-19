@@ -1,4 +1,4 @@
-#include "../Framework/MainGeometry.hlsl"
+#include "../Framework/VSOUT.hlsl"
 #include "../Framework/gbuffer.hlsl"
 #include "../../Nodes/Templates.sh"
 
@@ -19,4 +19,3 @@ GBufferEncoded frameworkEntryWithEarlyRejection(VSOUT geo)
 	GBufferValues result = PerPixel(geo);
 	return Encode(result);
 }
-

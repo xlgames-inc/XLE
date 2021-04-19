@@ -144,10 +144,6 @@ namespace PlatformRig
 			// Bind the presentation target as the default output for the parser context
 			// (including setting the normalized width and height)
 			parserContext.GetNamedResources().Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, presentationTarget);
-			parserContext.GetNamedResources().Bind(
-				RenderCore::FrameBufferProperties {
-					presentationTargetDesc._textureDesc._width, presentationTargetDesc._textureDesc._height,
-					presentationTargetDesc._textureDesc._samples });
 
 			////////////////////////////////
 

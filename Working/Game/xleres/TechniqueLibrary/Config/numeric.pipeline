@@ -30,5 +30,5 @@ DescriptorSet Numeric
 	UniformBuffer cb2;
 	UniformBuffer cb3;
 
-	Sampler sampler0;
+	Sampler hlslccDummySampler;
 };

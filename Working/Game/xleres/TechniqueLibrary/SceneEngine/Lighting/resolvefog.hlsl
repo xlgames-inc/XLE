@@ -6,7 +6,6 @@
 
 #if VSOUT_HAS_FOG_COLOR == 1
 
-    #include "../../Framework/MainGeometry.hlsl"
     #include "../../Framework/SystemUniforms.hlsl"
     #include "RangeFogResolve.hlsl"
     #include "BasicLightingEnvironment.hlsl"

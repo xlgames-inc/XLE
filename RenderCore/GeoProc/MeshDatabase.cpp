@@ -190,6 +190,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		auto dstFormatSize = BitsPerPixel(dstFmt) / 8;
 		auto srcFormatSize = BitsPerPixel(srcFmt) / 8;
 		(void)srcFormatSize;
+        assert(dstStride != 0);     // never use zero strides -- you'll just end up with duplicated data
+        assert(srcStride != 0);
+        assert(count != 0);
 
             //      This could be be made more efficient with a smarter loop..
         if (srcFormat.first == VertexUtilComponentType::Float32) {
@@ -499,7 +502,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         if (insertionPosition == ~0u) {
             _streams.push_back(
-            Stream { std::move(dataSource), std::move(vertexMap), semantic, semanticIndex });
+                Stream { std::move(dataSource), std::move(vertexMap), semantic, semanticIndex });
             return unsigned(_streams.size()-1);
         } else {
             _streams.insert(

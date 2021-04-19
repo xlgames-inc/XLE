@@ -499,11 +499,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		const char* AsString(DescriptorType type)
 		{
 			const char* descriptorTypeNames[] = {
-				"Sampler",
-				"Texture",
-				"ConstantBuffer",
+				"SampledTexture",
+				"UniformBuffer",
 				"UnorderedAccessTexture",
-				"UnorderedAccessBuffer"
+				"UnorderedAccessBuffer",
+				"Sampler",
+				"Unknown"
 			};
 			if (unsigned(type) < dimof(descriptorTypeNames))
 				return descriptorTypeNames[unsigned(type)];

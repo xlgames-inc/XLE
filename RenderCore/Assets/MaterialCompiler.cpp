@@ -51,11 +51,11 @@ namespace RenderCore { namespace Assets
 		{
 			if (_compilationException)
 				return { 
-					TargetDesc { ChunkType_Log, "compilation-exception" }
+					TargetDesc { MaterialScaffold::CompileProcessType, "compilation-exception" }
 				};
 			if (_serializedArtifacts.empty()) return {};
 			return {
-				TargetDesc { _serializedArtifacts[0]._chunkTypeCode, _serializedArtifacts[0]._name.c_str() }
+				TargetDesc { MaterialScaffold::CompileProcessType, _serializedArtifacts[0]._name.c_str() }
 			};
 		}
 		std::vector<SerializedArtifact>	SerializeTarget(unsigned idx)
@@ -80,6 +80,8 @@ namespace RenderCore { namespace Assets
 					// the parameters are irrelevant to the compiler -- so if they stay on the request
 					// name, will we end up with multiple assets that are equivalent
 				assert(MakeFileNameSplitter(sourceModel).ParametersWithDivider().IsEmpty());
+
+				AddDep(_dependencies, sourceModel);        // we need need a dependency (even if it's a missing file)
 
 				auto modelMatFuture = ::Assets::MakeAsset<RawMatConfigurations>(sourceModel);
 				auto modelMatState = modelMatFuture->StallWhilePending();
@@ -106,8 +108,6 @@ namespace RenderCore { namespace Assets
 				::Assets::ResChar resolvedSourceMaterial[MaxPath];
 				ResolveMaterialFilename(resolvedSourceMaterial, dimof(resolvedSourceMaterial), searchRules, sourceMaterial);
 				searchRules.AddSearchDirectoryFromFilename(resolvedSourceMaterial);
-
-				AddDep(_dependencies, sourceModel);        // we need need a dependency (even if it's a missing file)
 
 				using Meld = StringMeld<MaxPath, ::Assets::ResChar>;
 				for (const auto& cfg:modelMat->_configurations) {

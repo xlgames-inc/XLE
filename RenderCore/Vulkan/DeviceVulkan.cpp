@@ -1062,7 +1062,7 @@ namespace RenderCore { namespace ImplVulkan
 				TextureViewDesc::SubResourceRange{0, _bufferDesc._arrayCount},
 				_bufferDesc._dimensionality};
             auto resDesc = CreateDesc(
-                BindFlag::PresentationSrc, 0u, GPUAccess::Read|GPUAccess::Write, 
+                BindFlag::PresentationSrc | BindFlag::RenderTarget, 0u, GPUAccess::Write, 
                 _bufferDesc, "presentationimage");
             auto resPtr = std::make_shared<Metal_Vulkan::Resource>(i, resDesc);
             _images.emplace_back(
