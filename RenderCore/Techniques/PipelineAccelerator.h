@@ -73,6 +73,10 @@ namespace RenderCore { namespace Techniques
 			std::shared_ptr<Metal::GraphicsPipeline> _metalPipeline;
 			::Assets::DepValPtr _depVal;
 			const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+
+			#if defined(_DEBUG)
+				std::string _vsDescription, _psDescription, _gsDescription;
+			#endif
 		};
 
 		virtual const ::Assets::FuturePtr<Pipeline>& GetPipeline(PipelineAccelerator& pipelineAccelerator, const SequencerConfig& sequencerConfig) const = 0;

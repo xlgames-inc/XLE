@@ -69,6 +69,9 @@ namespace RenderCore { namespace Techniques
 				uint64_t		_implementsHash;
 				std::string		_scaffoldInFunction;		// scaffold function to use for patching in this particular implementation.
 				std::shared_ptr<GraphLanguage::NodeGraphSignature> _signature;
+				#if defined(_DEBUG)
+					std::string _entryPointName;
+				#endif
 			};
 			IteratorRange<const Patch*> GetPatches() const { return MakeIteratorRange(_patches); }
 			const RenderCore::Assets::PredefinedDescriptorSetLayout& GetMaterialDescriptorSet() const { return *_descriptorSet; }

@@ -200,6 +200,41 @@ namespace RenderCore { namespace Techniques
 		return result;
 	}
 
+#if defined(_DEBUG)
+	static std::ostream& CompressFilename(std::ostream& str, StringSection<> path)
+	{
+		auto split = MakeFileNameSplitter(path);
+		if (!split.DriveAndPath().IsEmpty()) {
+			return str << ".../" << split.FileAndExtension();
+		} else
+			return str << path;
+	}
+
+	static std::string MakeShaderDescription(
+		ShaderStage stage,
+		const ITechniqueDelegate::GraphicsPipelineDesc& pipelineDesc,
+		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
+		const std::shared_ptr<CompiledShaderPatchCollection>& compiledPatchCollection,
+ 		const UniqueShaderVariationSet::FilteredSelectorSet& filteredSelectors)
+	{
+		if (pipelineDesc._shaders[(unsigned)stage].empty())
+			return {};
+
+		std::stringstream str;
+		const char* stageName[] = { "vs", "ps", "gs" };
+		bool first = true;
+			if (!first) str << ", "; first = false;
+			str << stageName[(unsigned)stage] << ": ";
+			CompressFilename(str, pipelineDesc._shaders[(unsigned)stage]);
+		for (const auto& patch:compiledPatchCollection->GetInterface().GetPatches()) {
+			if (!first) str << ", "; first = false;
+			str << "patch: " << patch._entryPointName;
+		}
+		str << "[" << filteredSelectors._selectors << "]";
+		return str.str();
+	}
+#endif
+
 	class GraphicsPipelineDescWithFilteringRules
 	{
 	public:
@@ -390,9 +425,15 @@ namespace RenderCore { namespace Techniques
 							::Assets::RegisterAssetDependency(configurationDepVal, pipelineDescWithFiltering->_preconfiguration->GetDependencyValidation());
 
 						auto shaderProgram = MakeShaderProgram(*pipelineDesc, pipelineLayout, compiledPatchCollection, MakeIteratorRange(filteredSelectors));
+						std::string vsd, psd, gsd;
+						#if defined(_DEBUG)
+							vsd = MakeShaderDescription(ShaderStage::Vertex, *pipelineDesc, pipelineLayout, compiledPatchCollection, filteredSelectors[(unsigned)ShaderStage::Vertex]);
+							psd = MakeShaderDescription(ShaderStage::Pixel, *pipelineDesc, pipelineLayout, compiledPatchCollection, filteredSelectors[(unsigned)ShaderStage::Pixel]);
+							gsd = MakeShaderDescription(ShaderStage::Geometry, *pipelineDesc, pipelineLayout, compiledPatchCollection, filteredSelectors[(unsigned)ShaderStage::Geometry]);
+						#endif
 						::Assets::WhenAll(shaderProgram).ThenConstructToFuture<IPipelineAcceleratorPool::Pipeline>(
 							resultFuture,
-							[cfg, pipelineDesc, configurationDepVal, weakThis](const std::shared_ptr<Metal::ShaderProgram>& shaderProgram) {
+							[cfg, pipelineDesc, configurationDepVal, vsd, psd, gsd, weakThis](const std::shared_ptr<Metal::ShaderProgram>& shaderProgram) {
 								auto containingPipelineAccelerator = weakThis.lock();
 								if (!containingPipelineAccelerator)
 									Throw(std::runtime_error("Containing GraphicsPipeline builder has been destroyed"));
@@ -405,6 +446,11 @@ namespace RenderCore { namespace Techniques
 									pipelineDesc->_rasterization, 
 									cfg);
 								result->_depVal = configurationDepVal;
+								#if defined(_DEBUG)
+									result->_vsDescription = vsd;
+									result->_psDescription = psd;
+									result->_gsDescription = gsd;
+								#endif
 								::Assets::RegisterAssetDependency(result->_depVal, result->_metalPipeline->GetDependencyValidation());
 								return result;
 							});
