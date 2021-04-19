@@ -9,6 +9,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/BasicDelegates.h"
 #include "../RenderCore/Techniques/TechniqueDelegates.h"
+#include "../RenderCore/Techniques/SystemUniformsDelegate.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../Assets/AssetsCore.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -48,10 +49,7 @@ namespace SceneEngine
         const RenderCore::Techniques::ProjectionDesc& projDesc)
     {
         parserContext.GetProjectionDesc() = projDesc;
-        auto globalTransform = BuildGlobalTransformConstants(projDesc);
-        /*parserContext.SetGlobalCB(
-            *Metal::DeviceContext::Get(context), Techniques::TechniqueContext::CB_GlobalTransform,
-            &globalTransform, sizeof(globalTransform));*/
+		parserContext.GetSystemUniformsDelegate().SetGlobalTransform(BuildGlobalTransformConstants(projDesc));
     }
 
 	RenderCore::Techniques::SequencerContext MakeSequencerContext(

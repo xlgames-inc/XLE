@@ -80,6 +80,7 @@ namespace SceneEngine
 		virtual void Execute(
 			RenderCore::IThreadContext& threadContext,
 			RenderCore::Techniques::ParsingContext& parsingContext,
+			const RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
 			LightingParserContext& lightingParserContext,
 			RenderStepFragmentInstance& rpi,
 			IViewDelegate* viewDelegate) = 0;

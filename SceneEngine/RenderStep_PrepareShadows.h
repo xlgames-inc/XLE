@@ -17,6 +17,7 @@ namespace SceneEngine
 		void Execute(
 			RenderCore::IThreadContext& threadContext,
 			RenderCore::Techniques::ParsingContext& parsingContext,
+			const RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
 			LightingParserContext& lightingParserContext,
 			RenderStepFragmentInstance& rpi,
 			IViewDelegate* viewDelegate) override;
@@ -34,6 +35,7 @@ namespace SceneEngine
 		void Execute(
 			RenderCore::IThreadContext& threadContext,
 			RenderCore::Techniques::ParsingContext& parsingContext,
+			const RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
 			LightingParserContext& lightingParserContext,
 			RenderStepFragmentInstance& rpi,
 			IViewDelegate* viewDelegate) override;

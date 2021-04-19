@@ -327,7 +327,11 @@ namespace PlatformRig
     }*/
 }
 
+#include "../RenderCore/Techniques/TechniqueDelegates.h"
+#include "../RenderCore/Techniques/Drawables.h"
+#include "../RenderCore/Techniques/Apparatuses.h"
 #include "../SceneEngine/RenderStep_PrepareShadows.h"
+#include "../SceneEngine/RenderStepUtils.h"
 #include "../Utility/Meta/AccessorSerialize.h"
 #include "../Utility/Meta/ClassAccessors.h"
 
@@ -357,6 +361,79 @@ namespace SceneEngine
 	{
 		return nullptr;
 	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class RenderStep_Direct : public IRenderStep
+	{
+	public:
+		std::shared_ptr<IViewDelegate> CreateViewDelegate() override { return std::make_shared<BasicViewDelegate>(); }
+		const RenderStepFragmentInterface& GetInterface() const override { return _direct; }
+		void Execute(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ParsingContext& parsingContext,
+            const RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
+			LightingParserContext& lightingParserContext,
+			RenderStepFragmentInstance& rpi,
+			IViewDelegate* viewDelegate) override;
+
+		RenderStep_Direct(
+            std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> techniqueDelegate);
+		~RenderStep_Direct();
+	private:
+		RenderStepFragmentInterface _direct;
+	};
+
+	void RenderStep_Direct::Execute(
+		RenderCore::IThreadContext& threadContext,
+		RenderCore::Techniques::ParsingContext& parsingContext,
+        const RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
+		LightingParserContext& lightingParserContext,
+		RenderStepFragmentInstance& rpi,
+		IViewDelegate* viewDelegate)
+	{
+		assert(viewDelegate);
+		auto& executedScene = *checked_cast<BasicViewDelegate*>(viewDelegate);
+        RenderCore::Techniques::SequencerContext sequencerContext;
+        sequencerContext._sequencerConfig = rpi.GetSequencerConfig();
+		ExecuteDrawables(
+            threadContext, parsingContext, 
+            pipelineAccelerators,
+            sequencerContext,
+			executedScene._pkt,
+			"MainScene-Direct");
+	}
+
+	RenderStep_Direct::RenderStep_Direct(
+        std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> techniqueDelegate)
+	: _direct(RenderCore::PipelineType::Graphics)
+	{
+        using namespace RenderCore;
+        AttachmentDesc colorDesc =
+            {   RenderCore::Format::Unknown, 1.f, 1.f, 0u,
+                AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::OutputRelativeDimensions };
+		AttachmentDesc msDepthDesc =
+            {   RenderCore::Format::D24_UNORM_S8_UINT, 1.f, 1.f, 0u,
+                AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::OutputRelativeDimensions };
+
+        auto output = _direct.DefineAttachment(Techniques::AttachmentSemantics::ColorLDR, colorDesc);
+		auto depth = _direct.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth, msDepthDesc);
+
+		SubpassDesc mainSubpass;
+		mainSubpass.AppendOutput(output, LoadStore::Clear);
+		mainSubpass.SetDepthStencil(depth, LoadStore::Clear_ClearStencil);
+
+		_direct.AddSubpass(mainSubpass.SetName("MainForward"), techniqueDelegate);
+	}
+
+	RenderStep_Direct::~RenderStep_Direct() {}
+
+	std::shared_ptr<IRenderStep> CreateRenderStep_Direct(RenderCore::Techniques::DrawingApparatus& apparatus)
+	{ 
+		return std::make_shared<RenderStep_Direct>(apparatus._techniqueDelegateDeferred);
+	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
 
     std::vector<std::shared_ptr<IRenderStep>> CreateStandardRenderSteps(LightingModel lightingModel)
     {

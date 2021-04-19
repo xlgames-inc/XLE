@@ -164,10 +164,14 @@ namespace SceneEngine
 				assert(interf.GetSubpassAddendums().size() == interf.GetFrameBufferDescFragment()._subpasses.size());
 			}
 		
+			UInt2 dimensionsForCompatibilityTests { (unsigned)targetAttachmentDesc._width, (unsigned)targetAttachmentDesc._height };
 			auto merged = Techniques::MergeFragments(
 				MakeIteratorRange(workingAttachments),
-				MakeIteratorRange(fragments));
-			auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment));
+				MakeIteratorRange(fragments),
+				dimensionsForCompatibilityTests);
+			auto fbDesc = Techniques::BuildFrameBufferDesc(
+				std::move(merged._mergedFragment), 
+				FrameBufferProperties{ (unsigned)targetAttachmentDesc._width, (unsigned)targetAttachmentDesc._height });
 
 			workingAttachments.reserve(merged._outputAttachments.size());
 			for (const auto&o:merged._outputAttachments) {
@@ -426,10 +430,10 @@ namespace SceneEngine
 		parsingContext.GetNamedResources().Bind(
 			Techniques::AttachmentSemantics::ColorLDR, renderTarget);
 
-		parsingContext.GetNamedResources().Bind(
+		/*parsingContext.GetNamedResources().Bind(
 			RenderCore::FrameBufferProperties {
 				targetTextureDesc._width, targetTextureDesc._height, 
-				technique._sampling });
+				technique._sampling });*/
 
 		technique._pipelineAccelerators->RebuildAllOutOfDatePipelines();		// (check for pipelines that need hot reloading)
 
@@ -447,7 +451,7 @@ namespace SceneEngine
 			for (size_t step=rp._beginRenderStep; step!=rp._endRenderStep; ++step) {
 				CATCH_ASSETS_BEGIN
 					IViewDelegate* viewDelegate = executeContext.GetViewDelegates()[0].get();
-					technique._renderSteps[step]->Execute(threadContext, parsingContext, lightingParserContext, rpf, viewDelegate);
+					technique._renderSteps[step]->Execute(threadContext, parsingContext, *technique._pipelineAccelerators, lightingParserContext, rpf, viewDelegate);
 				CATCH_ASSETS_END(parsingContext)
 				rpi.NextSubpass();
 			}
@@ -695,7 +699,10 @@ namespace SceneEngine
 		auto& namedResources = context.GetNamedResources();
 		RenderCore::FrameBufferDesc::Attachment requestAttachments[1];
 		requestAttachments[0]._semantic = semantic;
-		auto result = namedResources.Request(MakeIteratorRange(requestAttachments));
+		SubpassDesc fakeSubPass;
+		fakeSubPass.AppendInput(0);
+		FrameBufferDesc fbDesc(std::vector<FrameBufferDesc::Attachment>{requestAttachments[0]}, std::vector<SubpassDesc>{fakeSubPass});
+		auto result = namedResources.Request(fbDesc);
 		if (!result.empty())
 			return namedResources.GetSRV(result[0]);
 		return nullptr;
@@ -708,14 +715,18 @@ namespace SceneEngine
 
 	UInt2		MainTargets::GetDimensions(Techniques::ParsingContext& context) const
 	{
-		auto& fbProps = context.GetNamedResources().GetFrameBufferProperties();
-		return { fbProps._outputWidth, fbProps._outputHeight };
+		assert(0);
+		return UInt2(0,0);
+		// auto& fbProps = context.GetNamedResources().GetFrameBufferProperties();
+		// return { fbProps._outputWidth, fbProps._outputHeight };
 	}
 
 	unsigned    MainTargets::GetSamplingCount(Techniques::ParsingContext& context) const
 	{
-		auto& fbProps = context.GetNamedResources().GetFrameBufferProperties();
-		return fbProps._samples._sampleCount;
+		assert(0);
+		return 0;
+		// auto& fbProps = context.GetNamedResources().GetFrameBufferProperties();
+		// return fbProps._samples._sampleCount;
 	}
 
 
