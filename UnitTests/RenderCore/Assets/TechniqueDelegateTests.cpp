@@ -60,7 +60,7 @@ namespace UnitTests
 		std::make_pair(
 			"minimal_perpixel.graph",
 			::Assets::AsBlob(R"--(
-				import templates = "xleres/Nodes/Templates.sh"
+				import templates = "xleres/Nodes/Templates.pixel.sh"
 				import output = "xleres/Nodes/Output.sh"
 				import materialParam = "xleres/Nodes/MaterialParam.sh"
 
@@ -123,7 +123,7 @@ namespace UnitTests
 		std::make_pair(
 			"spherical.graph",
 			::Assets::AsBlob(R"--(
-				import templates = "xleres/Nodes/Templates.sh"
+				import templates = "xleres/Nodes/Templates.pixel.sh"
 				import output = "xleres/Nodes/Output.sh"
 				import basic = "xleres/Nodes/Basic.sh"
 				import materialParam = "xleres/Nodes/MaterialParam.sh"
@@ -262,7 +262,7 @@ namespace UnitTests
 			"framework-entry.pixel.hlsl",
 			::Assets::AsBlob(R"--(
 				#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
-				#include "xleres/Nodes/Templates.sh"
+				#include "xleres/Nodes/Templates.pixel.sh"
 				#include "spherical_prefix.hlsl"
 
 				#if (VULKAN!=1)

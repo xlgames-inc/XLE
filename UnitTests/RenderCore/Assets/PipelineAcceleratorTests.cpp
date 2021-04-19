@@ -53,7 +53,7 @@ static const char s_exampleTechniqueFragments[] = R"--(
 static const char* s_colorFromSelectorShaderFile = R"--(
 	#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
 	#include "xleres/TechniqueLibrary/Framework/gbuffer.hlsl"
-	#include "xleres/Nodes/Templates.sh"
+	#include "xleres/Nodes/Templates.pixel.sh"
 
 	GBufferValues PerPixel(VSOUT geo)
 	{
@@ -78,7 +78,7 @@ static const char s_techniqueForColorFromSelector[] = R"--(
 )--";
 
 static const char* s_basicTexturingGraph = R"--(
-	import templates = "xleres/Nodes/Templates.sh"
+	import templates = "xleres/Nodes/Templates.pixel.sh"
 	import output = "xleres/Nodes/Output.sh"
 	import texture = "xleres/Nodes/Texture.sh"
 	import basic = "xleres/Nodes/Basic.sh"

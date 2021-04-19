@@ -3,7 +3,7 @@
 #include "../Framework/DeformVertex.hlsl"
 #include "DeformVertex_Standard.vertex.hlsl"
 #include "../Core/BuildVSOUT.vertex.hlsl"
-#include "../../Nodes/Templates.sh"
+#include "../../Nodes/Templates.vertex.sh"
 
 VSOUT main(VSIN input)
 {

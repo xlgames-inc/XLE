@@ -47,7 +47,7 @@ using namespace std::chrono_literals;
 namespace UnitTests
 {
 	static const char* s_basicTexturingGraph = R"--(
-		import templates = "xleres/Nodes/Templates.sh"
+		import templates = "xleres/Nodes/Templates.pixel.sh"
 		import output = "xleres/Nodes/Output.sh"
 		import texture = "xleres/Nodes/Texture.sh"
 		import basic = "xleres/Nodes/Basic.sh"

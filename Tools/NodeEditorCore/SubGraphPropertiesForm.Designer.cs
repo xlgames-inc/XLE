@@ -85,9 +85,9 @@
             this._implementsBox.FormattingEnabled = true;
             this._implementsBox.Items.AddRange(new object[] {
             "",
-            "xleres/Nodes/Templates.sh:CoordinatesToColor",
-            "xleres/Nodes/Templates.sh:PerPixel",
-            "xleres/Nodes/Templates.sh:EarlyRejectionTest"});
+            "xleres/Nodes/Templates.pixel.sh:CoordinatesToColor",
+            "xleres/Nodes/Templates.pixel.sh:PerPixel",
+            "xleres/Nodes/Templates.pixel.sh:EarlyRejectionTest"});
             this._implementsBox.Location = new System.Drawing.Point(153, 21);
             this._implementsBox.Margin = new System.Windows.Forms.Padding(1, 2, 1, 2);
             this._implementsBox.Name = "_implementsBox";

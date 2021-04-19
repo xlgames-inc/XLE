@@ -1,8 +1,4 @@
-
-// \todo -- we should split this between vertex and pixel shader stuff
 #include "../TechniqueLibrary/Framework/VSOUT.hlsl"
-#include "../TechniqueLibrary/Framework/VSIN.hlsl"
-#include "../TechniqueLibrary/Framework/DeformVertex.hlsl"
 #include "../TechniqueLibrary/Framework/gbuffer.hlsl"
 #include "MaterialParam.sh"
 
@@ -25,5 +21,3 @@ void PerPixel_Separate(
     out float cookedLightOcclusion,
 
     out float3 transmission);
-
-DeformedVertex DeformVertex(DeformedVertex preDeform, VSIN input);

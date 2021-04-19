@@ -1,5 +1,5 @@
 
-import templates = "xleres/Nodes/Templates.sh"
+import templates = "xleres/Nodes/Templates.pixel.sh"
 import output = "xleres/Nodes/Output.sh"
 import wood = "xleres/Objects/Example/ProcWood/Wood_04_G.graph"
 

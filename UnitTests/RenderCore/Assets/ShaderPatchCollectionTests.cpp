@@ -68,7 +68,7 @@ namespace UnitTests
 		std::make_pair(
 			"outergraph.graph",
 			::Assets::AsBlob(R"--(
-				import templates = "xleres/Nodes/Templates.sh"
+				import templates = "xleres/Nodes/Templates.pixel.sh"
 				import texture = "xleres/Nodes/Texture.sh"
 				import gbuffer = "xleres/TechniqueLibrary/Framework/gbuffer.hlsl"
 
@@ -96,7 +96,7 @@ namespace UnitTests
 		std::make_pair(
 			"perpixel.graph",
 			::Assets::AsBlob(R"--(
-				import templates = "xleres/Nodes/Templates.sh"
+				import templates = "xleres/Nodes/Templates.pixel.sh"
 				import output = "xleres/Nodes/Output.sh"
 				import materialParam = "xleres/Nodes/MaterialParam.sh"
 
@@ -161,7 +161,7 @@ namespace UnitTests
 		std::make_pair(
 			"shader_with_selectors_adapter.graph",
 			::Assets::AsBlob(R"--(
-				import templates = "xleres/Nodes/Templates.sh"
+				import templates = "xleres/Nodes/Templates.pixel.sh"
 				import output = "xleres/Nodes/Output.sh"
 				import materialParam = "xleres/Nodes/MaterialParam.sh"
 				import shader = "ut-data/shader_with_selectors.pixel.hlsl"
@@ -365,7 +365,7 @@ namespace UnitTests
 			{
 				const char* dependenciesToCheck[] = {
 					"ut-data/shader_with_selectors_adapter.graph",		// root graph
-					"xleres/Nodes/Templates.sh",						// import into root graph, used only by "implements" part of signature
+					"xleres/Nodes/Templates.pixel.sh",					// import into root graph, used only by "implements" part of signature
 					"ut-data/shader_with_selectors.pixel.hlsl",			// shader directly imported by root graph
 					"xleres/TechniqueLibrary/Framework/gbuffer.hlsl",	// 1st level include from shader
 					"xleres/TechniqueLibrary/Framework/Binding.hlsl"	// 2nd level include from shader

@@ -31,7 +31,7 @@
 static const char* s_entryPointsInRawShader = R"--(
 	#include "xleres/TechniqueLibrary/Framework/MainGeometry.h"
 	#include "xleres/TechniqueLibrary/Framework/gbuffer.h"
-	#include "xleres/Nodes/Templates.sh"
+	#include "xleres/Nodes/Templates.pixel.sh"
 
 	GBufferValues PerPixel(VSOUT geo)
 	{

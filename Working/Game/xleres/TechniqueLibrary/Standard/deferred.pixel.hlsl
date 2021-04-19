@@ -1,6 +1,6 @@
 #include "../Framework/VSOUT.hlsl"
 #include "../Framework/gbuffer.hlsl"
-#include "../../Nodes/Templates.sh"
+#include "../../Nodes/Templates.pixel.sh"
 
 #if (VULKAN!=1)
     [earlydepthstencil]

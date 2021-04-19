@@ -10,7 +10,7 @@
 #include "../../Framework/DeformVertex.hlsl"
 #include "../../Framework/Surface.hlsl"
 #include "../../Math/TransformAlgorithm.hlsl"
-#include "../../Nodes/Templates.sh"
+#include "../../Nodes/Templates.vertex.sh"
 
 #if !defined(SHADOW_CASCADE_MODE)
 	#error expecting SHADOW_CASCADE_MODE to be set
