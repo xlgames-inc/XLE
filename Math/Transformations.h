@@ -184,7 +184,6 @@ namespace XLEMath
     Float3x4        InvertOrthonormalTransform(const Float3x4& input);
     Float2x3        InvertOrthonormalTransform(const Float2x3& input);
     bool            IsOrthonormal(const Float3x3& input, float tolerance = 0.01f);
-    Float4x4        Expand(const Float3x3& rotationScalePart, const Float3& translationPart);
 
         //
         //      Extract the basis vectors from transformations.

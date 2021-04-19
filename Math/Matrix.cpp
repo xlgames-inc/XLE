@@ -68,6 +68,15 @@ namespace XLEMath
             a[12], a[13], a[14], a[15]);
     }
 
+    Float4x4 Expand(const Float3x3& rotationScalePart, const Float3& translationPart)
+    {
+        return Float4x4(
+            rotationScalePart(0,0), rotationScalePart(0,1), rotationScalePart(0,2), translationPart[0],
+            rotationScalePart(1,0), rotationScalePart(1,1), rotationScalePart(1,2), translationPart[1],
+            rotationScalePart(2,0), rotationScalePart(2,1), rotationScalePart(2,2), translationPart[2],
+            0, 0, 0, 1);
+    }
+
     Float3x4 MakeFloat3x4(
         float m00, float m01, float m02, float m03,
         float m10, float m11, float m12, float m13,

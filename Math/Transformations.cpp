@@ -591,16 +591,6 @@ namespace XLEMath
         return result;
     }
 
-    Float4x4 Expand(const Float3x3& rotationScalePart, const Float3& translationPart)
-    {
-        return Float4x4(
-            rotationScalePart(0,0), rotationScalePart(0,1), rotationScalePart(0,2), translationPart[0],
-            rotationScalePart(1,0), rotationScalePart(1,1), rotationScalePart(1,2), translationPart[1],
-            rotationScalePart(2,0), rotationScalePart(2,1), rotationScalePart(2,2), translationPart[2],
-            0, 0, 0, 1);
-    }
-
-
     Float4          TransformPlane(const Float4x4& transform, Float4 plane)
     {
         return  Transpose(Inverse(transform)) * plane;

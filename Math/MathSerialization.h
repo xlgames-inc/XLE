@@ -7,6 +7,7 @@
 #include "Vector.h"
 #include "Matrix.h"
 #include "../Utility/ImpliedTyping.h"
+#include <iosfwd>
 
 namespace cml
 {
@@ -19,4 +20,9 @@ namespace cml
     constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(Float3x3 const*)      { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::Float, 9, Utility::ImpliedTyping::TypeHint::Matrix}; }
     constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(Float3x4 const*)      { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::Float, 12, Utility::ImpliedTyping::TypeHint::Matrix}; }
     constexpr Utility::ImpliedTyping::TypeDesc InternalTypeOf(Float4x4 const*)      { return Utility::ImpliedTyping::TypeDesc{Utility::ImpliedTyping::TypeCat::Float, 16, Utility::ImpliedTyping::TypeHint::Matrix}; }
+}
+
+namespace XLEMath
+{
+    std::ostream& CompactTransformDescription(std::ostream& str, const Float4x4& transform);
 }

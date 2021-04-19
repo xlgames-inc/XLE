@@ -6,6 +6,7 @@
 
 #include "TransformationCommands.h"
 #include "../../OSServices/Log.h"
+#include "../../Math/MathSerialization.h"
 #include <sstream>
 
 #pragma warning(disable:4127)
@@ -1262,7 +1263,7 @@ namespace RenderCore { namespace Assets
         std::fill(buffer, &buffer[std::min(std::max(0,identLevel*2), signed(bufferSize-1))], ' ');
         buffer[std::min(std::max(0,identLevel*2), signed(bufferSize-1))] = '\0';
     }
-
+    
     void TraceTransformationMachine(
         std::ostream&   stream,
         IteratorRange<const uint32_t*>    commandStream,
@@ -1296,8 +1297,9 @@ namespace RenderCore { namespace Assets
             case TransformStackCommand::TransformFloat4x4_Static:
                 {
                     auto trans = *reinterpret_cast<const Float4x4*>(AsPointer(i));
-                    stream << indentBuffer << "TransformFloat4x4_Static (diag:" 
-                        << trans(0,0) << ", " << trans(1,1) << ", " << trans(2,2) << ", " << trans(3,3) << ")" << std::endl;
+                    stream << indentBuffer << "TransformFloat4x4_Static (";
+                    CompactTransformDescription(stream, trans);
+                    stream << ")" << std::endl; 
                     i += 16;
                 }
                 break;
@@ -1441,8 +1443,9 @@ namespace RenderCore { namespace Assets
                     if (outputMatrixToName)
                         stream << " (" << outputMatrixToName(*i) << ")";
                     auto trans = *reinterpret_cast<const Float4x4*>(AsPointer(i+1));
-                    stream << indentBuffer << " trans diag: (" 
-                        << trans(0,0) << ", " << trans(1,1) << ", " << trans(2,2) << ", " << trans(3,3) << ")" << std::endl;
+                    stream << indentBuffer << " (";
+                    CompactTransformDescription(stream, trans);
+                    stream << ")" << std::endl;
                     i+=1+16;
                 }
                 break;

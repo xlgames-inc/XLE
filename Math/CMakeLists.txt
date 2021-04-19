@@ -2,6 +2,7 @@ set(Src
     EigenVector.cpp
     Geometry.cpp
     Interpolation.cpp
+    MathSerialization.cpp
     Matrix.cpp
     Noise.cpp
     PoissonSolver.cpp
