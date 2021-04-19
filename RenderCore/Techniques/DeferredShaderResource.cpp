@@ -181,6 +181,7 @@ namespace RenderCore { namespace Techniques
                 initializerStr = initializer.AsString(), 
                 pkt,
                 captures](::Assets::AssetFuture<DeferredShaderResource>& thatFuture) -> bool {
+                    
                 using namespace std::chrono_literals;
                 auto resStatus = captures->_futureResource.wait_for(0s);
                 if (resStatus == std::future_status::timeout)
@@ -195,7 +196,12 @@ namespace RenderCore { namespace Techniques
                         return true;        // still waiting to see if there's attached metadata
                 }
 
-                auto locator = captures->_futureResource.get();
+                BufferUploads::ResourceLocator locator;
+                TRY {
+                    locator = captures->_futureResource.get();
+                } CATCH(const std::exception& e) {
+                    Throw(::Assets::Exceptions::ConstructionError(e, pkt->GetDependencyValidation()));
+                } CATCH_END
                 auto desc = locator.GetContainingResource()->GetDesc();
                 auto depVal = pkt->GetDependencyValidation();
 

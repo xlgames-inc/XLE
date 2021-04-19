@@ -98,9 +98,12 @@ namespace RenderCore { namespace Techniques
 							if (!that->_file.IsGood())
 								that->_file = ::Assets::MainFileSystem::OpenMemoryMappedFile(that->_filename, 0ull, "r");
 						
-							auto hres = DirectX::GetMetadataFromDDSMemory(that->_file.GetData().begin(), that->_file.GetSize(), DirectX::DDS_FLAGS_NONE, that->_texMetadata);
+							auto hres = DirectX::GetMetadataFromDDSMemory(that->_file.GetData().begin(), that->_file.GetSize(), DirectX::DDS_FLAGS_NO_LEGACY_EXPANSION, that->_texMetadata);
 							if (!SUCCEEDED(hres))
-								Throw(std::runtime_error("Failed while attempting reading header from DDS file (" + that->_filename + ")"));
+								// Sometimes we can get here if the file requires some conversion at load in. For example, there are some legacy formats (such as R8G8B8 formats)
+								// that are valid in DDS, but aren't supported by modern DX/DXGI. To support these, we would need to drop back to a less efficient way of loading
+								// the file
+								Throw(std::runtime_error("Failed while attempting reading header from DDS file (" + that->_filename + "). This could be a corrupted file, or it could mean that the file is using a legacy format that isn't supported natively by modern hardware"));
 
 							auto textureDesc = BuildTextureDesc(that->_texMetadata);
 							that->_resourceDesc = CreateDesc(0, 0, 0, textureDesc, that->_filename);
@@ -182,7 +185,6 @@ namespace RenderCore { namespace Techniques
 							};
 							assert(expectedPitches._rowPitch == sr._pitches._rowPitch);
 							assert(expectedPitches._slicePitch == sr._pitches._slicePitch);
-							assert(expectedPitches._arrayPitch == sr._pitches._arrayPitch);
 							assert(sr._destination.size() == (size_t)sr._pitches._slicePitch);
 							std::memcpy(
 								sr._destination.begin(),
@@ -230,7 +232,7 @@ namespace RenderCore { namespace Techniques
 		//      let's just call it every time.
 		CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 		return [](StringSection<> filename, TextureLoaderFlags::BitField flags) -> std::shared_ptr<BufferUploads::IAsyncDataSource> {
-			assert(!(flags & TextureLoaderFlags::GenerateMipmaps));
+			// assert(!(flags & TextureLoaderFlags::GenerateMipmaps));
 			return std::make_shared<DDSDataSource>(filename.AsString());
 		};
 	}
