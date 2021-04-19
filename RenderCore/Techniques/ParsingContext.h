@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -28,6 +26,7 @@ namespace RenderCore { namespace Techniques
     class AttachmentPool;
 	class FrameBufferPool;
 	class IPipelineAcceleratorPool;
+    class SystemUniformsDelegate;
     
     /// <summary>Manages critical shader state</summary>
     /// Certain system variables are bound to the shaders, and managed by higher
@@ -50,9 +49,6 @@ namespace RenderCore { namespace Techniques
             //  ----------------- Working technique context -----------------
         TechniqueContext&		GetTechniqueContext()               { return *_techniqueContext.get(); }
 		ParameterBox&			GetSubframeShaderSelectors()		{ return _subframeShaderSelectors; }
-		// UniformsStream			GetGlobalUniformsStream() const;
-        
-		// RenderCore::Techniques::IPipelineAcceleratorPool* _pipelineAcceleratorPool = nullptr;
 
 		void AddUniformDelegate(uint64_t binding, const std::shared_ptr<IUniformBufferDelegate>&);
 		void RemoveUniformDelegate(IUniformBufferDelegate&);
@@ -62,16 +58,10 @@ namespace RenderCore { namespace Techniques
 		auto GetUniformDelegates() const { return MakeIteratorRange(_uniformDelegates); }
         auto GetShaderResourceDelegates() const { return MakeIteratorRange(_shaderResourceDelegates); }
 
+        SystemUniformsDelegate& GetSystemUniformsDelegate() const { return *_systemUniformsDelegate; }
+
         AttachmentPool& GetNamedResources() { assert(_namedResources); return *_namedResources; }
 		FrameBufferPool& GetFrameBufferPool() { assert(_frameBufferPool); return *_frameBufferPool; }
-
-			//  ----------------- Legacy "global" CBs -----------------
-		/*Metal::Buffer&			GetGlobalTransformCB();
-        Metal::Buffer&			GetGlobalStateCB();
-        void    SetGlobalCB(
-            Metal::DeviceContext& context, unsigned index, 
-            const void* newData, size_t dataSize);
-		const std::shared_ptr<IResource>& GetGlobalCB(unsigned index);*/
 
 			//  ----------------- Overlays for late rendering -----------------
         typedef std::function<void(RenderCore::Metal::DeviceContext&, ParsingContext&)> PendingOverlay;
@@ -114,6 +104,7 @@ namespace RenderCore { namespace Techniques
 
 		std::vector<std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>> _uniformDelegates;
         std::vector<std::shared_ptr<IShaderResourceDelegate>> _shaderResourceDelegates;
+        std::shared_ptr<SystemUniformsDelegate> _systemUniformsDelegate;
     };
 
     /// <summary>Utility macros for catching asset exceptions</summary>

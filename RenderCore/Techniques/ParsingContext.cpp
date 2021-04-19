@@ -1,68 +1,16 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ParsingContext.h"
 #include "Techniques.h"
-#include "../Metal/InputLayout.h"   // (for UniformsStream)
-#include "../Metal/Buffer.h"
-#include "../Metal/ObjectFactory.h"
+#include "SystemUniformsDelegate.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/StringFormat.h"
 #include <memory>
 
 namespace RenderCore { namespace Techniques
 {
-
-#if 0
-    void ParsingContext::SetGlobalCB(
-        RenderCore::Metal::DeviceContext& context, unsigned index, 
-        const void* newData, size_t dataSize)
-    {
-        if (index >= dimof(_globalCBs)) {
-            return;
-        }
-
-		if (!_globalCBs[index]) {
-			_globalCBs[index] = std::make_shared<Metal::Buffer>(
-				Metal::GetObjectFactory(),
-				CreateDesc(
-					BindFlag::ConstantBuffer,
-					CPUAccess::WriteDynamic,
-					GPUAccess::Read,
-					LinearBufferDesc::Create(unsigned(dataSize)),
-					"GlobalCB"),
-				MakeIteratorRange(newData, PtrAdd(newData, dataSize)));
-
-			_globalCBVs[index] = { _globalCBs[index].get() };
-		} else {
-			auto* buffer = (Metal::Buffer*)_globalCBs[index]->QueryInterface(typeid(Metal::Buffer).hash_code());
-			if (buffer)
-				buffer->Update(context, newData, dataSize);
-		}
-    }
-
-	Metal::Buffer&			ParsingContext::GetGlobalTransformCB()
-	{
-		assert(_globalCBs[0]);
-		return *(Metal::Buffer*)_globalCBs[0]->QueryInterface(typeid(Metal::Buffer).hash_code());
-	}
-
-    Metal::Buffer&			ParsingContext::GetGlobalStateCB()
-	{
-		assert(_globalCBs[1]);
-		return *(Metal::Buffer*)_globalCBs[1]->QueryInterface(typeid(Metal::Buffer).hash_code());
-	}
-
-	const std::shared_ptr<IResource>& ParsingContext::GetGlobalCB(unsigned index)
-	{
-		assert(index < dimof(_globalCBs));
-		return _globalCBs[index];
-	}
-#endif
-
     void ParsingContext::Process(const ::Assets::Exceptions::RetrievalError& e)
     {
             //  Handle a "invalid asset" and "pending asset" exception that 
@@ -158,6 +106,9 @@ namespace RenderCore { namespace Techniques
 		static_assert(dimof(_globalCBs) == dimof(_globalCBVs), "Expecting equivalent array lengths");
         for (unsigned c=0; c<dimof(_globalCBs); ++c)
 			_globalCBVs[c] = { _globalCBs[c].get() };
+
+		_systemUniformsDelegate = std::make_shared<SystemUniformsDelegate>();
+		_shaderResourceDelegates.push_back(_systemUniformsDelegate);
     }
 
     ParsingContext::~ParsingContext() {}
