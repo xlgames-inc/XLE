@@ -114,9 +114,7 @@ namespace RenderCore { namespace Techniques
 		std::string _savedInstantiation;
 		DescriptorSetLayoutAndBinding _materialDescSetLayout;
 
-		void BuildFromInstantiatedShader(
-			const ShaderSourceParser::InstantiatedShader& inst,
-			const DescriptorSetLayoutAndBinding& pipelineLayout);
+		void BuildFromInstantiatedShader(const ShaderSourceParser::InstantiatedShader& inst);
 	};
 
 	inline bool CompiledShaderPatchCollection::Interface::HasPatchType(uint64_t implementing) const

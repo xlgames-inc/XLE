@@ -19,6 +19,7 @@ namespace RenderCore { namespace Assets
 	{
 	public:
 		IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest>*> GetPatches() const { return MakeIteratorRange(_patches); }
+		const std::string& GetDescriptorSetFileName() const { return _descriptorSet; }
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 		uint64_t GetHash() const { return _hash; }
 
@@ -41,6 +42,7 @@ namespace RenderCore { namespace Assets
 		std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest>> _patches;
 		uint64_t _hash = ~0ull;
 		std::shared_ptr<::Assets::DependencyValidation> _depVal;
+		std::string _descriptorSet;
 
 		void SortAndCalculateHash();
 	};

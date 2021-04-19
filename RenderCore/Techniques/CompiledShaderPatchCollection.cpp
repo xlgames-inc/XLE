@@ -13,6 +13,7 @@
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../ShaderParser/NodeGraphProvider.h"
 #include "../../ShaderParser/ShaderAnalysis.h"
+#include "../../ShaderParser/DescriptorSetInstantiation.h"
 #include "../../Assets/DepVal.h"
 #include "../../Assets/Assets.h"
 #include "../../Utility/MemoryUtils.h"
@@ -29,9 +30,25 @@ namespace RenderCore { namespace Techniques
 		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		_guid = src.GetHash();
 
+		_interface._descriptorSet = materialDescSetLayout.GetLayout();
+		_interface._materialDescriptorSetSlotIndex = materialDescSetLayout.GetSlotIndex();
+
+		if (!src.GetDescriptorSetFileName().empty()) {
+			auto layoutFileFuture = ::Assets::MakeAsset<RenderCore::Assets::PredefinedPipelineLayoutFile>(src.GetDescriptorSetFileName());
+			layoutFileFuture->StallWhilePending();
+			auto actualLayoutFile =layoutFileFuture->Actualize();
+			auto i = actualLayoutFile->_descriptorSets.find("Material");
+			if (i == actualLayoutFile->_descriptorSets.end())
+				Throw(std::runtime_error("Expecting to find a descriptor set layout called 'Material' in pipeline layout file (" + src.GetDescriptorSetFileName() + "), but it was not found"));
+
+			// Once we've finally got the descriptor set, we need to link it against the pipeline layout version to make sure it
+			// will agree (and potentially rearrange some members to fit)
+			_interface._descriptorSet = ShaderSourceParser::LinkToFixedLayout(*i->second, *_interface._descriptorSet);
+			::Assets::RegisterAssetDependency(_depVal, actualLayoutFile->GetDependencyValidation());
+		}
+
 		// With the given shader patch collection, build the source code and the 
 		// patching functions associated
-		
 		if (!src.GetPatches().empty()) {
 			std::vector<ShaderSourceParser::InstantiationRequest> finalInstRequests;
 			finalInstRequests.reserve(src.GetPatches().size());
@@ -42,12 +59,7 @@ namespace RenderCore { namespace Techniques
 			generateOptions._pipelineLayoutMaterialDescriptorSet = materialDescSetLayout.GetLayout().get();
 			generateOptions._materialDescriptorSetIndex = materialDescSetLayout.GetSlotIndex();
 			auto inst = ShaderSourceParser::InstantiateShader(MakeIteratorRange(finalInstRequests), generateOptions);
-			BuildFromInstantiatedShader(inst, materialDescSetLayout);
-		} else {
-			// If we have no patches, then we also have no custom material descriptor set layout.
-			// We just default to match the pipeline layout
-			_interface._descriptorSet = materialDescSetLayout.GetLayout();
-			_interface._materialDescriptorSetSlotIndex = materialDescSetLayout.GetSlotIndex();
+			BuildFromInstantiatedShader(inst);
 		}
 	}
 
@@ -58,12 +70,12 @@ namespace RenderCore { namespace Techniques
 	{
 		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		_guid = 0;
-		BuildFromInstantiatedShader(inst, materialDescSetLayout);
+		BuildFromInstantiatedShader(inst);
+		_interface._descriptorSet = materialDescSetLayout.GetLayout();
+		_interface._materialDescriptorSetSlotIndex = materialDescSetLayout.GetSlotIndex();
 	}
 
-	void CompiledShaderPatchCollection::BuildFromInstantiatedShader(
-		const ShaderSourceParser::InstantiatedShader& inst,
-		const DescriptorSetLayoutAndBinding& materialDescSetLayout)
+	void CompiledShaderPatchCollection::BuildFromInstantiatedShader(const ShaderSourceParser::InstantiatedShader& inst)
 	{
 			// Note -- we can build the patches interface here, because we assume that this will not
 			//		even change with selectors
@@ -84,12 +96,15 @@ namespace RenderCore { namespace Techniques
 			}
 
 			p._signature = std::make_shared<GraphLanguage::NodeGraphSignature>(patch._signature);
+			#if defined(_DEBUG)
+				p._entryPointName = patch._name;
+			#endif
 
 			_interface._patches.emplace_back(std::move(p));
 		}
 
-		_interface._descriptorSet = inst._descriptorSet ? inst._descriptorSet : materialDescSetLayout.GetLayout();
-		_interface._materialDescriptorSetSlotIndex = materialDescSetLayout.GetSlotIndex();
+		if (inst._descriptorSet)
+			_interface._descriptorSet = inst._descriptorSet;
 
 		for (const auto&d:inst._depVals)
 			if (d)
