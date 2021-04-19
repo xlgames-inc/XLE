@@ -223,9 +223,9 @@ namespace RenderCore { namespace Techniques
 		std::stringstream str;
 		const char* stageName[] = { "vs", "ps", "gs" };
 		bool first = true;
-			if (!first) str << ", "; first = false;
-			str << stageName[(unsigned)stage] << ": ";
-			CompressFilename(str, pipelineDesc._shaders[(unsigned)stage]);
+		if (!first) str << ", "; first = false;
+		str << stageName[(unsigned)stage] << ": ";
+		CompressFilename(str, pipelineDesc._shaders[(unsigned)stage]);
 		for (const auto& patch:compiledPatchCollection->GetInterface().GetPatches()) {
 			if (!first) str << ", "; first = false;
 			str << "patch: " << patch._entryPointName;
@@ -406,12 +406,17 @@ namespace RenderCore { namespace Techniques
 							
 							ScopedLock(sharedPools->_lock);
 							for (unsigned c=0; c<dimof(ITechniqueDelegate::GraphicsPipelineDesc::_shaders); ++c)
-								if (!pipelineDesc->_shaders[c].empty())
+								if (!pipelineDesc->_shaders[c].empty()) {
+									const ShaderSourceParser::SelectorFilteringRules* autoFiltering[] = {
+										pipelineDescWithFiltering->_automaticFiltering[c].get(), 
+										&compiledPatchCollection->GetInterface().GetSelectorFilteringRules() 
+									};
 									filteredSelectors[c] = sharedPools->_selectorVariationsSet.FilterSelectors(
 										MakeIteratorRange(paramBoxes),
 										pipelineDesc->_manualSelectorFiltering,
-										*pipelineDescWithFiltering->_automaticFiltering[c],
+										MakeIteratorRange(autoFiltering),
 										pipelineDescWithFiltering->_preconfiguration.get());
+								}
 						}
 
 						auto configurationDepVal = std::make_shared<::Assets::DependencyValidation>();

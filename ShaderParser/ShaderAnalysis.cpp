@@ -304,7 +304,7 @@ namespace ShaderSourceParser
 	ParameterBox FilterSelectors(
 		IteratorRange<const ParameterBox* const*> selectors,
 		const ManualSelectorFiltering& manualFiltering,
-		const SelectorFilteringRules& automaticFiltering)
+		IteratorRange<const SelectorFilteringRules**> automaticFiltering)
 	{
 		ParameterBox filteredBox = manualFiltering._setValues;
 		for (const auto&s:selectors)
@@ -334,9 +334,9 @@ namespace ShaderSourceParser
 				relevant = EvaluatePreprocessorExpression(relevanceI->second, MakeIteratorRange(boxes));
 			} else {
 				const ParameterBox* env[] = { &filteredBox };
-				relevant = automaticFiltering.IsRelevant(
-					evaluating->Name(), evaluating->ValueAsString(),
-					MakeIteratorRange(env));
+				for (const auto*f:automaticFiltering)
+					if ((relevant = f->IsRelevant(evaluating->Name(), evaluating->ValueAsString(), MakeIteratorRange(env))))
+						break;
 			}
 
 			if (!relevant)
@@ -353,6 +353,7 @@ namespace ShaderSourceParser
 		const SelectorFilteringRules& automaticFiltering)
 	{
 		const ParameterBox* boxes[] = { &selectors };
-		return FilterSelectors(MakeIteratorRange(boxes), manualFiltering, automaticFiltering);
+		const SelectorFilteringRules* filtering[] = { &automaticFiltering };
+		return FilterSelectors(MakeIteratorRange(boxes), manualFiltering, MakeIteratorRange(filtering));
 	}
 }

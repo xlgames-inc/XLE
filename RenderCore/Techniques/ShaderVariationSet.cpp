@@ -43,7 +43,7 @@ namespace RenderCore { namespace Techniques
 	static std::string MakeFilteredDefinesTable(
 		IteratorRange<const ParameterBox* const*> selectors,
 		const ShaderSourceParser::ManualSelectorFiltering& techniqueFiltering,
-		const ShaderSourceParser::SelectorFilteringRules& automaticFiltering,
+		IteratorRange<const ShaderSourceParser::SelectorFilteringRules**> automaticFiltering,
 		const ShaderSourceParser::SelectorPreconfiguration* preconfiguration)
 	{
 		if (!preconfiguration) {
@@ -72,12 +72,13 @@ namespace RenderCore { namespace Techniques
 	auto UniqueShaderVariationSet::FilterSelectors(
 		IteratorRange<const ParameterBox* const*> selectors,
 		const ShaderSourceParser::ManualSelectorFiltering& techniqueFiltering,
-		const ShaderSourceParser::SelectorFilteringRules& automaticFiltering,
+		IteratorRange<const ShaderSourceParser::SelectorFilteringRules**> automaticFiltering,
 		const ShaderSourceParser::SelectorPreconfiguration* preconfiguration) -> const FilteredSelectorSet&
 	{
 		auto inputHash = Hash(selectors);
 		inputHash = HashCombine(techniqueFiltering.GetHash(), inputHash);
-		inputHash = HashCombine(automaticFiltering.GetHash(), inputHash);
+		for (const auto*f:automaticFiltering)
+			inputHash = HashCombine(f->GetHash(), inputHash);
 		if (preconfiguration)
 			inputHash = HashCombine(preconfiguration->GetHash(), inputHash);
 
