@@ -108,6 +108,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			VertexWeightAttachmentBucket<WeightCount>& bucket,
 			IteratorRange<const unsigned*> remapping);
 
+    template<typename T> T CompressWeightToUNorm(float input);
+    template<> uint8_t CompressWeightToUNorm(float input) 
+    {
+        // This method gives splits the continuous range from 0-1 into 256
+        // equally sized parts. Values just short of 1.0f can still map onto 255
+        return (uint8_t)std::floor(std::min(255.f, input * 256.f)); 
+    }
+
 	BuckettedSkinController::BuckettedSkinController(const UnboundSkinController& src)
 	{
 			//
@@ -180,10 +188,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				c += subPartCount;
 			}
 
-            const float minWeightThreshold = 1.f / 255.f;
-            float totalWeightValue = 0.f;
+            const float minWeightThreshold = .5f / 255.f;       // we can increase this if we want to more aggressively cleanup weak weights
+            float totalWeightValue = 0.f, weightOfDroppedInfluences = 0.f;
             for (size_t c=0; c<influenceCount;) {
                 if (weights[c] < minWeightThreshold) {
+                    weightOfDroppedInfluences += weights[c];
                     std::move(&weights[c+1],        &weights[influenceCount],       &weights[c]);
                     std::move(&jointIndices[c+1],   &jointIndices[influenceCount],  &jointIndices[c]);
                     --influenceCount;
@@ -193,11 +202,60 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 }
             }
 
-            uint8_t normalizedWeights[AbsoluteMaxJointInfluenceCount];
-            for (size_t c=0; c<influenceCount; ++c) {
-				assert(totalWeightValue!=0.0f);
-                normalizedWeights[c] = (uint8_t)(Clamp(weights[c] / totalWeightValue, 0.f, 1.f) * 255.f + .5f);
+            // the weighting of the dropped elements should be evenly distributed into the
+            // remaining weights
+            float weightOfUndroppedInfluences = totalWeightValue;
+            totalWeightValue += weightOfDroppedInfluences;
+
+            // There are a bunch of ways to convert weights to a lower precision "UNORM" type
+            // However, the most important thing for us is that the total sum in the compressed
+            // format maps accurately onto totalWeightValue. Almost always that will be 1.0f,
+            // and in those cases we will divide the unorm space completely into the final
+            // weights. If we just use floor()s or round()s as we go through, we won't get that
+            // ... so we need to do this a little differently
+
+            auto normalizedTotalWeightValue = CompressWeightToUNorm<uint8_t>(totalWeightValue);
+
+            {
+                // Reorder largest weight -> smallest (super awkwardly!)
+                unsigned reordering[AbsoluteMaxJointInfluenceCount];
+                for (unsigned c=0; c<influenceCount; ++c) reordering[c] = c;
+                std::stable_sort(reordering, &reordering[influenceCount], [=](unsigned lhs, unsigned rhs) { return weights[lhs] > weights[rhs]; });
+                float origWeights[AbsoluteMaxJointInfluenceCount];
+                unsigned origJointIndices[AbsoluteMaxJointInfluenceCount];
+                std::copy(weights, &weights[influenceCount], origWeights);
+                std::copy(jointIndices, &jointIndices[influenceCount], origJointIndices);
+                for (unsigned c=0; c<influenceCount; ++c) {
+                    weights[c] = origWeights[reordering[c]];
+                    jointIndices[c] = origJointIndices[reordering[c]];
+                }
             }
+
+            uint8_t normalizedWeights[AbsoluteMaxJointInfluenceCount];
+            uint8_t accumulatingNormalizedTotal = 0;
+            totalWeightValue = 0.f;
+            for (size_t c=0; c<influenceCount; ++c) {
+                auto revIdx = influenceCount - c - 1;   // reverse so we visit smallest first
+                float compensatedWeight = weights[revIdx] + weights[revIdx] / weightOfUndroppedInfluences * weightOfDroppedInfluences;
+                totalWeightValue += compensatedWeight;
+                // This method will ensure that the entire unorm space is used by the weights
+                // Sometimes weights will effectively be ceil()ed, but because we're iterating 
+                // through from smallest weight to largest weight, that's most likely to happen
+                // for the largest weight
+                auto newNormalizedTotal = CompressWeightToUNorm<uint8_t>(totalWeightValue);
+                normalizedWeights[revIdx] = newNormalizedTotal - accumulatingNormalizedTotal;
+                accumulatingNormalizedTotal = newNormalizedTotal;
+            }
+            assert(accumulatingNormalizedTotal == normalizedTotalWeightValue);
+            assert(normalizedTotalWeightValue == 0xff);
+
+            // clip off any zero weight influences
+            for (size_t c=0; c<influenceCount; ++c)
+                if (normalizedWeights[c] == 0) {
+                    for (unsigned c2=c+1; c2<influenceCount; ++c2) assert(normalizedWeights[c2] == 0);
+                    influenceCount = c; 
+                    break;
+                }
 
                 //
                 // \todo -- should we sort influcences by the strength of the influence, or by the joint
