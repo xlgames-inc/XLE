@@ -14,7 +14,6 @@
 #include "../../../RenderCore/Vulkan/IDeviceVulkan.h"
 #include "../../../RenderCore/MinimalShaderSource.h"
 #include "../../../RenderCore/ResourceUtils.h"
-#include "../../../RenderCore/Assets/PipelineConfigurationUtils.h"
 #include "../../../Assets/AssetUtils.h"
 #include "../../../Assets/DepVal.h"
 #include "../../../Utility/Streams/StreamFormatter.h"
@@ -30,7 +29,8 @@
 
 namespace UnitTests
 {
-	std::shared_ptr<RenderCore::ICompiledPipelineLayout> CreateDefaultPipelineLayout(RenderCore::IDevice& device);
+	static std::shared_ptr<RenderCore::ICompiledPipelineLayout> CreateDefaultPipelineLayout(RenderCore::IDevice& device);
+	static std::shared_ptr<RenderCore::LegacyRegisterBindingDesc> CreateDefaultLegacyRegisterBindingDesc();
 	
 	RenderCore::CompiledShaderByteCode MetalTestHelper::MakeShader(StringSection<> shader, StringSection<> shaderModel, StringSection<> defines)
 	{
@@ -52,11 +52,11 @@ namespace UnitTests
 		auto* glesDevice = (RenderCore::IDeviceOpenGLES*)_device->QueryInterface(typeid(RenderCore::IDeviceOpenGLES).hash_code());
 		if (glesDevice)
 			glesDevice->InitializeRootContextHeadless();
-
-		_defaultLegacyBindings = std::make_unique<RenderCore::LegacyRegisterBindingDesc>(RenderCore::Assets::CreateDefaultLegacyRegisterBindingDesc());
+		
+		_defaultLegacyBindings = CreateDefaultLegacyRegisterBindingDesc();
 		_pipelineLayout = CreateDefaultPipelineLayout(*_device);
 
-		auto shaderCompiler = CreateDefaultShaderCompiler(*_device);
+		auto shaderCompiler = CreateDefaultShaderCompiler(*_device, *_defaultLegacyBindings);
 		_shaderService = std::make_unique<RenderCore::ShaderService>();
 		_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(shaderCompiler);
 		_shaderService->SetShaderSource(_shaderSource);
@@ -107,7 +107,7 @@ namespace UnitTests
 		#endif
 	}
 
-	std::shared_ptr<RenderCore::ILowLevelCompiler> CreateDefaultShaderCompiler(RenderCore::IDevice& device)
+	std::shared_ptr<RenderCore::ILowLevelCompiler> CreateDefaultShaderCompiler(RenderCore::IDevice& device, const RenderCore::LegacyRegisterBindingDesc& registerBindings)
 	{
 		auto* vulkanDevice  = (RenderCore::IDeviceVulkan*)device.QueryInterface(typeid(RenderCore::IDeviceVulkan).hash_code());
 		if (vulkanDevice) {
@@ -115,7 +115,7 @@ namespace UnitTests
 			// cross compilation approach
 			RenderCore::VulkanCompilerConfiguration cfg;
 			cfg._shaderMode = RenderCore::VulkanShaderMode::HLSLCrossCompiled;
-			cfg._legacyBindings = RenderCore::Assets::CreateDefaultLegacyRegisterBindingDesc();
+			cfg._legacyBindings = registerBindings;
 		 	return vulkanDevice->CreateShaderCompiler(cfg);
 		} else {
 			return device.CreateShaderCompiler();
@@ -135,7 +135,8 @@ namespace UnitTests
 
 		RenderCore::IResourcePtr GetResource(
 			RenderCore::AttachmentName resName, 
-			const RenderCore::AttachmentDesc& requestDesc) const override
+			const RenderCore::AttachmentDesc& requestDesc,
+			const RenderCore::FrameBufferProperties& props) const override
 		{
 			assert(resName == 0);
 			// the "requestDesc" is passed in here so that we can validate it. We're expecting
@@ -393,25 +394,25 @@ namespace UnitTests
 	{
 		using namespace RenderCore;
 		RenderCore::DescriptorSetSignature sequencerSet {
-			{DescriptorType::UniformBuffer},
-			{DescriptorType::UniformBuffer},
-			{DescriptorType::UniformBuffer},
-			{DescriptorType::UniformBuffer},
-			{DescriptorType::UniformBuffer},
-			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},				// 0
+			{DescriptorType::UniformBuffer},				// 1
+			{DescriptorType::UniformBuffer},				// 2
+			{DescriptorType::UniformBuffer},				// 3
+			{DescriptorType::UniformBuffer},				// 4
+			{DescriptorType::UniformBuffer},				// 5
 
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},				// 6
+			{DescriptorType::SampledTexture},				// 7
+			{DescriptorType::SampledTexture},				// 8
+			{DescriptorType::SampledTexture},				// 9
+			{DescriptorType::SampledTexture},				// 10
+			{DescriptorType::SampledTexture},				// 11
+			{DescriptorType::SampledTexture},				// 12
 
-			{DescriptorType::Sampler},
-			{DescriptorType::Sampler},
-			{DescriptorType::Sampler},
-			{DescriptorType::Sampler}
+			{DescriptorType::Sampler},						// 13
+			{DescriptorType::Sampler},						// 14
+			{DescriptorType::Sampler},						// 15
+			{DescriptorType::Sampler}						// 16
 		};
 
 		RenderCore::DescriptorSetSignature materialSet {
@@ -482,5 +483,27 @@ namespace UnitTests
 		desc.AppendDescriptorSet("Draw", drawSet);
 		desc.AppendDescriptorSet("Numeric", numericSet);
 		return device.CreatePipelineLayout(desc);
+	}
+
+	std::shared_ptr<RenderCore::LegacyRegisterBindingDesc> CreateDefaultLegacyRegisterBindingDesc()
+	{
+		using namespace RenderCore;
+		using RegisterType = LegacyRegisterBindingDesc::RegisterType;
+		using RegisterQualifier = LegacyRegisterBindingDesc::RegisterQualifier;
+		using Entry = LegacyRegisterBindingDesc::Entry;
+		auto result = std::make_shared<LegacyRegisterBindingDesc>();
+		result->AppendEntry(
+			RegisterType::ShaderResource, RegisterQualifier::None,
+			Entry{16, 23, Hash64("Sequencer"), 0, 6, 13});
+		result->AppendEntry(
+			RegisterType::Sampler, RegisterQualifier::None,
+			Entry{0, 3, Hash64("Sequencer"), 0, 13, 16});
+		result->AppendEntry(
+			RegisterType::Sampler, RegisterQualifier::None,
+			Entry{16, 17, Hash64("Sequencer"), 0, 16, 17});
+		result->AppendEntry(
+			RegisterType::ConstantBuffer, RegisterQualifier::None,
+			Entry{7, 13, Hash64("Sequencer"), 0, 0, 6});
+		return result;
 	}
 }

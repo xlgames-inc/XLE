@@ -30,7 +30,7 @@ namespace UnitTests
 		std::shared_ptr<RenderCore::IShaderSource> _shaderSource;
 
         std::shared_ptr<RenderCore::ICompiledPipelineLayout> _pipelineLayout;
-        std::unique_ptr<RenderCore::LegacyRegisterBindingDesc> _defaultLegacyBindings;
+        std::shared_ptr<RenderCore::LegacyRegisterBindingDesc> _defaultLegacyBindings;
 
         void BeginFrameCapture();
         void EndFrameCapture();
@@ -50,7 +50,7 @@ namespace UnitTests
         const std::shared_ptr<RenderCore::ICompiledPipelineLayout>& pipelineLayout,
         StringSection<> vs, StringSection<> ps);
 
-    std::shared_ptr<RenderCore::ILowLevelCompiler> CreateDefaultShaderCompiler(RenderCore::IDevice& device);
+    std::shared_ptr<RenderCore::ILowLevelCompiler> CreateDefaultShaderCompiler(RenderCore::IDevice& device, const RenderCore::LegacyRegisterBindingDesc& registerBindings);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
             //    U N I T   T E S T   F B    H E L P E R

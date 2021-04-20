@@ -9,7 +9,6 @@
 #include "../../../RenderCore/Metal/TextureView.h"
 #include "../../../RenderCore/Metal/ObjectFactory.h"
 #include "../../../RenderCore/Vulkan/IDeviceVulkan.h"
-#include "../../../RenderCore/Assets/PredefinedDescriptorSetLayout.h"
 #include "../../../RenderCore/Format.h"
 #include "../../../RenderCore/BufferView.h"
 #include "../../../RenderCore/MinimalShaderSource.h"

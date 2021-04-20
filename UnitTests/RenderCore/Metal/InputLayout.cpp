@@ -559,7 +559,7 @@ namespace UnitTests
 			UniformsStreamInterface usi;
 			usi.BindImmediateData(0, Hash64("Values"));
 			Metal::BoundUniforms uniforms { shaderProgram, usi };
-			REQUIRE(uniforms.GetBoundLooseConstantBuffers() == 1ull);
+			REQUIRE(uniforms.GetBoundLooseImmediateDatas() == 1ull);
 
 			Values v { 0.4f, 0.5f, 0.2f, 0, Float4 { 0.1f, 1.0f, 1.0f, 1.0f } };
 			UniformsStream::ImmediateData cbvs[] = { MakeOpaqueIteratorRange(v) };
@@ -596,7 +596,7 @@ namespace UnitTests
 			UniformsStreamInterface usi;
 			usi.BindImmediateData(0, Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values));
 			Metal::BoundUniforms uniforms { shaderProgram, usi };
-			REQUIRE(uniforms.GetBoundLooseConstantBuffers() == 1ull);
+			REQUIRE(uniforms.GetBoundLooseImmediateDatas() == 1ull);
 
 			Values v { 0.1f, 0.7f, 0.4f, 0, Float4 { 0.8f, 1.0f, 1.0f, 1.0f } };
 			UniformsStream::ImmediateData cbvs[] = { MakeOpaqueIteratorRange(v) };
