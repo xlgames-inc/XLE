@@ -20,7 +20,8 @@ namespace OSServices
 	{
 	public:
 		virtual void BeginOperation(OVERLAPPED* overlapped, ConduitCompletionRoutine completionRoutine) = 0;
-        virtual void CancelOperation(OVERLAPPED* overlapped) = 0;
+        enum class CancelOperationType { CancelIoWasCalled, ImmediateCancel };
+        virtual CancelOperationType CancelOperation(OVERLAPPED* overlapped) = 0;
         virtual std::any GeneratePayload(unsigned numberOfBytesReturned) = 0;
 	};
 

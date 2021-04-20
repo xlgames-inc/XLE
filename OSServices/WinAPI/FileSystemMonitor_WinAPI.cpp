@@ -63,7 +63,7 @@ namespace OSServices
 			}
 		}
 
-		void CancelOperation(OVERLAPPED* overlapped) override
+		CancelOperationType CancelOperation(OVERLAPPED* overlapped) override
 		{
 			_cancelled = true;
 			if (_directoryHandle != INVALID_HANDLE_VALUE) {
@@ -72,7 +72,9 @@ namespace OSServices
 				#endif
 				CloseHandle(_directoryHandle);
 				_directoryHandle = INVALID_HANDLE_VALUE;
+				return CancelOperationType::CancelIoWasCalled;
 			}
+			return CancelOperationType::ImmediateCancel;
 		}
 
 		std::any GeneratePayload(unsigned numberOfBytesReturned) override

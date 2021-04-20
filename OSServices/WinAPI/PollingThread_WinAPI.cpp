@@ -63,10 +63,11 @@ namespace OSServices
 			// active
 			// The consumer can still be a weak pointer, though -- any events are cancelled
 			// if the consumer is released by the cllient
-			uint64_t _id;
+			uint64_t _id = ~0ull;
 			std::shared_ptr<IConduitProducer> _producer;
 			std::weak_ptr<IConduitConsumer> _consumer;
 			std::unique_ptr<SpecialOverlapped> _overlapped;
+			std::optional<std::promise<void>> _cancelCompletionPromise;
 		};
 		std::vector<ActiveEvent> _activeEvents;
 
@@ -74,7 +75,7 @@ namespace OSServices
 
 		struct SpecialOverlapped : public OVERLAPPED 
 		{ 
-			std::weak_ptr<Pimpl> _manager; 
+			std::weak_ptr<Pimpl> _manager;
 		};
 
 		static void CALLBACK CompletionRoutineFunction(
@@ -88,13 +89,25 @@ namespace OSServices
 			auto i = std::find_if(
 				manager->_activeEvents.begin(), manager->_activeEvents.end(),
 				[lpOverlapped](const auto& e) { return e._overlapped.get() == lpOverlapped; });
-			if (i == manager->_activeEvents.end())
+			if (i == manager->_activeEvents.end()) {
 				return;
+			}
+
+			if (i->_cancelCompletionPromise.has_value()) {
+				// Most of the time, dwErrorCode should be ERROR_OPERATION_ABORTED here
+				// However, it might be possible that we got a normal "complete" at around the same
+				// time that we were calling CancelIoEx. Will we still consider those cases as "cancels"
+				// though, and ignore whatever data we got back 
+				i->_cancelCompletionPromise.value().set_value();
+				manager->_activeEvents.erase(i);
+				return;
+			}
+			assert(dwErrorCode != ERROR_OPERATION_ABORTED);
 
 			// If the consumer is lapsed, we don't even call IConduitProducer_CompletionRoutine::OnTrigger,
 			// and we don't restart the wait
 			auto consumer = i->_consumer.lock();
-			if (!consumer) 
+			if (!consumer)
 				return;
 			
 			auto conduitCompletion = dynamic_cast<IConduitProducer_CompletionRoutine*>(i->_producer.get());
@@ -132,6 +145,7 @@ namespace OSServices
 				// Once we hit an exception, it's considered dead, and we don't want it in our _activeEvents
 				// list
 				consumer->OnException(std::current_exception());
+				assert(!i->_cancelCompletionPromise.has_value());
 				manager->_activeEvents.erase(i);
 			} CATCH_END
 		}
@@ -242,19 +256,33 @@ namespace OSServices
 								continue;
 							}
 
+							// If we've already begun a cancel operation for this overlapped object, we just report and error and bail out from here
+							if (existing->_cancelCompletionPromise.has_value()) {
+								pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::make_exception_ptr(std::runtime_error("Attempting to disconnect from an event that already has a pending disconnect"))});
+								continue;
+							}
+
 							auto* completionRoutine = dynamic_cast<IConduitProducer_CompletionRoutine*>(event._producer.get());
 							if (completionRoutine) {
 								TRY {
-									completionRoutine->CancelOperation(existing->_overlapped.get());
-									pendingPromisesToTrigger.push_back(std::move(event._onChangePromise));
+									// CancelIO doesn't process immediately on windows. We need to save the promise and we'll
+									// ultimately trigger it from the completion routine
+									assert(existing->_overlapped);
+									auto cancelType = completionRoutine->CancelOperation(existing->_overlapped.get());
+									if (cancelType == IConduitProducer_CompletionRoutine::CancelOperationType::CancelIoWasCalled) {
+										existing->_cancelCompletionPromise = std::move(event._onChangePromise); 
+									} else {
+										pendingPromisesToTrigger.push_back(std::move(event._onChangePromise));
+										_activeEvents.erase(existing);
+									}
 								} CATCH (...) {
 									pendingExceptionsToPropagate1.push_back({std::move(event._onChangePromise), std::current_exception()});
+									_activeEvents.erase(existing);
 								} CATCH_END
 							} else {
 								pendingPromisesToTrigger.push_back(std::move(event._onChangePromise));
+								_activeEvents.erase(existing);
 							}
-
-							_activeEvents.erase(existing);
 						}
 						_pendingEventDisconnects.clear();
 
@@ -472,7 +500,7 @@ namespace OSServices
 				XlCloseSyncObject(_platformHandle);
 		}
 
-		RealPollableEvent& RealPollableEvent::operator=(RealPollableEvent&& moveFrom) never_throws
+		RealPollableEvent& operator=(RealPollableEvent&& moveFrom) never_throws
 		{
 			if (_platformHandle != INVALID_HANDLE_VALUE)
 				XlCloseSyncObject(_platformHandle);
@@ -482,7 +510,7 @@ namespace OSServices
 			return *this;
 		}
 
-		RealPollableEvent::RealPollableEvent(RealPollableEvent&& moveFrom) never_throws
+		RealPollableEvent(RealPollableEvent&& moveFrom) never_throws
 		{
 			_platformHandle = moveFrom._platformHandle;
 			_type = moveFrom._type;
