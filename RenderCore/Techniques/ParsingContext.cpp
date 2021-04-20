@@ -90,9 +90,14 @@ namespace RenderCore { namespace Techniques
 			_shaderResourceDelegates.end());
 	}
 
-    ParsingContext::ParsingContext(const TechniqueContext& techniqueContext, AttachmentPool* namedResources, FrameBufferPool* frameBufferPool)
+	SystemUniformsDelegate& ParsingContext::GetSystemUniformsDelegate() const
+	{
+		return *_techniqueContext->_systemUniformsDelegate;
+	}
+
+    ParsingContext::ParsingContext(std::shared_ptr<TechniqueContext> techniqueContext, AttachmentPool* namedResources, FrameBufferPool* frameBufferPool)
+	: _techniqueContext(std::move(techniqueContext))
     {
-        _techniqueContext = std::make_unique<TechniqueContext>(techniqueContext);
         _stringHelpers = std::make_unique<StringHelpers>();
         _namedResources = namedResources;
 		_frameBufferPool = frameBufferPool;
@@ -107,8 +112,7 @@ namespace RenderCore { namespace Techniques
         for (unsigned c=0; c<dimof(_globalCBs); ++c)
 			_globalCBVs[c] = { _globalCBs[c].get() };
 
-		_systemUniformsDelegate = std::make_shared<SystemUniformsDelegate>();
-		_shaderResourceDelegates.push_back(_systemUniformsDelegate);
+		_shaderResourceDelegates.push_back(_techniqueContext->_systemUniformsDelegate);
     }
 
     ParsingContext::~ParsingContext() {}

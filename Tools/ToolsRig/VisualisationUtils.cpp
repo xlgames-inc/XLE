@@ -751,7 +751,7 @@ namespace ToolsRig
 
 	static SceneEngine::IIntersectionTester::Result FirstRayIntersection(
 		RenderCore::IThreadContext& threadContext,
-		const RenderCore::Techniques::TechniqueContext& techniqueContext,
+		const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext,
 		RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
         std::pair<Float3, Float3> worldSpaceRay,
 		SceneEngine::IScene& scene)

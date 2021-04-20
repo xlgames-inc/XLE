@@ -427,34 +427,6 @@ namespace RenderCore { namespace Techniques
 
 				//////////////////////-------//////////////////////
 
-#if 0
-	const UniformsStreamInterface& TechniqueContext::GetGlobalUniformsStreamInterface()
-	{
-			//  We need to specify the order of resources as they appear in 
-			//  _globalUniformsStream
-		static auto HashGlobalTransform = Hash64("GlobalTransform");
-		static auto HashGlobalState = Hash64("GlobalState");
-		static auto HashShadowProjection = Hash64("ArbitraryShadowProjection");
-		static auto HashOrthoShadowProjection = Hash64("OrthogonalShadowProjection");
-		static auto HashBasicLightingEnvironment = Hash64("BasicLightingEnvironment");
-		static UniformsStreamInterface globalUniforms;
-		static bool setupGlobalUniforms = false;
-		if (!setupGlobalUniforms) {
-			globalUniforms.BindConstantBuffer(CB_GlobalTransform, { HashGlobalTransform });
-			globalUniforms.BindConstantBuffer(CB_GlobalState, { HashGlobalState });
-			globalUniforms.BindConstantBuffer(CB_ShadowProjection, { HashShadowProjection });
-			globalUniforms.BindConstantBuffer(CB_OrthoShadowProjection, { HashOrthoShadowProjection });
-			globalUniforms.BindConstantBuffer(CB_BasicLightingEnvironment, { HashBasicLightingEnvironment });
-			setupGlobalUniforms = true;
-		}
-		return globalUniforms;
-	}
-#endif
-
-	TechniqueContext::TechniqueContext()
-	{
-	}
-
 	UnderlyingAPI GetTargetAPI()
 	{
 		#if GFXAPI_TARGET == GFXAPI_VULKAN

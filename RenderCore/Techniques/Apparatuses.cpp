@@ -13,6 +13,8 @@
 #include "SubFrameEvents.h"
 #include "SimpleModelDeform.h"
 #include "SkinDeformer.h"
+#include "CommonResources.h"
+#include "SystemUniformsDelegate.h"
 #include "../Assets/PredefinedPipelineLayout.h"
 #include "../Assets/PipelineConfigurationUtils.h"
 #include "../Assets/MaterialCompiler.h"
@@ -77,7 +79,9 @@ namespace RenderCore { namespace Techniques
 			FindLayout(*_pipelineLayoutFile, pipelineLayoutName, "Material"),
 			FindLayout(*_pipelineLayoutFile, pipelineLayoutName, "Sequencer"));
 
+		_commonResources = std::make_shared<CommonResourceBox>(*_device);
 		_techniqueContext = std::make_shared<TechniqueContext>();
+		_techniqueContext->_systemUniformsDelegate = std::make_shared<SystemUniformsDelegate>(*_device, *_commonResources);
 
 		if (!_techniqueServices)
 			_techniqueServices = std::make_shared<Services>(_device);

@@ -1,34 +1,30 @@
 DescriptorSet Numeric
 {
-	SampledTexture tex0;
-	SampledTexture tex1;
-	SampledTexture tex2;
-	SampledTexture tex3;
-	SampledTexture tex4;
-	SampledTexture tex5;
-	SampledTexture tex6;
-	SampledTexture tex7;
-	SampledTexture tex8;
-	SampledTexture tex9;
-	SampledTexture tex10;
-	SampledTexture tex11;
-	SampledTexture tex12;
-	SampledTexture tex13;
-	SampledTexture tex14;
-	SampledTexture tex15;
+	SampledTexture tex0;				// 0
+	SampledTexture tex1;				// 1
+	SampledTexture tex2;				// 2
+	SampledTexture tex3;				// 3
+	SampledTexture tex4;				// 4
+	SampledTexture tex5;				// 5
+	SampledTexture tex6;				// 6
+	SampledTexture tex7;				// 7
+	SampledTexture tex8;				// 8
+	SampledTexture tex9;				// 9
+	SampledTexture tex10;				// 10
+	SampledTexture tex11;				// 11
+	SampledTexture tex12;				// 12
+	SampledTexture tex13;				// 13
+	SampledTexture tex14;				// 14
+	SampledTexture tex15;				// 15
 
-	Sampler sampler0;
-	Sampler sampler1;
-	Sampler sampler2;
-	Sampler sampler3;
-	Sampler sampler4;
-	Sampler sampler5;
-	Sampler sampler6;
+	Sampler sampler0;					// 16
+	Sampler sampler1;					// 17
+	Sampler sampler2;					// 18
 
-	UniformBuffer cb0;
-	UniformBuffer cb1;
-	UniformBuffer cb2;
-	UniformBuffer cb3;
+	UniformBuffer cb0;					// 19
+	UniformBuffer cb1;					// 20
+	UniformBuffer cb2;					// 21
+	UniformBuffer cb3;					// 22
 
-	Sampler hlslccDummySampler;
+	Sampler hlslccDummySampler;			// 23
 };

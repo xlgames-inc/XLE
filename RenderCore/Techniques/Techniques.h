@@ -92,21 +92,12 @@ namespace RenderCore { namespace Techniques
             //      C O N T E X T                                   //
         //////////////////////////////////////////////////////////////////
     
+    class SystemUniformsDelegate;
     class TechniqueContext
     {
     public:
-        ParameterBox							_globalEnvironmentState;
-
-        TechniqueContext();
-#if 0
-		static const UniformsStreamInterface& GetGlobalUniformsStreamInterface();
-
-        static const unsigned CB_GlobalTransform = 0;
-        static const unsigned CB_GlobalState = 1;
-        static const unsigned CB_ShadowProjection = 2;
-        static const unsigned CB_OrthoShadowProjection = 3;
-        static const unsigned CB_BasicLightingEnvironment = 4;
-#endif
+        ParameterBox _globalEnvironmentState;
+        std::shared_ptr<SystemUniformsDelegate> _systemUniformsDelegate;
     };
 
 	UnderlyingAPI GetTargetAPI();

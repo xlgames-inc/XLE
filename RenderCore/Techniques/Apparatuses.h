@@ -36,6 +36,7 @@ namespace RenderCore { namespace Techniques
 	class AttachmentPool;
 	class FrameBufferPool;
 	class SubFrameEvents;
+	class CommonResourceBox;
 
 	/** <summary>Organizes the objects required for rendering operations, and manages their lifetimes</summary>
 	 * 
@@ -66,6 +67,7 @@ namespace RenderCore { namespace Techniques
 
 		std::shared_ptr<LegacyRegisterBindingDesc> _legacyRegisterBindingDesc;
 
+		std::shared_ptr<CommonResourceBox> _commonResources;
 		std::shared_ptr<TechniqueContext> _techniqueContext;
 
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depValPtr; }

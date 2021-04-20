@@ -111,7 +111,7 @@ namespace Sample
         while (PlatformRig::OverlappedWindow::DoMsgPump() != PlatformRig::OverlappedWindow::PumpResult::Terminate) {
                 // ------- Render ----------------------------------------
             RenderCore::Techniques::ParsingContext parserContext(
-                *sampleGlobals._drawingApparatus->_techniqueContext, 
+                sampleGlobals._drawingApparatus->_techniqueContext, 
                 sampleGlobals._frameRenderingApparatus->_attachmentPool.get(), 
                 sampleGlobals._frameRenderingApparatus->_frameBufferPool.get());
             auto frameResult = frameRig.ExecuteFrame(

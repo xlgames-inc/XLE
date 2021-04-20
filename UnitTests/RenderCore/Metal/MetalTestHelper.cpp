@@ -406,7 +406,12 @@ namespace UnitTests
 			{DescriptorType::SampledTexture},
 			{DescriptorType::SampledTexture},
 			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture}
+			{DescriptorType::SampledTexture},
+
+			{DescriptorType::Sampler},
+			{DescriptorType::Sampler},
+			{DescriptorType::Sampler},
+			{DescriptorType::Sampler}
 		};
 
 		RenderCore::DescriptorSetSignature materialSet {
@@ -459,10 +464,6 @@ namespace UnitTests
 			{DescriptorType::SampledTexture},
 			{DescriptorType::SampledTexture},
 
-			{DescriptorType::Sampler},
-			{DescriptorType::Sampler},
-			{DescriptorType::Sampler},
-			{DescriptorType::Sampler},
 			{DescriptorType::Sampler},
 			{DescriptorType::Sampler},
 			{DescriptorType::Sampler},

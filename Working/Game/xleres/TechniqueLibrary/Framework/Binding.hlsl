@@ -22,13 +22,14 @@
 // Also, there's a "numeric interface" bindings, which are bound by number, rather than by name, from the CPU side
 // code. 
 
-#define BIND_NUMERIC_S0 : register(s0)
-#define BIND_NUMERIC_S1 : register(s1)
-#define BIND_NUMERIC_S2 : register(s2)
-#define BIND_NUMERIC_S3 : register(s3)
-#define BIND_NUMERIC_S4 : register(s4)
-#define BIND_NUMERIC_S5 : register(s5)
-#define BIND_NUMERIC_S6 : register(s6)
+#define BIND_SEQ_S0 : register(s0)
+#define BIND_SEQ_S1 : register(s1)
+#define BIND_SEQ_S2 : register(s2)
+#define BIND_SEQ_S3 : register(s3)
+
+#define BIND_NUMERIC_S0 : register(s4)
+#define BIND_NUMERIC_S1 : register(s5)
+#define BIND_NUMERIC_S2 : register(s6)
 
 #define BIND_MAT_S12 : register(s7)
 

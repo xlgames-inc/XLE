@@ -47,7 +47,7 @@ namespace RenderCore { namespace Techniques
         const ProjectionDesc&   GetProjectionDesc() const   { return *_projectionDesc; }
 
             //  ----------------- Working technique context -----------------
-        TechniqueContext&		GetTechniqueContext()               { return *_techniqueContext.get(); }
+        TechniqueContext&		GetTechniqueContext()               { return *_techniqueContext; }
 		ParameterBox&			GetSubframeShaderSelectors()		{ return _subframeShaderSelectors; }
 
 		void AddUniformDelegate(uint64_t binding, const std::shared_ptr<IUniformBufferDelegate>&);
@@ -58,7 +58,7 @@ namespace RenderCore { namespace Techniques
 		auto GetUniformDelegates() const { return MakeIteratorRange(_uniformDelegates); }
         auto GetShaderResourceDelegates() const { return MakeIteratorRange(_shaderResourceDelegates); }
 
-        SystemUniformsDelegate& GetSystemUniformsDelegate() const { return *_systemUniformsDelegate; }
+        SystemUniformsDelegate& GetSystemUniformsDelegate() const;
 
         AttachmentPool& GetNamedResources() { assert(_namedResources); return *_namedResources; }
 		FrameBufferPool& GetFrameBufferPool() { assert(_frameBufferPool); return *_frameBufferPool; }
@@ -84,7 +84,7 @@ namespace RenderCore { namespace Techniques
         bool HasInvalidAssets() const { return _stringHelpers->_invalidAssets[0] != '\0'; }
         bool HasErrorString() const { return _stringHelpers->_errorString[0] != '\0'; }
 
-        ParsingContext(const TechniqueContext& techniqueContext, AttachmentPool* namedResources = nullptr, FrameBufferPool* frameBufferPool = nullptr);
+        ParsingContext(std::shared_ptr<TechniqueContext> techniqueContext, AttachmentPool* namedResources = nullptr, FrameBufferPool* frameBufferPool = nullptr);
         ~ParsingContext();
 
         ParsingContext& operator=(const ParsingContext&) = delete;
@@ -94,7 +94,7 @@ namespace RenderCore { namespace Techniques
         std::shared_ptr<IResource>					_globalCBs[5];
 		ConstantBufferView							_globalCBVs[5];
 
-        std::unique_ptr<TechniqueContext>           _techniqueContext;
+        std::shared_ptr<TechniqueContext>           _techniqueContext;
         std::unique_ptr<ProjectionDesc>             _projectionDesc;
 
 		ParameterBox								_subframeShaderSelectors;
@@ -104,7 +104,6 @@ namespace RenderCore { namespace Techniques
 
 		std::vector<std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>> _uniformDelegates;
         std::vector<std::shared_ptr<IShaderResourceDelegate>> _shaderResourceDelegates;
-        std::shared_ptr<SystemUniformsDelegate> _systemUniformsDelegate;
     };
 
     /// <summary>Utility macros for catching asset exceptions</summary>

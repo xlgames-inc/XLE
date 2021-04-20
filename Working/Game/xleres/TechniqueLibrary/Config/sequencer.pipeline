@@ -1,6 +1,6 @@
 DescriptorSet Sequencer
 {
-	UniformBuffer GlobalTransform
+	UniformBuffer GlobalTransform				// 0
 	{
 		float4x4 WorldToClip;
 		float4 FrustumCorners[4];
@@ -10,28 +10,33 @@ DescriptorSet Sequencer
 		float4x4 CameraBasis;
 	};
 
-	UniformBuffer LocalTransform
+	UniformBuffer LocalTransform				// 1
 	{
 		float3x4 LocalToWorld;
 		float3 LocalSpaceView;
 	};
 	
-	UniformBuffer GlobalState
+	UniformBuffer GlobalState					// 2
 	{
 		float GlobalTime;
 		uint GlobalSamplingPassIndex;
 		uint GlobalSamplingPassCount;
 	};
 
-	UniformBuffer cb0;
-	UniformBuffer cb1;
-	UniformBuffer cb2;
+	UniformBuffer cb0;							// 3
+	UniformBuffer cb1;							// 4
+	UniformBuffer cb2;							// 5
 
-	SampledTexture tex0;
-	SampledTexture tex1;
-	SampledTexture tex2;
-	SampledTexture tex3;
-	SampledTexture tex4;
-	SampledTexture tex5;
-	SampledTexture tex6;
+	SampledTexture tex0;						// 6
+	SampledTexture tex1;						// 7
+	SampledTexture tex2;						// 8
+	SampledTexture tex3;						// 9
+	SampledTexture tex4;						// 10
+	SampledTexture tex5;						// 11
+	SampledTexture tex6;						// 12
+
+	Sampler DefaultSampler;						// 13
+	Sampler ClampingSampler;					// 14
+	Sampler AnisotropicSampler;					// 15
+	Sampler PointClampSampler;					// 16
 };
