@@ -143,7 +143,7 @@ toplevel
 	|	cbuffer
 	|	function
 	|	function_signature
-	|	';'			// empty statement
+	|	';'!			// empty statement
 	;
 
 global

@@ -66,19 +66,27 @@ namespace GraphLanguage
 	: _srcFileName(fn.AsString())
 	{
 		auto shaderFile = LoadSourceFile(fn);
+		_depVal = ::Assets::AsDepVal(MakeIteratorRange(&shaderFile.second, &shaderFile.second+1));
+
 		if (shaderFile.first.empty())
-			Throw(std::runtime_error("Missing or empty file while loading: " + fn.AsString()));
-		if (XlEqStringI(MakeFileNameSplitter(fn).Extension(), "graph")) {
-			auto graphSyntax = ParseGraphSyntax(shaderFile.first);
-			for (auto& subGraph:graphSyntax._subGraphs)
-				_sig._functions.emplace_back(std::make_pair(subGraph.first, std::move(subGraph.second._signature)));
-			_isGraphSyntaxFile = true;
-		} else {
-			_sig = ShaderSourceParser::ParseHLSL(MakeStringSection(shaderFile.first));
-		}
-		_depVal = std::make_shared<::Assets::DependencyValidation>();
-		_fileState = shaderFile.second;
-		::Assets::RegisterFileDependency(_depVal, fn);
+			Throw(::Assets::Exceptions::ConstructionError(
+				::Assets::Exceptions::ConstructionError::Reason::MissingFile,
+				_depVal,
+				"Missing or empty file while loading: %s", fn.AsString().c_str()));
+
+		TRY {
+			if (XlEqStringI(MakeFileNameSplitter(fn).Extension(), "graph")) {
+				auto graphSyntax = ParseGraphSyntax(shaderFile.first);
+				for (auto& subGraph:graphSyntax._subGraphs)
+					_sig._functions.emplace_back(std::make_pair(subGraph.first, std::move(subGraph.second._signature)));
+				_isGraphSyntaxFile = true;
+			} else {
+				_sig = ShaderSourceParser::ParseHLSL(MakeStringSection(shaderFile.first));
+			}
+			_fileState = shaderFile.second;
+		} CATCH(const std::exception& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, _depVal));
+		} CATCH_END
 	}
 
 	ShaderFragment::~ShaderFragment() {}

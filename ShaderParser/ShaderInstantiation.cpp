@@ -336,6 +336,9 @@ namespace ShaderSourceParser
 				// this refers to a specific item in graph within an outer graph file
 				// Just check to make sure it's a graph file
 				auto sig = (r._customProvider ? r._customProvider.get() : &defaultProvider)->FindSignature(r._archiveName);
+				if (!sig.has_value())
+					Throw(::Exceptions::BasicLabel("Failed while reading signatures for instantiation request (%s). This might have been caused by a shader language parsing failure", r._archiveName.c_str()));
+
 				DependencyTable::Dependency dep;
 				dep._instantiation = r;
 				dep._isGraphSyntaxFile = sig.value()._isGraphSyntax;
