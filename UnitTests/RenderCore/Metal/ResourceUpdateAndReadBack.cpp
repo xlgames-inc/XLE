@@ -15,6 +15,7 @@
 #include "../../../RenderCore/OpenGLES/IDeviceOpenGLES.h"
 #include "../../../RenderCore/ResourceDesc.h"
 #include "../../../RenderCore/BufferView.h"
+#include "../../../RenderCore/IThreadContext.h"
 #include "../../../Math/Vector.h"
 #include "../../../Math/Transformations.h"
 #include "../../../Utility/MemoryUtils.h"
@@ -166,7 +167,7 @@ namespace UnitTests
 		auto threadContext = testHelper._device->GetImmediateContext();
 		auto shaderProgram = testHelper.MakeShaderProgram(vsText_clipInput, psText_Uniforms);
 		auto targetDesc = CreateDesc(
-			BindFlag::RenderTarget, 0, GPUAccess::Write,
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 
@@ -293,4 +294,74 @@ namespace UnitTests
 							ColorsMatch(color, testValue3.ColorPackedForm())));
 		}
 	}
+
+
+	TEST_CASE( "ResourceUpdateAndReadback-AllocationThrashing", "[rendercore_metal]" )
+	{
+		using namespace RenderCore;
+		auto testHelper = MakeTestHelper();
+
+		auto threadContext = testHelper->_device->GetImmediateContext();
+		auto shaderProgram = testHelper->MakeShaderProgram(vsText_clipInput, psText_Uniforms);
+		auto targetDesc = CreateDesc(
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
+			TextureDesc::Plain2D(1024, 1024, Format::R8G8B8A8_UNORM),
+			"temporary-out");
+
+		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
+
+		// ............. Setup BoundInputLayout & BoundUniforms ................................
+
+		UniformsStreamInterface usi;
+		usi.BindResourceView(0, Hash64("Values"), MakeIteratorRange(ConstantBufferElementDesc_Values));
+		Metal::BoundUniforms uniforms { shaderProgram, usi };
+
+		// ............. Start RPI .............................................................
+
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc, LoadStore::Retain);
+
+		// This is a thrash test to ensure that GPU resources are destroyed in a reasonable way 
+		// Resources must be kept alive even after all client references on them have been dropped,
+		// if the GPU still have commands that are either queued or currently processing that use
+		// then. However after the GPU has finished with the frame the resource can be released.
+		// In this test we simulate rendering a lot of frames and allocating resources during
+		// those frames. 
+		// If the deallocation of resources is not happening correctly, we will start to run
+		// out of memory very quickly. This might also happen if the CPU runs too far ahead of 
+		// the GPU, so this test also ensures that there are barriers against that as well.
+		for (unsigned frameIdx=0; frameIdx<100; ++frameIdx) {
+			// Create a large resource -- but ensure that we use it during the draw call for this "frame"
+			std::shared_ptr<IResource> cbs[128];
+			for (unsigned d=0; d<dimof(cbs); ++d) {
+				cbs[d] = testHelper->_device->CreateResource(
+					CreateDesc(	
+						BindFlag::ConstantBuffer, CPUAccess::WriteDynamic, GPUAccess::Read,
+						LinearBufferDesc::Create(32 * 1024),
+						"test-cbuffer"));
+				UpdateConstantBuffer(metalContext, *testHelper->_device, *cbs[d], MakeOpaqueIteratorRange(testValue0), true);
+			}
+
+			{
+				auto rpi = fbHelper.BeginRenderPass(*threadContext);
+
+				auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper->_pipelineLayout);
+				encoder.Bind(shaderProgram);
+
+				for (unsigned d=0; d<dimof(cbs); ++d) {
+					auto cbView = cbs[d]->CreateBufferView();
+					IResourceView* views[] = { cbView.get() };
+					UniformsStream uniformsStream;
+					uniformsStream._resourceViews = MakeIteratorRange(views);
+					uniforms.ApplyLooseUniforms(metalContext, encoder, uniformsStream);
+
+					DrawClipSpaceQuad(*testHelper, metalContext, encoder, shaderProgram, Float2(-1.0f, -1.0f), Float2( 0.0f, 0.0f));
+				}
+			}
+
+			// We must commit commands to get the GPU working
+			threadContext->CommitCommands();
+		}
+	}
+
+
 }

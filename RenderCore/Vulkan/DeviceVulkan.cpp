@@ -503,6 +503,7 @@ namespace RenderCore { namespace ImplVulkan
         return queue;
     }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	class EventBasedTracker : public Metal_Vulkan::IAsyncTracker
 	{
 	public:
@@ -618,6 +619,168 @@ namespace RenderCore { namespace ImplVulkan
 
 	EventBasedTracker::~EventBasedTracker() {}
 
+	class FenceBasedTracker : public Metal_Vulkan::IAsyncTracker
+	{
+	public:
+		virtual Marker GetConsumerMarker() const { return _lastCompletedConsumerFrame; }
+		virtual Marker GetProducerMarker() const { return _currentProducerFrame->_frameMarker; }
+
+		void IncrementProducerFrame();
+		VkFence GetFenceForCurrentFrame();
+		void UpdateConsumer();
+		bool WaitForFence(Marker marker, std::optional<std::chrono::nanoseconds> timeout = {});
+
+		FenceBasedTracker(Metal_Vulkan::ObjectFactory& factory, unsigned queueDepth);
+		~FenceBasedTracker();
+	private:
+		struct Tracker
+		{
+			VulkanUniquePtr<VkFence> _fence;
+			Marker _frameMarker;
+			bool _submittedToGPU = false;
+			bool _gotGPUCompletion = false;
+		};
+		std::vector<Tracker> _trackers;
+		Tracker* _currentProducerFrame = nullptr;
+		Tracker* _nextConsumerFrameToComplete = nullptr;
+		Marker _lastCompletedConsumerFrame;
+		VkDevice _device;
+	};
+
+	void FenceBasedTracker::IncrementProducerFrame()
+	{
+		assert(_currentProducerFrame->_submittedToGPU);
+		auto nextFrameMarker = _currentProducerFrame->_frameMarker+1; 
+		auto next = _currentProducerFrame + 1;
+		if (next >= AsPointer(_trackers.end()))
+			next = &_trackers[0];
+
+		// If we use up all of the markers, we need stall and wait for the GPU to catch up
+		for (;;) {
+			// If "next' is ready to go for the next producer frame, we'll break out 
+			if (!next->_submittedToGPU || next->_gotGPUCompletion) break;
+
+			using namespace std::chrono_literals;
+			static std::chrono::steady_clock::time_point lastReport{};		// (defaults to start of epoch)
+			auto now = std::chrono::steady_clock::now();
+			if ((now - lastReport) > 1s) {
+				Log(Verbose) << "Stalling due to insufficient trackers in Vulkan SemaphoreBasedTracker" << std::endl;
+				lastReport = now;
+			}
+
+			Threading::YieldTimeSlice();
+			UpdateConsumer();
+		}
+		assert(_nextConsumerFrameToComplete != next);
+		_currentProducerFrame = next;
+		_currentProducerFrame->_frameMarker = nextFrameMarker;
+		_currentProducerFrame->_submittedToGPU = false;
+		_currentProducerFrame->_gotGPUCompletion = false;
+	}
+
+	VkFence FenceBasedTracker::GetFenceForCurrentFrame()
+	{
+		assert(!_currentProducerFrame->_submittedToGPU);
+		_currentProducerFrame->_submittedToGPU = true;
+		return _currentProducerFrame->_fence.get();
+	}
+
+	void FenceBasedTracker::UpdateConsumer()
+	{
+		for (;;) {
+			if (!_nextConsumerFrameToComplete->_submittedToGPU) break;
+			assert(!_nextConsumerFrameToComplete->_gotGPUCompletion);
+			auto res = vkGetFenceStatus(_device, _nextConsumerFrameToComplete->_fence.get());
+			if (res == VK_SUCCESS) {
+				VkFence fence = _nextConsumerFrameToComplete->_fence.get();
+				vkResetFences(_device, 1, &fence);
+				assert(_nextConsumerFrameToComplete != _currentProducerFrame);
+				_lastCompletedConsumerFrame = _nextConsumerFrameToComplete->_frameMarker;
+				_nextConsumerFrameToComplete->_gotGPUCompletion = true;
+				++_nextConsumerFrameToComplete;
+				if (_nextConsumerFrameToComplete >= AsPointer(_trackers.end()))
+					_nextConsumerFrameToComplete = &_trackers[0];
+			} else {
+				if (res == VK_ERROR_DEVICE_LOST)
+					Throw(std::runtime_error("Vulkan device lost"));
+				assert(res == VK_NOT_READY); (void)res;
+				break;
+			}
+		}
+	}
+
+	bool FenceBasedTracker::WaitForFence(Marker marker, std::optional<std::chrono::nanoseconds> timeout)
+	{
+		auto start = std::chrono::steady_clock::now();
+
+		if (marker <= _lastCompletedConsumerFrame)
+			return true;
+
+		bool foundTheFence = false;
+		for (unsigned c=0; c<_trackers.size(); ++c)
+			if (_trackers[c]._frameMarker == _lastCompletedConsumerFrame) {
+				assert(_trackers[c]._submittedToGPU);
+				foundTheFence = true;
+				break;
+			}
+
+		assert(foundTheFence);
+		if (!foundTheFence) return false;
+
+		// Wait in order until we complete the one requested
+		for (;;) {
+			if (!_nextConsumerFrameToComplete->_submittedToGPU) break;
+
+			VkFence fence = _nextConsumerFrameToComplete->_fence.get();
+			VkResult res;
+			if (timeout.has_value()) {
+				auto timeoutRemaining = ((start + timeout.value()) - std::chrono::steady_clock::now());
+				if (timeoutRemaining < std::chrono::seconds(0)) return false;
+				res = vkWaitForFences(_device, 1, &fence, true, std::chrono::duration_cast<std::chrono::nanoseconds>(timeoutRemaining).count());
+			} else {
+				res = vkWaitForFences(_device, 1, &fence, true, UINT64_MAX);
+			}
+			if (res == VK_SUCCESS) {
+				vkResetFences(_device, 1, &fence);
+				assert(_nextConsumerFrameToComplete != _currentProducerFrame);
+				_lastCompletedConsumerFrame = _nextConsumerFrameToComplete->_frameMarker;
+				_nextConsumerFrameToComplete->_gotGPUCompletion = true;
+				++_nextConsumerFrameToComplete;
+				if (_nextConsumerFrameToComplete >= AsPointer(_trackers.end()))
+					_nextConsumerFrameToComplete = &_trackers[0];
+
+				if (_lastCompletedConsumerFrame == marker) return true;
+			} else {
+				if (res == VK_ERROR_DEVICE_LOST)
+					Throw(std::runtime_error("Vulkan device lost"));
+				assert(res == VK_NOT_READY); (void)res;
+				break;
+			}
+		}
+
+		// completed all pending markers, but still didn't find the one requested
+		return false;
+	}
+
+	FenceBasedTracker::FenceBasedTracker(Metal_Vulkan::ObjectFactory& factory, unsigned queueDepth)
+	{
+		_trackers.resize(queueDepth);
+		for (unsigned c=0; c<queueDepth; ++c) {
+			_trackers[c]._fence = factory.CreateFence();
+			_trackers[c]._frameMarker = 1;
+			_trackers[c]._submittedToGPU = false;
+			_trackers[c]._gotGPUCompletion = false;
+		}
+		_currentProducerFrame = &_trackers[0];
+		_nextConsumerFrameToComplete = &_trackers[0];
+		_lastCompletedConsumerFrame = 0;
+		_device = factory.GetDevice().get();
+	}
+
+	FenceBasedTracker::~FenceBasedTracker() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     void Device::DoSecondStageInit(VkSurfaceKHR surface)
     {
         if (!_underlying) {
@@ -627,26 +790,26 @@ namespace RenderCore { namespace ImplVulkan
 
 			// Set up the object factory with a default destroyer that tracks the current
 			// GPU frame progress
-			auto frameTracker = std::make_shared<EventBasedTracker>(_objectFactory, 5);
-			auto destroyer = _objectFactory.CreateMarkerTrackingDestroyer(frameTracker);
+			_gpuTracker = std::make_shared<FenceBasedTracker>(_objectFactory, 5);
+			auto destroyer = _objectFactory.CreateMarkerTrackingDestroyer(_gpuTracker);
 			_objectFactory.SetDefaultDestroyer(destroyer);
             Metal_Vulkan::SetDefaultObjectFactory(&_objectFactory);
 
-            _pools._mainDescriptorPool = Metal_Vulkan::DescriptorPool(_objectFactory, frameTracker);
-			_pools._longTermDescriptorPool = Metal_Vulkan::DescriptorPool(_objectFactory, frameTracker);
+            _pools._mainDescriptorPool = Metal_Vulkan::DescriptorPool(_objectFactory, _gpuTracker);
+			_pools._longTermDescriptorPool = Metal_Vulkan::DescriptorPool(_objectFactory, _gpuTracker);
 			_pools._renderPassPool = Metal_Vulkan::VulkanRenderPassPool(_objectFactory);
             _pools._mainPipelineCache = _objectFactory.CreatePipelineCache();
             _pools._dummyResources = Metal_Vulkan::DummyResources(_objectFactory);
 
-			auto tempBufferSpace = std::make_unique<Metal_Vulkan::TemporaryBufferSpace>(_objectFactory, frameTracker);
+			auto tempBufferSpace = std::make_unique<Metal_Vulkan::TemporaryBufferSpace>(_objectFactory, _gpuTracker);
             _foregroundPrimaryContext = std::make_shared<ThreadContext>(
 				shared_from_this(), 
 				GetQueue(_underlying.get(), _physDev._renderingQueueFamily),
-                Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, false, frameTracker),
+                Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, false, _gpuTracker),
 				Metal_Vulkan::CommandBufferType::Primary,
 				std::move(tempBufferSpace));
 			_foregroundPrimaryContext->AttachDestroyer(destroyer);
-			_foregroundPrimaryContext->SetGPUTracker(frameTracker);
+			_foregroundPrimaryContext->SetGPUTracker(_gpuTracker);
 		}
     }
 
@@ -777,7 +940,9 @@ namespace RenderCore { namespace ImplVulkan
             Throw(::Exceptions::BasicLabel("Presentation surface is not compatible with selected physical device. This may occur if the wrong physical device is selected, and it cannot render to the output window."));
         
         auto finalChain = std::make_unique<PresentationChain>(
-            _objectFactory, std::move(surface), VectorPattern<unsigned, 2>{desc._width, desc._height}, _physDev._renderingQueueFamily, platformValue);
+            _objectFactory, std::move(surface), VectorPattern<unsigned, 2>{desc._width, desc._height}, 
+			_physDev._renderingQueueFamily, platformValue,
+			_gpuTracker);
 
         // (synchronously) set the initial layouts for the presentation chain images
         // It's a bit odd, but the Vulkan samples do this
@@ -965,16 +1130,9 @@ namespace RenderCore { namespace ImplVulkan
 
         _activePresentSync = (_activePresentSync+1) % dimof(_presentSyncs);
         auto& sync = _presentSyncs[_activePresentSync];
-		if (sync._fenceHasBeenQueued) {
-			auto fence = sync._presentFence.get();
-			auto res = vkWaitForFences(_device.get(), 1, &fence, true, UINT64_MAX);
-			if (res != VK_SUCCESS)
-				Throw(VulkanAPIFailure(res, "Failure while waiting for presentation fence"));
-			res = vkResetFences(_device.get(), 1, &fence);
-			if (res != VK_SUCCESS)
-				Throw(VulkanAPIFailure(res, "Failure while resetting presentation fence"));
-			sync._fenceHasBeenQueued = false;
-		}
+		if (sync._presentFence.has_value())
+			_gpuTracker->WaitForFence(sync._presentFence.value());
+		sync._presentFence = {};
 
         // note --  Due to the timeout here, we get a synchronise here.
         //          This will prevent issues when either the GPU or CPU is
@@ -1075,12 +1233,14 @@ namespace RenderCore { namespace ImplVulkan
         VulkanSharedPtr<VkSurfaceKHR> surface, 
 		VectorPattern<unsigned, 2> extent,
 		unsigned queueFamilyIndex,
-        const void* platformValue)
+        const void* platformValue,
+		std::shared_ptr<FenceBasedTracker> gpuTracker)
     : _surface(std::move(surface))
     , _device(factory.GetDevice())
     , _factory(&factory)
     , _platformValue(platformValue)
 	, _primaryBufferPool(factory, queueFamilyIndex, true, nullptr)
+	, _gpuTracker(gpuTracker)
     {
         _activeImageIndex = ~0x0u;
         auto props = DecideSwapChainProperties(factory.GetPhysicalDevice(), _surface.get(), extent[0], extent[1]);
@@ -1101,10 +1261,8 @@ namespace RenderCore { namespace ImplVulkan
         // This pattern is similar to the "Hologram" sample in the Vulkan SDK
         for (unsigned c=0; c<dimof(_presentSyncs); ++c) {
             _presentSyncs[c]._onCommandBufferComplete = factory.CreateSemaphore();
-			_presentSyncs[c]._onCommandBufferComplete2 = factory.CreateSemaphore();
             _presentSyncs[c]._onAcquireComplete = factory.CreateSemaphore();
-            _presentSyncs[c]._presentFence = factory.CreateFence(0);
-			_presentSyncs[c]._fenceHasBeenQueued = false;
+            _presentSyncs[c]._presentFence = {};
         }
 		for (unsigned c = 0; c<dimof(_primaryBuffers); ++c)
 			_primaryBuffers[c] = _primaryBufferPool.Allocate(Metal_Vulkan::CommandBufferType::Primary);
@@ -1268,17 +1426,6 @@ namespace RenderCore { namespace ImplVulkan
 		auto nextImage = swapChain->AcquireNextImage();
 		_nextQueueShouldWaitOnAcquire = swapChain->GetSyncs()._onAcquireComplete.get();
 
-		if (_gpuTracker) {
-			// This is a hassle... But on the very first frame, we need to call SetConsumerEndOfFrame to mark the end of
-			// all commands that happen before the first frame. However it's unsafe to do SetConsumerEndOfFrame x2, then a 
-			// IncrementProducerFrame -- so in other cases, we can't do that...
-			if (_pendingConsumerEndOfFrame) {
-				_gpuTracker->SetConsumerEndOfFrame(*_metalContext);		// generally only the very first frame marker (ie, before the first BeginFrame()) should be finished here
-				_pendingConsumerEndOfFrame = false;
-			}
-			_gpuTracker->IncrementProducerFrame();
-		}
-
 		{
 			auto cmdList = swapChain->SharePrimaryBuffer();
 			auto res = vkResetCommandBuffer(cmdList.get(), VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
@@ -1287,7 +1434,6 @@ namespace RenderCore { namespace ImplVulkan
 			_metalContext->BeginCommandList(std::move(cmdList));
 		}
 
-        // _metalContext->Bind(Metal_Vulkan::ViewportDesc(0.f, 0.f, (float)swapChain->GetBufferDesc()._width, (float)swapChain->GetBufferDesc()._height));
         return nextImage->GetResource();
 	}
 
@@ -1298,57 +1444,12 @@ namespace RenderCore { namespace ImplVulkan
 
 		//////////////////////////////////////////////////////////////////
 
-		// 2 options for setting the event that allows objects from this frame to
-		// be destroyed:
-		//	* at the end of the main command buffer
-		//	* in a separate command buffer that waits on a completion 
-		//		semaphore from the main command buffer
-		// 
-		// Note that it's not a good idea to add the signal into command buffer for
-		// the next frame, because it's possible that there is some overlap between
-		// one frame's commands and the next.
-		// However, if we signal the event from the main command buffer, we have a
-		// problem where the event that triggers the destruction of the command buffer
-		// is executed by the command buffer itself. That could create problems -- so
-		// one possible solution is to retain the command buffer for an extra frame.
-		const bool trackingSeparateCommandBuffer = false;
+		auto fence = _gpuTracker->GetFenceForCurrentFrame();
 
-		{
-			if (!trackingSeparateCommandBuffer)
-				_gpuTracker->SetConsumerEndOfFrame(*_metalContext);
-
-			VkSemaphore signalSema[] = { syncs._onCommandBufferComplete.get(), syncs._onCommandBufferComplete2.get() };
-			QueuePrimaryContext(
-				MakeIteratorRange(signalSema, &signalSema[trackingSeparateCommandBuffer ? 2 : 1]), 
-				syncs._presentFence.get());
-			syncs._fenceHasBeenQueued = true;
-		}
-
-		// Converting a semphore to an event (so we can query the progress from the CPU)
-		if (constant_expression<trackingSeparateCommandBuffer>::result() && _gpuTracker) {
-			_metalContext->BeginCommandList();
-			_gpuTracker->SetConsumerEndOfFrame(*_metalContext);
-			auto cmdBuffer = _metalContext->ResolveCommandList();
-
-			VkSubmitInfo submitInfo;
-			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-			submitInfo.pNext = nullptr;
-
-			VkSemaphore waitSema[] = { syncs._onCommandBufferComplete2.get() };
-			VkCommandBuffer rawCmdBuffers[] = { cmdBuffer->GetUnderlying().get() };
-			VkPipelineStageFlags stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-			submitInfo.waitSemaphoreCount = dimof(waitSema);
-			submitInfo.pWaitSemaphores = waitSema;
-			submitInfo.signalSemaphoreCount = 0;
-			submitInfo.pSignalSemaphores = nullptr;
-			submitInfo.pWaitDstStageMask = &stage;
-			submitInfo.commandBufferCount = dimof(rawCmdBuffers);
-			submitInfo.pCommandBuffers = rawCmdBuffers;
-
-			auto res = vkQueueSubmit(_queue, 1, &submitInfo, VK_NULL_HANDLE);
-			if (res != VK_SUCCESS)
-				Throw(VulkanAPIFailure(res, "Failure while queuing frame complete signal"));
-		}
+		VkSemaphore signalSema[] = { syncs._onCommandBufferComplete.get() };
+		QueuePrimaryContext(MakeIteratorRange(signalSema), fence);
+		assert(!syncs._presentFence);
+		syncs._presentFence = _gpuTracker->GetProducerMarker();
 
 		if (_gpuTracker) _gpuTracker->UpdateConsumer();
 		if (_destrQueue) _destrQueue->Flush();
@@ -1361,6 +1462,9 @@ namespace RenderCore { namespace ImplVulkan
 		// Finally, we can queue the present
 		//		-- do it here to allow it to run in parallel as much as possible
 		swapChain->PresentToQueue(_queue);
+
+		if (_gpuTracker)
+			_gpuTracker->IncrementProducerFrame();
 	}
 
 	void	ThreadContext::CommitCommands(CommitCommandsFlags::BitField flags)
@@ -1377,12 +1481,10 @@ namespace RenderCore { namespace ImplVulkan
 		if (!_interimCommandBufferComplete)
 			_interimCommandBufferComplete = _factory->CreateSemaphore();
 		bool waitForCompletion = !!(flags & CommitCommandsFlags::WaitForCompletion);
-		if (!_utilityFence && waitForCompletion)
-			_utilityFence = _factory->CreateFence(0);
 
-		_gpuTracker->SetConsumerEndOfFrame(*_metalContext);
+		auto trackingFence = _gpuTracker->GetFenceForCurrentFrame();
 		VkSemaphore signalSema[] = { _interimCommandBufferComplete.get() };
-		QueuePrimaryContext(MakeIteratorRange(signalSema), waitForCompletion ? _utilityFence.get() : VK_NULL_HANDLE);
+		QueuePrimaryContext(MakeIteratorRange(signalSema), trackingFence);
 		_nextQueueShouldWaitOnInterimBuffer = true;
 
 		#if defined(HACK_FORCE_SYNC)
@@ -1401,13 +1503,7 @@ namespace RenderCore { namespace ImplVulkan
 		_tempBufferSpace->FlushDestroys();
 
 		if (waitForCompletion) {
-			VkFence fences[] = { _utilityFence.get() };
-			auto res = vkWaitForFences(_underlyingDevice, dimof(fences), fences, true, UINT64_MAX);
-			if (res != VK_SUCCESS)
-				Throw(VulkanAPIFailure(res, "Failure while waiting for presentation fence"));
-			res = vkResetFences(_underlyingDevice, dimof(fences), fences);
-			if (res != VK_SUCCESS)
-				Throw(VulkanAPIFailure(res, "Failure while resetting presentation fence"));
+			_gpuTracker->WaitForFence(_gpuTracker->GetProducerMarker());
 		}
 
 		if (_gpuTracker)
@@ -1439,7 +1535,7 @@ namespace RenderCore { namespace ImplVulkan
 		return *_annotator;
 	}
 
-	void ThreadContext::SetGPUTracker(const std::shared_ptr<EventBasedTracker>& tracker) { _gpuTracker = tracker; }
+	void ThreadContext::SetGPUTracker(const std::shared_ptr<FenceBasedTracker>& tracker) { _gpuTracker = tracker; }
 	void ThreadContext::AttachDestroyer(const std::shared_ptr<Metal_Vulkan::IDestructionQueue>& queue) { _destrQueue = queue; }
 
     ThreadContext::ThreadContext(
@@ -1460,7 +1556,6 @@ namespace RenderCore { namespace ImplVulkan
 	, _globalPools(&device->GetGlobalPools())
 	, _queue(queue)
 	, _underlyingDevice(device->GetUnderlyingDevice())
-	, _pendingConsumerEndOfFrame(true)
     {}
 
     ThreadContext::~ThreadContext() 
