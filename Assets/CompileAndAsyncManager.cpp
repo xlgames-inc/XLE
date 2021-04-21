@@ -34,7 +34,7 @@ namespace Assets
 	public:
 		std::shared_ptr<IntermediatesStore> _intStore;
 		std::shared_ptr<IntermediatesStore> _shadowingStore;
-        std::unique_ptr<IntermediateCompilers> _intMan;
+        std::shared_ptr<IIntermediateCompilers> _intMan;
 		std::vector<std::shared_ptr<IPollingAsyncProcess>> _pollingProcesses;
 
 		Utility::Threading::Mutex _pollingProcessesLock;
@@ -76,7 +76,7 @@ namespace Assets
 		_pimpl->_pollingProcesses.push_back(pollingProcess);
     }
 
-    IntermediateCompilers& CompileAndAsyncManager::GetIntermediateCompilers() 
+    IIntermediateCompilers& CompileAndAsyncManager::GetIntermediateCompilers() 
     { 
 		return *_pimpl->_intMan;
     }
@@ -124,7 +124,7 @@ namespace Assets
 		_pimpl->_intStore = std::make_shared<IntermediatesStore>(tempDirPath.string().c_str(), storeVersionString, storeConfigString);
 		_pimpl->_shadowingStore = std::make_shared<IntermediatesStore>(tempDirPath.string().c_str(), storeVersionString, storeConfigString, true);
 
-		_pimpl->_intMan = std::make_unique<IntermediateCompilers>(_pimpl->_intStore);
+		_pimpl->_intMan = CreateIntermediateCompilers(_pimpl->_intStore);
     }
 
     CompileAndAsyncManager::~CompileAndAsyncManager()

@@ -205,9 +205,9 @@ namespace RenderCore
 		::Assets::Blob _metrics;
 	};
 
-	::Assets::IntermediateCompilers::CompilerRegistration RegisterShaderCompiler(
+	::Assets::IIntermediateCompilers::CompilerRegistration RegisterShaderCompiler(
 		const std::shared_ptr<IShaderSource>& shaderSource,
-		::Assets::IntermediateCompilers& intermediateCompilers)
+		::Assets::IIntermediateCompilers& intermediateCompilers)
 	{
 		auto result = intermediateCompilers.RegisterCompiler(
 			"shader-compiler",
@@ -246,7 +246,7 @@ namespace RenderCore
 					archiveName << res._filename;
 					descriptiveName << res._entryPoint << "[" << definesTable << "]" << res._shaderModel;
 				}
-				return ::Assets::IntermediateCompilers::SplitArchiveName { archiveName.AsString(), entryId, descriptiveName.AsString() };
+				return ::Assets::IIntermediateCompilers::SplitArchiveName { archiveName.AsString(), entryId, descriptiveName.AsString() };
 			}
 		);
 

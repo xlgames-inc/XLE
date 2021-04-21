@@ -31,8 +31,8 @@ namespace Assets
 	{
 		std::string _name;
 		ConsoleRig::LibVersionDesc _srcVersion = {nullptr, nullptr};
-		IntermediateCompilers::CompileOperationDelegate _delegate;
-		IntermediateCompilers::ArchiveNameDelegate _archiveNameDelegate;
+		IIntermediateCompilers::CompileOperationDelegate _delegate;
+		IIntermediateCompilers::ArchiveNameDelegate _archiveNameDelegate;
 		DependencyValidation _compilerLibraryDepVal;
 		IntermediatesStore::CompileProductsGroupId _storeGroupId = 0;
 	};
@@ -54,6 +54,49 @@ namespace Assets
 			result.RegisterDependency(compilerDepVal);
 		return result;
 	}
+
+	class IntermediateCompilers : public IIntermediateCompilers
+    {
+    public:
+        virtual std::shared_ptr<IIntermediateCompileMarker> Prepare(TargetCode, InitializerPack&&) override;
+        virtual void StallOnPendingOperations(bool cancelAll) override;
+		
+		virtual CompilerRegistration RegisterCompiler(
+			const std::string& name,
+			const std::string& shortName,
+			ConsoleRig::LibVersionDesc srcVersion,
+			const DependencyValidation& compilerDepVal,
+			CompileOperationDelegate&& delegate,
+			ArchiveNameDelegate&& archiveNameDelegate
+			) override;
+
+		virtual void DeregisterCompiler(RegisteredCompilerId id) override;
+
+		virtual void AssociateRequest(
+			RegisteredCompilerId compiler,
+			IteratorRange<const uint64_t*> outputAssetTypes,
+			const std::string& initializerRegexFilter
+			) override;
+
+		virtual void RegisterExtensions(RegisteredCompilerId associatedCompiler, const std::string& commaSeparatedExtensions) override;
+		virtual std::vector<std::pair<std::string, std::string>> GetExtensionsForTargetCode(TargetCode typeCode) override;
+
+		virtual void FlushCachedMarkers() override;
+
+		IntermediateCompilers(
+			const std::shared_ptr<IntermediatesStore>& store);
+        ~IntermediateCompilers();
+    protected:
+		class Marker;
+
+        Threading::Mutex _delegatesLock;
+		std::vector<std::pair<RegisteredCompilerId, std::shared_ptr<ExtensionAndDelegate>>> _delegates;
+		std::unordered_multimap<RegisteredCompilerId, std::string> _extensionsAndDelegatesMap;
+		std::unordered_multimap<RegisteredCompilerId, DelegateAssociation> _requestAssociations;
+		std::unordered_map<uint64_t, std::shared_ptr<Marker>> _markers;
+		std::shared_ptr<IntermediatesStore> _store;
+		RegisteredCompilerId _nextCompilerId = 1;
+    };
 
     class IntermediateCompilers::Marker : public IIntermediateCompileMarker
     {
@@ -208,22 +251,6 @@ namespace Assets
 		} CATCH_END
     }
 
-	class IntermediateCompilers::Pimpl
-    {
-    public:
-		Threading::Mutex _delegatesLock;
-		std::vector<std::pair<RegisteredCompilerId, std::shared_ptr<ExtensionAndDelegate>>> _delegates;
-		std::unordered_multimap<RegisteredCompilerId, std::string> _extensionsAndDelegatesMap;
-		std::unordered_multimap<RegisteredCompilerId, DelegateAssociation> _requestAssociations;
-		std::unordered_map<uint64_t, std::shared_ptr<Marker>> _markers;
-		std::shared_ptr<IntermediatesStore> _store;
-		RegisteredCompilerId _nextCompilerId = 1;
-
-		Pimpl() {}
-		Pimpl(const Pimpl&) = delete;
-		Pimpl& operator=(const Pimpl&) = delete;
-    };
-
     std::shared_ptr<ArtifactCollectionFuture> IntermediateCompilers::Marker::InvokeCompile()
     {
 		auto activeFuture = _activeFuture.lock();
@@ -279,26 +306,26 @@ namespace Assets
         uint64_t targetCode, 
         InitializerPack&& initializers)
     {
-		ScopedLock(_pimpl->_delegatesLock);
+		ScopedLock(_delegatesLock);
 		auto initializerArchivableHash = initializers.ArchivableHash();
 		uint64_t requestHashCode = HashCombine(initializerArchivableHash, targetCode);
-		auto existing = _pimpl->_markers.find(requestHashCode);
-		if (existing != _pimpl->_markers.end())
+		auto existing = _markers.find(requestHashCode);
+		if (existing != _markers.end())
 			return existing->second;
 
 		auto firstInitializer = initializers.GetInitializer<std::string>(0);		// first initializer is assumed to be a string
 
-		for (const auto&a:_pimpl->_requestAssociations) {
+		for (const auto&a:_requestAssociations) {
 			auto i = std::find(a.second._targetCodes.begin(), a.second._targetCodes.end(), targetCode);
 			if (i == a.second._targetCodes.end())
 				continue;
 			if (std::regex_match(firstInitializer.begin(), firstInitializer.end(), a.second._regexFilter)) {
 				// find the associated delegate and use that
-				for (const auto&d:_pimpl->_delegates) {
+				for (const auto&d:_delegates) {
 					if (d.first != a.first) continue;
-					auto result = std::make_shared<Marker>(std::move(initializers), d.second, _pimpl->_store);
+					auto result = std::make_shared<Marker>(std::move(initializers), d.second, _store);
 					for (auto markerTargetCode:a.second._targetCodes)
-						_pimpl->_markers.insert(std::make_pair(HashCombine(initializerArchivableHash, markerTargetCode), result));
+						_markers.insert(std::make_pair(HashCombine(initializerArchivableHash, markerTargetCode), result));
 					return result;
 				}
 				return nullptr;
@@ -317,28 +344,28 @@ namespace Assets
 		ArchiveNameDelegate&& archiveNameDelegate
 		) -> CompilerRegistration
 	{
-		ScopedLock(_pimpl->_delegatesLock);
+		ScopedLock(_delegatesLock);
 		auto registration = std::make_shared<ExtensionAndDelegate>();
-		auto result = _pimpl->_nextCompilerId++;
+		auto result = _nextCompilerId++;
 		registration->_name = name;
 		registration->_srcVersion = srcVersion;
 		registration->_delegate = std::move(delegate);
 		registration->_archiveNameDelegate = std::move(archiveNameDelegate);
 		registration->_compilerLibraryDepVal = compilerDepVal;
-		if (_pimpl->_store)
-			registration->_storeGroupId = _pimpl->_store->RegisterCompileProductsGroup(MakeStringSection(shortName), srcVersion, !!registration->_archiveNameDelegate);
-		_pimpl->_delegates.push_back(std::make_pair(result, std::move(registration)));
+		if (_store)
+			registration->_storeGroupId = _store->RegisterCompileProductsGroup(MakeStringSection(shortName), srcVersion, !!registration->_archiveNameDelegate);
+		_delegates.push_back(std::make_pair(result, std::move(registration)));
 		return { result };
 	}
 
 	void IntermediateCompilers::DeregisterCompiler(RegisteredCompilerId id)
 	{
-		ScopedLock(_pimpl->_delegatesLock);
-		_pimpl->_extensionsAndDelegatesMap.erase(id);
-		_pimpl->_requestAssociations.erase(id);
-		for (auto i=_pimpl->_delegates.begin(); i!=_pimpl->_delegates.end();) {
+		ScopedLock(_delegatesLock);
+		_extensionsAndDelegatesMap.erase(id);
+		_requestAssociations.erase(id);
+		for (auto i=_delegates.begin(); i!=_delegates.end();) {
 			if (i->first == id) {
-				i = _pimpl->_delegates.erase(i);
+				i = _delegates.erase(i);
 			} else {
 				++i;
 			}
@@ -350,25 +377,25 @@ namespace Assets
 		IteratorRange<const uint64_t*> outputAssetTypes,
 		const std::string& initializerRegexFilter)
 	{
-		ScopedLock(_pimpl->_delegatesLock);
+		ScopedLock(_delegatesLock);
 		DelegateAssociation association;
 		association._targetCodes = std::vector<uint64_t>{ outputAssetTypes.begin(), outputAssetTypes.end() };
 		if (!initializerRegexFilter.empty())
 			association._regexFilter = std::regex{initializerRegexFilter, std::regex_constants::icase};
-		_pimpl->_requestAssociations.insert(std::make_pair(compiler, association));
+		_requestAssociations.insert(std::make_pair(compiler, association));
 	}
 
 	std::vector<std::pair<std::string, std::string>> IntermediateCompilers::GetExtensionsForTargetCode(TargetCode targetCode)
 	{
 		std::vector<std::pair<std::string, std::string>> ext;
 
-		ScopedLock(_pimpl->_delegatesLock);
-		for (const auto&d:_pimpl->_delegates) {
-			auto a = _pimpl->_requestAssociations.equal_range(d.first);
+		ScopedLock(_delegatesLock);
+		for (const auto&d:_delegates) {
+			auto a = _requestAssociations.equal_range(d.first);
 			for (auto association=a.first; association != a.second; ++association) {
 				if (std::find(association->second._targetCodes.begin(), association->second._targetCodes.end(), targetCode) != association->second._targetCodes.end()) {
 					// This compiler can make this type. Let's check what extensions have been registered
-					auto r = _pimpl->_extensionsAndDelegatesMap.equal_range(d.first);
+					auto r = _extensionsAndDelegatesMap.equal_range(d.first);
 					for (auto i=r.first; i!=r.second; ++i)
 						ext.push_back({i->second, d.second->_name});
 				}
@@ -381,7 +408,7 @@ namespace Assets
 		RegisteredCompilerId associatedCompiler,
 		const std::string& commaSeparatedExtensions)
 	{
-		ScopedLock(_pimpl->_delegatesLock);
+		ScopedLock(_delegatesLock);
 		auto i = commaSeparatedExtensions.begin();
 		for (;;) {
 			while (i != commaSeparatedExtensions.end() && (*i == ' ' || *i == '\t' || *i == ',')) ++i;
@@ -396,7 +423,7 @@ namespace Assets
 				if (*i != ' ' && *i != '\t') lastNonWhitespace = i;
 			}
 			if (lastNonWhitespace != commaSeparatedExtensions.end()) {
-				_pimpl->_extensionsAndDelegatesMap.insert({associatedCompiler, std::string{tokenBegin, lastNonWhitespace+1}});
+				_extensionsAndDelegatesMap.insert({associatedCompiler, std::string{tokenBegin, lastNonWhitespace+1}});
 			}
 		}
 	}
@@ -409,19 +436,23 @@ namespace Assets
 
 	void IntermediateCompilers::FlushCachedMarkers()
 	{
-		ScopedLock(_pimpl->_delegatesLock);
-		_pimpl->_markers.clear();
+		ScopedLock(_delegatesLock);
+		_markers.clear();
 	}
 
 	IntermediateCompilers::IntermediateCompilers(
 		const std::shared_ptr<IntermediatesStore>& store)
+	: _store(store)
 	{ 
-		_pimpl = std::make_shared<Pimpl>(); 
-		_pimpl->_store = store;
 	}
 	IntermediateCompilers::~IntermediateCompilers() {}
 
 	IIntermediateCompileMarker::~IIntermediateCompileMarker() {}
+
+	std::shared_ptr<IIntermediateCompilers> CreateIntermediateCompilers(const std::shared_ptr<IntermediatesStore>& store)
+	{
+		return std::make_shared<IntermediateCompilers>(store);
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -494,7 +525,7 @@ namespace Assets
 	}
 
 	std::vector<IntermediateCompilers::RegisteredCompilerId> DiscoverCompileOperations(
-		IntermediateCompilers& compilerManager,
+		IIntermediateCompilers& compilerManager,
 		StringSection<> librarySearch,
 		const DirectorySearchRules& searchRules)
 	{

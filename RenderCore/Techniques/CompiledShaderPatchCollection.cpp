@@ -385,9 +385,9 @@ namespace RenderCore { namespace Techniques
 		IShaderSource::ShaderByteCodeBlob _byteCode;
 	};
 
-	::Assets::IntermediateCompilers::CompilerRegistration RegisterInstantiateShaderGraphCompiler(
+	::Assets::IIntermediateCompilers::CompilerRegistration RegisterInstantiateShaderGraphCompiler(
 		const std::shared_ptr<IShaderSource>& shaderSource,
-		::Assets::IntermediateCompilers& intermediateCompilers)
+		::Assets::IIntermediateCompilers& intermediateCompilers)
 	{
 		auto result = intermediateCompilers.RegisterCompiler(
 			"shader-graph-compiler",
@@ -428,7 +428,7 @@ namespace RenderCore { namespace Techniques
 					descriptiveName << res._entryPoint << "[" << definesTable << "]" << res._shaderModel;
 				}
 
-				return ::Assets::IntermediateCompilers::SplitArchiveName { archiveName.AsString(), entryId, descriptiveName.AsString() };
+				return ::Assets::IIntermediateCompilers::SplitArchiveName { archiveName.AsString(), entryId, descriptiveName.AsString() };
 			}
 			);
 

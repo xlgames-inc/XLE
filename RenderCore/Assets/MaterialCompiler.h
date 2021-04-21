@@ -31,8 +31,8 @@ namespace RenderCore { namespace Assets
 	};
 #endif
 
-	::Assets::IntermediateCompilers::CompilerRegistration RegisterMaterialCompiler(
-		::Assets::IntermediateCompilers& intermediateCompilers);
+	::Assets::IIntermediateCompilers::CompilerRegistration RegisterMaterialCompiler(
+		::Assets::IIntermediateCompilers& intermediateCompilers);
 
 }}
 

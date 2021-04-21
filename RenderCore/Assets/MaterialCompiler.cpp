@@ -206,8 +206,8 @@ namespace RenderCore { namespace Assets
 		std::exception_ptr _compilationException;
 	};
 
-	::Assets::IntermediateCompilers::CompilerRegistration RegisterMaterialCompiler(
-		::Assets::IntermediateCompilers& intermediateCompilers)
+	::Assets::IIntermediateCompilers::CompilerRegistration RegisterMaterialCompiler(
+		::Assets::IIntermediateCompilers& intermediateCompilers)
 	{
 		auto result = intermediateCompilers.RegisterCompiler(
 			"material-scaffold-compiler",

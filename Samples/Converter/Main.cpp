@@ -69,7 +69,7 @@ namespace Converter
 		auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
 		auto discoveredOperations = ::Assets::DiscoverCompileOperations("*Conversion.dll");
-		auto generalCompiler = std::make_shared<::Assets::IntermediateCompilers>(
+		auto generalCompiler = ::Assets::CreateIntermediateCompilers(
 			MakeIteratorRange(discoveredOperations),
 			nullptr);
 		compilers.AddCompiler(generalCompiler);

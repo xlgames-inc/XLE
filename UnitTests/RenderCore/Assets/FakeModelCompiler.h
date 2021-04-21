@@ -8,6 +8,6 @@
 
 namespace UnitTests
 {
-		::Assets::IntermediateCompilers::CompilerRegistration RegisterFakeModelCompiler(
-			::Assets::IntermediateCompilers& intermediateCompilers);
+		::Assets::IIntermediateCompilers::CompilerRegistration RegisterFakeModelCompiler(
+			::Assets::IIntermediateCompilers& intermediateCompilers);
 }

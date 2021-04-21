@@ -39,8 +39,8 @@ namespace Assets
 	class DirectorySearchRules;
 	DirectorySearchRules DefaultLibrarySearchDirectories();
 
-	std::vector<IntermediateCompilers::RegisteredCompilerId> DiscoverCompileOperations(
-		IntermediateCompilers& compilerManager,
+	std::vector<IIntermediateCompilers::RegisteredCompilerId> DiscoverCompileOperations(
+		IIntermediateCompilers& compilerManager,
 		StringSection<> librarySearch,
 		const DirectorySearchRules& searchRules = DefaultLibrarySearchDirectories());
 }

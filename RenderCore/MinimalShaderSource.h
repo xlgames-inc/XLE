@@ -63,9 +63,9 @@ namespace RenderCore
 			StringSection<::Assets::ResChar> definesTable) const;
 	};
 
-	::Assets::IntermediateCompilers::CompilerRegistration RegisterShaderCompiler(
+	::Assets::IIntermediateCompilers::CompilerRegistration RegisterShaderCompiler(
 		const std::shared_ptr<IShaderSource>& shaderSource,
-		::Assets::IntermediateCompilers& intermediateCompilers);
+		::Assets::IIntermediateCompilers& intermediateCompilers);
 }
 
 

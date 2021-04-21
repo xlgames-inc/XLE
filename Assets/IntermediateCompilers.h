@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "../Utility/MemoryUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include <memory>
 #include <functional>
@@ -22,11 +21,11 @@ namespace Assets
 	class DependencyValidation;
 	using TargetCode = uint64_t;
 
-    class IntermediateCompilers
+    class IIntermediateCompilers
     {
     public:
-        std::shared_ptr<IIntermediateCompileMarker> Prepare(TargetCode, InitializerPack&&);
-        void StallOnPendingOperations(bool cancelAll);
+        virtual std::shared_ptr<IIntermediateCompileMarker> Prepare(TargetCode, InitializerPack&&) = 0;
+        virtual void StallOnPendingOperations(bool cancelAll) = 0;
 		
 		struct SplitArchiveName { std::string _archive; uint64_t _entryId = 0ull; std::string _descriptiveName; };
 		using CompileOperationDelegate = std::function<std::shared_ptr<ICompileOperation>(const InitializerPack&)>;
@@ -37,46 +36,40 @@ namespace Assets
 		{
 			RegisteredCompilerId _registrationId = ~0ull;
 		};
-		CompilerRegistration RegisterCompiler(
+		virtual CompilerRegistration RegisterCompiler(
 			const std::string& name,										///< string name for the compiler, usually something user-presentable
 			const std::string& shortName,									///< shortened name, for the intermediate assets store
 			ConsoleRig::LibVersionDesc srcVersion,							///< version information for the module (propagated onto any assets written to disk)
 			const DependencyValidation& compilerDepVal,						///< dependency validation for the compiler shared library itself. Can trigger recompiles if the compiler changes
 			CompileOperationDelegate&& delegate,							///< delegate that can create the ICompileOperation for a given asset
 			ArchiveNameDelegate&& archiveNameDelegate = {}					///< delegate used to store the artifacts with in ArchiveCache, rather than individual files (optional)
-			);
+			) = 0;
 
-		void DeregisterCompiler(RegisteredCompilerId id);
+		virtual void DeregisterCompiler(RegisteredCompilerId id) = 0;
 
 		// AssociateRequest associates a pattern with a compiler (previously registered with RegisterCompiler)
 		// When requests are made (via Prepare) that match the pattern, that compiler can be selected to
 		// handle the request
-		void AssociateRequest(
+		virtual void AssociateRequest(
 			RegisteredCompilerId compiler,
 			IteratorRange<const uint64_t*> outputAssetTypes,	///< compiler can generate these output asset types (though this isn't strict, the ICompileOperation outputs can vary on a per-asset basis)
 			const std::string& initializerRegexFilter = ".*"	///< compiler will be invoked for assets that match this regex filter
-			);
+			) = 0;
 
 		//
 
 		// RegisterExtensions & GetExtensionsForTargetCodes are both used for FileOpen dialogs in tools
 		// It's so the tool knows what model formats are available to load (for example)
-		void RegisterExtensions(RegisteredCompilerId associatedCompiler, const std::string& commaSeparatedExtensions);
-		std::vector<std::pair<std::string, std::string>> GetExtensionsForTargetCode(TargetCode typeCode);
+		virtual void RegisterExtensions(RegisteredCompilerId associatedCompiler, const std::string& commaSeparatedExtensions) = 0;
+		virtual std::vector<std::pair<std::string, std::string>> GetExtensionsForTargetCode(TargetCode typeCode) = 0;
 
 		//
 
-		void FlushCachedMarkers();
-		
-		IntermediateCompilers(
-			const std::shared_ptr<IntermediatesStore>& store);
-        ~IntermediateCompilers();
-    protected:
-        class Pimpl;
-        std::shared_ptr<Pimpl> _pimpl;
+		virtual void FlushCachedMarkers() = 0;
+		virtual ~IIntermediateCompilers() = default;
+	};
 
-        class Marker;
-    };
+	std::shared_ptr<IIntermediateCompilers> CreateIntermediateCompilers(const std::shared_ptr<IntermediatesStore>& store);
 
 	class IArtifactCollection;
 	class ArtifactCollectionFuture;

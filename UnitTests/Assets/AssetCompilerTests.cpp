@@ -154,7 +154,7 @@ namespace UnitTests
 		UnitTest_SetWorkingDirectory();
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
 		
-		auto compilers = std::make_shared<::Assets::IntermediateCompilers>(nullptr);
+		auto compilers = ::Assets::CreateIntermediateCompilers(nullptr);
 
 		SECTION("Register/Deregister")
 		{
@@ -286,7 +286,7 @@ namespace UnitTests
 		}
 	}
 
-	static ::Assets::IntermediateCompilers::CompilerRegistration RegisterUnitTestCompiler(::Assets::IntermediateCompilers& compilers)
+	static ::Assets::IIntermediateCompilers::CompilerRegistration RegisterUnitTestCompiler(::Assets::IIntermediateCompilers& compilers)
 	{
 		uint64_t outputTypes[] = { Type_UnitTestArtifact };
 		auto registration = compilers.RegisterCompiler(
@@ -326,7 +326,7 @@ namespace UnitTests
 			tempDirPath.string().c_str(),
 			ConsoleRig::GetLibVersionDesc()._versionString,
 			GetConfigString());
-		auto compilers = std::make_shared<::Assets::IntermediateCompilers>(intermediateStore);
+		auto compilers = ::Assets::CreateIntermediateCompilers(intermediateStore);
 		auto registration = RegisterUnitTestCompiler(*compilers);
 
 		::Assets::ArtifactRequest requests[] {
@@ -401,7 +401,7 @@ namespace UnitTests
 			tempDirPath.string().c_str(),
 			ConsoleRig::GetLibVersionDesc()._versionString,
 			GetConfigString());
-		auto compilers = std::make_shared<::Assets::IntermediateCompilers>(intermediateStore);
+		auto compilers = ::Assets::CreateIntermediateCompilers(intermediateStore);
 		auto registration = RegisterUnitTestCompiler(*compilers);
 
 		SECTION("Exceptions from ICompileOperation")
@@ -467,7 +467,7 @@ namespace UnitTests
 			intermediateStore->FlushToDisk();
 			compilers->DeregisterCompiler(registration._registrationId);
 			compilers.reset();
-			compilers = std::make_shared<::Assets::IntermediateCompilers>(intermediateStore);
+			compilers = ::Assets::CreateIntermediateCompilers(intermediateStore);
 			registration = RegisterUnitTestCompiler(*compilers);
 
 			auto marker = compilers->Prepare(Type_UnitTestArtifact, ::Assets::InitializerPack { "unit-test-asset-throw-from-serialize-target" } );

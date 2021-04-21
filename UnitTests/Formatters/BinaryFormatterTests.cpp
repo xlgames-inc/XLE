@@ -50,7 +50,7 @@ namespace UnitTests
 			float AnotherValue;
 		};
 
-		Formatters::BinarySchemata decl(testBlock, {}, nullptr);
+		Formatters::BinarySchemata decl(testBlock, {}, {});
 
 		std::vector<uint64_t> bigBuffer(1024, 0);
 		((templ*)bigBuffer.data())->SomeValue = 5 + 0x30;

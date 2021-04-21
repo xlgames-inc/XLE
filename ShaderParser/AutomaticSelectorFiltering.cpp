@@ -336,8 +336,8 @@ namespace ShaderSourceParser
 		std::exception_ptr _compilationException;
 	};
 
-	::Assets::IntermediateCompilers::CompilerRegistration RegisterShaderSelectorFilteringCompiler(
-		::Assets::IntermediateCompilers& intermediateCompilers)
+	::Assets::IIntermediateCompilers::CompilerRegistration RegisterShaderSelectorFilteringCompiler(
+		::Assets::IIntermediateCompilers& intermediateCompilers)
 	{
 		auto result = intermediateCompilers.RegisterCompiler(
 			"shader-selector-filtering-compiler",
@@ -349,7 +349,7 @@ namespace ShaderSourceParser
 			},
 			[](::Assets::TargetCode targetCode, const ::Assets::InitializerPack& initializers) {
 				assert(targetCode == SelectorFilteringRules::CompileProcessType);
-				::Assets::IntermediateCompilers::SplitArchiveName result;
+				::Assets::IIntermediateCompilers::SplitArchiveName result;
 				auto fn = initializers.GetInitializer<std::string>(0);
 				auto splitFN = MakeFileNameSplitter(fn);
 				result._entryId = Hash64(fn);

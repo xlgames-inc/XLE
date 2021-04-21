@@ -239,8 +239,8 @@ namespace UnitTests
 		return std::make_shared<FakeModelCompileOperation>();
 	}
 
-	::Assets::IntermediateCompilers::CompilerRegistration RegisterFakeModelCompiler(
-		::Assets::IntermediateCompilers& intermediateCompilers)
+	::Assets::IIntermediateCompilers::CompilerRegistration RegisterFakeModelCompiler(
+		::Assets::IIntermediateCompilers& intermediateCompilers)
 	{
 		auto result = intermediateCompilers.RegisterCompiler(
 			"fake-model-scaffold-compiler",

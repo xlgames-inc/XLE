@@ -70,8 +70,8 @@ namespace ShaderSourceParser
 		uint64_t _hash = 0ull;
 	};
 
-	::Assets::IntermediateCompilers::CompilerRegistration RegisterShaderSelectorFilteringCompiler(
-		::Assets::IntermediateCompilers& intermediateCompilers);
+	::Assets::IIntermediateCompilers::CompilerRegistration RegisterShaderSelectorFilteringCompiler(
+		::Assets::IIntermediateCompilers& intermediateCompilers);
 
 	SelectorFilteringRules GenerateSelectorFilteringRules(StringSection<> sourceCode);
 
