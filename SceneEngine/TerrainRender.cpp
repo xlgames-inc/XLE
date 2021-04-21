@@ -421,9 +421,9 @@ namespace SceneEngine
             bool invalidation = false;
             if (i->second->_sourceCell) {
                 const auto& cell2 = *i->second;
-                invalidation |= (cell2._sourceCell->GetDependencyValidation()->GetValidationIndex()!=0);
+                invalidation |= (cell2._sourceCell->GetDependencyValidation().GetValidationIndex()!=0);
                 for (auto q=cell2._coverage.cbegin(); q!=cell2._coverage.cend(); ++q)
-                    invalidation |= (q->_source->GetDependencyValidation()->GetValidationIndex()!=0);
+                    invalidation |= (q->_source->GetDependencyValidation().GetValidationIndex()!=0);
             }
             if (invalidation) {
                     // before we delete it, we need to erase it from the pending uploads

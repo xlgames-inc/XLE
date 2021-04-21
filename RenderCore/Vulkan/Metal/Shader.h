@@ -63,7 +63,7 @@ namespace RenderCore { namespace Metal_Vulkan
         bool DynamicLinkingEnabled() const;
 		uint64_t GetInterfaceBindingGUID() const { return _interfaceBindingHash; }
 
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _validationCallback; }
 
 		ShaderProgram(ShaderProgram&&) = default;
         ShaderProgram& operator=(ShaderProgram&&) = default;
@@ -99,7 +99,7 @@ namespace RenderCore { namespace Metal_Vulkan
     protected:
 		CompiledShaderByteCode _compiledCode[s_maxShaderStages];
 		VulkanSharedPtr<VkShaderModule> _modules[s_maxShaderStages];
-        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
+        ::Assets::DependencyValidation   _validationCallback;
 		std::shared_ptr<CompiledPipelineLayout> _pipelineLayout;
 		uint64_t _interfaceBindingHash;
     };
@@ -127,7 +127,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		ComputeShader& operator=(const ComputeShader&) = default;
 		ComputeShader(const ComputeShader&) = default;
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const     { return _validationCallback; }
 		uint64_t GetInterfaceBindingGUID() const { return _interfaceBindingHash; }
 
 		// Legacy asset based API --
@@ -138,7 +138,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			StringSection<::Assets::ResChar> definesTable = {});
 
     private:
-        std::shared_ptr<::Assets::DependencyValidation>		_validationCallback;
+        ::Assets::DependencyValidation						_validationCallback;
 		VulkanSharedPtr<VkShaderModule>						_module;
 		CompiledShaderByteCode								_compiledCode;
 		std::shared_ptr<CompiledPipelineLayout> 			_pipelineLayout;

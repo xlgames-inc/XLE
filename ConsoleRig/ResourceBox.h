@@ -72,7 +72,7 @@ namespace ConsoleRig
         auto& boxTable = Internal::GetBoxTable<Box>();
         auto i = LowerBound(boxTable, hashValue);
         if (i!=boxTable.end() && i->first==hashValue) {
-            if (i->second->GetDependencyValidation()->GetValidationIndex()!=0) {
+            if (i->second->GetDependencyValidation().GetValidationIndex()!=0) {
                 i->second = std::make_unique<Box>(desc);
 				Log(Verbose) << "Created cached box for type (" << typeid(Box).name() << ") -- rebuilding due to validation failure. HashValue:(0x" << std::hex << hashValue << std::dec << ")" << std::endl;
             }

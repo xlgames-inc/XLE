@@ -694,7 +694,7 @@ namespace SceneEngine
 
         renderer->QueueUploads(*state);
 
-        if (!_pimpl->_textures || _pimpl->_textures->GetDependencyValidation()->GetValidationIndex() > 0) {
+        if (!_pimpl->_textures || _pimpl->_textures->GetDependencyValidation().GetValidationIndex() > 0) {
             _pimpl->_textures.reset();
             _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(
                 context, _pimpl->_matCfg, _pimpl->_cfg.EncodedGradientFlags());

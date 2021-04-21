@@ -32,8 +32,9 @@ namespace RenderCore { namespace Metal_Vulkan
 									const CompiledShaderByteCode& ps)
     {
 		_pipelineLayout = checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout);
-		_validationCallback = std::make_shared<::Assets::DependencyValidation>();
 		_interfaceBindingHash = DefaultSeed64;
+
+		_validationCallback = ::Assets::GetDepValSys().Make();
 
 		if (vs.GetStage() != ShaderStage::Null) {
 			assert(vs.GetStage() == ShaderStage::Vertex);
@@ -41,7 +42,7 @@ namespace RenderCore { namespace Metal_Vulkan
             _modules[(unsigned)ShaderStage::Vertex] = factory.CreateShaderModule(byteCode);
 			_compiledCode[(unsigned)ShaderStage::Vertex] = vs;
 			assert(_modules[(unsigned)ShaderStage::Vertex]);
-			::Assets::RegisterAssetDependency(_validationCallback, vs.GetDependencyValidation());
+			_validationCallback.RegisterDependency(vs.GetDependencyValidation());
 
 			_interfaceBindingHash = Hash64(byteCode.begin(), byteCode.end(), _interfaceBindingHash);
 		}
@@ -52,7 +53,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			_modules[(unsigned)ShaderStage::Pixel] = factory.CreateShaderModule(byteCode);
 			_compiledCode[(unsigned)ShaderStage::Pixel] = ps;
 			assert(_modules[(unsigned)ShaderStage::Pixel]);
-			::Assets::RegisterAssetDependency(_validationCallback, ps.GetDependencyValidation());
+			_validationCallback.RegisterDependency(ps.GetDependencyValidation());
 
 			_interfaceBindingHash = Hash64(byteCode.begin(), byteCode.end(), _interfaceBindingHash);
 		}
@@ -76,7 +77,7 @@ namespace RenderCore { namespace Metal_Vulkan
             _modules[(unsigned)ShaderStage::Geometry] = factory.CreateShaderModule(byteCode);
 			_compiledCode[(unsigned)ShaderStage::Geometry] = gs;
 			assert(_modules[(unsigned)ShaderStage::Geometry]);
-			::Assets::RegisterAssetDependency(_validationCallback, gs.GetDependencyValidation());
+			_validationCallback.RegisterDependency(gs.GetDependencyValidation());
 
 			_interfaceBindingHash = Hash64(byteCode.begin(), byteCode.end(), _interfaceBindingHash);
 		}
@@ -98,7 +99,7 @@ namespace RenderCore { namespace Metal_Vulkan
             _modules[(unsigned)ShaderStage::Hull] = factory.CreateShaderModule(byteCode);
 			_compiledCode[(unsigned)ShaderStage::Hull] = hs;
 			assert(_modules[(unsigned)ShaderStage::Hull]);
-			::Assets::RegisterAssetDependency(_validationCallback, hs.GetDependencyValidation());
+			_validationCallback.RegisterDependency(hs.GetDependencyValidation());
 
 			_interfaceBindingHash = Hash64(byteCode.begin(), byteCode.end(), _interfaceBindingHash);
 		}
@@ -109,7 +110,7 @@ namespace RenderCore { namespace Metal_Vulkan
             _modules[(unsigned)ShaderStage::Domain] = factory.CreateShaderModule(byteCode);
 			_compiledCode[(unsigned)ShaderStage::Domain] = ds;
 			assert(_modules[(unsigned)ShaderStage::Domain]);
-			::Assets::RegisterAssetDependency(_validationCallback, ds.GetDependencyValidation());
+			_validationCallback.RegisterDependency(ds.GetDependencyValidation());
 
 			_interfaceBindingHash = Hash64(byteCode.begin(), byteCode.end(), _interfaceBindingHash);
 		}
@@ -156,8 +157,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			_interfaceBindingHash = Hash64(byteCode.begin(), byteCode.end());
 		}
 
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
+        _validationCallback = compiledShader.GetDependencyValidation();
 
 		// auto& globals = Internal::VulkanGlobalsTemp::GetInstance();
 		// Assets::RegisterAssetDependency(_validationCallback, globals._computeRootSignatureFile->GetDependencyValidation());
@@ -192,11 +192,11 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	static void TryRegisterDependency(
-		::Assets::DepValPtr& dst,
-		const ::Assets::DepValPtr& dependency)
+		::Assets::DependencyValidation& dst,
+		const ::Assets::DependencyValidation& dependency)
 	{
 		if (dependency)
-			::Assets::RegisterAssetDependency(dst, dependency);
+			dst.RegisterDependency(dependency);
 	}
 
 	void ShaderProgram::ConstructToFuture(

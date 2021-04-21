@@ -31,7 +31,7 @@ namespace RenderCore
 
     ShaderStage ILowLevelCompiler::ResId::AsShaderStage() const { return RenderCore::AsShaderStage(_shaderModel); }
 
-	CompiledShaderByteCode::CompiledShaderByteCode(const ::Assets::Blob& shader, const ::Assets::DepValPtr& depVal, StringSection<Assets::ResChar>)
+	CompiledShaderByteCode::CompiledShaderByteCode(const ::Assets::Blob& shader, const ::Assets::DependencyValidation& depVal, StringSection<Assets::ResChar>)
 	: _shader(shader)
 	, _depVal(depVal)
 	{
@@ -46,7 +46,6 @@ namespace RenderCore
 
 	CompiledShaderByteCode::CompiledShaderByteCode()
 	{
-		_depVal = std::make_shared<::Assets::DependencyValidation>();
 	}
 
     CompiledShaderByteCode::~CompiledShaderByteCode() {}

@@ -186,7 +186,7 @@ namespace RenderCore
 		ShaderStage		GetStage() const;
         bool            DynamicLinkingEnabled() const;
 
-		CompiledShaderByteCode(const ::Assets::Blob&, const ::Assets::DepValPtr&, StringSection<::Assets::ResChar>);
+		CompiledShaderByteCode(const ::Assets::Blob&, const ::Assets::DependencyValidation&, StringSection<::Assets::ResChar>);
 		CompiledShaderByteCode();
         ~CompiledShaderByteCode();
 
@@ -195,13 +195,13 @@ namespace RenderCore
         CompiledShaderByteCode(CompiledShaderByteCode&&) = default;
         CompiledShaderByteCode& operator=(CompiledShaderByteCode&&) = default;
 
-        auto        GetDependencyValidation() const -> const ::Assets::DepValPtr& { return _depVal; }
+        auto        GetDependencyValidation() const -> const ::Assets::DependencyValidation& { return _depVal; }
 
         static const uint64 CompileProcessType;
 
     private:
 		::Assets::Blob			_shader;
-		::Assets::DepValPtr		_depVal;
+		::Assets::DependencyValidation		_depVal;
     };
 }
 

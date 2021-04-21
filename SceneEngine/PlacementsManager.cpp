@@ -342,7 +342,7 @@ namespace SceneEngine
     {
         auto i = LowerBound(_items, filenameHash);
         if (i != _items.end() && i->first == filenameHash) {
-            if (i->second->_placements->GetDependencyValidation()->GetValidationIndex()!=0)
+            if (i->second->_placements->GetDependencyValidation().GetValidationIndex()!=0)
                 i->second->Reload();
             return i->second.get();
         } 
@@ -520,7 +520,7 @@ namespace SceneEngine
         }
 
             // check if we need to reload placements
-        if (i2->second._placements->_placements->GetDependencyValidation()->GetValidationIndex() != 0) {
+        if (i2->second._placements->_placements->GetDependencyValidation().GetValidationIndex() != 0) {
             i2->second._placements->Reload();
             i2->second._quadTree.reset();
         }

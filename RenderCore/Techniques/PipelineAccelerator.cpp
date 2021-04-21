@@ -973,7 +973,7 @@ namespace RenderCore { namespace Techniques
 						auto a = accelerator.second.lock();
 						if (a) {
 							auto& pipeline = a->PipelineForCfgId(cfgId);
-							if (!pipeline._future || (pipeline._future->GetAssetState() != ::Assets::AssetState::Pending && pipeline._future->GetDependencyValidation()->GetValidationIndex() != 0)) {
+							if (!pipeline._future || (pipeline._future->GetAssetState() != ::Assets::AssetState::Pending && pipeline._future->GetDependencyValidation().GetValidationIndex() != 0)) {
 								pipeline = a->CreatePipelineForSequencerState(*result, _globalSelectors, _pipelineLayout, _matDescSetLayout, _sharedPools);
 							}
 						}
@@ -1039,7 +1039,7 @@ namespace RenderCore { namespace Techniques
 						continue;
 
 					auto& p = a->_finalPipelines[c];
-					if (p._future->GetAssetState() != ::Assets::AssetState::Pending && p._future->GetDependencyValidation()->GetValidationIndex() != 0) {
+					if (p._future->GetAssetState() != ::Assets::AssetState::Pending && p._future->GetDependencyValidation().GetValidationIndex() != 0) {
 						// It's out of date -- let's rebuild and reassign it
 						p = a->CreatePipelineForSequencerState(*lockedSequencerConfigs[c], _globalSelectors, _pipelineLayout, _matDescSetLayout, _sharedPools);
 					}

@@ -498,14 +498,14 @@ namespace RenderCore { namespace Metal_DX11
     public:
         ID3D11Module* GetUnderlying() { return _module.get(); }
         ID3D11LibraryReflection* GetReflection() { return _reflection.get(); }
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _dependencyValidation; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _dependencyValidation; }
 
         FunctionLinkingModule(StringSection<::Assets::ResChar> initializer, StringSection<::Assets::ResChar> defines);
         ~FunctionLinkingModule();
     private:
         intrusive_ptr<ID3D11Module> _module;
         intrusive_ptr<ID3D11LibraryReflection> _reflection;
-		::Assets::DepValPtr _dependencyValidation;
+		::Assets::DependencyValidation _dependencyValidation;
     };
 
     FunctionLinkingModule::FunctionLinkingModule(StringSection<::Assets::ResChar> initializer, StringSection<::Assets::ResChar> defines)
@@ -573,7 +573,7 @@ namespace RenderCore { namespace Metal_DX11
 			StringSection<> identifier,
             const char shaderModel[]);
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _dependencyValidation; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _dependencyValidation; }
 
         using Section = StringSection<char>;
         FunctionLinkingGraph(Section script, Section shaderProfile, Section defines, const ::Assets::DirectorySearchRules& searchRules);
@@ -595,7 +595,7 @@ namespace RenderCore { namespace Metal_DX11
         std::vector<std::pair<std::string, AliasTarget>> _aliases;
 
         std::vector<::Assets::DependentFileState> _depFiles;
-		::Assets::DepValPtr _dependencyValidation;
+		::Assets::DependencyValidation _dependencyValidation;
         std::vector<std::pair<Section, Section>> _referencedFunctions;
 
         std::string _shaderProfile, _defines;
@@ -614,7 +614,7 @@ namespace RenderCore { namespace Metal_DX11
             Throw(::Exceptions::BasicLabel("Failure while creating D3D function linking graph"));
         _graph = moveptr(graphRaw);
 
-		_dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
+        _dependencyValidation = ::Assets::GetDepValSys().Make();
 
 		TRY
 		{
@@ -942,7 +942,7 @@ namespace RenderCore { namespace Metal_DX11
                     Throw(FormatException("Attempting to reassign module that is already assigned. Check for naming conflicts.", startLoc));
 
                 auto module = ParseModuleExpression(parameterBlock, searchRules, startLoc);
-				::Assets::RegisterAssetDependency(_dependencyValidation, module.GetDependencyValidation());
+				_dependencyValidation.RegisterDependency(module.GetDependencyValidation());
                 _modules.insert(i, std::make_pair(variableName, std::move(module)));
             }
             break;

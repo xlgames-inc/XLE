@@ -124,7 +124,7 @@ namespace Assets
 					if (artifactCollection) {
 						thatFuture.SetInvalidAsset(artifactCollection->GetDependencyValidation(), GetErrorMessage(*artifactCollection));
 					} else {
-						thatFuture.SetInvalidAsset(nullptr, AsBlob("No artifact collection of the requested type was found"));
+						thatFuture.SetInvalidAsset({}, AsBlob("No artifact collection of the requested type was found"));
 					}
 					return false;
 				}
@@ -164,7 +164,7 @@ namespace Assets
 			// version number is bad). We could attempt to push this into a background thread, also
 
 			auto existingArtifact = marker->GetExistingAsset(targetCode);
-			if (existingArtifact && existingArtifact->GetDependencyValidation() && existingArtifact->GetDependencyValidation()->GetValidationIndex()==0) {
+			if (existingArtifact && existingArtifact->GetDependencyValidation() && existingArtifact->GetDependencyValidation().GetValidationIndex()==0) {
 				bool doRecompile = false;
 				AutoConstructToFuture(future, *existingArtifact, targetCode);
 				if (!doRecompile) return;

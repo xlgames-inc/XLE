@@ -121,7 +121,7 @@ namespace UnitTests
 					::Assets::InitializerPack { "ut-data/ShaderWithError.hlsl:main:vs_*" });
 				REQUIRE(compileMarker != nullptr);
 				auto collection = compileMarker->GetExistingAsset(RenderCore::CompiledShaderByteCode::CompileProcessType);
-				if (!collection->GetDependencyValidation() || collection->GetDependencyValidation()->GetValidationIndex()!=0) {
+				if (!collection->GetDependencyValidation() || collection->GetDependencyValidation().GetValidationIndex()!=0) {
 					auto compiledFromFile = compileMarker->InvokeCompile();
 					REQUIRE(compiledFromFile != nullptr);
 					compiledFromFile->StallWhilePending();

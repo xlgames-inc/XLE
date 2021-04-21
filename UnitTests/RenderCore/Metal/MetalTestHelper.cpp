@@ -44,6 +44,10 @@ namespace UnitTests
 
 	MetalTestHelper::MetalTestHelper(RenderCore::UnderlyingAPI api)
 	{
+		// Basically every test needs to use dep vals; so let's ensure the dep val sys exists here
+		if (!_depValSys)
+			_depValSys = ::Assets::CreateDepValSys();
+
 		_device = RenderCore::CreateDevice(api);
 
 		// For GLES, we must initialize the root context to something. Since we're not going to be
@@ -344,7 +348,7 @@ namespace UnitTests
 		}
 		return RenderCore::CompiledShaderByteCode {
 			codeBlob._payload,
-			::Assets::AsDepVal(MakeIteratorRange(codeBlob._deps)),
+			::Assets::GetDepValSys().Make(MakeIteratorRange(codeBlob._deps)),
 			{}
 		};
 	}

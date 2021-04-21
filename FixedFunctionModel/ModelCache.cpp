@@ -172,7 +172,7 @@ namespace FixedFunctionModel
 
 		BoundingBox boundingBox = std::make_pair(Zero<Float3>(), Zero<Float3>());
 		auto renderer = _pimpl->_modelRenderers.Get(hashedModel);
-		if (!renderer || renderer->GetDependencyValidation()->GetValidationIndex() > 0) {
+		if (!renderer || renderer->GetDependencyValidation().GetValidationIndex() > 0) {
 			auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
 			searchRules.AddSearchDirectoryFromFilename(materialFilename);
 			auto suppScaff = _pimpl->LoadSupplementScaffolds(modelFilename, materialFilename, supplements);

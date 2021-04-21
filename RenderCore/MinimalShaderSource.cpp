@@ -213,7 +213,7 @@ namespace RenderCore
 			"shader-compiler",
 			"shader-compiler",
 			ConsoleRig::GetLibVersionDesc(),
-			nullptr,
+			{},
 			[shaderSource](const ::Assets::InitializerPack& initializers) {
 				std::string definesTable;
 				if (initializers.GetCount() > 1)

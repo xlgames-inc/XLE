@@ -166,7 +166,7 @@ namespace RenderCore { namespace Metal_DX11
 		typedef ID3D::ComputeShader*    UnderlyingType;
 		UnderlyingType                  GetUnderlying() const { return _underlying.get(); }
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _validationCallback; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _validationCallback; }
 
 		const CompiledShaderByteCode&       GetCompiledCode() const { return _compiledCode; }
 
@@ -178,7 +178,7 @@ namespace RenderCore { namespace Metal_DX11
 
 	private:
 		intrusive_ptr<ID3D::ComputeShader>      _underlying;
-		::Assets::DepValPtr						_validationCallback;
+		::Assets::DependencyValidation			_validationCallback;
 		CompiledShaderByteCode					_compiledCode;
 	};
 

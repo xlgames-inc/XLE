@@ -333,14 +333,14 @@ namespace ToolsRig
 
 		RendererState* TryActualize() const
 		{
-			if (_actualized && !_actualized->GetDependencyValidation()->GetValidationIndex())
+			if (_actualized && !_actualized->GetDependencyValidation().GetValidationIndex())
 				return _actualized.get();
 
 			if (_rendererStateFuture->GetAssetState() == ::Assets::AssetState::Pending)
 				return nullptr;
 
 			// Check if we need a reload -- 
-			if (_rendererStateFuture->GetDependencyValidation()->GetValidationIndex()) {
+			if (_rendererStateFuture->GetDependencyValidation().GetValidationIndex()) {
 				_actualized = nullptr;
 				BuildRendererStateFuture();
 			}

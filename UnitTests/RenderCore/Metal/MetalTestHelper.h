@@ -9,6 +9,7 @@
 #include "../../../RenderCore/FrameBufferDesc.h"
 #include "../../../RenderCore/UniformsStream.h"
 #include "../../../RenderCore/Metal/Shader.h"
+#include "../../../ConsoleRig/AttachablePtr.h"
 #include <memory>
 #include <map>
 
@@ -31,6 +32,8 @@ namespace UnitTests
 
         std::shared_ptr<RenderCore::ICompiledPipelineLayout> _pipelineLayout;
         std::shared_ptr<RenderCore::LegacyRegisterBindingDesc> _defaultLegacyBindings;
+
+        ConsoleRig::AttachablePtr<::Assets::IDependencyValidationSystem> _depValSys;
 
         void BeginFrameCapture();
         void EndFrameCapture();
