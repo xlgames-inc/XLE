@@ -674,23 +674,26 @@ namespace Assets
             void* _future;
             FutureResolution_CheckStatusFn _checkStatusFn;
         };
-        static thread_local std::vector<ActiveFutureResolutionMoment> s_activeFutureResolutionMoments;
+        static thread_local std::unique_ptr<std::vector<ActiveFutureResolutionMoment>> s_activeFutureResolutionMoments;
         void FutureResolution_BeginMoment(void* future, FutureResolution_CheckStatusFn checkStatusFn)
         {
             assert((*checkStatusFn)(future) == AssetState::Pending);
-            s_activeFutureResolutionMoments.push_back({future, checkStatusFn});
+            if (!s_activeFutureResolutionMoments)
+                s_activeFutureResolutionMoments = std::make_unique<std::vector<ActiveFutureResolutionMoment>>();
+            s_activeFutureResolutionMoments->push_back({future, checkStatusFn});
         }
 
 		void FutureResolution_EndMoment(void* future)
         {
-            for (auto i=s_activeFutureResolutionMoments.rbegin(); i!=s_activeFutureResolutionMoments.rend(); ++i) {
+            assert(s_activeFutureResolutionMoments);
+            for (auto i=s_activeFutureResolutionMoments->rbegin(); i!=s_activeFutureResolutionMoments->rend(); ++i) {
                 if (i->_future != future)
                     continue;
 
                 // _checkStatusFn could potentially modify the s_activeFutureResolutionMoments array. So to be safe we should erase
                 // before we call it
                 auto checkStatusFn = std::move(i->_checkStatusFn);
-                s_activeFutureResolutionMoments.erase((i+1).base());
+                s_activeFutureResolutionMoments->erase((i+1).base());
 
                 auto newState = checkStatusFn(future);
                 assert(newState == AssetState::Ready || newState == AssetState::Invalid);
@@ -701,7 +704,8 @@ namespace Assets
 
 		bool FutureResolution_DeadlockDetection(void* future)
         {
-            for (auto i=s_activeFutureResolutionMoments.rbegin(); i!=s_activeFutureResolutionMoments.rend(); ++i)
+            if (!s_activeFutureResolutionMoments) return false;
+            for (auto i=s_activeFutureResolutionMoments->rbegin(); i!=s_activeFutureResolutionMoments->rend(); ++i)
                 if (i->_future == future)
                     return true;
             return false;
