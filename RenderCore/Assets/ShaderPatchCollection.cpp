@@ -34,20 +34,17 @@ namespace RenderCore { namespace Assets
 	ShaderPatchCollection::ShaderPatchCollection()
 	{
 		_hash = 0;
-		_depVal = std::make_shared<::Assets::DependencyValidation>();
 	}
 
 	ShaderPatchCollection::ShaderPatchCollection(IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest>*> patches)
 	: _patches(patches.begin(), patches.end())
 	{
-		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		SortAndCalculateHash();
 	}
 
 	ShaderPatchCollection::ShaderPatchCollection(std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest>>&& patches)
 	: _patches(std::move(patches))
 	{
-		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		SortAndCalculateHash();
 	}
 
@@ -143,7 +140,7 @@ namespace RenderCore { namespace Assets
 		return result;
 	}
 
-	ShaderPatchCollection::ShaderPatchCollection(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules, const ::Assets::DepValPtr& depVal)
+	ShaderPatchCollection::ShaderPatchCollection(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules, const ::Assets::DependencyValidation& depVal)
 	: _depVal(depVal)
 	{
 		while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
@@ -168,7 +165,7 @@ namespace RenderCore { namespace Assets
 		SortAndCalculateHash();
 	}
 
-	std::vector<ShaderPatchCollection> DeserializeShaderPatchCollectionSet(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules, const ::Assets::DepValPtr& depVal)
+	std::vector<ShaderPatchCollection> DeserializeShaderPatchCollectionSet(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules, const ::Assets::DependencyValidation& depVal)
 	{
 		std::vector<ShaderPatchCollection> result;
 		while (formatter.TryBeginElement()) {

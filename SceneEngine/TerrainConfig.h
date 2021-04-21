@@ -54,7 +54,7 @@ namespace SceneEngine
         TerrainConfig(
             InputStreamFormatter<utf8>& formatter,
             const ::Assets::DirectorySearchRules& searchRules,
-			const ::Assets::DepValPtr&);
+			const ::Assets::DependencyValidation&);
         TerrainConfig();
 
         void        GetCellFilename(::Assets::ResChar buffer[], unsigned cnt, UInt2 cellIndex, TerrainCoverageId id) const;
@@ -79,7 +79,7 @@ namespace SceneEngine
 
         void        Write(OutputStreamFormatter& formatter) const;
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
     protected:
         unsigned    _nodeDimsInElements;
@@ -89,7 +89,7 @@ namespace SceneEngine
         float       _sunPathAngle;
         bool        _encodedGradientFlags;
         std::vector<CoverageLayer> _coverageLayers;
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
     };
 
     /// <summary>Describes the position and size of terrain in world coordinates<summary>

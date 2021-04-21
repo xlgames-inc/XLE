@@ -89,7 +89,7 @@ namespace ShaderSourceParser
 		std::set<std::string> _rawShaderFileIncludes;
 
 		/// List of dependency validations, which can be used for change tracking.
-		std::set<::Assets::DepValPtr> _depVals;
+		std::set<::Assets::DependencyValidation> _depVals;
 		std::set<::Assets::DependentFileState> _depFileStates;
 	};
 
@@ -137,7 +137,7 @@ namespace ShaderSourceParser
 		ShaderEntryPoint _entryPoint;
 		DependencyTable _dependencies;
 		std::vector<GraphLanguage::NodeGraphSignature::Parameter> _captures;
-		std::set<::Assets::DepValPtr> _depVals;
+		std::set<::Assets::DependencyValidation> _depVals;
 		std::set<::Assets::DependentFileState> _depFileStates;
 	};
 

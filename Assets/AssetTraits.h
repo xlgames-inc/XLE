@@ -219,7 +219,7 @@ namespace Assets
 	template<typename AssetType, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_FileSystem)>
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
 	{
-		auto depVal = GetDepValSys().Make(MakeIteratorRange(&initializer, &initializer+1));
+		auto depVal = GetDepValSys().Make(initializer);
 		TRY { 
 			auto file = MainFileSystem::OpenFileInterface(initializer, "rb");
 			return std::make_unique<AssetType>(
@@ -240,7 +240,7 @@ namespace Assets
 	template<typename AssetType, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_TextFile)>
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
 	{
-		auto depVal = GetDepValSys().Make(MakeIteratorRange(&initializer, &initializer+1));
+		auto depVal = GetDepValSys().Make(initializer);
 		TRY { 
 			auto file = MainFileSystem::OpenFileInterface(initializer, "rb");
 			file->Seek(0, OSServices::FileSeekAnchor::End);

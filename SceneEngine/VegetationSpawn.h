@@ -67,16 +67,16 @@ namespace SceneEngine
         VegetationSpawnConfig(
             Utility::InputStreamFormatter<utf8>& formatter,
             const ::Assets::DirectorySearchRules& searchRules,
-			const ::Assets::DepValPtr& depVal);
+			const ::Assets::DependencyValidation& depVal);
         VegetationSpawnConfig();
         ~VegetationSpawnConfig();
 
         void        Write(OutputStreamFormatter& formatter) const;
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
 	private:
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
     };
 
 #if 0

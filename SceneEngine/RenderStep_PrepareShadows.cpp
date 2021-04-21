@@ -45,7 +45,7 @@ namespace SceneEngine
 		std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources> _techniqueSharedResources;
 		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _shadowGenDelegate;
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _techniqueSetFile->GetDependencyValidation(); }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _techniqueSetFile->GetDependencyValidation(); }
 
 		class Desc
         {
@@ -353,11 +353,11 @@ namespace SceneEngine
         const Metal::ShaderProgram*    _shader;
         Metal::BoundUniforms           _uniforms;
         
-        const ::Assets::DepValPtr& GetDependencyValidation() const   { return _depVal; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return _depVal; }
         SFDResources(const Desc&);
         ~SFDResources();
     protected:
-        ::Assets::DepValPtr _depVal;
+        ::Assets::DependencyValidation _depVal;
     };
 
     SFDResources::SFDResources(const Desc& desc)
@@ -380,8 +380,7 @@ namespace SceneEngine
 			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
 			uniformsInterf);
         
-        _depVal = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(_depVal, _shader->GetDependencyValidation());
+        _depVal = _shader->GetDependencyValidation();
     }
 
     SFDResources::~SFDResources() {}

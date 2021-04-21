@@ -133,7 +133,7 @@ namespace RenderCore { namespace Techniques
 		future.SetPollingFunction(
 			[working, device](::Assets::AssetFuture<RenderCore::IDescriptorSet>& thatFuture) -> bool {
 
-				std::vector<::Assets::DepValPtr> subDepVals;
+				std::vector<::Assets::DependencyValidation> subDepVals;
 				std::vector<std::shared_ptr<IResourceView>> finalResources;
 				finalResources.reserve(working._resources.size());
 				subDepVals.reserve(working._resources.size());
@@ -142,7 +142,7 @@ namespace RenderCore { namespace Techniques
 				for (const auto&d:working._resources) {
 					if (d._pendingResource) {
 						::Assets::AssetPtr<DeferredShaderResource> actualized;
-						::Assets::DepValPtr depVal;
+						::Assets::DependencyValidation depVal;
 						::Assets::Blob actualizationLog;
 						auto status = d._pendingResource->CheckStatusBkgrnd(actualized, depVal, actualizationLog);
 						if (status == ::Assets::AssetState::Pending) {
@@ -166,8 +166,8 @@ namespace RenderCore { namespace Techniques
 					}
 				}
 
-				auto depVal = std::make_shared<::Assets::DependencyValidation>();
-				for (const auto&d:subDepVals) ::Assets::RegisterAssetDependency(depVal, d);
+				auto depVal = ::Assets::GetDepValSys().Make();
+				for (const auto&d:subDepVals) depVal.RegisterDependency(d);
 
 				std::vector<DescriptorSetInitializer::BindTypeAndIdx> bindTypesAndIdx;
 				bindTypesAndIdx.reserve(working._slots.size());

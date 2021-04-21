@@ -52,8 +52,8 @@ namespace RenderCore { namespace Assets
 		void					MergeInto(RawMaterial& dest) const; 
 		std::vector<AssetName>	ResolveInherited(const ::Assets::DirectorySearchRules& searchRules) const;
 
-		const std::shared_ptr<::Assets::DependencyValidation>&	GetDependencyValidation() const { return _depVal; }
-		const ::Assets::DirectorySearchRules&					GetDirectorySearchRules() const { return _searchRules; }
+		const ::Assets::DependencyValidation&	GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DirectorySearchRules&	GetDirectorySearchRules() const { return _searchRules; }
 
         void SerializeMethod(OutputStreamFormatter& formatter) const;
         
@@ -61,7 +61,7 @@ namespace RenderCore { namespace Assets
         RawMaterial(
             InputStreamFormatter<utf8>& formatter, 
             const ::Assets::DirectorySearchRules&,
-			const ::Assets::DepValPtr& depVal);
+			const ::Assets::DependencyValidation& depVal);
         ~RawMaterial();
 
 		static void ConstructToFuture(
@@ -69,7 +69,7 @@ namespace RenderCore { namespace Assets
 			StringSection<::Assets::ResChar> initializer);
 
     private:
-        std::shared_ptr<::Assets::DependencyValidation> _depVal;
+        ::Assets::DependencyValidation _depVal;
 		::Assets::DirectorySearchRules _searchRules;
     };
 
@@ -80,14 +80,14 @@ namespace RenderCore { namespace Assets
 
 		RawMatConfigurations(
 			const ::Assets::Blob& locator,
-			const ::Assets::DepValPtr& depVal,
+			const ::Assets::DependencyValidation& depVal,
 			StringSection<::Assets::ResChar> requestParameters);
 
         static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
 
-        auto GetDependencyValidation() const -> const std::shared_ptr<::Assets::DependencyValidation>& { return _validationCallback; }
+        auto GetDependencyValidation() const -> const ::Assets::DependencyValidation& { return _validationCallback; }
     protected:
-        std::shared_ptr<::Assets::DependencyValidation> _validationCallback;
+        ::Assets::DependencyValidation _validationCallback;
     };
 
     void ResolveMaterialFilename(

@@ -28,8 +28,6 @@ namespace PlatformRig
 		const std::shared_ptr<RenderCore::Techniques::ImmediateDrawingApparatus>& immediateDrawingApparatus,
 		PlatformRig::FrameRig& frameRig)
 	{
-		_depValPtr = std::make_shared<::Assets::DependencyValidation>();
-
 		using DebugScreensSystem = RenderOverlays::DebuggingDisplay::DebugScreensSystem;
 		_debugSystem = std::make_shared<DebugScreensSystem>();
 		_debugSystem->Register(
@@ -53,8 +51,6 @@ namespace PlatformRig
 
 	WindowApparatus::WindowApparatus(std::shared_ptr<RenderCore::IDevice> device)
 	{
-		_depValPtr = std::make_shared<::Assets::DependencyValidation>();
-
 		_device = device;
 
 		_osWindow = std::make_unique<PlatformRig::OverlappedWindow>();

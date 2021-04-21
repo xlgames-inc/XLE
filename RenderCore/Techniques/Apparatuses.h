@@ -5,6 +5,7 @@
 #pragma once
 
 #include "../../Assets/IntermediateCompilers.h"
+#include "../../Assets/DepVal.h"
 #include "../../ConsoleRig/AttachablePtr.h"
 #include <memory>
 
@@ -70,8 +71,8 @@ namespace RenderCore { namespace Techniques
 		std::shared_ptr<CommonResourceBox> _commonResources;
 		std::shared_ptr<TechniqueContext> _techniqueContext;
 
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depValPtr; }
-		std::shared_ptr<::Assets::DependencyValidation> _depValPtr;
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depValPtr; }
+		::Assets::DependencyValidation _depValPtr;
 
 		ConsoleRig::AttachablePtr<Services> _techniqueServices;
 		ConsoleRig::AttachablePtr<::Assets::Services> _assetServices;
@@ -94,8 +95,8 @@ namespace RenderCore { namespace Techniques
 
 		std::shared_ptr<RenderOverlays::FontRenderingManager> _fontRenderingManager;
 
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depValPtr; }
-		std::shared_ptr<::Assets::DependencyValidation> _depValPtr;
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depValPtr; }
+		::Assets::DependencyValidation _depValPtr;
 
 		ConsoleRig::AttachablePtr<::Assets::Services> _assetServices;
 
@@ -117,8 +118,8 @@ namespace RenderCore { namespace Techniques
 
 		std::shared_ptr<SubFrameEvents> _subFrameEvents;
 
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depValPtr; }
-		std::shared_ptr<::Assets::DependencyValidation> _depValPtr;
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depValPtr; }
+		::Assets::DependencyValidation _depValPtr;
 
 		ConsoleRig::AttachablePtr<Services> _techniqueServices;
 		ConsoleRig::AttachablePtr<::Assets::Services> _assetServices;
@@ -135,8 +136,8 @@ namespace RenderCore { namespace Techniques
 		std::shared_ptr<AttachmentPool> _attachmentPool;
 		std::shared_ptr<FrameBufferPool> _frameBufferPool;
 
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depValPtr; }
-		std::shared_ptr<::Assets::DependencyValidation> _depValPtr;
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depValPtr; }
+		::Assets::DependencyValidation _depValPtr;
 
 		FrameRenderingApparatus(std::shared_ptr<IDevice> device);
 		~FrameRenderingApparatus();

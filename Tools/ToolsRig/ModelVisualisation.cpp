@@ -237,10 +237,10 @@ namespace ToolsRig
 							animationSet->ImmutableData()._animationSet.GetOutputInterface(), 
 							skeleton->GetTransformationMachine().GetInputInterface());
 
-						auto depVal = std::make_shared<::Assets::DependencyValidation>();
-						::Assets::RegisterAssetDependency(depVal, renderer->GetDependencyValidation());
-						::Assets::RegisterAssetDependency(depVal, animationSet->GetDependencyValidation());
-						::Assets::RegisterAssetDependency(depVal, skeleton->GetDependencyValidation());
+						auto depVal = ::Assets::GetDepValSys().Make();
+						depVal.RegisterDependency(renderer->GetDependencyValidation());
+						depVal.RegisterDependency(animationSet->GetDependencyValidation());
+						depVal.RegisterDependency(skeleton->GetDependencyValidation());
 
 						return std::make_shared<RendererState>(
 							RendererState {
@@ -260,9 +260,9 @@ namespace ToolsRig
 							animationSet->ImmutableData()._animationSet.GetOutputInterface(), 
 							renderer->GetModelScaffold()->EmbeddedSkeleton().GetInputInterface());
 
-						auto depVal = std::make_shared<::Assets::DependencyValidation>();
-						::Assets::RegisterAssetDependency(depVal, renderer->GetDependencyValidation());
-						::Assets::RegisterAssetDependency(depVal, animationSet->GetDependencyValidation());
+						auto depVal = ::Assets::GetDepValSys().Make();
+						depVal.RegisterDependency(renderer->GetDependencyValidation());
+						depVal.RegisterDependency(animationSet->GetDependencyValidation());
 
 						return std::make_shared<RendererState>(
 							RendererState {
@@ -296,9 +296,9 @@ namespace ToolsRig
 			std::shared_ptr<SkeletonScaffold>			_skeletonScaffold;
 			std::shared_ptr<AnimationSetScaffold>		_animationScaffold;
 			RenderCore::Assets::AnimationSetBinding		_animSetBinding;
-			::Assets::DepValPtr							_depVal;
+			::Assets::DependencyValidation							_depVal;
 
-			const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+			const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
 			const SkeletonMachine* GetSkeletonMachine() const
 			{

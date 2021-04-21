@@ -66,11 +66,11 @@ namespace SceneEngine
 
         SunFlareRes(const Desc& desc);
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const
+        const ::Assets::DependencyValidation& GetDependencyValidation() const
             { return _validationCallback; }
 
     private:
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        ::Assets::DependencyValidation  _validationCallback;
     };
 
     SunFlareRes::SunFlareRes(const Desc& desc)
@@ -173,11 +173,11 @@ namespace SceneEngine
 
         ////////////////////////////////////////////////////////////////////////
 
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(_validationCallback, _commitShader->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, _blurShader->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, _toRadialShader->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, _directBlurShader->GetDependencyValidation());
+        _validationCallback = ::Assets::GetDepValSys().Make();
+        _validationCallback.RegisterDependency(_commitShader->GetDependencyValidation());
+        _validationCallback.RegisterDependency(_blurShader->GetDependencyValidation());
+        _validationCallback.RegisterDependency(_toRadialShader->GetDependencyValidation());
+        _validationCallback.RegisterDependency(_directBlurShader->GetDependencyValidation());
     }
 
     void SunFlare_Execute(

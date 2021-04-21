@@ -9,6 +9,7 @@
 #include "../../RenderCore/Techniques/SimpleModelRenderer.h"
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../Assets/AssetsCore.h"
+#include "../../OSServices/FileSystemMonitor.h"
 #include "../../Math/Vector.h"
 #include "../../Utility/Optional.h"
 #include <string>

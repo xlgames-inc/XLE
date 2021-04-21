@@ -479,7 +479,7 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        _validationCallback = ::Assets::GetDepValSys().Make();
 
 		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
 

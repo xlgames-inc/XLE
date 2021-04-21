@@ -419,15 +419,16 @@ namespace RenderCore { namespace Techniques
 								}
 						}
 
-						auto configurationDepVal = std::make_shared<::Assets::DependencyValidation>();
+						auto configurationDepVal = ::Assets::GetDepValSys().Make();
 						if (pipelineDesc->GetDependencyValidation())
-							::Assets::RegisterAssetDependency(configurationDepVal, pipelineDesc->GetDependencyValidation());
-						::Assets::RegisterAssetDependency(configurationDepVal, compiledPatchCollection->GetDependencyValidation());
+							configurationDepVal.RegisterDependency(pipelineDesc->GetDependencyValidation());
+						if (compiledPatchCollection->GetDependencyValidation())
+							configurationDepVal.RegisterDependency(compiledPatchCollection->GetDependencyValidation());
 						for (unsigned c=0; c<dimof(ITechniqueDelegate::GraphicsPipelineDesc::_shaders); ++c)
 							if (!pipelineDesc->_shaders[c].empty() && pipelineDescWithFiltering->_automaticFiltering[c])
-								::Assets::RegisterAssetDependency(configurationDepVal, pipelineDescWithFiltering->_automaticFiltering[c]->GetDependencyValidation());
+								configurationDepVal.RegisterDependency(pipelineDescWithFiltering->_automaticFiltering[c]->GetDependencyValidation());
 						if (pipelineDescWithFiltering->_preconfiguration)
-							::Assets::RegisterAssetDependency(configurationDepVal, pipelineDescWithFiltering->_preconfiguration->GetDependencyValidation());
+							configurationDepVal.RegisterDependency(pipelineDescWithFiltering->_preconfiguration->GetDependencyValidation());
 
 						auto shaderProgram = MakeShaderProgram(*pipelineDesc, pipelineLayout, compiledPatchCollection, MakeIteratorRange(filteredSelectors));
 						std::string vsd, psd, gsd;
@@ -456,7 +457,7 @@ namespace RenderCore { namespace Techniques
 									result->_psDescription = psd;
 									result->_gsDescription = gsd;
 								#endif
-								::Assets::RegisterAssetDependency(result->_depVal, result->_metalPipeline->GetDependencyValidation());
+								result->_depVal.RegisterDependency(result->_metalPipeline->GetDependencyValidation());
 								return result;
 							});
 					});

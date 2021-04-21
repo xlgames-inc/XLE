@@ -62,7 +62,7 @@ namespace UnitTests
 				});
 		}
 
-		std::shared_ptr<Assets::DependencyValidation> GetDependencyValidation() const override { return nullptr; }
+		::Assets::DependencyValidation GetDependencyValidation() const override { return {}; }
 
 		std::vector<unsigned> _rawData;
 		RenderCore::ResourceDesc _desc;
@@ -260,7 +260,7 @@ namespace UnitTests
 				});
 		}
 
-		std::shared_ptr<Assets::DependencyValidation> GetDependencyValidation() const override { return nullptr; }
+		::Assets::DependencyValidation GetDependencyValidation() const override { return {}; }
 
 		RenderCore::ResourceDesc _desc;
 		uint32_t _rngSeed;

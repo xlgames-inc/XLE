@@ -514,7 +514,7 @@ namespace Assets
 				auto fn = library._createCompileOpFunction;
 				for (const auto&kind:library._kinds) {
 					auto compilerFn = MakeStringSection(c);
-					auto compilerDepVal = GetDepValSys().Make(MakeIteratorRange(&compilerFn, &compilerFn+1));
+					auto compilerDepVal = GetDepValSys().Make(compilerFn);
 					auto registrationId = compilerManager.RegisterCompiler(
 						kind._name + " (" + MakeSplitPath(c).Simplify().Rebuild() + ")",
 						kind._shortName,

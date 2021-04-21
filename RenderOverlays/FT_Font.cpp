@@ -73,7 +73,7 @@ namespace RenderOverlays
 		FontFileBufferManager _bufferManager;
 		FT_Library _ftLib;
 		std::unordered_map<std::string, std::string> _nameMap;
-		::Assets::DepValPtr _nameMapDepVal;
+		::Assets::DependencyValidation _nameMapDepVal;
 
 		FTFontResources();
 		~FTFontResources();
@@ -101,9 +101,9 @@ namespace RenderOverlays
 		_hashCode = Hash64(finalPath, DefaultSeed64 + faceSize);
 		_pBuffer = _resources->_bufferManager.GetBuffer(finalPath);
 
-		_depVal = std::make_shared<::Assets::DependencyValidation>();
-		::Assets::RegisterFileDependency(_depVal, finalPath);
-		::Assets::RegisterAssetDependency(_depVal, _resources->_nameMapDepVal);
+		_depVal = ::Assets::GetDepValSys().Make();
+		_depVal.RegisterDependency(finalPath);
+		_depVal.RegisterDependency(_resources->_nameMapDepVal);
 
 		if (!_pBuffer)
 			Throw(::Assets::Exceptions::ConstructionError(
@@ -295,8 +295,7 @@ namespace RenderOverlays
 
 		const char* fontCfg = "xleres/DefaultResources/fonts/fonts.dat";
 		_nameMap = LoadFontConfigFile(fontCfg);
-		_nameMapDepVal = std::make_shared<::Assets::DependencyValidation>();
-		::Assets::RegisterFileDependency(_nameMapDepVal, fontCfg);
+		_nameMapDepVal = ::Assets::GetDepValSys().Make(fontCfg);
 	}
 
 	FTFontResources::~FTFontResources()

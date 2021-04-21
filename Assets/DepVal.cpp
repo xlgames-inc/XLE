@@ -33,7 +33,8 @@ namespace Assets
 
 		DependencyValidation Make(IteratorRange<const StringSection<>*> filenames) override
 		{
-			DependencyValidation result = Make();
+			ScopedLock(_lock);
+			DependencyValidation result = MakeAlreadyLocked();
 			for (const auto& fn:filenames)
 				RegisterFileDependencyAlreadyLocked(result._marker, fn);
 			return result;
@@ -41,7 +42,8 @@ namespace Assets
 		
 		DependencyValidation Make(IteratorRange<const DependentFileState*> filestates) override
 		{
-			DependencyValidation result = Make();
+			ScopedLock(_lock);
+			DependencyValidation result = MakeAlreadyLocked();
 			for (const auto& state:filestates)
 				RegisterFileDependencyAlreadyLocked(result._marker, state._filename);
 			return result;
@@ -50,6 +52,11 @@ namespace Assets
 		DependencyValidation Make() override
 		{
 			ScopedLock(_lock);
+			return MakeAlreadyLocked();
+		}
+		
+		DependencyValidation MakeAlreadyLocked()
+		{
 			auto newDepVal = (DependencyValidationMarker)_markerHeap.Allocate(1);
 			if (newDepVal == ~0u)
 				newDepVal = (DependencyValidationMarker)_markerHeap.AppendNewBlock(1);
@@ -64,6 +71,7 @@ namespace Assets
 
 		unsigned GetValidationIndex(DependencyValidationMarker marker) override
 		{
+			ScopedLock(_lock);
 			assert(marker < _entries.size());
 			assert(_entries[marker]._refCount != 0);
 			return _entries[marker]._validationIndex;
@@ -148,7 +156,7 @@ namespace Assets
 					r->second.second = mostRecentState;
 					return;	// already registered
 				}
-			_fileLinks.insert(insertRange.first, std::make_pair(validationMarker, std::make_pair(fileMonitor._marker, mostRecentState)));
+			_fileLinks.insert(insertRange.second, std::make_pair(validationMarker, std::make_pair(fileMonitor._marker, mostRecentState)));
 		}
 
 		void RegisterAssetDependency(

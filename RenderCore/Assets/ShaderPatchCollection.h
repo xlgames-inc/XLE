@@ -20,7 +20,7 @@ namespace RenderCore { namespace Assets
 	public:
 		IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest>*> GetPatches() const { return MakeIteratorRange(_patches); }
 		const std::string& GetDescriptorSetFileName() const { return _descriptorSet; }
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 		uint64_t GetHash() const { return _hash; }
 
 		void MergeInto(ShaderPatchCollection& dest) const;
@@ -33,7 +33,7 @@ namespace RenderCore { namespace Assets
 		friend std::ostream& operator<<(std::ostream& str, const ShaderPatchCollection&);
 
 		ShaderPatchCollection();
-		ShaderPatchCollection(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules&, const ::Assets::DepValPtr& depVal);
+		ShaderPatchCollection(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules&, const ::Assets::DependencyValidation& depVal);
 		ShaderPatchCollection(IteratorRange<const std::pair<std::string, ShaderSourceParser::InstantiationRequest>*> patches);
 		ShaderPatchCollection(std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest>>&& patches);
 		~ShaderPatchCollection();
@@ -41,13 +41,13 @@ namespace RenderCore { namespace Assets
 	private:
 		std::vector<std::pair<std::string, ShaderSourceParser::InstantiationRequest>> _patches;
 		uint64_t _hash = ~0ull;
-		std::shared_ptr<::Assets::DependencyValidation> _depVal;
+		::Assets::DependencyValidation _depVal;
 		std::string _descriptorSet;
 
 		void SortAndCalculateHash();
 	};
 	
-	std::vector<ShaderPatchCollection> DeserializeShaderPatchCollectionSet(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules&, const ::Assets::DepValPtr& depVal);
+	std::vector<ShaderPatchCollection> DeserializeShaderPatchCollectionSet(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules&, const ::Assets::DependencyValidation& depVal);
 	void SerializeShaderPatchCollectionSet(OutputStreamFormatter& formatter, IteratorRange<const ShaderPatchCollection*> patchCollections);
 
 	std::ostream& SerializationOperator(std::ostream& str, const ShaderPatchCollection& patchCollection);

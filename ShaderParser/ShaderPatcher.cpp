@@ -37,7 +37,7 @@ namespace ShaderSourceParser
 
 	struct DependencyTrackers
 	{
-		std::set<::Assets::DepValPtr> _depVals;
+		std::set<::Assets::DependencyValidation> _depVals;
 		std::set<::Assets::DependentFileState> _depFileStates;
 	};
 

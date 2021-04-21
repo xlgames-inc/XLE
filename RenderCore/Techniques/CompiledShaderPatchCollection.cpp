@@ -27,7 +27,7 @@ namespace RenderCore { namespace Techniques
 	: _src(src)
 	, _materialDescSetLayout(materialDescSetLayout)
 	{
-		_depVal = std::make_shared<::Assets::DependencyValidation>();
+		_depVal = ::Assets::GetDepValSys().Make();
 		_guid = src.GetHash();
 
 		_interface._descriptorSet = materialDescSetLayout.GetLayout();
@@ -44,7 +44,7 @@ namespace RenderCore { namespace Techniques
 			// Once we've finally got the descriptor set, we need to link it against the pipeline layout version to make sure it
 			// will agree (and potentially rearrange some members to fit)
 			_interface._descriptorSet = ShaderSourceParser::LinkToFixedLayout(*i->second, *_interface._descriptorSet);
-			::Assets::RegisterAssetDependency(_depVal, actualLayoutFile->GetDependencyValidation());
+			_depVal.RegisterDependency(actualLayoutFile->GetDependencyValidation());
 		}
 
 		// With the given shader patch collection, build the source code and the 
@@ -68,7 +68,7 @@ namespace RenderCore { namespace Techniques
 		const DescriptorSetLayoutAndBinding& materialDescSetLayout)
 	: _materialDescSetLayout(materialDescSetLayout)
 	{
-		_depVal = std::make_shared<::Assets::DependencyValidation>();
+		_depVal = ::Assets::GetDepValSys().Make();
 		_guid = 0;
 		BuildFromInstantiatedShader(inst);
 		_interface._descriptorSet = materialDescSetLayout.GetLayout();
@@ -106,9 +106,10 @@ namespace RenderCore { namespace Techniques
 		if (inst._descriptorSet)
 			_interface._descriptorSet = inst._descriptorSet;
 
-		for (const auto&d:inst._depVals)
-			if (d)
-				::Assets::RegisterAssetDependency(_depVal, d);
+		for (const auto&d:inst._depVals) {
+			assert(d);
+			_depVal.RegisterDependency(d);
+		}
 		for (const auto&d:inst._depFileStates) {
 			assert(!d._filename.empty());
 			if (std::find(_dependencies.begin(), _dependencies.end(), d) == _dependencies.end())
@@ -121,7 +122,7 @@ namespace RenderCore { namespace Techniques
 			filteringRules->StallWhilePending();
 			_interface._filteringRules.MergeIn(*filteringRules->Actualize());
 		}
-		::Assets::RegisterAssetDependency(_depVal, _interface._filteringRules.GetDependencyValidation());
+		_depVal.RegisterDependency(_interface._filteringRules.GetDependencyValidation());
 
 		size_t size = 0;
 		for (const auto&i:inst._sourceFragments)
@@ -133,7 +134,6 @@ namespace RenderCore { namespace Techniques
 
 	CompiledShaderPatchCollection::CompiledShaderPatchCollection() 
 	{
-		_depVal = std::make_shared<::Assets::DependencyValidation>();
 	}
 
 	CompiledShaderPatchCollection::~CompiledShaderPatchCollection() {}
@@ -393,7 +393,7 @@ namespace RenderCore { namespace Techniques
 			"shader-graph-compiler",
 			"shader-graph-compiler",
 			ConsoleRig::GetLibVersionDesc(),
-			nullptr,
+			{},
 			[shaderSource](const ::Assets::InitializerPack& initializers) {
 				return std::make_shared<ShaderGraphCompileOperation>(
 					*shaderSource,

@@ -31,20 +31,20 @@ namespace RenderCore { namespace Techniques
 	{
 	public:
 		SourceColorSpace _colorSpace = SourceColorSpace::Unspecified;
-		const ::Assets::DepValPtr&				GetDependencyValidation() const     { return _depVal; }
+		const ::Assets::DependencyValidation&				GetDependencyValidation() const     { return _depVal; }
 
 		TextureMetaData(
 			InputStreamFormatter<utf8>& input, 
 			const ::Assets::DirectorySearchRules&, 
-			const ::Assets::DepValPtr& depVal);
+			const ::Assets::DependencyValidation& depVal);
 	private:
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
 	};
 
 	TextureMetaData::TextureMetaData(
 		InputStreamFormatter<utf8>& input, 
 		const ::Assets::DirectorySearchRules&, 
-		const ::Assets::DepValPtr& depVal)
+		const ::Assets::DependencyValidation& depVal)
 	: _depVal(depVal)
 	{
 		StreamDOM<InputStreamFormatter<utf8>> dom(input);
@@ -159,13 +159,13 @@ namespace RenderCore { namespace Techniques
 		}
 
         if (!pkt) {
-            future.SetInvalidAsset(nullptr, ::Assets::AsBlob("Could not find matching texture loader"));
+            future.SetInvalidAsset({}, ::Assets::AsBlob("Could not find matching texture loader"));
 			return;
         }
 
         auto transactionMarker = RenderCore::Techniques::Services::GetBufferUploads().Transaction_Begin(pkt, BindFlag::ShaderResource);
 		if (!transactionMarker.IsValid()) {
-			future.SetInvalidAsset(nullptr, ::Assets::AsBlob("Could not begin buffer uploads transaction"));
+			future.SetInvalidAsset({}, ::Assets::AsBlob("Could not begin buffer uploads transaction"));
 			return;
 		}
 
@@ -188,7 +188,7 @@ namespace RenderCore { namespace Techniques
                     return true;
 
                 ::Assets::Blob metaDataLog;
-			    ::Assets::DepValPtr metaDataDepVal;
+			    ::Assets::DependencyValidation metaDataDepVal;
                 std::shared_ptr<TextureMetaData> actualizedMetaData;
                 if (metaDataFuture) {
                     auto metaDataState = metaDataFuture->CheckStatusBkgrnd(actualizedMetaData, metaDataDepVal, metaDataLog);
@@ -217,9 +217,9 @@ namespace RenderCore { namespace Techniques
 				} else if (actualizedMetaData) {
                     if (actualizedMetaData->_colorSpace != SourceColorSpace::Unspecified)
                         colSpace = actualizedMetaData->_colorSpace;
-                    auto parentDepVal = std::make_shared<::Assets::DependencyValidation>();
-                    ::Assets::RegisterAssetDependency(parentDepVal, depVal);
-                    ::Assets::RegisterAssetDependency(parentDepVal, metaDataDepVal);
+                    auto parentDepVal = ::Assets::GetDepValSys().Make();
+                    parentDepVal.RegisterDependency(depVal);
+                    parentDepVal.RegisterDependency(metaDataDepVal);
                     depVal = parentDepVal;
 				}
 
@@ -412,7 +412,7 @@ namespace RenderCore { namespace Techniques
 		const std::shared_ptr<IResourceView>& srv,
 		const std::string& initializer,
         BufferUploads::CommandListID completionCommandList,
-		const ::Assets::DepValPtr& depVal)
+		const ::Assets::DependencyValidation& depVal)
 	: _srv(srv), _initializer(initializer), _depVal(depVal), _completionCommandList(completionCommandList)
 	{}
 

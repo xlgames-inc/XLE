@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "../../Assets/DepVal.h"
 #include "../../Utility/StringUtils.h"
 #include <string>
 #include <vector>
@@ -54,20 +55,20 @@ namespace RenderCore { namespace Assets
 		PredefinedDescriptorSetLayout(
 			StringSection<> inputData,
 			const ::Assets::DirectorySearchRules& searchRules,
-			const std::shared_ptr<::Assets::DependencyValidation>& depVal);
+			const ::Assets::DependencyValidation& depVal);
 		PredefinedDescriptorSetLayout(
 			Utility::ConditionalProcessingTokenizer&,
-			const std::shared_ptr<::Assets::DependencyValidation>&);
+			const ::Assets::DependencyValidation&);
 		PredefinedDescriptorSetLayout();
 		~PredefinedDescriptorSetLayout();
 
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
 	protected:
 		void ParseSlot(Utility::ConditionalProcessingTokenizer& iterator, DescriptorType type);
 		void Parse(Utility::ConditionalProcessingTokenizer& iterator);
 
-		std::shared_ptr<::Assets::DependencyValidation> _depVal;
+		::Assets::DependencyValidation _depVal;
 	};
 
 }}

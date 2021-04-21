@@ -206,7 +206,7 @@ namespace RenderCore { namespace Assets
 
 	PredefinedDescriptorSetLayout::PredefinedDescriptorSetLayout(
 		ConditionalProcessingTokenizer& iterator,
-		const std::shared_ptr<::Assets::DependencyValidation>& depVal)
+		const ::Assets::DependencyValidation& depVal)
 	: _depVal(depVal)
 	{
 		Parse(iterator);
@@ -215,7 +215,7 @@ namespace RenderCore { namespace Assets
 	PredefinedDescriptorSetLayout::PredefinedDescriptorSetLayout(
 		StringSection<> inputData,
 		const ::Assets::DirectorySearchRules&,
-		const ::Assets::DepValPtr& depVal)
+		const ::Assets::DependencyValidation& depVal)
 	: _depVal(depVal)
 	{
 		ConditionalProcessingTokenizer iterator{inputData};

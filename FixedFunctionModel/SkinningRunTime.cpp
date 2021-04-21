@@ -139,8 +139,8 @@ namespace RenderCore { namespace Assets
         Metal::VertexShader       _skinningVertexShaderP1;
         Metal::VertexShader       _skinningVertexShaderP0;
 
-        const ::Assets::DepValPtr& GetDependencyValidation() const   { return _validationCallback; }
-        ::Assets::DepValPtr _validationCallback;
+        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return _validationCallback; }
+        ::Assets::DependencyValidation _validationCallback;
     };
 
     SkinningBindingBox::SkinningBindingBox(const Desc& desc)
@@ -205,10 +205,10 @@ namespace RenderCore { namespace Assets
         /////////////////////////////////////////////////////////////////////////////
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, vsByteCodeP4.GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, vsByteCodeP2.GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, vsByteCodeP1.GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, vsByteCodeP0.GetDependencyValidation());
+        validationCallback.RegisterDependency(vsByteCodeP4.GetDependencyValidation());
+        validationCallback.RegisterDependency(vsByteCodeP2.GetDependencyValidation());
+        validationCallback.RegisterDependency(vsByteCodeP1.GetDependencyValidation());
+        validationCallback.RegisterDependency(vsByteCodeP0.GetDependencyValidation());
 
         _validationCallback = std::move(validationCallback);
         _boundUniforms = std::move(boundUniforms);

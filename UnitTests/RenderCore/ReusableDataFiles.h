@@ -8,7 +8,7 @@
 //
 
 static const char* s_examplePerPixelShaderFile = R"--(
-	#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
+	#include "xleres/TechniqueLibrary/Framework/VSOUT.hlsl"
 	#include "xleres/TechniqueLibrary/Framework/CommonResources.hlsl"
 	#include "xleres/TechniqueLibrary/Framework/gbuffer.hlsl"
 
@@ -75,7 +75,7 @@ static const char* s_complicatedGraphFile = R"--(
 )--";
 
 static const char* s_internalShaderFile = R"--(
-	#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
+	#include "xleres/TechniqueLibrary/Framework/VSOUT.hlsl"
 
 	bool ShouldBeRejected(VSOUT geo, float threshold)
 	{
@@ -124,7 +124,7 @@ static const char* s_basicTechniqueFile = R"--(
 )--";
 
 static const char* s_basicFrameworkEntryPixel = R"--(
-	#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
+	#include "xleres/TechniqueLibrary/Framework/VSOUT.hlsl"
 	#include "xleres/Nodes/Templates.pixel.sh"
 
 	float4 frameworkEntry(VSOUT geo) : SV_Target0

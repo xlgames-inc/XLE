@@ -50,7 +50,7 @@ namespace RenderCore { namespace Techniques
     {
     public:
 		const std::shared_ptr<IResourceView>&   GetShaderResource() const			{ return _srv; }
-        const ::Assets::DepValPtr&				GetDependencyValidation() const     { return _depVal; }
+        const ::Assets::DependencyValidation&				GetDependencyValidation() const     { return _depVal; }
 		StringSection<>							Initializer() const					{ return MakeStringSection(_initializer); }
         BufferUploads::CommandListID            GetCompletionCommandList() const    { return _completionCommandList; }
 
@@ -58,7 +58,7 @@ namespace RenderCore { namespace Techniques
 			const std::shared_ptr<IResourceView>& srv,
 			const std::string& initializer,
             BufferUploads::CommandListID completionCommandList,
-			const ::Assets::DepValPtr& depVal);
+			const ::Assets::DependencyValidation& depVal);
         ~DeferredShaderResource();
 
 		static void ConstructToFuture(
@@ -67,7 +67,7 @@ namespace RenderCore { namespace Techniques
     private:
 		std::shared_ptr<IResourceView> _srv;
         std::string _initializer;
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
         BufferUploads::CommandListID _completionCommandList;
     };
     

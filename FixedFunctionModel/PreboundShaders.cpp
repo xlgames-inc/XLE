@@ -203,7 +203,7 @@ namespace FixedFunctionModel
 		future.SetPollingFunction(
 			[scaffoldFuture](::Assets::AssetFuture<BoundShaderVariationSet>& thatFuture) -> bool {
 
-			std::shared_ptr<RenderCore::Techniques::Technique> scaffoldActual; ::Assets::DepValPtr scaffoldDepVal; ::Assets::Blob scaffoldLog;
+			std::shared_ptr<RenderCore::Techniques::Technique> scaffoldActual; ::Assets::DependencyValidation scaffoldDepVal; ::Assets::Blob scaffoldLog;
 			auto scaffoldState = scaffoldFuture->CheckStatusBkgrnd(scaffoldActual, scaffoldDepVal, scaffoldLog);
 
 			if (!scaffoldActual) {

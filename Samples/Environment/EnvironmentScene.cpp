@@ -55,11 +55,11 @@ namespace Sample
         std::shared_ptr<SceneEngine::DynamicImposters>      _imposters;
         PlatformRig::EnvironmentSettings                    _envSettings;
 
-        std::shared_ptr<::Assets::DependencyValidation>     _terrainCfgVal;
-        std::shared_ptr<::Assets::DependencyValidation>     _terrainTexturesCfgVal;
-        std::shared_ptr<::Assets::DependencyValidation>     _placementsCfgVal;
-        std::shared_ptr<::Assets::DependencyValidation>     _environmentCfgVal;
-        std::shared_ptr<::Assets::DependencyValidation>     _gameObjectsCfgVal;
+        ::Assets::DependencyValidation     _terrainCfgVal;
+        ::Assets::DependencyValidation     _terrainTexturesCfgVal;
+        ::Assets::DependencyValidation     _placementsCfgVal;
+        ::Assets::DependencyValidation     _environmentCfgVal;
+        ::Assets::DependencyValidation     _gameObjectsCfgVal;
 
         std::shared_ptr<EntityInterface::RetainedEntities>  _retainedEntities;
 
@@ -107,8 +107,7 @@ namespace Sample
             formatter, interf, 
             interf.GetDocumentTypeId("GameObjects"));
 
-        _gameObjectsCfgVal = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterFileDependency(_gameObjectsCfgVal, filename);
+        _gameObjectsCfgVal = ::Assets::GetDepValSys().Make(filename);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -300,7 +299,7 @@ namespace Sample
     void EnvironmentSceneParser::FlushLoading()
     {
         #if defined(ENABLE_TERRAIN)
-            if (!_pimpl->_terrainCfgVal || _pimpl->_terrainCfgVal->GetValidationIndex() != 0) {
+            if (!_pimpl->_terrainCfgVal || _pimpl->_terrainCfgVal.GetValidationIndex() != 0) {
 				auto terrainCfg = ::Assets::AutoConstructAsset<SceneEngine::TerrainConfig>(MakeStringSection(_pimpl->MakeCfgName(TerrainCfg)));
                 _pimpl->_terrainManager->Load(*terrainCfg);
                 _pimpl->_terrainCfgVal = terrainCfg->GetDependencyValidation();
@@ -312,14 +311,14 @@ namespace Sample
                     _pimpl->_envFeatures->SetSurfaceHeights(_pimpl->_terrainManager->GetHeightsProvider());
             }
 
-            if (!_pimpl->_terrainTexturesCfgVal || _pimpl->_terrainTexturesCfgVal->GetValidationIndex() != 0) {
+            if (!_pimpl->_terrainTexturesCfgVal || _pimpl->_terrainTexturesCfgVal.GetValidationIndex() != 0) {
                 auto terrainMaterialCfg = ::Assets::AutoConstructAsset<SceneEngine::TerrainMaterialConfig>(MakeStringSection(_pimpl->MakeCfgName(TerrainMaterialCfg)));
                 _pimpl->_terrainManager->LoadMaterial(*terrainMaterialCfg);
                 _pimpl->_terrainTexturesCfgVal = terrainMaterialCfg->GetDependencyValidation();
             }
         #endif
 
-        if (!_pimpl->_placementsCfgVal || _pimpl->_placementsCfgVal->GetValidationIndex() != 0) {
+        if (!_pimpl->_placementsCfgVal || _pimpl->_placementsCfgVal.GetValidationIndex() != 0) {
             auto placementsCfg = ::Assets::AutoConstructAsset<SceneEngine::WorldPlacementsConfig>(MakeStringSection(_pimpl->MakeCfgName(PlacementsCfg)));
             _pimpl->_placementsManager = std::make_shared<SceneEngine::PlacementsManager>(_pimpl->_modelCache);
             _pimpl->_placementsRenderer = _pimpl->_placementsManager->GetRenderer();
@@ -332,7 +331,7 @@ namespace Sample
             _pimpl->_imposters->Load(SceneEngine::DynamicImposters::Config());
         }
 
-        if (!_pimpl->_environmentCfgVal || _pimpl->_environmentCfgVal->GetValidationIndex() != 0) {
+        if (!_pimpl->_environmentCfgVal || _pimpl->_environmentCfgVal.GetValidationIndex() != 0) {
             TRY
             {
                 auto envSettings = ::Assets::AutoConstructAsset<PlatformRig::EnvironmentSettings>(MakeStringSection(_pimpl->MakeCfgName(EnvironmentCfg)));
@@ -342,7 +341,7 @@ namespace Sample
             } CATCH_END
         }
 
-        if (!_pimpl->_gameObjectsCfgVal || _pimpl->_gameObjectsCfgVal->GetValidationIndex() != 0) {
+        if (!_pimpl->_gameObjectsCfgVal || _pimpl->_gameObjectsCfgVal.GetValidationIndex() != 0) {
             _pimpl->LoadGameObjects(_pimpl->MakeCfgName(GameObjectsCfg).c_str());
         }
     }

@@ -6,7 +6,7 @@
 
 #include "../UniformsStream.h"
 #include "../ShaderLangUtil.h"
-#include "../../Assets/AssetUtils.h"
+#include "../../Assets/DepVal.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/StringUtils.h"
 #include <unordered_map>
@@ -72,10 +72,10 @@ namespace RenderCore { namespace Assets
         PredefinedCBLayout(
             StringSection<char> source, 
             const ::Assets::DirectorySearchRules& searchRules,
-			const std::shared_ptr<::Assets::DependencyValidation>& depVal);
+			const ::Assets::DependencyValidation& depVal);
         PredefinedCBLayout(
 			ConditionalProcessingTokenizer&,
-			const std::shared_ptr<::Assets::DependencyValidation>&);
+			const ::Assets::DependencyValidation&);
 		PredefinedCBLayout(IteratorRange<const NameAndType*> elements, const ParameterBox& defaults = {});
         ~PredefinedCBLayout();
         
@@ -84,11 +84,11 @@ namespace RenderCore { namespace Assets
         PredefinedCBLayout(PredefinedCBLayout&&) never_throws = default;
         PredefinedCBLayout& operator=(PredefinedCBLayout&&) never_throws = default;
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     
+        const ::Assets::DependencyValidation& GetDependencyValidation() const     
             { return _validationCallback; }
 
     private:
-        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
+        ::Assets::DependencyValidation   _validationCallback;
 
         void Parse(ConditionalProcessingTokenizer&);
         void WriteBuffer(void* dst, const ParameterBox& parameters, ShaderLanguage lang) const;
@@ -110,12 +110,12 @@ namespace RenderCore { namespace Assets
         PredefinedCBLayoutFile(
             StringSection<> inputData,
             const ::Assets::DirectorySearchRules& searchRules,
-            const ::Assets::DepValPtr& depVal);
+            const ::Assets::DependencyValidation& depVal);
         ~PredefinedCBLayoutFile();
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const
+        const ::Assets::DependencyValidation& GetDependencyValidation() const
             { return _validationCallback; }
     private:
-        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
+        ::Assets::DependencyValidation   _validationCallback;
     };
 }}

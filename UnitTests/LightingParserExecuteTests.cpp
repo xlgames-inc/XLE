@@ -106,7 +106,7 @@ namespace UnitTests
 		using namespace RenderCore;
 
 		InputStreamFormatter<utf8> formattr { techniqueText.Cast<utf8>() };
-		RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, {}, std::make_shared<::Assets::DependencyValidation>());
+		RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, {}, {});
 		return ::Assets::ActualizePtr<RenderCore::Techniques::CompiledShaderPatchCollection>(patchCollection);
 	}
 

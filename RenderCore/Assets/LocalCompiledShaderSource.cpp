@@ -42,7 +42,7 @@ namespace RenderCore { namespace Assets
     {
     public:
         std::shared_ptr<::Assets::ArchiveCache> GetArchive(StringSection<> shaderBaseFilename);
-		std::shared_ptr<::Assets::DependencyValidation> MakeDependencyValidation(StringSection<> shaderBaseFilename) const;
+		::Assets::DependencyValidation MakeDependencyValidation(StringSection<> shaderBaseFilename) const;
 		void    MakeIntermediateName(ResChar buffer[], unsigned bufferMaxCount, StringSection<> firstInitializer) const;
 
 		void CommitToArchive(
@@ -86,7 +86,7 @@ namespace RenderCore { namespace Assets
         return newArchive;
     }
 
-	std::shared_ptr<::Assets::DependencyValidation> ShaderCacheSet::MakeDependencyValidation(StringSection<> shaderBaseFilename) const
+	::Assets::DependencyValidation ShaderCacheSet::MakeDependencyValidation(StringSection<> shaderBaseFilename) const
 	{
 		char intName[MaxPath];
         XlCopyString(intName, _baseFolderName.c_str());
@@ -275,16 +275,16 @@ namespace RenderCore { namespace Assets
 	public:
 		Blob	GetBlob() const;
 		Blob	GetErrors() const;
-		::Assets::DepValPtr GetDependencyValidation() const;
+		::Assets::DependencyValidation GetDependencyValidation() const;
 		StringSection<Assets::ResChar> GetRequestParameters() const { return {}; }
 		ArchivedFileArtifact(
-			const std::shared_ptr<::Assets::ArchiveCache>& archive, uint64 fileID, const ::Assets::DepValPtr& depVal,
+			const std::shared_ptr<::Assets::ArchiveCache>& archive, uint64 fileID, const ::Assets::DependencyValidation& depVal,
 			const Blob& blob, const Blob& errors);
 		~ArchivedFileArtifact();
 	private:
 		std::shared_ptr<::Assets::ArchiveCache> _archive;
 		uint64 _fileID;
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
 		Blob _blob, _errors;
 	};
 
@@ -295,10 +295,10 @@ namespace RenderCore { namespace Assets
 	}
 
 	auto ArchivedFileArtifact::GetErrors() const -> Blob { return _errors; }
-	::Assets::DepValPtr ArchivedFileArtifact::GetDependencyValidation() const { return _depVal; }
+	::Assets::DependencyValidation ArchivedFileArtifact::GetDependencyValidation() const { return _depVal; }
 
 	ArchivedFileArtifact::ArchivedFileArtifact(
-		const std::shared_ptr<::Assets::ArchiveCache>& archive, uint64 fileID, const ::Assets::DepValPtr& depVal,
+		const std::shared_ptr<::Assets::ArchiveCache>& archive, uint64 fileID, const ::Assets::DependencyValidation& depVal,
 		const Blob& blob, const Blob& errors)
 	: _archive(archive), _fileID(fileID), _depVal(depVal)
 	, _blob(blob), _errors(errors) {}
@@ -345,7 +345,7 @@ namespace RenderCore { namespace Assets
         if (!c) return nullptr;
 
 		if (XlEqString(_res._filename, "null"))
-			return std::make_shared<::Assets::BlobArtifactCollection>(nullptr, std::make_shared<::Assets::DependencyValidation>());
+			return std::make_shared<::Assets::BlobArtifactCollection>(nullptr, {});
 
         ::Assets::ResChar archiveName[MaxPath], depName[MaxPath], entryName[4096];
         auto archiveId = GetTarget(_res, _definesTable, archiveName, dimof(archiveName), depName, dimof(depName), entryName, dimof(entryName));
@@ -422,11 +422,11 @@ namespace RenderCore { namespace Assets
 				// embue any exceptions with the dependency validation
 			CATCH(const ::Assets::Exceptions::ConstructionError& e)
 			{
-				Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::AsDepVal(MakeIteratorRange(deps))));
+				Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::GetDepValSys().Make(MakeIteratorRange(deps))));
 			}
 			CATCH(const std::exception& e)
 			{
-				Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::AsDepVal(MakeIteratorRange(deps))));
+				Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::GetDepValSys().Make(MakeIteratorRange(deps))));
 			}
 			CATCH_END
 
@@ -473,7 +473,7 @@ namespace RenderCore { namespace Assets
             }
 
                 // Create the artifact and add it to the compile marker
-			auto depVal = ::Assets::AsDepVal(MakeIteratorRange(deps));
+			auto depVal = ::Assets::GetDepValSys().Make(MakeIteratorRange(deps));
 			auto newState = success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
 
             future.AddArtifact("main", std::make_shared<::Assets::BlobArtifactCollection>(payload, depVal));
@@ -597,16 +597,16 @@ namespace RenderCore { namespace Assets
 				// embue any exceptions with the dependency validation
 			CATCH(const ::Assets::Exceptions::ConstructionError& e)
 			{
-				Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::AsDepVal(MakeIteratorRange(deps))));
+				Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::GetDepValSys().Make(MakeIteratorRange(deps))));
 			}
 			CATCH(const std::exception& e)
 			{
-				Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::AsDepVal(MakeIteratorRange(deps))));
+				Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::GetDepValSys().Make(MakeIteratorRange(deps))));
 			}
 			CATCH_END
 
                 // Create the artifact and add it to the compile marker
-			auto depVal = ::Assets::AsDepVal(MakeIteratorRange(deps));
+			auto depVal = ::Assets::GetDepValSys().Make(MakeIteratorRange(deps));
 			auto newState = success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
 
             future.AddArtifact("main", std::make_shared<::Assets::BlobArtifactCollection>(payload, depVal));

@@ -68,7 +68,7 @@ namespace RenderCore { namespace Metal_DX11
 		GraphicsPipeline(const GraphicsPipeline&) = delete;
 		GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
 
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const;
+		const ::Assets::DependencyValidation& GetDependencyValidation() const;
 
 		// internal use only -- 
 		const ShaderProgram& GetShaderProgram() const;

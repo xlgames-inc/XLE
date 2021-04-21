@@ -41,7 +41,7 @@ namespace Formatters
 		BinarySchemata(
 			StringSection<> inputData,
 			const ::Assets::DirectorySearchRules& searchRules,
-			const std::shared_ptr<::Assets::DependencyValidation>& depVal);
+			const ::Assets::DependencyValidation& depVal);
 		BinarySchemata(
 			Utility::IPreprocessorIncludeHandler::Result&& initialFile,
 			Utility::IPreprocessorIncludeHandler* includeHandler);

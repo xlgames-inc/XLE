@@ -477,7 +477,7 @@ namespace RenderCore { namespace Metal_DX11
 		context.GetUnderlying()->IASetInputLayout(rgp._inputLayout.get());
 	}
 
-	const std::shared_ptr<::Assets::DependencyValidation>& GraphicsPipeline::GetDependencyValidation() const 
+	const ::Assets::DependencyValidation& GraphicsPipeline::GetDependencyValidation() const 
 	{ 
 		return GetShaderProgram().GetDependencyValidation(); 
 	}

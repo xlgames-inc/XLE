@@ -169,9 +169,9 @@ namespace SceneEngine
 
         TerrainRenderingResources(const Desc& desc);
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return _validationCallback; }
     private:
-        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
+        ::Assets::DependencyValidation  _validationCallback
     };
 
     static const char* AsShaderFormat(CoverageFormat fmt)
@@ -283,8 +283,8 @@ namespace SceneEngine
             _dynLinkage.Bind(Hash64("MainTexturing"), 0, "GradFlagTexturing");
         }
 
-        auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, shaderProgram->GetDependencyValidation());
+        auto validationCallback = ::Assets::GetDepValSys().Make();
+        validationCallback.RegisterDependency(shaderProgram->GetDependencyValidation());
 
         _shaderProgram = shaderProgram;
         _boundUniforms = std::move(boundUniforms);

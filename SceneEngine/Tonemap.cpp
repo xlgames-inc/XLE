@@ -251,13 +251,13 @@ namespace SceneEngine
         unsigned    _firstStepWidth;
         unsigned    _firstStepHeight;
 
-        const ::Assets::DepValPtr&  GetDependencyValidation() const   { return _validationCallback; }
+        const ::Assets::DependencyValidation&  GetDependencyValidation() const   { return _validationCallback; }
 
         ToneMappingResources(const Desc& desc);
         ~ToneMappingResources();
 
     private:
-        ::Assets::DepValPtr _validationCallback;
+        ::Assets::DependencyValidation _validationCallback;
     };
 
     ToneMappingResources::ToneMappingResources(const Desc& desc)
@@ -330,12 +330,12 @@ namespace SceneEngine
 			UniformsStreamInterface{},
 			usi);
 
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(_validationCallback, _sampleInitialLuminanceByteCode->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, _luminanceStepDown->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, _updateOverallLuminance->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, _brightPassStepDown->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, _updateOverallLuminanceNoAdapt->GetDependencyValidation());
+        _validationCallback = ::Assets::GetDepValSys().Make();
+        _validationCallback.RegisterDependency(_sampleInitialLuminanceByteCode->GetDependencyValidation());
+        _validationCallback.RegisterDependency(_luminanceStepDown->GetDependencyValidation());
+        _validationCallback.RegisterDependency(_updateOverallLuminance->GetDependencyValidation());
+        _validationCallback.RegisterDependency(_brightPassStepDown->GetDependencyValidation());
+        _validationCallback.RegisterDependency(_updateOverallLuminanceNoAdapt->GetDependencyValidation());
 
         _firstStepWidth         = 1<<firstStep;
         _firstStepHeight        = 1<<(firstStep+heightDifference);
@@ -642,9 +642,9 @@ namespace SceneEngine
 
         ToneMapShaderBox(const Desc& descs);
 
-        const ::Assets::DepValPtr&  GetDependencyValidation() const   { return _validationCallback; }
+        const ::Assets::DependencyValidation&  GetDependencyValidation() const   { return _validationCallback; }
     private:
-        ::Assets::DepValPtr _validationCallback;
+        ::Assets::DependencyValidation _validationCallback;
     };
 
     ToneMapShaderBox::ToneMapShaderBox(const Desc& desc)
@@ -815,9 +815,9 @@ namespace SceneEngine
         const Metal::ShaderProgram*       _integrateDistantBlur;
         std::unique_ptr<Metal::BoundUniforms>   _integrateDistantBlurBinding;
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return _validationCallback; }
     private:
-        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
+        ::Assets::DependencyValidation  _validationCallback
     };
 
     AtmosphereBlurResources::Desc::Desc(unsigned width, unsigned height, Format format)
@@ -886,10 +886,10 @@ namespace SceneEngine
         Metal::BlendState integrateBlend;
         Metal::BlendState noBlending = BlendOp::NoBlending;
 
-        auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, horizontalFilter->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, verticalFilter->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, integrateDistantBlur->GetDependencyValidation());
+        auto validationCallback = ::Assets::GetDepValSys().Make();
+        validationCallback.RegisterDependency(horizontalFilter->GetDependencyValidation());
+        validationCallback.RegisterDependency(verticalFilter->GetDependencyValidation());
+        validationCallback.RegisterDependency(integrateDistantBlur->GetDependencyValidation());
 
         _blurBuffer[0]                  = std::move(bloomBuffer0);
         _blurBuffer[1]                  = std::move(bloomBuffer1);

@@ -338,7 +338,7 @@ namespace GUILayer
                 {
                     InputStreamFormatter<utf8>::InteriorSection eleName;
                     formatter.TryBeginElement(eleName);
-                    RenderCore::Assets::RawMaterial mat(formatter, searchRules, ::Assets::DepValPtr());
+                    RenderCore::Assets::RawMaterial mat(formatter, searchRules, ::Assets::DependencyValidation());
                     result.emplace_back(
                         std::make_pair(
                             Conversion::Convert<::Assets::rstring>(eleName.AsString()), std::move(mat)));

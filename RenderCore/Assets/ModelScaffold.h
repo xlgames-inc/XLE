@@ -58,13 +58,13 @@ namespace RenderCore { namespace Assets
         std::pair<Float3, Float3>       GetStaticBoundingBox(unsigned lodIndex = 0) const;
         unsigned                        GetMaxLOD() const;
 
-		const ::Assets::DepValPtr&					GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation&					GetDependencyValidation() const { return _depVal; }
 		std::shared_ptr<::Assets::IFileInterface>	OpenLargeBlocks() const;
 
         static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
 		static const ::Assets::ArtifactRequest ChunkRequests[2];
 
-        ModelScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal);
+        ModelScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DependencyValidation& depVal);
         ModelScaffold(ModelScaffold&& moveFrom) never_throws;
         ModelScaffold& operator=(ModelScaffold&& moveFrom) never_throws;
         ~ModelScaffold();
@@ -72,7 +72,7 @@ namespace RenderCore { namespace Assets
     private:
         std::unique_ptr<uint8[], PODAlignedDeletor>		_rawMemoryBlock;
 		::Assets::ArtifactReopenFunction				_largeBlocksReopen;
-		::Assets::DepValPtr								_depVal;
+		::Assets::DependencyValidation								_depVal;
     };
     
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -101,10 +101,10 @@ namespace RenderCore { namespace Assets
         unsigned LargeBlocksOffset() const;
         const ModelSupplementImmutableData& ImmutableData() const;
 
-		const ::Assets::DepValPtr&					GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation&					GetDependencyValidation() const { return _depVal; }
 		std::shared_ptr<::Assets::IFileInterface>	OpenLargeBlocks() const;
 
-        ModelSupplementScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal);
+        ModelSupplementScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DependencyValidation& depVal);
         ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom) never_throws;
         ModelSupplementScaffold& operator=(ModelSupplementScaffold&& moveFrom) never_throws;
         ~ModelSupplementScaffold();
@@ -115,7 +115,7 @@ namespace RenderCore { namespace Assets
     private:
         std::unique_ptr<uint8[], PODAlignedDeletor>	_rawMemoryBlock;
 		::Assets::ArtifactReopenFunction			_largeBlocksReopen;
-		::Assets::DepValPtr							_depVal;
+		::Assets::DependencyValidation							_depVal;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -151,19 +151,19 @@ namespace RenderCore { namespace Assets
     public:
         const SkeletonMachine&			GetTransformationMachine() const;
 
-		const ::Assets::DepValPtr&					GetDependencyValidation() const { return _depVal;  }
+		const ::Assets::DependencyValidation&					GetDependencyValidation() const { return _depVal;  }
 
         static const auto CompileProcessType = ConstHash64<'Skel', 'eton'>::Value;
 		static const ::Assets::ArtifactRequest ChunkRequests[1];
 
-        SkeletonScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal);
+        SkeletonScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DependencyValidation& depVal);
         SkeletonScaffold(SkeletonScaffold&& moveFrom) never_throws;
         SkeletonScaffold& operator=(SkeletonScaffold&& moveFrom) never_throws;
         ~SkeletonScaffold();
 
     private:
         std::unique_ptr<uint8[], PODAlignedDeletor>    _rawMemoryBlock;
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
     };
 
     /// <summary>Structural data for animation</summary>
@@ -178,19 +178,19 @@ namespace RenderCore { namespace Assets
     public:
         const AnimationImmutableData&   ImmutableData() const;
 
-		const ::Assets::DepValPtr&					GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation&					GetDependencyValidation() const { return _depVal; }
 
         static const auto CompileProcessType = ConstHash64<'Anim', 'Set'>::Value;
 		static const ::Assets::ArtifactRequest ChunkRequests[1];
 
-        AnimationSetScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal);
+        AnimationSetScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DependencyValidation& depVal);
         AnimationSetScaffold(AnimationSetScaffold&& moveFrom) never_throws;
         AnimationSetScaffold& operator=(AnimationSetScaffold&& moveFrom) never_throws;
         ~AnimationSetScaffold();
 
     private:
         std::unique_ptr<uint8[], PODAlignedDeletor>    _rawMemoryBlock;
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
     };
 
 

@@ -199,14 +199,14 @@ namespace ConsoleRig
 
         MainRig_Startup(cfg);
 
+        if (!_pimpl->_depValSys)
+            _pimpl->_depValSys = ::Assets::CreateDepValSys();
+
         if (!_pimpl->_assetsSetsManager)
             _pimpl->_assetsSetsManager = std::make_shared<::Assets::AssetSetManager>();
 
         if (!_pimpl->_compileAndAsyncManager)
             _pimpl->_compileAndAsyncManager = std::make_shared<::Assets::CompileAndAsyncManager>();
-
-        if (!_pimpl->_depValSys)
-            _pimpl->_depValSys = ::Assets::CreateDepValSys();
 
             // add "nsight" marker to global services when "-nsight" is on
             // the command line. This is an easy way to record a global (&cross-dll)
@@ -219,6 +219,7 @@ namespace ConsoleRig
     GlobalServices::~GlobalServices() 
     {
         assert(s_instance == nullptr);  // (should already have been detached in the Withhold() call)
+        _pimpl->_logCfg = nullptr;
         _pimpl->_assetsSetsManager = nullptr;
         _pimpl->_compileAndAsyncManager = nullptr;
         _pimpl->_depValSys = nullptr;
@@ -307,7 +308,7 @@ namespace ConsoleRig
         size_t fileSize = 0;
         ::Assets::DependentFileState fileState;
         auto file = ::Assets::TryLoadFileAsMemoryBlock(fn, &fileSize, &fileState);
-        auto depVal = ::Assets::GetDepValSys().Make(MakeIteratorRange(&fileState, &fileState+1));
+        auto depVal = ::Assets::GetDepValSys().Make(fileState);
         if (!file.get() || !fileSize)
             return std::make_pair(nullptr, depVal);
         

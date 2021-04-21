@@ -112,7 +112,7 @@ namespace SceneEngine
     TerrainMaterialConfig::TerrainMaterialConfig(
         InputStreamFormatter<utf8>& formatter,
         const ::Assets::DirectorySearchRules& searchRules,
-		const ::Assets::DepValPtr& depVal)
+		const ::Assets::DependencyValidation& depVal)
     : TerrainMaterialConfig()
     {
         AccessorDeserialize(formatter, *this);

@@ -373,7 +373,7 @@ namespace RenderCore { namespace Techniques
 		return Techniques::DrawableGeo::VertexStream { LoadVertexBuffer(device, modelScaffold, vertices ) };
 	}
 
-	const ::Assets::DepValPtr& SimpleModelRenderer::GetDependencyValidation() const { return _depVal; }
+	const ::Assets::DependencyValidation& SimpleModelRenderer::GetDependencyValidation() const { return _depVal; }
 
 	namespace Internal
 	{
@@ -772,7 +772,7 @@ namespace RenderCore { namespace Techniques
 		std::shared_ptr<Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
 		const RenderCore::Assets::MaterialScaffold* _materialScaffold;
 		std::string _materialScaffoldName;
-		std::set<std::shared_ptr<::Assets::DependencyValidation>> _depVals;
+		std::set<::Assets::DependencyValidation> _depVals;
 
 		struct WorkingMaterial
 		{
@@ -1067,11 +1067,11 @@ namespace RenderCore { namespace Techniques
 			geoCallIterator += geoCall._materialCount;
 		}
 
-		_depVal = std::make_shared<::Assets::DependencyValidation>();
-		::Assets::RegisterAssetDependency(_depVal, _modelScaffold->GetDependencyValidation());
-		::Assets::RegisterAssetDependency(_depVal, _materialScaffold->GetDependencyValidation());
+		_depVal = ::Assets::GetDepValSys().Make();
+		_depVal.RegisterDependency(_modelScaffold->GetDependencyValidation());
+		_depVal.RegisterDependency(_materialScaffold->GetDependencyValidation());
 		for (const auto&depVal:geoCallBuilder._depVals)
-			::Assets::RegisterAssetDependency(_depVal, depVal);
+			_depVal.RegisterDependency(depVal);
 	}
 
 	SimpleModelRenderer::~SimpleModelRenderer() {}

@@ -67,7 +67,7 @@ namespace RenderCore { namespace Assets
 		}
 	};
 
-	MaterialScaffold::MaterialScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal)
+	MaterialScaffold::MaterialScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DependencyValidation& depVal)
 	: _depVal(depVal)
 	{
 		assert(chunks.size() == 2);

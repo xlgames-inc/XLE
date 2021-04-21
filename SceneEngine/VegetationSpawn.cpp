@@ -632,7 +632,7 @@ namespace SceneEngine
             // model. They must be separate because of the way we assign transforms
             // from the spawning shader.
         for (unsigned b=0; b<unsigned(_cfg._objectTypes.size()); ++b) {
-            if (_drawCallSetDepVals[b] && _drawCallSetDepVals[b]->GetValidationIndex()==0) continue;
+            if (_drawCallSetDepVals[b] && _drawCallSetDepVals[b].GetValidationIndex()==0) continue;
 
             TRY {
                 const auto& bkt = _cfg._objectTypes[b];

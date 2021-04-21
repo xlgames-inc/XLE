@@ -26,7 +26,7 @@ namespace RenderCore { namespace Techniques
 		TechniqueEntry& dst, Formatter& formatter, 
 		IteratorRange<const std::pair<uint64_t, TechniqueEntry>*> localSettings,
 		const ::Assets::DirectorySearchRules& searchRules,
-		std::vector<::Assets::DepValPtr>& inherited)
+		std::vector<::Assets::DependencyValidation>& inherited)
 	{
 			//  We will serialize in a list of 
 			//  shareable settings that we can inherit from
@@ -117,7 +117,7 @@ namespace RenderCore { namespace Techniques
 		Formatter& formatter, 
 		IteratorRange<const std::pair<uint64_t, TechniqueEntry>*> localSettings,
 		const ::Assets::DirectorySearchRules& searchRules, 
-		std::vector<::Assets::DepValPtr>& inherited)
+		std::vector<::Assets::DependencyValidation>& inherited)
 	{
 		using ParsingString = std::basic_string<Formatter::value_type>;
 
@@ -154,10 +154,10 @@ namespace RenderCore { namespace Techniques
 	TechniqueSetFile::TechniqueSetFile(
 		Utility::InputStreamFormatter<utf8>& formatter, 
 		const ::Assets::DirectorySearchRules& searchRules, 
-		const ::Assets::DepValPtr& depVal)
+		const ::Assets::DependencyValidation& depVal)
 	: _depVal(depVal)
 	{
-		std::vector<::Assets::DepValPtr> inherited;
+		std::vector<::Assets::DependencyValidation> inherited;
 			
 			//  each top-level entry is a "Setting", which can contain parameter
 			//  boxes (and possibly inherit statements and shaders)
@@ -179,7 +179,7 @@ namespace RenderCore { namespace Techniques
 			Throw(FormatException("Unexpected blob while reading stream", formatter.GetLocation()));
 
 		for (auto i=inherited.begin(); i!=inherited.end(); ++i) {
-			::Assets::RegisterAssetDependency(_depVal, *i);
+			_depVal.RegisterDependency(*i);
 		}
 	}
 
@@ -287,8 +287,7 @@ namespace RenderCore { namespace Techniques
 
 	Technique::Technique(StringSection<::Assets::ResChar> resourceName)
 	{
-		_validationCallback = std::make_shared<::Assets::DependencyValidation>();
-		::Assets::RegisterFileDependency(_validationCallback, resourceName);
+		_validationCallback = ::Assets::GetDepValSys().Make(resourceName);
 
 		TRY {
 			size_t sourceFileSize = 0;
@@ -296,7 +295,7 @@ namespace RenderCore { namespace Techniques
 		
 			if (sourceFile && sourceFileSize) {
 				auto searchRules = ::Assets::DefaultDirectorySearchRules(resourceName);
-				std::vector<std::shared_ptr<::Assets::DependencyValidation>> inheritedAssets;
+				std::vector<::Assets::DependencyValidation> inheritedAssets;
 
 				StringSection<char> configSection(
 					(const char*)sourceFile.get(), 
@@ -313,7 +312,7 @@ namespace RenderCore { namespace Techniques
 					ReplaceSelfReference(_entries[c], resourceName);
 
 				for (auto i=inheritedAssets.begin(); i!=inheritedAssets.end(); ++i)
-					::Assets::RegisterAssetDependency(_validationCallback, *i);
+					_validationCallback.RegisterDependency(*i);
 			}
 		} CATCH(const ::Assets::Exceptions::ConstructionError& e) {
 			Throw(::Assets::Exceptions::ConstructionError(e, _validationCallback));
@@ -329,7 +328,7 @@ namespace RenderCore { namespace Techniques
 		Formatter& formatter, 
 		StringSection<::Assets::ResChar> containingFileName,
 		const ::Assets::DirectorySearchRules& searchRules,
-		std::vector<::Assets::DepValPtr>& inheritedAssets)
+		std::vector<::Assets::DependencyValidation>& inheritedAssets)
 	{
 		Formatter::InteriorSection name;
 		while (formatter.TryKeyedItem(name)) {

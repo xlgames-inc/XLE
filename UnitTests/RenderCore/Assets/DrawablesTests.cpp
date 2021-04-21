@@ -85,7 +85,7 @@ namespace UnitTests
 		using namespace RenderCore;
 
 		InputStreamFormatter<utf8> formattr { techniqueText.Cast<utf8>() };
-		return std::make_shared<RenderCore::Assets::ShaderPatchCollection>(formattr, ::Assets::DirectorySearchRules{}, std::make_shared<::Assets::DependencyValidation>());
+		return std::make_shared<RenderCore::Assets::ShaderPatchCollection>(formattr, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{});
 	}
 
 	template<typename Type>

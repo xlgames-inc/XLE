@@ -73,7 +73,8 @@ namespace ShaderSourceParser
 			std::set<std::string> _rawShaderFileIncludes;
 			std::vector<ShaderEntryPoint> _entryPointsFromRawShaders;
 			
-			std::set<::Assets::DepValPtr> _depVals;		// dependencies created in the QueueUp() method
+			std::set<::Assets::DependencyValidation> _depVals;		// dependencies created in the QueueUp() method
+			std::set<::Assets::DependentFileState> _fileStates;
 
 			void QueueUp(
 				IteratorRange<const DependencyTable::Dependency*> dependencies,
@@ -106,8 +107,6 @@ namespace ShaderSourceParser
 							_instantiations.emplace(
 								PendingInstantiation{nodeGraph.value(), true, isRootInstantiation, dep._instantiation});
 							_previousInstantiation.insert({dep._instantiation._archiveName, instHash});
-							assert(nodeGraph.value()._depVal);
-							_depVals.insert(nodeGraph.value()._depVal);
 
 						}
 					} else {
@@ -150,6 +149,9 @@ namespace ShaderSourceParser
             auto inst = std::move(pendingInst._instantiations.top());
             pendingInst._instantiations.pop();
 
+			result._depVals.insert(inst._graph._depVal);
+			result._depFileStates.insert(inst._graph._fileState);
+
 			// Slightly different rules for function name generation with inst._scope is not null. inst._scope is
 			// only null for the original instantiation request -- in that case, we want the outer most function
 			// to have the same name as the original request
@@ -183,6 +185,7 @@ namespace ShaderSourceParser
 							entryPoint._implementsSignature = implementsSig.value()._signature;
 							assert(implementsSig.value()._depVal);
 							result._depVals.insert(implementsSig.value()._depVal);
+							result._depFileStates.insert(implementsSig.value()._fileState);
 						}
 					}
 					result._entryPoints.emplace_back(std::move(entryPoint));
@@ -203,14 +206,8 @@ namespace ShaderSourceParser
 			//  - captured parameters
 			//  - selector relevance table
 
-			#if defined(_DEBUG)
-				for (const auto&d:instFn._depVals) { assert(d); }
-			#endif
 			result._depVals.insert(instFn._depVals.begin(), instFn._depVals.end());
 			result._depFileStates.insert(instFn._depFileStates.begin(), instFn._depFileStates.end());
-			result._depVals.insert(inst._graph._depVal);
-			if (!inst._graph._fileState._filename.empty())
-				result._depFileStates.insert(inst._graph._fileState);
 
 			{
 				for (const auto&c:inst._graph._signature.GetCapturedParameters()) {
@@ -277,6 +274,7 @@ namespace ShaderSourceParser
 
 		result._rawShaderFileIncludes = std::move(pendingInst._rawShaderFileIncludes);
 		result._depVals.insert(pendingInst._depVals.begin(), pendingInst._depVals.end());
+		result._depFileStates.insert(pendingInst._fileStates.begin(), pendingInst._fileStates.end());
 
 		return result;
 	}

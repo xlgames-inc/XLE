@@ -82,10 +82,10 @@ namespace SceneEngine
         void Write(const Assets::ResChar destinationFile[]) const;
         void LogDetails(const char title[]) const;
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const	{ return _dependencyValidation; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const	{ return _dependencyValidation; }
 		static const ::Assets::ArtifactRequest ChunkRequests[1];
 
-        Placements(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal);
+        Placements(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DependencyValidation& depVal);
         Placements();
         ~Placements();
     protected:
@@ -93,7 +93,7 @@ namespace SceneEngine
         std::vector<uint8>              _filenamesBuffer;
         std::vector<uint64_t>             _supplementsBuffer;
 
-		::Assets::DepValPtr				_dependencyValidation;
+		::Assets::DependencyValidation				_dependencyValidation;
         void ReplaceString(const char oldString[], const char newString[]);
     };
 
@@ -242,7 +242,7 @@ namespace SceneEngine
         }
     };
 
-    Placements::Placements(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal)
+    Placements::Placements(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DependencyValidation& depVal)
 	: _dependencyValidation(depVal)
     {
         assert(chunks.size() == 1);
@@ -287,7 +287,6 @@ namespace SceneEngine
     }
 
 	Placements::Placements() 
-	: _dependencyValidation(std::make_shared<::Assets::DependencyValidation>())
 	{}
 
     Placements::~Placements()
@@ -2404,7 +2403,7 @@ namespace SceneEngine
     WorldPlacementsConfig::WorldPlacementsConfig(
         InputStreamFormatter<utf8>& formatter,
         const ::Assets::DirectorySearchRules& searchRules,
-		const ::Assets::DepValPtr& depVal)
+		const ::Assets::DependencyValidation& depVal)
     : WorldPlacementsConfig()
     {
         StreamDOM<InputStreamFormatter<utf8>> doc(formatter);

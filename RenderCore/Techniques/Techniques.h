@@ -52,23 +52,23 @@ namespace RenderCore { namespace Techniques
 	{
 	public:
 		std::vector<std::pair<uint64_t, TechniqueEntry>> _settings;
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
 		const TechniqueEntry* FindEntry(uint64_t hashName) const;
 
 		TechniqueSetFile(
             Utility::InputStreamFormatter<utf8>& formatter, 
 			const ::Assets::DirectorySearchRules& searchRules, 
-			const ::Assets::DepValPtr& depVal);
+			const ::Assets::DependencyValidation& depVal);
 		~TechniqueSetFile();
 	private:
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
 	};
 
 	DEPRECATED_ATTRIBUTE class Technique
 	{
 	public:
-		auto GetDependencyValidation() const -> const ::Assets::DepValPtr& { return _validationCallback; }
+		auto GetDependencyValidation() const -> const ::Assets::DependencyValidation& { return _validationCallback; }
 		const RenderCore::Assets::PredefinedCBLayout& TechniqueCBLayout() const { return _cbLayout; }
 		TechniqueEntry& GetEntry(unsigned idx);
 		const TechniqueEntry& GetEntry(unsigned idx) const;
@@ -78,14 +78,14 @@ namespace RenderCore { namespace Techniques
 	private:
 		TechniqueEntry			_entries[size_t(TechniqueIndex::Max)];
 
-		::Assets::DepValPtr		_validationCallback;
+		::Assets::DependencyValidation		_validationCallback;
 		RenderCore::Assets::PredefinedCBLayout		_cbLayout;
 
         void ParseConfigFile(
             InputStreamFormatter<utf8>& formatter, 
 			StringSection<::Assets::ResChar> containingFileName,
             const ::Assets::DirectorySearchRules& searchRules,
-            std::vector<std::shared_ptr<::Assets::DependencyValidation>>& inheritedAssets);
+            std::vector<::Assets::DependencyValidation>& inheritedAssets);
 	};
 
 		//////////////////////////////////////////////////////////////////

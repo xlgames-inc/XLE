@@ -261,7 +261,7 @@ namespace RenderCore { namespace Assets
     RawMaterial::RawMaterial(
 		InputStreamFormatter<utf8>& formatter, 
 		const ::Assets::DirectorySearchRules& searchRules, 
-		const ::Assets::DepValPtr& depVal)
+		const ::Assets::DependencyValidation& depVal)
 	: _depVal(depVal), _searchRules(searchRules)
     {
         while (formatter.PeekNext() == FormatterBlob::KeyedItem) {
@@ -388,7 +388,7 @@ namespace RenderCore { namespace Assets
 
 	RawMatConfigurations::RawMatConfigurations(
 		const ::Assets::Blob& blob,
-		const ::Assets::DepValPtr& depVal,
+		const ::Assets::DependencyValidation& depVal,
 		StringSection<::Assets::ResChar>)
     {
             //  Get associated "raw" material information. This is should contain the material information attached

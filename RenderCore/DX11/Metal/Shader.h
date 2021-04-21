@@ -100,7 +100,7 @@ namespace RenderCore { namespace Metal_DX11
 
 		uint64_t GetGUID() const { return _guid; }
 
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _validationCallback; }
 
 		ShaderProgram(ShaderProgram&&) never_throws = default;
         ShaderProgram& operator=(ShaderProgram&&) never_throws = default;
@@ -140,7 +140,7 @@ namespace RenderCore { namespace Metal_DX11
 
 		CompiledShaderByteCode _compiledCode[(unsigned)ShaderStage::Max];
 		intrusive_ptr<ID3D::ClassLinkage> _classLinkage[(unsigned)ShaderStage::Max];
-		std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
+		::Assets::DependencyValidation   _validationCallback;
 
 		uint64_t _guid;
     };

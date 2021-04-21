@@ -45,7 +45,7 @@ namespace RenderOverlays
 
 		std::shared_ptr<Font> _font;
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _shader->GetDependencyValidation(); }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _shader->GetDependencyValidation(); }
 
 		class Desc {};
 		SkeletonPreviewResourceBox(const Desc&)

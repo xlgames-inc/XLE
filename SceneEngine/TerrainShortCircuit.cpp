@@ -57,11 +57,11 @@ namespace SceneEngine
         const Metal::ComputeShader* _cs2;
         Metal::BoundUniforms _boundLayout;
 
-        const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
         ShortCircuitResources(const Desc& desc);
     private:
-        ::Assets::DepValPtr _depVal;
+        ::Assets::DependencyValidation _depVal;
     };
 
     ShortCircuitResources::ShortCircuitResources(const Desc& desc)
@@ -91,10 +91,10 @@ namespace SceneEngine
             BufferUploads::LinearBufferDesc::Create(32, 32),
             "TileCoordsBuffer", nullptr, BufferUploads::BindFlag::UnorderedAccess);
 
-        _depVal = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(_depVal, _cs0->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_depVal, _cs1->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_depVal, _cs2->GetDependencyValidation());
+        _depVal = ::Assets::GetDepValSys().Make();
+        _depVal.RegisterDependency(_cs0->GetDependencyValidation());
+        _depVal.RegisterDependency(_cs1->GetDependencyValidation());
+        _depVal.RegisterDependency(_cs2->GetDependencyValidation());
     }
 
     class ShortCircuitMidwayBox

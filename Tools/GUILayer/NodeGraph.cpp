@@ -410,12 +410,12 @@ namespace GUILayer
 			NodeGraphFile^ parsedGraphFile,
 			const std::unordered_map<std::string, std::string>& imports,
 			const ::Assets::DirectorySearchRules& searchRules,
-			const ::Assets::DepValPtr& dependencyValidation,
+			const ::Assets::DependencyValidation& dependencyValidation,
 			const ::Assets::DependentFileState& parsedGraphFileState);
         ~GraphNodeGraphProvider();
     protected:
 		msclr::gcroot<NodeGraphFile^> _parsedGraphFile;
-		::Assets::DepValPtr _parsedGraphFileDepVal;
+		::Assets::DependencyValidation _parsedGraphFileDepVal;
 		::Assets::DependentFileState _parsedGraphFileState;
 		std::unordered_map<std::string, std::string> _imports;
     };
@@ -424,7 +424,7 @@ namespace GUILayer
 		NodeGraphFile^ parsedGraphFile,
 		const std::unordered_map<std::string, std::string>& imports,
 		const ::Assets::DirectorySearchRules& searchRules,
-		const ::Assets::DepValPtr& dependencyValidation,
+		const ::Assets::DependencyValidation& dependencyValidation,
 		const ::Assets::DependentFileState& parsedGraphFileState)
 	{
 		return std::make_shared<GraphNodeGraphProvider>(parsedGraphFile, imports, searchRules, dependencyValidation, parsedGraphFileState);
@@ -512,7 +512,7 @@ namespace GUILayer
 		NodeGraphFile^ parsedGraphFile,
 		const std::unordered_map<std::string, std::string>& imports,
 		const ::Assets::DirectorySearchRules& searchRules,
-		const ::Assets::DepValPtr& dependencyValidation,
+		const ::Assets::DependencyValidation& dependencyValidation,
 		const ::Assets::DependentFileState& parsedGraphFileState)
 	: BasicNodeGraphProvider(searchRules)
 	, _parsedGraphFile(parsedGraphFile)

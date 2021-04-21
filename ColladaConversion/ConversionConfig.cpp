@@ -35,8 +35,7 @@ namespace ColladaConversion
             Log(Warning) << "Problem while loading configuration file (" << filename << "). Using defaults." << std::endl;
         } CATCH_END
 
-        _depVal = std::make_shared<::Assets::DependencyValidation>();
-        RegisterFileDependency(_depVal, filename);
+        _depVal = ::Assets::GetDepValSys().Make(filename);
     }
     ImportConfiguration::ImportConfiguration() {}
     ImportConfiguration::~ImportConfiguration()

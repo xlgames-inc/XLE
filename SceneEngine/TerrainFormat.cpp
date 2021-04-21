@@ -120,7 +120,7 @@ namespace SceneEngine
 
         TerrainCell::TerrainCell(const char filename[])
         {
-            auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
+            auto validationCallback = ::Assets::GetDepValSys().Make();
 
             std::vector<NodeField> nodeFields;
             std::vector<std::unique_ptr<Node>> nodes;
@@ -207,7 +207,7 @@ namespace SceneEngine
             _nodeFields = std::move(nodeFields);
             _nodes = std::move(nodes);
 
-            ::Assets::RegisterFileDependency(validationCallback, filename);
+            validationCallback.RegisterDependency(filename);
             _validationCallback = std::move(validationCallback);
         }
 
@@ -225,8 +225,8 @@ namespace SceneEngine
         {
             _nodeTextureByteCount = 0;
             _fieldCount = 0;
-            auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-			::Assets::RegisterFileDependency(validationCallback, filename);
+            auto validationCallback = ::Assets::GetDepValSys().Make();
+			validationCallback.RegisterDependency(filename);
 
             TRY {
                 auto file = ::Assets::MainFileSystem::OpenFileInterface(filename, "rb");

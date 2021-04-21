@@ -677,11 +677,11 @@ namespace FixedFunctionModel
 
             ////////////////////////////////////////////////////////////////////////
 
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(_validationCallback, scaffold.GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, matScaffold.GetDependencyValidation());
-        for(auto i:cbLayouts) ::Assets::RegisterAssetDependency(_validationCallback, i->GetDependencyValidation());
-        // for (const auto& t:boundTextures) if (t) ::Assets::RegisterAssetDependency(_validationCallback, t->GetDependencyValidation());       // rebuild the entire renderer if any texture changes
+        _validationCallback = ::Assets::GetDepValSys().Make();
+        _validationCallback.RegisterDependency(scaffold.GetDependencyValidation());
+        _validationCallback.RegisterDependency(matScaffold.GetDependencyValidation());
+        for(auto i:cbLayouts) _validationCallback.RegisterDependency(i->GetDependencyValidation());
+        // for (const auto& t:boundTextures) if (t) _validationCallback.RegisterDependency(t->GetDependencyValidation());       // rebuild the entire renderer if any texture changes
 
         auto pimpl = std::make_unique<PimplWithSkinning>();
 

@@ -315,7 +315,6 @@ namespace UnitTests
 			desc->_patchExpansions.push_back(perPixelPatchName);
 			if (hasDeformPosition)
 				desc->_patchExpansions.push_back(deformPositionPatchName);
-			desc->_depVal = std::make_shared<::Assets::DependencyValidation>();
 
 			auto result = std::make_shared<::Assets::AssetFuture<GraphicsPipelineDesc>>("pipeline-for-unit-test");
 			result->SetAsset(std::move(desc), {});
@@ -462,7 +461,7 @@ namespace UnitTests
 				ut-data/minimal_perpixel.graph::Minimal_PerPixel
 			)--";
 			InputStreamFormatter<utf8> formattr { MakeStringSection(simplePatchCollectionFragments) };
-			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{});
 			auto compiledPatchCollection = std::make_shared<RenderCore::Techniques::CompiledShaderPatchCollection>(patchCollection, MakeMaterialDescriptorSetLayout());
 
 			{
@@ -525,7 +524,7 @@ namespace UnitTests
 							ut-data/spherical_generators.hlsl::MainSphericalToNormal
 					)--";
 					InputStreamFormatter<utf8> formattr { MakeStringSection(sphericalCollectionFragmentsNoDeform) };
-					patchCollectionNoDeform = std::make_shared<RenderCore::Assets::ShaderPatchCollection>(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+					patchCollectionNoDeform = std::make_shared<RenderCore::Assets::ShaderPatchCollection>(formattr, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{});
 				}
 
 				{
@@ -540,7 +539,7 @@ namespace UnitTests
 						ut-data/spherical.graph::DeformPositionImplementation
 					)--";
 					InputStreamFormatter<utf8> formattr { MakeStringSection(sphericalCollectionFragmentsWithDeform) };
-					patchCollectionWithDeform = std::make_shared<RenderCore::Assets::ShaderPatchCollection>(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+					patchCollectionWithDeform = std::make_shared<RenderCore::Assets::ShaderPatchCollection>(formattr, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{});
 				}
 
 				// The final pipeline we want will be determined by two main things:
@@ -627,7 +626,7 @@ namespace UnitTests
 						ut-data/spherical_generators.hlsl::MainSphericalToNormal
 				)--";
 				InputStreamFormatter<utf8> formattr { MakeStringSection(sphericalCollectionFragments) };
-				auto patchCollection = std::make_shared<RenderCore::Assets::ShaderPatchCollection>(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+				auto patchCollection = std::make_shared<RenderCore::Assets::ShaderPatchCollection>(formattr, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{});
 				
 				auto techniqueDelegate = std::make_shared<UnitTestTechniqueDelegate>();
 				auto cfg = pipelinePool->CreateSequencerConfig(techniqueDelegate, ParameterBox{}, fbHelper.GetDesc(), 0);

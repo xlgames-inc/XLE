@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "../Assets/DepVal.h"
 #include <memory>
 
 namespace RenderCore { class IDevice; class IThreadContext; class IPresentationChain; class IAnnotator; }
@@ -32,8 +33,8 @@ namespace PlatformRig
 		std::shared_ptr<RenderOverlays::Font> _debugFont0;
 		std::shared_ptr<RenderOverlays::Font> _debugFont1;
 
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depValPtr; }
-		std::shared_ptr<::Assets::DependencyValidation> _depValPtr;
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depValPtr; }
+		::Assets::DependencyValidation _depValPtr;
 
 		DebugOverlaysApparatus(
 			const std::shared_ptr<RenderCore::Techniques::ImmediateDrawingApparatus>& immediateDrawingApparatus,
@@ -51,8 +52,8 @@ namespace PlatformRig
 		std::shared_ptr<MainInputHandler> _mainInputHandler;
 		std::shared_ptr<ResizePresentationChain> _windowHandler;
 
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depValPtr; }
-		std::shared_ptr<::Assets::DependencyValidation> _depValPtr;
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depValPtr; }
+		::Assets::DependencyValidation _depValPtr;
 
 		WindowApparatus(std::shared_ptr<RenderCore::IDevice> device);
 		~WindowApparatus();

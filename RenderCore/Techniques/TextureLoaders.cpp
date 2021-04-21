@@ -234,11 +234,9 @@ namespace RenderCore { namespace Techniques
 			return result;
 		}
 
-		std::shared_ptr<Assets::DependencyValidation> GetDependencyValidation() const override
+		Assets::DependencyValidation GetDependencyValidation() const override
 		{
-			auto depVal = std::make_shared<::Assets::DependencyValidation>();
-	        ::Assets::RegisterFileDependency(depVal, _filename);
-			return depVal;
+			return ::Assets::GetDepValSys().Make(_filename);
 		}
 
 		DDSDataSource(const std::string& filename)
@@ -388,11 +386,9 @@ namespace RenderCore { namespace Techniques
 			return result;
 		}
 
-		std::shared_ptr<Assets::DependencyValidation> GetDependencyValidation() const override
+		Assets::DependencyValidation GetDependencyValidation() const override
 		{
-			auto depVal = std::make_shared<::Assets::DependencyValidation>();
-	        ::Assets::RegisterFileDependency(depVal, _filename);
-			return depVal;
+			return ::Assets::GetDepValSys().Make(_filename);
 		}
 
 		WICDataSource(const std::string& filename, TextureLoaderFlags::BitField flags)

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "../../Assets/DepVal.h"
 #include "../../Utility/StringUtils.h"
 #include <unordered_map>
 #include <memory>
@@ -43,16 +44,16 @@ namespace RenderCore { namespace Assets
         PredefinedPipelineLayoutFile(
 			StringSection<> inputData,
 			const ::Assets::DirectorySearchRules& searchRules,
-			const std::shared_ptr<::Assets::DependencyValidation>& depVal);
+			const ::Assets::DependencyValidation& depVal);
         PredefinedPipelineLayoutFile(
 			StringSection<> sourceFileName);
 		PredefinedPipelineLayoutFile();
 		~PredefinedPipelineLayoutFile();
 
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
     protected:
-        std::shared_ptr<::Assets::DependencyValidation> _depVal;
+        ::Assets::DependencyValidation _depVal;
 
         std::shared_ptr<PipelineLayout> ParsePipelineLayout(Utility::ConditionalProcessingTokenizer&);
         void Parse(Utility::ConditionalProcessingTokenizer&);

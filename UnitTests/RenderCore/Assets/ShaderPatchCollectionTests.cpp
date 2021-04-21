@@ -235,7 +235,7 @@ namespace UnitTests
 			// Normally a ShaderPatchCollection is deserialized from a material file
 			// We'll test the serialization and deserialization code here, and ensure
 			InputStreamFormatter<> formattr { MakeStringSection(s_exampleTechniqueFragments) };
-			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{});
 
 			// Verify that a few things got deserialized correctly
 			auto i = std::find_if(
@@ -257,7 +257,7 @@ namespace UnitTests
 			// Now let's verify that we can deserialize in what we just wrote out
 			auto& serializedStream = strm.GetBuffer();
 			InputStreamFormatter<utf8> formattr2 { MakeStringSection(serializedStream.Begin(), serializedStream.End()) };
-			RenderCore::Assets::ShaderPatchCollection patchCollection2(formattr2, ::Assets::DirectorySearchRules{}, nullptr);
+			RenderCore::Assets::ShaderPatchCollection patchCollection2(formattr2, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{});
 
 			// we should have the same contents in both patch collections
 			REQUIRE(patchCollection.GetPatches().size() == patchCollection2.GetPatches().size());
@@ -269,7 +269,7 @@ namespace UnitTests
 			// Ensure that we can correctly compile the shader graph in the test data
 			// (otherwise the following tests won't work)
 			InputStreamFormatter<utf8> formattr { MakeStringSection(s_exampleTechniqueFragments) };
-			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{});
 
 			std::vector<ShaderSourceParser::InstantiationRequest> instantiations;
 			for (const auto& p:patchCollection.GetPatches())
@@ -294,7 +294,7 @@ namespace UnitTests
 			const uint64_t CompileProcess_InstantiateShaderGraph = ConstHash64<'Inst', 'shdr'>::Value;
 			
 			InputStreamFormatter<utf8> formattr { MakeStringSection(s_fragmentsWithSelectors) };
-			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{});
 			auto compiledCollection = std::make_shared<RenderCore::Techniques::CompiledShaderPatchCollection>(patchCollection, matDescSetLayout);
 			std::vector<uint64_t> instantiations { Hash64("PerPixel") };
 
@@ -312,7 +312,7 @@ namespace UnitTests
 			REQUIRE(compiledFromFile->GetAssetState() == ::Assets::AssetState::Ready);
 			auto artifacts = compiledFromFile->GetArtifactCollection(CompileProcess_InstantiateShaderGraph);
 			REQUIRE(artifacts != nullptr);
-			REQUIRE(artifacts->GetDependencyValidation() != nullptr);
+			REQUIRE((bool)artifacts->GetDependencyValidation());
 			REQUIRE(artifacts->GetAssetState() == ::Assets::AssetState::Ready);
 
 			compilers.DeregisterCompiler(compilerRegistration._registrationId);
@@ -321,7 +321,7 @@ namespace UnitTests
 		SECTION( "CompileShaderPatchCollection1" )
 		{
 			InputStreamFormatter<utf8> formattr { MakeStringSection(s_exampleTechniqueFragments) };
-			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{});
 
 			using RenderCore::Techniques::CompiledShaderPatchCollection;
 			CompiledShaderPatchCollection compiledCollection(patchCollection, matDescSetLayout);
@@ -344,7 +344,7 @@ namespace UnitTests
 		SECTION( "CompileShaderPatchCollection2" )
 		{
 			InputStreamFormatter<utf8> formattr { MakeStringSection(s_fragmentsWithSelectors) };
-			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+			RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{});
 
 			using RenderCore::Techniques::CompiledShaderPatchCollection;
 			CompiledShaderPatchCollection compiledCollection(patchCollection, matDescSetLayout);
@@ -377,20 +377,22 @@ namespace UnitTests
 				};
 
 				InputStreamFormatter<utf8> formattr { MakeStringSection(s_fragmentsWithSelectors) };
-				RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+				RenderCore::Assets::ShaderPatchCollection patchCollection(formattr, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{});
 
 				for (unsigned c=0; c<std::max(dimof(dependenciesToCheck), dimof(nonDependencies)); ++c) {
 					RenderCore::Techniques::CompiledShaderPatchCollection compiledCollection(patchCollection, matDescSetLayout);
-					REQUIRE(compiledCollection._depVal->GetValidationIndex() == 0u);
+					REQUIRE(compiledCollection._depVal.GetValidationIndex() == 0u);
 					
 					if (c < dimof(nonDependencies)) {
+						INFO(std::string{"Testing non dependency: "} + nonDependencies[c]);
 						FakeChange(nonDependencies[c]);
-						REQUIRE(compiledCollection._depVal->GetValidationIndex() == 0u);
+						REQUIRE(compiledCollection._depVal.GetValidationIndex() == 0u);
 					}
 
 					if (c < dimof(dependenciesToCheck)) {
+						INFO(std::string{"Testing dependency: "} + dependenciesToCheck[c]);
 						FakeChange(dependenciesToCheck[c]);
-						REQUIRE(compiledCollection._depVal->GetValidationIndex() > 0u);
+						REQUIRE(compiledCollection._depVal.GetValidationIndex() > 0u);
 					}
 				}
 			}
@@ -420,18 +422,18 @@ namespace UnitTests
 						options);
 
 					// Create one dep val that references all of the children
-					auto depVal = std::make_shared<::Assets::DependencyValidation>();
+					auto depVal = ::Assets::GetDepValSys().Make();
 					for (const auto&d:inst._depVals)
-						::Assets::RegisterAssetDependency(depVal, d);
+						depVal.RegisterDependency(d);
 
 					if (c < dimof(nonDependencies)) {
 						FakeChange(nonDependencies[c]);
-						REQUIRE(depVal->GetValidationIndex() == 0u);
+						REQUIRE(depVal.GetValidationIndex() == 0u);
 					}
 
 					if (c < dimof(dependenciesToCheck)) {
 						FakeChange(dependenciesToCheck[c]);
-						REQUIRE(depVal->GetValidationIndex() > 0u);
+						REQUIRE(depVal.GetValidationIndex() > 0u);
 					}
 				}
 			}

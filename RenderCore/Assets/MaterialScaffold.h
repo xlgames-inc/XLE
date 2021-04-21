@@ -180,19 +180,19 @@ namespace RenderCore { namespace Assets
 
 		std::shared_ptr<ShaderPatchCollection> GetShaderPatchCollection(uint64_t hash) const;
 
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
         static const auto CompileProcessType = ConstHash64<'ResM', 'at'>::Value;
 		static const ::Assets::ArtifactRequest ChunkRequests[2];
 
-        MaterialScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal);
+        MaterialScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DependencyValidation& depVal);
         MaterialScaffold(MaterialScaffold&& moveFrom) never_throws;
         MaterialScaffold& operator=(MaterialScaffold&& moveFrom) never_throws;
         ~MaterialScaffold();
 
     protected:
         std::unique_ptr<uint8[], PODAlignedDeletor>	_rawMemoryBlock;
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
 
 		std::vector<std::shared_ptr<ShaderPatchCollection>> _patchCollections;
     };

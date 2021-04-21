@@ -67,7 +67,7 @@ namespace RenderCore { namespace Techniques
 
 		///////////////////////////////////////
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const;
+		const ::Assets::DependencyValidation& GetDependencyValidation() const;
 		static void ConstructToFuture(
 			::Assets::AssetFuture<TechniqueShaderVariationSet>& future,
 			StringSection<::Assets::ResChar> techniqueName,

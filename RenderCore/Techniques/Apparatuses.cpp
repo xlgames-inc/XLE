@@ -41,7 +41,7 @@ namespace RenderCore { namespace Techniques
 
 	DrawingApparatus::DrawingApparatus(std::shared_ptr<IDevice> device)
 	{
-		_depValPtr = std::make_shared<::Assets::DependencyValidation>();
+		_depValPtr = ::Assets::GetDepValSys().Make();
 		_legacyRegisterBindingDesc = std::make_shared<LegacyRegisterBindingDesc>(RenderCore::Assets::CreateDefaultLegacyRegisterBindingDesc());
 
 		_device = device;
@@ -62,7 +62,7 @@ namespace RenderCore { namespace Techniques
 		auto pipelineLayoutFileFuture = ::Assets::MakeAsset<RenderCore::Assets::PredefinedPipelineLayoutFile>(MAIN_PIPELINE);
 		pipelineLayoutFileFuture->StallWhilePending();
 		_pipelineLayoutFile = pipelineLayoutFileFuture->Actualize();
-		::Assets::RegisterAssetDependency(_depValPtr, _pipelineLayoutFile->GetDependencyValidation());
+		_depValPtr.RegisterDependency(_pipelineLayoutFile->GetDependencyValidation());
 
 		const std::string pipelineLayoutName = "GraphicsMain";
 		auto i = _pipelineLayoutFile->_pipelineLayouts.find(pipelineLayoutName);
@@ -117,15 +117,15 @@ namespace RenderCore { namespace Techniques
 
 	ImmediateDrawingApparatus::ImmediateDrawingApparatus(std::shared_ptr<DrawingApparatus> mainDrawingApparatus)
 	{
-		_depValPtr = std::make_shared<::Assets::DependencyValidation>();
+		_depValPtr = ::Assets::GetDepValSys().Make();
 
 		_mainDrawingApparatus = std::move(mainDrawingApparatus);
-		::Assets::RegisterAssetDependency(_depValPtr, _mainDrawingApparatus->GetDependencyValidation());
+		_depValPtr.RegisterDependency(_mainDrawingApparatus->GetDependencyValidation());
 		
 		auto pipelineLayoutFuture = ::Assets::MakeAsset<RenderCore::Assets::PredefinedPipelineLayoutFile>(IMMEDIATE_PIPELINE);
 		pipelineLayoutFuture->StallWhilePending();
 		_pipelineLayoutFile = pipelineLayoutFuture->Actualize();
-		::Assets::RegisterAssetDependency(_depValPtr, _pipelineLayoutFile->GetDependencyValidation());
+		_depValPtr.RegisterDependency(_pipelineLayoutFile->GetDependencyValidation());
 
 		const std::string pipelineLayoutName = "ImmediateDrawables";
 		auto i = _pipelineLayoutFile->_pipelineLayouts.find(pipelineLayoutName);
@@ -166,8 +166,6 @@ namespace RenderCore { namespace Techniques
 
 	PrimaryResourcesApparatus::PrimaryResourcesApparatus(std::shared_ptr<IDevice> device)
 	{
-		_depValPtr = std::make_shared<::Assets::DependencyValidation>();
-
 		_continuationExecutor = std::make_unique<ContinuationExecutor>();
 		_bufferUploads = BufferUploads::CreateManager(*device);
 		_techniqueServices->SetBufferUploads(_bufferUploads);

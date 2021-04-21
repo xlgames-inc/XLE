@@ -26,7 +26,7 @@ namespace SceneEngine
 
         const std::string & SourceFile() const          { return _sourceFileName; }
         const std::string & SecondaryCacheFile() const  { return _secondaryCacheName; }
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return _validationCallback; }
         bool EncodedGradientFlags() const               { return _encodedGradientFlags; }
 
         //////////////////////////////////////////////////////////////////
@@ -66,7 +66,7 @@ namespace SceneEngine
         std::string         _secondaryCacheName;
         bool                _encodedGradientFlags;
 
-        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
+        ::Assets::DependencyValidation  _validationCallback
 
     private:
         TerrainCell(const TerrainCell&);
@@ -78,7 +78,7 @@ namespace SceneEngine
     {
     public:
         const std::string & SourceFile() const  { return _sourceFileName; }
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return _validationCallback; }
 
         TerrainCellTexture();
         ~TerrainCellTexture();
@@ -89,7 +89,7 @@ namespace SceneEngine
         unsigned                _fieldCount;
         std::string             _sourceFileName;
 
-        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
+        ::Assets::DependencyValidation  _validationCallback
 
         friend class TerrainCellRenderer;
     };

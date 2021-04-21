@@ -119,9 +119,10 @@ namespace ShaderSourceParser
 
 		// Also need to merge in the dependency validation information
 		if (_depVal) {
-			auto newDepVal = std::make_shared<::Assets::DependencyValidation>();
-			::Assets::RegisterAssetDependency(newDepVal, _depVal);
-			::Assets::RegisterAssetDependency(newDepVal, source.GetDependencyValidation());
+			auto newDepVal = ::Assets::GetDepValSys().Make();
+			newDepVal.RegisterDependency(_depVal);
+			newDepVal.RegisterDependency(source.GetDependencyValidation());
+			_depVal = newDepVal;
 		} else {
 			_depVal = source.GetDependencyValidation();
 		}
@@ -145,7 +146,7 @@ namespace ShaderSourceParser
 	SelectorFilteringRules::SelectorFilteringRules(
 		InputStreamFormatter<utf8>& formatter, 
 		const ::Assets::DirectorySearchRules&,
-		const ::Assets::DepValPtr& depVal)
+		const ::Assets::DependencyValidation& depVal)
 	: _depVal(depVal)
 	{
 		_tokenDictionary._tokenDefinitions.clear();	// empty starting/default tokens
@@ -342,7 +343,7 @@ namespace ShaderSourceParser
 			"shader-selector-filtering-compiler",
 			"shader-selector-filtering-compiler",
 			ConsoleRig::GetLibVersionDesc(),
-			nullptr,
+			{},
 			[](auto initializers) {
 				return std::make_shared<ShaderSelectorFilteringCompileOperation>(initializers);
 			},

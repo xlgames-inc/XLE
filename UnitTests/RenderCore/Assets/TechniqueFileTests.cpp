@@ -54,7 +54,7 @@ namespace UnitTests
 			)--";
 
 			InputStreamFormatter<utf8> formattr { MakeStringSection(techniqueFile) };
-			RenderCore::Techniques::TechniqueSetFile techniqueSetFile(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+			RenderCore::Techniques::TechniqueSetFile techniqueSetFile(formattr, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{});
 			(void)techniqueSetFile;
 
 			auto* entry = techniqueSetFile.FindEntry(Hash64("Config"));
@@ -100,7 +100,7 @@ namespace UnitTests
 			)--";
 
 			InputStreamFormatter<utf8> formattr { MakeStringSection(techniqueFile) };
-			RenderCore::Techniques::TechniqueSetFile techniqueSetFile(formattr, ::Assets::DirectorySearchRules{}, nullptr);
+			RenderCore::Techniques::TechniqueSetFile techniqueSetFile(formattr, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{});
 			(void)techniqueSetFile;
 
 			auto* entry = techniqueSetFile.FindEntry(Hash64("Config"));

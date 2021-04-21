@@ -128,12 +128,12 @@ namespace GraphLanguage
         GraphNodeGraphProvider(
 			const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,
 			const ::Assets::DirectorySearchRules& searchRules,
-			const ::Assets::DepValPtr& parsedGraphFileDepVal,
+			const ::Assets::DependencyValidation& parsedGraphFileDepVal,
 			const ::Assets::DependentFileState& parsedGraphFileState);
         ~GraphNodeGraphProvider();
     protected:
 		std::shared_ptr<GraphSyntaxFile> _parsedGraphFile;
-		::Assets::DepValPtr _parsedGraphFileDepVal;
+		::Assets::DependencyValidation _parsedGraphFileDepVal;
 		::Assets::DependentFileState _parsedGraphFileState;
     };
 
@@ -230,7 +230,7 @@ namespace GraphLanguage
 	GraphNodeGraphProvider::GraphNodeGraphProvider(
 		const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,
 		const ::Assets::DirectorySearchRules& searchRules,
-		const ::Assets::DepValPtr& parsedGraphFileDepVal,
+		const ::Assets::DependencyValidation& parsedGraphFileDepVal,
 		const ::Assets::DependentFileState& parsedGraphFileState)
 	: BasicNodeGraphProvider(searchRules)
 	, _parsedGraphFile(parsedGraphFile)
@@ -246,7 +246,7 @@ namespace GraphLanguage
 	std::shared_ptr<INodeGraphProvider> MakeGraphSyntaxProvider(
 		const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,
 		const ::Assets::DirectorySearchRules& searchRules,
-		const ::Assets::DepValPtr& dependencyValidation,
+		const ::Assets::DependencyValidation& dependencyValidation,
 		const ::Assets::DependentFileState& parsedGraphFileState)
 	{
 		return std::make_shared<GraphNodeGraphProvider>(parsedGraphFile, searchRules, dependencyValidation, parsedGraphFileState);

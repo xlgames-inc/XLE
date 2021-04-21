@@ -361,7 +361,7 @@ namespace RenderCore { namespace Assets
         ::Assets::ArtifactRequest { "Scaffold", ChunkType_Skeleton, 0, ::Assets::ArtifactRequest::DataType::BlockSerializer },
     };
     
-    SkeletonScaffold::SkeletonScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal)
+    SkeletonScaffold::SkeletonScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DependencyValidation& depVal)
 	: _depVal(depVal)
     {
 		assert(chunks.size() == 1);
@@ -398,7 +398,7 @@ namespace RenderCore { namespace Assets
         ::Assets::ArtifactRequest { "Scaffold", ChunkType_AnimationSet, 0, ::Assets::ArtifactRequest::DataType::BlockSerializer },
     };
     
-    AnimationSetScaffold::AnimationSetScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal)
+    AnimationSetScaffold::AnimationSetScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DependencyValidation& depVal)
 	: _depVal(depVal)
     {
 		assert(chunks.size() == 1);

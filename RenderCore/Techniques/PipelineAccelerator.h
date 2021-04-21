@@ -71,8 +71,8 @@ namespace RenderCore { namespace Techniques
 		{
 		public:
 			std::shared_ptr<Metal::GraphicsPipeline> _metalPipeline;
-			::Assets::DepValPtr _depVal;
-			const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+			::Assets::DependencyValidation _depVal;
+			const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
 			#if defined(_DEBUG)
 				std::string _vsDescription, _psDescription, _gsDescription;

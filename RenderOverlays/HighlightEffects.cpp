@@ -145,11 +145,11 @@ namespace RenderOverlays
 		std::shared_ptr<Metal::ShaderProgram> _drawShadow;
         Metal::BoundUniforms _drawShadowUniforms;
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const { return _validationCallback; }
 
         HighlightShaders(const Desc&);
     protected:
-        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
+        ::Assets::DependencyValidation  _validationCallback
     };
 
     HighlightShaders::HighlightShaders(const Desc&)
@@ -171,8 +171,7 @@ namespace RenderOverlays
 		_drawShadowUniforms = Metal::BoundUniforms(*_drawShadow, {}, {}, drawShadowInterface);
 
         //// ////
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(_validationCallback, _drawHighlight->GetDependencyValidation());
+        _validationCallback = _drawHighlight->GetDependencyValidation();
     }
 
     class BinaryHighlight::Pimpl

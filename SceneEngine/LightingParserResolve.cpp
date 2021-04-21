@@ -72,11 +72,11 @@ namespace SceneEngine
         Metal::SamplerState            _shadowComparisonSampler;
         Metal::SamplerState            _shadowDepthSampler;
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const { return _validationCallback; }
 
         LightingResolveResources(const Desc& desc);
     private:
-        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
+        ::Assets::DependencyValidation  _validationCallback
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -776,8 +776,7 @@ namespace SceneEngine
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
             "xleres/deferred/persamplemask.pixel.hlsl:main:ps_*", definesTable);
 
-        auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, perSampleMask->GetDependencyValidation());
+        auto validationCallback = perSampleMask->GetDependencyValidation();
 
         _perSampleMask = std::move(perSampleMask);
         _shadowComparisonSampler = std::move(shadowComparisonSampler);

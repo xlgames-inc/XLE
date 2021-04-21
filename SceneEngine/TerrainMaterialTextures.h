@@ -35,9 +35,9 @@ namespace SceneEngine
             bool useGradFlagMaterials = true);
         ~TerrainMaterialTextures();
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return _validationCallback; }
     private:
-        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
+        ::Assets::DependencyValidation  _validationCallback
     };
 }
 

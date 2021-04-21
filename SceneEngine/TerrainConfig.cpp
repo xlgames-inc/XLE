@@ -141,7 +141,7 @@ namespace SceneEngine
     TerrainConfig::TerrainConfig(
         InputStreamFormatter<utf8>& formatter,
         const ::Assets::DirectorySearchRules& searchRules,
-		const ::Assets::DepValPtr& depVal)
+		const ::Assets::DependencyValidation& depVal)
     : TerrainConfig()
     {
         StreamDOM<InputStreamFormatter<utf8>> doc(formatter);

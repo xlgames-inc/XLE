@@ -144,7 +144,7 @@ namespace UnitTests
 		using PredefinedPipelineLayoutFile = RenderCore::Assets::PredefinedPipelineLayoutFile;
 
 		REQUIRE_THROWS(
-			PredefinedPipelineLayoutFile{"#include <file-without-include-handler>", {}, nullptr});
+			PredefinedPipelineLayoutFile{"#include <file-without-include-handler>", {}, {}});
 
 		REQUIRE_THROWS(
 			PredefinedPipelineLayoutFile{R"(
@@ -152,20 +152,20 @@ namespace UnitTests
 					DescriptorSet UndeclaredDescriptorSet;
 					DescriptorSet UndeclaredDescriptorSet2;
 				}
-			)", {}, nullptr});
+			)", {}, {}});
 
 		REQUIRE_THROWS(
 			PredefinedPipelineLayoutFile{R"(
 				DescriptorSet Material {
 					UnknownObject obj0;
 				};
-			)", {}, nullptr});
+			)", {}, {}});
 
 		REQUIRE_THROWS(
 			PredefinedPipelineLayoutFile{R"(
 				DescriptorSet MissingSemi1 {}
 				DescriptorSet MissingSemi2 {}
-			)", {}, nullptr});
+			)", {}, {}});
 	}
 }
 

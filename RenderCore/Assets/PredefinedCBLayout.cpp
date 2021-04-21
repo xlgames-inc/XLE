@@ -26,8 +26,7 @@ namespace RenderCore { namespace Assets
     {
 		for (unsigned c=0; c<dimof(_cbSizeByLanguage); ++c)
             _cbSizeByLanguage[c] = 0;
-		_validationCallback = std::make_shared<::Assets::DependencyValidation>();
-		::Assets::RegisterFileDependency(_validationCallback, initializer);
+		_validationCallback = ::Assets::GetDepValSys().Make(initializer);
 
 		TRY {
 			// Here, we will read a simple configuration file that will define the layout
@@ -62,7 +61,7 @@ namespace RenderCore { namespace Assets
     PredefinedCBLayout::PredefinedCBLayout(
         StringSection<char> source, 
         const ::Assets::DirectorySearchRules& searchRules,
-        const std::shared_ptr<::Assets::DependencyValidation>& depVal)
+        const ::Assets::DependencyValidation& depVal)
     : _validationCallback(depVal)
     {
         for (unsigned c=0; c<dimof(_cbSizeByLanguage); ++c)
@@ -75,7 +74,7 @@ namespace RenderCore { namespace Assets
 
     PredefinedCBLayout::PredefinedCBLayout(
         ConditionalProcessingTokenizer& tokenizer,
-        const std::shared_ptr<::Assets::DependencyValidation>& depVal)
+        const ::Assets::DependencyValidation& depVal)
     : _validationCallback(depVal)
     {
         for (unsigned c=0; c<dimof(_cbSizeByLanguage); ++c)
@@ -535,7 +534,7 @@ namespace RenderCore { namespace Assets
     PredefinedCBLayoutFile::PredefinedCBLayoutFile(
         StringSection<> inputData,
         const ::Assets::DirectorySearchRules& searchRules,
-        const ::Assets::DepValPtr& depVal)
+        const ::Assets::DependencyValidation& depVal)
     {
         //
         //  Parse through thes input data line by line.

@@ -33,22 +33,22 @@ namespace PlatformRig
     {
     public:
         const std::vector<std::pair<uint32, std::string>>& GetTable() const { return _table; }
-        const ::Assets::DepValPtr& GetDependencyValidation() const { return _validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const { return _validationCallback; }
 
         TableOfKeys(
 			InputStreamFormatter<utf8>& formatter,
 			const ::Assets::DirectorySearchRules&,
-			const ::Assets::DepValPtr& depVal);
+			const ::Assets::DependencyValidation& depVal);
         ~TableOfKeys();
     private:
-        ::Assets::DepValPtr                             _validationCallback;
+        ::Assets::DependencyValidation                             _validationCallback;
         std::vector<std::pair<uint32, std::string>>     _table;
     };
 
     TableOfKeys::TableOfKeys(
 		InputStreamFormatter<utf8>& formatter,
 		const ::Assets::DirectorySearchRules&,
-		const ::Assets::DepValPtr& depVal)
+		const ::Assets::DependencyValidation& depVal)
 	: _validationCallback(depVal)
     {
         StreamDOM<InputStreamFormatter<utf8>> doc(formatter);

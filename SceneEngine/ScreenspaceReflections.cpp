@@ -87,9 +87,9 @@ namespace SceneEngine
         ScreenSpaceReflectionsResources(const ScreenSpaceReflectionsResources&) = delete;
         ScreenSpaceReflectionsResources& operator=(const ScreenSpaceReflectionsResources&) = delete;
 
-        const ::Assets::DepValPtr& GetDependencyValidation() const   { return _depVal; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return _depVal; }
     private:
-        ::Assets::DepValPtr  _depVal;
+        ::Assets::DependencyValidation  _depVal;
     };
 
     ScreenSpaceReflectionsResources::ScreenSpaceReflectionsResources(const Desc& desc)
@@ -245,12 +245,12 @@ namespace SceneEngine
             definesBuffer.get());
 
             ////////////
-        _depVal = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(_depVal, _buildMask->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_depVal, _buildReflections->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_depVal, _downsampleTargets->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_depVal, _horizontalBlur->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_depVal, _verticalBlur->GetDependencyValidation());
+        _depVal = ::Assets::GetDepValSys().Make();
+        _depVal.RegisterDependency(_buildMask->GetDependencyValidation());
+        _depVal.RegisterDependency(_buildReflections->GetDependencyValidation());
+        _depVal.RegisterDependency(_downsampleTargets->GetDependencyValidation());
+        _depVal.RegisterDependency(_horizontalBlur->GetDependencyValidation());
+        _depVal.RegisterDependency(_verticalBlur->GetDependencyValidation());
     }
 
     ScreenSpaceReflectionsResources::~ScreenSpaceReflectionsResources() {}

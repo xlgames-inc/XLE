@@ -140,7 +140,7 @@ namespace RenderCore { namespace Techniques
 
 	TechniqueShaderVariationSet::~TechniqueShaderVariationSet(){}
 
-	const ::Assets::DepValPtr& TechniqueShaderVariationSet::GetDependencyValidation() const
+	const ::Assets::DependencyValidation& TechniqueShaderVariationSet::GetDependencyValidation() const
 	{
 		return _technique->GetDependencyValidation();
 	}

@@ -9,7 +9,7 @@
 
 namespace SceneEngine
 {
-	const ::Assets::DepValPtr& CommonTechniqueDelegateBox::GetDependencyValidation() const { return _techniqueSetFile->GetDependencyValidation(); }
+	const ::Assets::DependencyValidation& CommonTechniqueDelegateBox::GetDependencyValidation() const { return _techniqueSetFile->GetDependencyValidation(); }
 
 	CommonTechniqueDelegateBox::CommonTechniqueDelegateBox(const Desc&)
 	{

@@ -246,7 +246,7 @@ namespace UnitTests
 			"fake-model-scaffold-compiler",
 			"fake-model-scaffold-compiler",
 			ConsoleRig::GetLibVersionDesc(),
-			nullptr,
+			{},
 			BeginFakeModelCompilation);
 
 		uint64_t outputAssetTypes[] = { 

@@ -81,7 +81,7 @@ namespace UnitTests
 		auto shaderCompiler2Registration = RenderCore::Techniques::RegisterInstantiateShaderGraphCompiler(testHelper->_shaderSource, compilers);
 
 		auto sequencerDescriptorSetLayout = std::make_shared<RenderCore::Assets::PredefinedDescriptorSetLayout>(
-			s_sequencerDescSetLayout, ::Assets::DirectorySearchRules{}, nullptr);
+			s_sequencerDescSetLayout, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{});
 
 		auto immediateDrawables = RenderCore::Techniques::CreateImmediateDrawables(
 			testHelper->_device, testHelper->_pipelineLayout,

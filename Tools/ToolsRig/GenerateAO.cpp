@@ -107,7 +107,7 @@ namespace ToolsRig
         UAV         _miniUAV;
 
         const Metal::ComputeShader* _stepDownShader;
-        std::shared_ptr<::Assets::DependencyValidation> _depVal;
+        ::Assets::DependencyValidation _depVal;
     };
 
     static void SetupCubeMapShadowProjection(
@@ -324,15 +324,15 @@ namespace ToolsRig
         // _pimpl->_stepDownShader = &::Assets::Legacy::GetAssetDep<Metal::ComputeShader>(
         //     "xleres/toolshelper/aogenprocess.hlsl:CubeMapStepDown:cs_*");
 
-        _pimpl->_depVal = std::make_shared<::Assets::DependencyValidation>();
-        // ::Assets::RegisterAssetDependency(_pimpl->_depVal, _pimpl->_stepDownShader->GetDependencyValidation());
+        // _pimpl->_depVal = ::Assets::GetDepValSys().Make();
+        // _pimpl->_depVal.RegisterDependency(_pimpl->_stepDownShader->GetDependencyValidation());
     }
 
     auto AoGen::GetSettings() const -> const Desc& { return _pimpl->_settings; }
 
     AoGen::~AoGen() {}
 
-    const std::shared_ptr<::Assets::DependencyValidation>& AoGen::GetDependencyValidation() const
+    const ::Assets::DependencyValidation& AoGen::GetDependencyValidation() const
     {
         return _pimpl->_depVal;
     }

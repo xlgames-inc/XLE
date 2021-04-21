@@ -33,7 +33,7 @@ namespace ShaderSourceParser
 		void MergeIn(const SelectorFilteringRules& source);
 
 		static const auto CompileProcessType = ConstHash64<'Filt', 'erRu', 'les'>::Value;
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
 		friend void SerializationOperator(
 			Utility::OutputStreamFormatter& formatter,
@@ -42,13 +42,13 @@ namespace ShaderSourceParser
 		SelectorFilteringRules(
 			InputStreamFormatter<utf8>& formatter, 
 			const ::Assets::DirectorySearchRules&,
-			const ::Assets::DepValPtr& depVal);
+			const ::Assets::DependencyValidation& depVal);
 		SelectorFilteringRules(const std::unordered_map<std::string, std::string>& relevanceStrings);
 		SelectorFilteringRules();
 		~SelectorFilteringRules();
 
 	private:
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
 		uint64_t _hash = 0ull;
 		void RecalculateHash();
 	};
@@ -61,12 +61,12 @@ namespace ShaderSourceParser
 		uint64_t GetHash() const { return _hash; }
 
 		ParameterBox Preconfigure(ParameterBox&&) const;
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 		
 		SelectorPreconfiguration(StringSection<> filename);
 		~SelectorPreconfiguration();
 	private:
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
 		uint64_t _hash = 0ull;
 	};
 

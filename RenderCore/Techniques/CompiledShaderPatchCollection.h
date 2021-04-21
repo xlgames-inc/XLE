@@ -29,7 +29,7 @@ namespace RenderCore { namespace Techniques
 		unsigned GetSlotIndex() const { return _slotIdx; }
 
 		uint64_t GetHash() const { return _hash; }
-		::Assets::DepValPtr GetDependencyValidation() const { return _layout ? _layout->GetDependencyValidation() : nullptr; }
+		::Assets::DependencyValidation GetDependencyValidation() const { return _layout ? _layout->GetDependencyValidation() : ::Assets::DependencyValidation{}; }
 
 		DescriptorSetLayoutAndBinding(
 			const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& layout,
@@ -91,8 +91,8 @@ namespace RenderCore { namespace Techniques
 
 		const Interface& GetInterface() const { return _interface; }
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
-		::Assets::DepValPtr _depVal;
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
+		::Assets::DependencyValidation _depVal;
 		std::vector<::Assets::DependentFileState> _dependencies;
 
 		std::string InstantiateShader(const ParameterBox& selectors) const;

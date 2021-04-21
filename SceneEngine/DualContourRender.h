@@ -37,7 +37,7 @@ namespace SceneEngine
         DualContourRenderer(const DualContourMesh& mesh);
         ~DualContourRenderer();
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation();
+        const ::Assets::DependencyValidation& GetDependencyValidation();
 
         class Pimpl;
     private:

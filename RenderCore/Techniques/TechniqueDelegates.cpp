@@ -297,7 +297,7 @@ namespace RenderCore { namespace Techniques
 			TechniqueEntry _vsNoPatchesSrc;
 			TechniqueEntry _vsDeformVertexSrc;
 
-			const ::Assets::DepValPtr& GetDependencyValidation() const { return _techniqueSet->GetDependencyValidation(); }
+			const ::Assets::DependencyValidation& GetDependencyValidation() const { return _techniqueSet->GetDependencyValidation(); }
 
 			TechniqueFileHelper(const std::shared_ptr<TechniqueSetFile>& techniqueSet)
 			: _techniqueSet(techniqueSet)

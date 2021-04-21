@@ -73,7 +73,7 @@ namespace RenderCore { namespace Assets
         ::Assets::ArtifactRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, ModelScaffoldLargeBlocksVersion, ::Assets::ArtifactRequest::DataType::ReopenFunction }
     };
     
-    ModelScaffold::ModelScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal)
+    ModelScaffold::ModelScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DependencyValidation& depVal)
     {
 		assert(chunks.size() == 2);
 		_rawMemoryBlock = std::move(chunks[0]._buffer);
@@ -116,7 +116,7 @@ namespace RenderCore { namespace Assets
         ::Assets::ArtifactRequest { "LargeBlocks", ChunkType_ModelScaffoldLargeBlocks, 0, ::Assets::ArtifactRequest::DataType::ReopenFunction }
     };
     
-    ModelSupplementScaffold::ModelSupplementScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DepValPtr& depVal)
+    ModelSupplementScaffold::ModelSupplementScaffold(IteratorRange<::Assets::ArtifactRequestResult*> chunks, const ::Assets::DependencyValidation& depVal)
 	: _depVal(depVal)
 	{
 		assert(chunks.size() == 2);

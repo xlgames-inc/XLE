@@ -166,7 +166,7 @@ namespace UnitTests
 		using namespace RenderCore;
 
 		InputStreamFormatter<utf8> formattr { techniqueText.Cast<utf8>() };
-		return std::make_shared<RenderCore::Assets::ShaderPatchCollection>(formattr, ::Assets::DirectorySearchRules{}, std::make_shared<::Assets::DependencyValidation>());
+		return std::make_shared<RenderCore::Assets::ShaderPatchCollection>(formattr, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{});
 	}
 
 	template<typename Type>
@@ -417,7 +417,7 @@ namespace UnitTests
 				INFO(materialUniformsI->_binding);
 				REQUIRE(materialUniformsI->_bindType == DescriptorSetInitializer::BindType::ResourceView);
 				REQUIRE(materialUniformsI->_layoutSlotType == DescriptorType::UniformBuffer);
-				RenderCore::Assets::PredefinedCBLayout parsedBinding(materialUniformsI->_binding, {}, nullptr);
+				RenderCore::Assets::PredefinedCBLayout parsedBinding(materialUniformsI->_binding, {}, {});
 
 				auto diffuseColorI = std::find_if(parsedBinding._elements.begin(), parsedBinding._elements.end(), [](const auto& c) { return c._name == "DiffuseColor"; });
 				REQUIRE(diffuseColorI != parsedBinding._elements.end());
@@ -434,7 +434,7 @@ namespace UnitTests
 				INFO(anotherCapturesI->_binding);
 				REQUIRE(anotherCapturesI->_bindType == DescriptorSetInitializer::BindType::ResourceView);
 				REQUIRE(anotherCapturesI->_layoutSlotType == DescriptorType::UniformBuffer);
-				RenderCore::Assets::PredefinedCBLayout parsedBinding(anotherCapturesI->_binding, {}, nullptr);
+				RenderCore::Assets::PredefinedCBLayout parsedBinding(anotherCapturesI->_binding, {}, {});
 
 				auto test2I = std::find_if(parsedBinding._elements.begin(), parsedBinding._elements.end(), [](const auto& c) { return c._name == "Test2"; });
 				REQUIRE(test2I != parsedBinding._elements.end());

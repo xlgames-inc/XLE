@@ -282,7 +282,7 @@ namespace SceneEngine
 		std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources> _techniqueSharedResources;
 		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _forwardIllumDelegate;
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _techniqueSetFile->GetDependencyValidation(); }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _techniqueSetFile->GetDependencyValidation(); }
 
 		struct Desc {};
 		ModelIntersectionTechniqueBox(const Desc& desc)

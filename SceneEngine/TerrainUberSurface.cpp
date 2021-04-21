@@ -425,12 +425,12 @@ namespace SceneEngine
 		Metal::BoundUniforms _uniforms;
 		bool _needsInputHash;
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
 		ApplyToolResources(const Desc& desc);
 		~ApplyToolResources();
 	private:
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
 	};
 }
 

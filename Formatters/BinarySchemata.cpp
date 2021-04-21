@@ -398,7 +398,7 @@ namespace Formatters
 	BinarySchemata::BinarySchemata(
 		StringSection<> inputData,
 		const ::Assets::DirectorySearchRules& searchRules,
-		const std::shared_ptr<::Assets::DependencyValidation>& depVal)
+		const ::Assets::DependencyValidation& depVal)
 	{
 		ConditionalProcessingTokenizer tokenizer(inputData);
 		Parse(tokenizer);

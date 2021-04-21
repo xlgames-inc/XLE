@@ -65,13 +65,13 @@ namespace SceneEngine
 		GenericQuadTree(GenericQuadTree&& moveFrom);
 		GenericQuadTree& operator=(GenericQuadTree&& moveFrom) never_throws;
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 		std::vector<std::pair<Float3, Float3>> GetNodeBoundingBoxes() const;
 
     protected:
         class Pimpl;
 		std::unique_ptr<uint8[], PODAlignedDeletor> _dataBlock;
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
 
 		const Pimpl& GetPimpl() const;
         

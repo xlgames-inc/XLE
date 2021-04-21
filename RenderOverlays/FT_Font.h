@@ -30,7 +30,7 @@ namespace RenderOverlays
 		virtual Float2 GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const;
 		virtual float GetKerning(ucs4 prev, ucs4 ch) const;
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
 		FTFont(StringSection<::Assets::ResChar> faceName, int faceSize);
 		virtual ~FTFont();
@@ -39,7 +39,7 @@ namespace RenderOverlays
 		int _ascend;
 		std::shared_ptr<FT_FaceRec_> _face;
 		::Assets::Blob _pBuffer;
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
 
 		mutable std::vector<std::pair<ucs4, GlyphProperties>> _cachedGlyphProperties;
 		FontProperties _fontProperties;

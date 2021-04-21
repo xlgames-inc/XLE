@@ -97,7 +97,7 @@ namespace ToolsRig
 			const ParameterBox& materialParams,
 			const Float4x4& localToWorld = Identity<Float4x4>());
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
 		SimpleModel(
 			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
@@ -109,7 +109,7 @@ namespace ToolsRig
 	private:
 		std::shared_ptr<RenderCore::Techniques::DrawableGeo> _drawableGeo;
 		std::vector<RenderCore::Assets::DrawCallDesc> _drawCalls;
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
 		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
 		
 		std::shared_ptr<RenderCore::Techniques::PipelineAccelerator> _pipelineAccelerator;
@@ -253,9 +253,9 @@ namespace ToolsRig
 		std::shared_ptr<RenderCore::Techniques::PipelineAccelerator> _genRectangle;
 		std::shared_ptr<RenderCore::Techniques::DescriptorSetAccelerator> _descriptorSetAccelerator;
 		std::shared_ptr<RenderCore::UniformsStreamInterface> _usi;
-		std::shared_ptr<::Assets::DependencyValidation> _depVal;
+		::Assets::DependencyValidation _depVal;
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const  { return _depVal; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const  { return _depVal; }
 
         VisGeoBox();
         ~VisGeoBox();
@@ -438,12 +438,12 @@ namespace ToolsRig
 		FixedFunctionModel::SimpleShaderVariationManager	_material;
 		FixedFunctionModel::SimpleShaderVariationManager	_materialP;
 
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const  { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const  { return _depVal; }
 
 		struct Desc {};
 		OldVisGeoBox(const Desc&);
 	protected:
-		std::shared_ptr<::Assets::DependencyValidation> _depVal;
+		::Assets::DependencyValidation _depVal;
 	};
 
 	OldVisGeoBox::OldVisGeoBox(const Desc&)
@@ -460,7 +460,6 @@ namespace ToolsRig
         _cubeVBCount = (unsigned)cubeVertices.size();
         _cubeVBStride = (unsigned)sizeof(decltype(cubeVertices)::value_type);
         _cubeVB = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(cubeVertices));
-        _depVal = std::make_shared<::Assets::DependencyValidation>();
 	}
 
 	static void DrawTriMeshMarker(

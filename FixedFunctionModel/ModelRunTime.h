@@ -89,7 +89,7 @@ namespace FixedFunctionModel
         ::Assets::AssetState GetAssetState() const;
         ::Assets::AssetState TryResolve() const;
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const
+        const ::Assets::DependencyValidation& GetDependencyValidation() const
             { return _validationCallback; }
 
         using Supplements = IteratorRange<const RenderCore::Assets::ModelSupplementScaffold**>;
@@ -109,7 +109,7 @@ namespace FixedFunctionModel
         class PimplWithSkinning;
         std::unique_ptr<PimplWithSkinning> _pimpl;
 
-        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
+        ::Assets::DependencyValidation   _validationCallback;
 
         template<bool HasCallback>
             static void RenderPreparedInternal(

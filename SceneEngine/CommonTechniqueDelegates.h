@@ -24,7 +24,7 @@ namespace SceneEngine
 		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _depthOnlyDelegate;
 		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _deferredIllumDelegate;
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const;
+		const ::Assets::DependencyValidation& GetDependencyValidation() const;
 
 		struct Desc {};
 		CommonTechniqueDelegateBox(const Desc&);

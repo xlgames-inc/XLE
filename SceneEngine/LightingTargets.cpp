@@ -155,7 +155,7 @@ namespace SceneEngine
         }
 
         if (dest._shader)
-            ::Assets::RegisterAssetDependency(_validationCallback, dest._shader->GetDependencyValidation());
+            _validationCallback.RegisterDependency(dest._shader->GetDependencyValidation());
     }
 
     auto LightingResolveShaders::GetShader(const LightShaderType& type) -> const LightShader*
@@ -205,7 +205,7 @@ namespace SceneEngine
     LightingResolveShaders::LightingResolveShaders(const Desc& desc)
     {
         using namespace RenderCore;
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        _validationCallback = ::Assets::GetDepValSys().Make();
         _shaders.resize(LightShaderType::ReservedIndexCount());
         _dynamicLinking = desc._dynamicLinking;
 
@@ -324,8 +324,7 @@ namespace SceneEngine
 			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
 			usi);
 
-        auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, ambientLight->GetDependencyValidation());
+        auto validationCallback = ambientLight->GetDependencyValidation();
 
         _ambientLight = std::move(ambientLight);
         _ambientLightUniforms = std::move(ambientLightUniforms);

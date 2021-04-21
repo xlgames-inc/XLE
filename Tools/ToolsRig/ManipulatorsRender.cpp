@@ -91,7 +91,7 @@ namespace ToolsRig
 		std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources> _techniqueSharedResources;
 		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _forwardIllumDelegate;
 
-		const ::Assets::DepValPtr& GetDependencyValidation() { return _techniqueSetFile->GetDependencyValidation(); }
+		const ::Assets::DependencyValidation& GetDependencyValidation() { return _techniqueSetFile->GetDependencyValidation(); }
 
 		struct Desc {};
 		TechniqueBox(const Desc&)
@@ -342,13 +342,13 @@ namespace ToolsRig
     public:
         class Desc {};
 
-        const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() { return _depVal; }
 
         FixedFunctionModel::SimpleShaderVariationManager _materialGenCylinder;
 
         ManipulatorResBox(const Desc&);
     private:
-        ::Assets::DepValPtr _depVal;
+        ::Assets::DependencyValidation _depVal;
     };
 
     ManipulatorResBox::ManipulatorResBox(const Desc&)
@@ -357,7 +357,6 @@ namespace ToolsRig
         { Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants },
         ParameterBox({ std::make_pair("SHAPE", "4") }))
     {
-        _depVal = std::make_shared<::Assets::DependencyValidation>();
     }
 
     void DrawWorldSpaceCylinder(

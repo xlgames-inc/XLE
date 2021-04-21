@@ -213,7 +213,7 @@ namespace RenderCore { namespace Assets
 			"material-scaffold-compiler",
 			"material-scaffold-compiler",
 			ConsoleRig::GetLibVersionDesc(),
-			nullptr,
+			{},
 			[](auto initializers) {
 				return std::make_shared<MaterialCompileOperation>(initializers);
 			});

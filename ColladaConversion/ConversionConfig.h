@@ -44,7 +44,7 @@ namespace ColladaConversion
 		const BindingConfig& GetConstantBindings() const { return _constantsBindings; }
 		const BindingConfig& GetVertexSemanticBindings() const { return _vertexSemanticBindings; }
 
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
 		ImportConfiguration(StringSection<::Assets::ResChar> filename);
 		ImportConfiguration();
@@ -54,7 +54,7 @@ namespace ColladaConversion
 		BindingConfig _constantsBindings;
 		BindingConfig _vertexSemanticBindings;
 
-		std::shared_ptr<::Assets::DependencyValidation> _depVal;
+		::Assets::DependencyValidation _depVal;
 	};
 
 }

@@ -120,12 +120,12 @@ namespace SceneEngine
 
         const LightShader* GetShader(const LightShaderType& type);
 
-        const ::Assets::DepValPtr& GetDependencyValidation() const   { return _validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return _validationCallback; }
 
         LightingResolveShaders(const Desc& desc);
         ~LightingResolveShaders();
     private:
-        ::Assets::DepValPtr _validationCallback;
+        ::Assets::DependencyValidation _validationCallback;
         std::vector<LightShader> _shaders;
         unsigned _dynamicLinking;
 
@@ -174,13 +174,13 @@ namespace SceneEngine
         const RenderCore::Metal::ShaderProgram*             _ambientLightRangeFog;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _ambientLightUniforms;
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return _validationCallback; }
 
         AmbientResolveShaders(const Desc& desc);
         ~AmbientResolveShaders();
 
     private:
-        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
+        ::Assets::DependencyValidation  _validationCallback
     };
 
 	class MainTargets;

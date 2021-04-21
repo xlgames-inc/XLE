@@ -11,7 +11,7 @@ namespace Assets
 	: _fname(fname.AsString())
 	{
 		_data = TryLoadFileAsMemoryBlock_TolerateSharingErrors(fname, &_dataSize, &_fileState);
-		_depVal = GetDepValSys().Make(MakeIteratorRange(&_fileState, &_fileState+1));
+		_depVal = GetDepValSys().Make(_fileState);
 	}
 
 	RawFileAsset::~RawFileAsset()

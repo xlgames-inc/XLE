@@ -237,7 +237,7 @@ namespace BufferUploads
 
         virtual std::future<void> PrepareData(IteratorRange<const SubResource*> subResources) = 0;
 
-        virtual std::shared_ptr<Assets::DependencyValidation> GetDependencyValidation() const = 0;
+        virtual Assets::DependencyValidation GetDependencyValidation() const = 0;
 
         virtual ~IAsyncDataSource();
     };

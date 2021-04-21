@@ -29,7 +29,7 @@ namespace GraphLanguage
 		const ShaderFragmentSignature& GetSignature() const { return _sig; }
 		const std::string& GetSourceFileName() const { return _srcFileName; }
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 		const ::Assets::DependentFileState& GetFileState() const { return _fileState; }
 		ShaderFragment(StringSection<::Assets::ResChar> fn);
 		~ShaderFragment();
@@ -37,7 +37,7 @@ namespace GraphLanguage
 		bool _isGraphSyntaxFile = false;
 	private:
 		ShaderFragmentSignature _sig;
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
 		::Assets::DependentFileState _fileState;
 		std::string _srcFileName;
 	};
@@ -66,7 +66,7 @@ namespace GraphLanguage
 	: _srcFileName(fn.AsString())
 	{
 		auto shaderFile = LoadSourceFile(fn);
-		_depVal = ::Assets::AsDepVal(MakeIteratorRange(&shaderFile.second, &shaderFile.second+1));
+		_depVal = ::Assets::GetDepValSys().Make(shaderFile.second);
 
 		if (shaderFile.first.empty())
 			Throw(::Assets::Exceptions::ConstructionError(

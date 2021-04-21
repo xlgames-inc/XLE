@@ -296,18 +296,19 @@ namespace Assets
 	{
 		auto state = _state;
 		if (state == AssetState::Pending) return false;
-		return _actualizedDepVal && _actualizedDepVal->GetValidationIndex() > 0;
+		return _actualizedDepVal.GetValidationIndex() > 0;
 	}
 
 	template<typename AssetType>
 		void			AssetFuture<AssetType>::SimulateChange()
 	{
-		auto state = _state;
+		assert(0);
+		/*auto state = _state;
 		if (state == AssetState::Ready || state == AssetState::Invalid) {
 			if (_actualizedDepVal)
 				_actualizedDepVal->OnChange();
 			return;
-		}
+		}*/
 
 		// else, still pending -- can't do anything right now
 	}

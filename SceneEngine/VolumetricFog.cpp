@@ -115,9 +115,9 @@ namespace SceneEngine
         VolumetricFogShaders(const Desc& desc);
         ~VolumetricFogShaders();
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return _validationCallback; }
     private:
-        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
+        ::Assets::DependencyValidation  _validationCallback
     };
 
     VolumetricFogShaders::VolumetricFogShaders(const Desc& desc)
@@ -265,13 +265,13 @@ namespace SceneEngine
 			resolveLightBindingUsi);
 
         ///////////////////////////////////////////////////////////////////////////////////////////
-        auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, buildExponentialShadowMap->GetDependencyValidation());
-        if (horizontalFilter) ::Assets::RegisterAssetDependency(validationCallback, horizontalFilter->GetDependencyValidation());
-        if (verticalFilter) ::Assets::RegisterAssetDependency(validationCallback, verticalFilter->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, injectLight->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, propagateLight->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, resolveLight->GetDependencyValidation());
+        auto validationCallback = ::Assets::GetDepValSys().Make();
+        validationCallback.RegisterDependency(buildExponentialShadowMap->GetDependencyValidation());
+        if (horizontalFilter) validationCallback.RegisterDependency(horizontalFilter->GetDependencyValidation());
+        if (verticalFilter) validationCallback.RegisterDependency(verticalFilter->GetDependencyValidation());
+        validationCallback.RegisterDependency(injectLight->GetDependencyValidation());
+        validationCallback.RegisterDependency(propagateLight->GetDependencyValidation());
+        validationCallback.RegisterDependency(resolveLight->GetDependencyValidation());
 
             //  Commit pointers
         _buildExponentialShadowMap = std::move(buildExponentialShadowMap);

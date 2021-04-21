@@ -124,7 +124,7 @@ namespace Assets
     : _filename(assetTypeName.AsString())
     {
         StringSection<> initializer = _filename;
-		_validationCallback = GetDepValSys().Make(MakeIteratorRange(&initializer, &initializer+1));
+		_validationCallback = GetDepValSys().Make(initializer);
     }
 
 	ChunkFileContainer::ChunkFileContainer(const Blob& blob, const DependencyValidation& depVal, StringSection<ResChar>)

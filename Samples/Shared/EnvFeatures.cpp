@@ -29,7 +29,7 @@ namespace Sample
     {
         _updateMan->FlushUpdates();
 
-        if (_vegetationSpawnManager && (!_vegetationSpawnCfgVal || _vegetationSpawnCfgVal->GetValidationIndex() != 0)) {
+        if (_vegetationSpawnManager && (!_vegetationSpawnCfgVal || _vegetationSpawnCfgVal.GetValidationIndex() != 0)) {
             auto vegeSpawnCfg = ::Assets::AutoConstructAsset<SceneEngine::VegetationSpawnConfig>(MakeStringSection(_cfgDir + VegetationSpawnCfg));
             _vegetationSpawnManager->Load(*vegeSpawnCfg);
             _vegetationSpawnCfgVal = vegeSpawnCfg->GetDependencyValidation();

@@ -66,7 +66,7 @@ namespace ToolsRig
 
         const Desc& GetSettings() const;
 
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const;
+        const ::Assets::DependencyValidation& GetDependencyValidation() const;
         
         AoGen(const Desc& settings);
         ~AoGen();

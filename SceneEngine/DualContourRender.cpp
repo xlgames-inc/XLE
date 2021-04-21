@@ -51,7 +51,7 @@ namespace SceneEngine
         FixedFunctionModel::SimpleShaderVariationManager _basicMaterial;
         RenderCore::SharedPkt _materialConstants;
 
-        std::shared_ptr<::Assets::DependencyValidation> _dependencyValidation;
+        ::Assets::DependencyValidation _dependencyValidation;
     };
 
     static void WriteIndexData(void* destination, unsigned indexSize, const DualContourMesh& mesh)
@@ -278,7 +278,7 @@ namespace SceneEngine
         RenderMainSceneViaOIT(context, parserContext, _pimpl.get());
     }
 
-    const std::shared_ptr<::Assets::DependencyValidation>& DualContourRenderer::GetDependencyValidation()
+    const ::Assets::DependencyValidation& DualContourRenderer::GetDependencyValidation()
     {
         return _pimpl->_dependencyValidation;
     }
@@ -305,9 +305,9 @@ namespace SceneEngine
         const auto& cbLayout = pimpl->_basicMaterial.GetCBLayout(s_techniqueConfig);
         pimpl->_materialConstants = cbLayout.BuildCBDataAsPkt(ParameterBox(), RenderCore::Techniques::GetDefaultShaderLanguage());
 
-        pimpl->_dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
+        pimpl->_dependencyValidation = ::Assets::GetDepValSys().Make();
 		if (cbLayout.GetDependencyValidation())
-			::Assets::RegisterAssetDependency(pimpl->_dependencyValidation, cbLayout.GetDependencyValidation());
+			pimpl->_dependencyValidation.RegisterDependency(cbLayout.GetDependencyValidation());
 
         _pimpl = std::move(pimpl);
     }

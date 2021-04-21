@@ -60,7 +60,7 @@ namespace RenderCore { namespace Techniques
 		void GenerateDeformBuffer(IThreadContext& context);
 		unsigned DeformOperationCount() const;
 		IDeformOperation& DeformOperation(unsigned idx);
-		const ::Assets::DepValPtr& GetDependencyValidation() const;
+		const ::Assets::DependencyValidation& GetDependencyValidation() const;
 
 		const std::shared_ptr<RenderCore::Assets::ModelScaffold>& GetModelScaffold() const { return _modelScaffold; }
 		const std::shared_ptr<RenderCore::Assets::MaterialScaffold>& GetMaterialScaffold() const { return _materialScaffold; }
@@ -142,7 +142,7 @@ namespace RenderCore { namespace Techniques
 		std::string _modelScaffoldName;
 		std::string _materialScaffoldName;
 
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
 
 		class GeoCallBuilder;
 	};

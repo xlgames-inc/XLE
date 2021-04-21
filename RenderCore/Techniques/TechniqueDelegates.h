@@ -33,8 +33,8 @@ namespace RenderCore { namespace Techniques
 			DepthStencilDesc					_depthStencil;
 			RasterizationDesc					_rasterization;
 
-			::Assets::DepValPtr _depVal;
-			const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+			::Assets::DependencyValidation _depVal;
+			const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 		};
 
 		virtual ::Assets::FuturePtr<GraphicsPipelineDesc> Resolve(

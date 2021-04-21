@@ -69,7 +69,7 @@ namespace UnitTests
 			// Ensure that we can compile a shader from string input, via the MakeShaderProgram
 			// utility function
 			auto compiledFromString = testHelper->MakeShaderProgram(vsText_clipInput, psText);
-			REQUIRE(compiledFromString.GetDependencyValidation() != nullptr);
+			REQUIRE((bool)compiledFromString.GetDependencyValidation());
 		}
 
 		// Let's load and compile a basic shader from a mounted filesystem
@@ -78,7 +78,7 @@ namespace UnitTests
 		auto mnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData, s_defaultFilenameRules, ::Assets::FileSystemMemoryFlags::UseModuleModificationTime));
 
 		auto customShaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
-			CreateDefaultShaderCompiler(*testHelper->_device),
+			CreateDefaultShaderCompiler(*testHelper->_device, *testHelper->_defaultLegacyBindings),
 			std::make_shared<ExpandIncludesPreprocessor>());
 
 		auto compilerRegistration = RenderCore::RegisterShaderCompiler(
@@ -87,7 +87,7 @@ namespace UnitTests
 
 		SECTION("MinimalShaderSource") {
 			auto compiledFromString = testHelper->MakeShaderProgram(vsText_clipInput, psText);
-			REQUIRE(compiledFromString.GetDependencyValidation() != nullptr);
+			REQUIRE((bool)compiledFromString.GetDependencyValidation());
 
 			// Using RenderCore::ShaderService, ensure that we can compile a simple shader (this shader should compile successfully)
 			auto compileMarker = ::Assets::Internal::BeginCompileOperation(
@@ -100,7 +100,7 @@ namespace UnitTests
 			REQUIRE(compiledFromFile->GetAssetState() == ::Assets::AssetState::Ready);
 			auto artifacts = compiledFromFile->GetArtifactCollection(RenderCore::CompiledShaderByteCode::CompileProcessType);
 			REQUIRE(artifacts != nullptr);
-			REQUIRE(artifacts->GetDependencyValidation() != nullptr);
+			REQUIRE((bool)artifacts->GetDependencyValidation());
 			REQUIRE(artifacts->GetAssetState() == ::Assets::AssetState::Ready);
 			::Assets::ArtifactRequest request { "", RenderCore::CompiledShaderByteCode::CompileProcessType, ~0u, ::Assets::ArtifactRequest::DataType::SharedBlob };
 			auto reqRes = artifacts->ResolveRequests(MakeIteratorRange(&request, &request+1));

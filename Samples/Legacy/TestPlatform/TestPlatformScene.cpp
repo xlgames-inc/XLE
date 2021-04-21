@@ -57,13 +57,13 @@ namespace Sample
             DualContourMesh _mesh;
             std::unique_ptr<DualContourRenderer> _renderer;
 
-            const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _dependencyValidation; }
+            const ::Assets::DependencyValidation& GetDependencyValidation() const { return _dependencyValidation; }
 
             DualContourTest(const Desc& desc);
             ~DualContourTest();
 
         protected:
-            std::shared_ptr<::Assets::DependencyValidation> _dependencyValidation;
+            ::Assets::DependencyValidation _dependencyValidation;
         };
 
         class TestDensityFunction : public IVolumeDensityFunction
@@ -135,8 +135,7 @@ namespace Sample
 			_mesh = DualContourMesh_Build({desc._gridDims, desc._gridDims, desc._gridDims}, TestDensityFunction());
             _renderer = std::make_unique<DualContourRenderer>(std::ref(_mesh));
             
-            _dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
-            ::Assets::RegisterAssetDependency(_dependencyValidation, _renderer->GetDependencyValidation());
+            _dependencyValidation = _renderer->GetDependencyValidation();
         }
 
         DualContourTest::~DualContourTest() {}

@@ -18,6 +18,7 @@
 #include "../../../Assets/MountingTree.h"
 #include "../../../Assets/MemoryFile.h"
 #include "../../../Assets/AssetTraits.h"
+#include "../../../Assets/DepVal.h"
 #include "../../../ConsoleRig/Console.h"
 #include "../../../ConsoleRig/AttachablePtr.h"
 #include "../../../ConsoleRig/GlobalServices.h"
@@ -121,9 +122,11 @@ static const int NonPreprocessorLine0 = 0;
 		std::shared_ptr<::Assets::MountingTree> _mountingTree;
 		::Assets::MountingTree::MountID _utDataMount;
 		::Assets::MountingTree::MountID _xleresMount;
+		::ConsoleRig::AttachablePtr<::Assets::IDependencyValidationSystem> _depValSys;
 
 		LocalHelper()
 		{
+			if (!_depValSys) _depValSys = ::Assets::CreateDepValSys();
 			_mountingTree = std::make_shared<::Assets::MountingTree>(s_defaultFilenameRules);
 			_utDataMount = _mountingTree->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
 			_xleresMount = _mountingTree->Mount("xleres", UnitTests::CreateEmbeddedResFileSystem());

@@ -205,7 +205,7 @@ namespace ToolsRig
 						throw std::runtime_error("Aborting because pipeline accelerator pool has been destroyed");
 
 					auto pendingPipeline = std::make_shared<PendingPipeline>();
-					pendingPipeline->_depVal = std::make_shared<::Assets::DependencyValidation>();
+					pendingPipeline->_depVal = ::Assets::GetDepValSys().Make();
 
 					std::tie(pendingPipeline->_pipelineAccelerator, pendingPipeline->_descriptorSet) = RenderCore::Techniques::CreatePipelineAccelerator(
 						*strongPipelineAcceleratorPool,
@@ -215,7 +215,7 @@ namespace ToolsRig
 						Topology::TriangleList);
 
 					if (pendingPipeline->_descriptorSet)
-						::Assets::RegisterAssetDependency(pendingPipeline->_depVal, pendingPipeline->_descriptorSet->GetDependencyValidation());
+						pendingPipeline->_depVal.RegisterDependency(pendingPipeline->_descriptorSet->GetDependencyValidation());
 
 					return pendingPipeline;
 				});
@@ -229,7 +229,6 @@ namespace ToolsRig
 		{
 			_pipelineAcceleratorPool = pipelineAcceleratorPool;
 			_material = material;
-			_depVal = std::make_shared<::Assets::DependencyValidation>();
 		}
 
 		::Assets::AssetState GetAssetState() const
@@ -246,7 +245,7 @@ namespace ToolsRig
 			return _pipelineFuture->StallWhilePending(timeout);
 		}
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const 
+		const ::Assets::DependencyValidation& GetDependencyValidation() const 
 		{
 			if (_pipelineFuture)
 				_pipelineFuture->GetDependencyValidation();
@@ -258,15 +257,15 @@ namespace ToolsRig
 
 		struct PendingPipeline
 		{
-			::Assets::DepValPtr		_depVal;
+			::Assets::DependencyValidation		_depVal;
 			std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial> _material;
 			std::shared_ptr<RenderCore::Techniques::PipelineAccelerator> _pipelineAccelerator;
 			::Assets::FuturePtr<RenderCore::Techniques::DescriptorSetAccelerator> _descriptorSet;
-			const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+			const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 		};
 		::Assets::FuturePtr<PendingPipeline> _pipelineFuture;
 
-		::Assets::DepValPtr				_depVal;
+		::Assets::DependencyValidation				_depVal;
 
 		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
 		std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial> _material;
@@ -523,7 +522,7 @@ namespace ToolsRig
 				} CATCH (const ::Assets::Exceptions::InvalidAsset& e) {
 					future->SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
 				} CATCH (const std::exception& e) {
-					future->SetInvalidAsset(std::make_shared<::Assets::DependencyValidation>(), ::Assets::AsBlob(e));
+					future->SetInvalidAsset({}, ::Assets::AsBlob(e));
 				} CATCH_END
 			},
 			std::forward<Args>(args)...);

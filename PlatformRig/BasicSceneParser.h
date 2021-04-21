@@ -56,13 +56,13 @@ namespace PlatformRig
         EnvironmentSettings(
             InputStreamFormatter<utf8>& formatter,
             const ::Assets::DirectorySearchRules&,
-			const ::Assets::DepValPtr&);
+			const ::Assets::DependencyValidation&);
         ~EnvironmentSettings();
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
 	private:
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
     };
 
     /// <summary>Simple & partial implementation of the ILightingParserDelegate interface<summary>
@@ -94,7 +94,7 @@ namespace PlatformRig
 			::Assets::AssetFuture<BasicLightingParserDelegate>& future,
 			StringSection<::Assets::ResChar> envSettingFileName);
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _envSettings->GetDependencyValidation(); }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _envSettings->GetDependencyValidation(); }
 
     protected:
         const EnvironmentSettings&  GetEnvSettings() const;

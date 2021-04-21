@@ -22,7 +22,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         using UnderlyingType = OpenGL::ShaderProgram*;
         UnderlyingType GetUnderlying() const { return _underlying.get(); }
-        const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
         uint32_t GetGUID() const { return _guid; }
         #if defined(_DEBUG)
             std::string SourceIdentifiers() const { return _sourceIdentifiers; };
@@ -70,7 +70,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 			StringSection<::Assets::ResChar> definesTable);
     private:
         intrusive_ptr<OpenGL::ShaderProgram>    _underlying;
-        ::Assets::DepValPtr                     _depVal;
+        ::Assets::DependencyValidation                     _depVal;
         uint32_t                                _guid;
 
         #if defined(_DEBUG)

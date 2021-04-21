@@ -31,19 +31,19 @@ namespace ShaderSourceParser
     public:
         std::basic_string<utf8> _item;
 
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
         TemplateItem(
             InputStreamFormatter<utf8>& formatter,
             const ::Assets::DirectorySearchRules&,
-			const ::Assets::DepValPtr& depVal)
+			const ::Assets::DependencyValidation& depVal)
         {
             _item = RequireValue(formatter).AsString();
 			_depVal = depVal;
         }
-        TemplateItem() : _depVal(std::make_shared<::Assets::DependencyValidation>()) {}
+        TemplateItem() {}
 	private:
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
     };
 
 	static std::string ToPlustache(bool value)

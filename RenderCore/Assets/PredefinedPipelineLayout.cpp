@@ -133,7 +133,7 @@ namespace RenderCore { namespace Assets
 	PredefinedPipelineLayoutFile::PredefinedPipelineLayoutFile(
 		StringSection<> inputData,
 		const ::Assets::DirectorySearchRules& searchRules,
-		const ::Assets::DepValPtr& depVal)
+		const ::Assets::DependencyValidation& depVal)
 	: _depVal(depVal)
 	{
 		ConditionalProcessingTokenizer tokenizer(inputData);

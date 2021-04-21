@@ -58,7 +58,7 @@ namespace Sample
         std::shared_ptr<EntityInterface::EnvEntitiesManager>    _updateMan;
         std::shared_ptr<SceneEngine::ISurfaceHeightsProvider>   _surfaceHeights;
 
-        std::shared_ptr<::Assets::DependencyValidation>     _vegetationSpawnCfgVal;
+        ::Assets::DependencyValidation     _vegetationSpawnCfgVal;
         ::Assets::rstring _cfgDir;
     };
 }

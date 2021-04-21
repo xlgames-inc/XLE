@@ -277,7 +277,7 @@ namespace RenderOverlays
 		Metal::BoundUniforms _boundUniforms;
 		Metal::BoundClassInterfaces _boundClassInterfaces;
 
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     
+		const ::Assets::DependencyValidation& GetDependencyValidation() const     
 			{ return _validationCallback; }
 		
 		ShaderBox(const Desc&);
@@ -385,7 +385,7 @@ namespace RenderOverlays
 				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
 				uniformsInterf);
 
-			::Assets::RegisterAssetDependency(validationCallback, _shaderProgram->GetDependencyValidation());
+			validationCallback.RegisterDependency(_shaderProgram->GetDependencyValidation());
 
 			_boundInputLayout = std::move(boundInputLayout);
 			_boundUniforms = std::move(boundUniforms);
