@@ -138,4 +138,7 @@ namespace RenderCore { namespace Techniques
 		std::shared_ptr<RenderCore::Assets::ShaderPatchCollection> _patchCollection;
 	};
 
+	class DrawablesSharedResources;
+	std::shared_ptr<DrawablesSharedResources> CreateDrawablesSharedResources();
+
 }}

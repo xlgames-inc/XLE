@@ -281,7 +281,7 @@ namespace UnitTests
 
 			auto techniqueSetFile = ::Assets::MakeAsset<Techniques::TechniqueSetFile>("ut-data/basic.tech");
 			auto cfgId = pipelineAcceleratorPool->CreateSequencerConfig(
-				Techniques::CreateTechniqueDelegate_Deferred(techniqueSetFile, Techniques::MakeTechniqueSharedResources(*testHelper->_device)),
+				Techniques::CreateTechniqueDelegate_Deferred(techniqueSetFile, Techniques::CreateTechniqueSharedResources(*testHelper->_device)),
 				ParameterBox {},
 				fbHelper.GetDesc());
 
@@ -314,7 +314,8 @@ namespace UnitTests
 			{
 				auto rpi = fbHelper.BeginRenderPass(*threadContext);
 				auto techniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
-				Techniques::ParsingContext parsingContext{techniqueContext};
+				techniqueContext->_drawablesSharedResources = RenderCore::Techniques::CreateDrawablesSharedResources();
+				Techniques::ParsingContext parsingContext{*techniqueContext};
 				parsingContext.AddShaderResourceDelegate(globalDelegate);
 				Techniques::SequencerContext sequencerContext;
 				sequencerContext._sequencerConfig = cfgId.get();
@@ -338,7 +339,7 @@ namespace UnitTests
 
 			auto techniqueSetFile = ::Assets::MakeAsset<Techniques::TechniqueSetFile>("ut-data/basic.tech");
 			auto cfgId = pipelineAcceleratorPool->CreateSequencerConfig(
-				Techniques::CreateTechniqueDelegate_Deferred(techniqueSetFile, Techniques::MakeTechniqueSharedResources(*testHelper->_device)),
+				Techniques::CreateTechniqueDelegate_Deferred(techniqueSetFile, Techniques::CreateTechniqueSharedResources(*testHelper->_device)),
 				ParameterBox {},
 				fbHelper.GetDesc());
 
@@ -361,7 +362,8 @@ namespace UnitTests
 				{
 					auto rpi = fbHelper.BeginRenderPass(*threadContext);
 					auto techniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
-					Techniques::ParsingContext parsingContext{techniqueContext};
+					techniqueContext->_drawablesSharedResources = RenderCore::Techniques::CreateDrawablesSharedResources();
+					Techniques::ParsingContext parsingContext{*techniqueContext};
 					parsingContext.AddShaderResourceDelegate(globalDelegate);
 					Techniques::SequencerContext sequencerContext;
 					sequencerContext._sequencerConfig = cfgId.get();

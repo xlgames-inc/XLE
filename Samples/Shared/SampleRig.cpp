@@ -107,13 +107,14 @@ namespace Sample
         Log(Verbose) << "Call OnStartup and start the frame loop" << std::endl;
         sampleOverlay->OnStartup(sampleGlobals);
 
+        auto techContext = sampleGlobals._drawingApparatus->_techniqueContext;
+        techContext->_attachmentPool = sampleGlobals._frameRenderingApparatus->_attachmentPool;
+        techContext->_frameBufferPool = sampleGlobals._frameRenderingApparatus->_frameBufferPool;
+
             //  Finally, we execute the frame loop
         while (PlatformRig::OverlappedWindow::DoMsgPump() != PlatformRig::OverlappedWindow::PumpResult::Terminate) {
                 // ------- Render ----------------------------------------
-            RenderCore::Techniques::ParsingContext parserContext(
-                sampleGlobals._drawingApparatus->_techniqueContext, 
-                sampleGlobals._frameRenderingApparatus->_attachmentPool.get(), 
-                sampleGlobals._frameRenderingApparatus->_frameBufferPool.get());
+            RenderCore::Techniques::ParsingContext parserContext(*sampleGlobals._drawingApparatus->_techniqueContext);
             auto frameResult = frameRig.ExecuteFrame(
                 sampleGlobals._windowApparatus->_immediateContext, sampleGlobals._windowApparatus->_presentationChain.get(), 
                 parserContext, &cpuProfiler);

@@ -45,7 +45,7 @@ namespace RenderCore { namespace Techniques
 	};
 
 	class TechniqueSharedResources;
-	std::shared_ptr<TechniqueSharedResources> MakeTechniqueSharedResources(IDevice&);
+	std::shared_ptr<TechniqueSharedResources> CreateTechniqueSharedResources(IDevice&);
 
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_Deferred(
 		const ::Assets::FuturePtr<TechniqueSetFile>& techniqueSet,

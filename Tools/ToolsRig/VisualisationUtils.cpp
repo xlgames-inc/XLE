@@ -517,9 +517,9 @@ namespace ToolsRig
         RenderCore::Techniques::ParsingContext& parserContext)
     {
         using namespace RenderCore;
-		parserContext.GetNamedResources().Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget);
+		parserContext.GetTechniqueContext()._attachmentPool->Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget);
 		
-		if (!parserContext.GetNamedResources().GetBoundResource(Techniques::AttachmentSemantics::MultisampleDepth))		// we need this attachment to continue
+		if (!parserContext.GetTechniqueContext()._attachmentPool->GetBoundResource(Techniques::AttachmentSemantics::MultisampleDepth))		// we need this attachment to continue
 			return;
 
 		if (!_pimpl->_scene || !_pimpl->_cameraSettings || GetAsyncSceneState(*_pimpl->_scene) == ::Assets::AssetState::Pending) return;
@@ -555,8 +555,8 @@ namespace ToolsRig
 			FrameBufferDesc fbDesc{ std::move(attachments), {mainPass} };
 			Techniques::RenderPassInstance rpi {
 				threadContext, fbDesc, 
-				parserContext.GetFrameBufferPool(),
-				parserContext.GetNamedResources() };
+				*parserContext.GetTechniqueContext()._frameBufferPool,
+				*parserContext.GetTechniqueContext()._attachmentPool };
 
 			static auto visWireframeDelegate =
 				RenderCore::Techniques::CreateTechniqueDelegateLegacy(
@@ -758,7 +758,7 @@ namespace ToolsRig
 	{
 		using namespace RenderCore;
 
-		Techniques::ParsingContext parserContext { techniqueContext };
+		Techniques::ParsingContext parserContext { *techniqueContext };
 		
 		SceneEngine::ModelIntersectionStateContext stateContext {
             SceneEngine::ModelIntersectionStateContext::RayTest,

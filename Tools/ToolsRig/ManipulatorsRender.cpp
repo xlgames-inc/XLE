@@ -184,7 +184,7 @@ namespace ToolsRig
         const Float3& centre, float radius)
     {
 		std::vector<FrameBufferDesc::Attachment> attachments {
-			{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(parserContext.GetNamedResources().GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()) },
+			{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(parserContext.GetTechniqueContext()._attachmentPool->GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()) },
 			{ Techniques::AttachmentSemantics::MultisampleDepth, Format::D24_UNORM_S8_UINT }
 		};
 		SubpassDesc mainPass;
@@ -261,7 +261,7 @@ namespace ToolsRig
 		RectangleHighlightType type)
     {
 		std::vector<FrameBufferDesc::Attachment> attachments {
-			{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(parserContext.GetNamedResources().GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()) },
+			{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(parserContext.GetTechniqueContext()._attachmentPool->GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()) },
 			{ Techniques::AttachmentSemantics::MultisampleDepth, Format::D24_UNORM_S8_UINT }
 		};
 		SubpassDesc mainPass;

@@ -6,6 +6,7 @@
 #include "RenderPass.h"
 #include "ParsingContext.h"
 #include "CommonBindings.h"
+#include "Techniques.h"
 #include "../IDevice.h"
 #include "../IThreadContext.h"
 #include "../../Utility/IteratorUtils.h"
@@ -21,7 +22,7 @@ namespace RenderCore { namespace Techniques
 		subpass.AppendOutput( AttachmentViewDesc { 0, loadOperation, LoadStore::Retain, TextureViewDesc{ TextureViewDesc::Aspect::ColorSRGB } });
 		FrameBufferDesc::Attachment attachment { 
 			AttachmentSemantics::ColorLDR,
-			AsAttachmentDesc(parserContext.GetNamedResources().GetBoundResource(AttachmentSemantics::ColorLDR)->GetDesc())
+			AsAttachmentDesc(parserContext.GetTechniqueContext()._attachmentPool->GetBoundResource(AttachmentSemantics::ColorLDR)->GetDesc())
 		};
 
 		FrameBufferDesc fbDesc {
@@ -30,8 +31,8 @@ namespace RenderCore { namespace Techniques
 		};
         return RenderPassInstance(
             context, fbDesc,
-			parserContext.GetFrameBufferPool(),
-            parserContext.GetNamedResources());
+			*parserContext.GetTechniqueContext()._frameBufferPool,
+            *parserContext.GetTechniqueContext()._attachmentPool);
 	}
 
 	RenderPassInstance RenderPassToPresentationTarget(
@@ -40,7 +41,7 @@ namespace RenderCore { namespace Techniques
         ParsingContext& parserContext,
 		LoadStore loadOperation)
 	{
-		parserContext.GetNamedResources().Bind(AttachmentSemantics::ColorLDR, presentationTarget);
+		parserContext.GetTechniqueContext()._attachmentPool->Bind(AttachmentSemantics::ColorLDR, presentationTarget);
 		return RenderPassToPresentationTarget(context, parserContext, loadOperation);
 	}
 
@@ -50,11 +51,11 @@ namespace RenderCore { namespace Techniques
         ParsingContext& parserContext,
 		LoadStore loadOperation)
 	{
-		auto boundDepth = parserContext.GetNamedResources().GetBoundResource(AttachmentSemantics::MultisampleDepth);
+		auto boundDepth = parserContext.GetTechniqueContext()._attachmentPool->GetBoundResource(AttachmentSemantics::MultisampleDepth);
 		if (!boundDepth && loadOperation != LoadStore::Clear)
 			return RenderPassToPresentationTarget(context, presentationTarget, parserContext, loadOperation);
 
-        parserContext.GetNamedResources().Bind(AttachmentSemantics::ColorLDR, presentationTarget);
+        parserContext.GetTechniqueContext()._attachmentPool->Bind(AttachmentSemantics::ColorLDR, presentationTarget);
 
 		SubpassDesc subpass;
 		subpass.AppendOutput( AttachmentViewDesc { 0, loadOperation, LoadStore::Retain, TextureViewDesc{ TextureViewDesc::Aspect::ColorSRGB } });
@@ -85,7 +86,7 @@ namespace RenderCore { namespace Techniques
 		};
         return RenderPassInstance(
             context, fbDesc,
-			parserContext.GetFrameBufferPool(),
-            parserContext.GetNamedResources());
+			*parserContext.GetTechniqueContext()._frameBufferPool,
+            *parserContext.GetTechniqueContext()._attachmentPool);
 	}
 }}

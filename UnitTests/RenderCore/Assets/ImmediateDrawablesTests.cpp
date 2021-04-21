@@ -116,7 +116,8 @@ namespace UnitTests
 			{
 				auto rpi = fbHelper.BeginRenderPass(*threadContext);
 				auto techniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
-				RenderCore::Techniques::ParsingContext parsingContext { techniqueContext };
+				techniqueContext->_drawablesSharedResources = RenderCore::Techniques::CreateDrawablesSharedResources();
+				RenderCore::Techniques::ParsingContext parsingContext { *techniqueContext };
 				immediateDrawables->ExecuteDraws(*threadContext, parsingContext, fbHelper.GetDesc(), 0, Float2(targetDesc._textureDesc._width, targetDesc._textureDesc._height));
 			}
 
@@ -163,7 +164,8 @@ namespace UnitTests
 			{
 				auto rpi = fbHelper.BeginRenderPass(*threadContext);
 				auto techniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
-				RenderCore::Techniques::ParsingContext parsingContext { techniqueContext };
+				techniqueContext->_drawablesSharedResources = RenderCore::Techniques::CreateDrawablesSharedResources();
+				RenderCore::Techniques::ParsingContext parsingContext { *techniqueContext };
 				immediateDrawables->ExecuteDraws(*threadContext, parsingContext, fbHelper.GetDesc(), 0, Float2(targetDesc._textureDesc._width, targetDesc._textureDesc._height));
 			}
 

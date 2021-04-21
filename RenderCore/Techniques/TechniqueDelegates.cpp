@@ -29,7 +29,7 @@ namespace RenderCore { namespace Techniques
 		~TechniqueSharedResources() {}
 	};
 
-	std::shared_ptr<TechniqueSharedResources> MakeTechniqueSharedResources(IDevice& device)
+	std::shared_ptr<TechniqueSharedResources> CreateTechniqueSharedResources(IDevice& device)
 	{
 		return std::make_shared<TechniqueSharedResources>(device);
 	}

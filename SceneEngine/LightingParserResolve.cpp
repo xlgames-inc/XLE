@@ -297,7 +297,7 @@ namespace SceneEngine
 		const bool lightResolveDebugging = Tweakable("LightResolveDebugging", false);
 
         LightingResolveContext lightingResolveContext(lightingParserContext);
-        const unsigned samplingCount = parsingContext.GetNamedResources().GetFrameBufferProperties()._samples._sampleCount;
+        const unsigned samplingCount = parsingContext.GetTechniqueContext()._attachmentPool->GetFrameBufferProperties()._samples._sampleCount;
         const bool useMsaaSamplers = lightingResolveContext.UseMsaaSamplers();
 
         bool precisionTargets = Tweakable("PrecisionTargets", false);

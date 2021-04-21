@@ -95,22 +95,14 @@ namespace RenderCore { namespace Techniques
 		return *_techniqueContext->_systemUniformsDelegate;
 	}
 
-    ParsingContext::ParsingContext(std::shared_ptr<TechniqueContext> techniqueContext, AttachmentPool* namedResources, FrameBufferPool* frameBufferPool)
-	: _techniqueContext(std::move(techniqueContext))
+    ParsingContext::ParsingContext(TechniqueContext& techniqueContext)
+	: _techniqueContext(&techniqueContext)
     {
+		assert(_techniqueContext);
         _stringHelpers = std::make_unique<StringHelpers>();
-        _namedResources = namedResources;
-		_frameBufferPool = frameBufferPool;
-
-		for (unsigned c=0; c<dimof(_globalCBs); ++c)
-			_globalCBs[c] = nullptr;
 
         _projectionDesc = std::make_unique<ProjectionDesc>();
         assert(size_t(_projectionDesc.get()) % 16 == 0);
-
-		static_assert(dimof(_globalCBs) == dimof(_globalCBVs), "Expecting equivalent array lengths");
-        for (unsigned c=0; c<dimof(_globalCBs); ++c)
-			_globalCBVs[c] = { _globalCBs[c].get() };
 
 		if (_techniqueContext->_systemUniformsDelegate)
 			_shaderResourceDelegates.push_back(_techniqueContext->_systemUniformsDelegate);

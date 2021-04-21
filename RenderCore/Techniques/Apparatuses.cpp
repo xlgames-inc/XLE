@@ -15,6 +15,7 @@
 #include "SkinDeformer.h"
 #include "CommonResources.h"
 #include "SystemUniformsDelegate.h"
+#include "Drawables.h"
 #include "../Assets/PredefinedPipelineLayout.h"
 #include "../Assets/PipelineConfigurationUtils.h"
 #include "../Assets/MaterialCompiler.h"
@@ -56,7 +57,7 @@ namespace RenderCore { namespace Techniques
 		_graphShaderCompiler2Registration = RegisterInstantiateShaderGraphCompiler(_shaderSource, compilers);
 
 		auto techniqueSetFile = ::Assets::MakeAsset<Techniques::TechniqueSetFile>(ILLUM_TECH);
-		_techniqueSharedResources = Techniques::MakeTechniqueSharedResources(*device);
+		_techniqueSharedResources = Techniques::CreateTechniqueSharedResources(*device);
 		_techniqueDelegateDeferred = Techniques::CreateTechniqueDelegate_Deferred(techniqueSetFile, _techniqueSharedResources);
 
 		auto pipelineLayoutFileFuture = ::Assets::MakeAsset<RenderCore::Assets::PredefinedPipelineLayoutFile>(MAIN_PIPELINE);
@@ -80,8 +81,10 @@ namespace RenderCore { namespace Techniques
 			FindLayout(*_pipelineLayoutFile, pipelineLayoutName, "Sequencer"));
 
 		_commonResources = std::make_shared<CommonResourceBox>(*_device);
+		_drawablesSharedResources = CreateDrawablesSharedResources();
 		_techniqueContext = std::make_shared<TechniqueContext>();
 		_techniqueContext->_systemUniformsDelegate = std::make_shared<SystemUniformsDelegate>(*_device, *_commonResources);
+		_techniqueContext->_drawablesSharedResources = _drawablesSharedResources;
 
 		if (!_techniqueServices)
 			_techniqueServices = std::make_shared<Services>(_device);

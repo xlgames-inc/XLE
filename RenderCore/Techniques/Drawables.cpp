@@ -36,6 +36,17 @@ namespace RenderCore { namespace Techniques
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class DrawablesSharedResources
+	{
+	public:
+		std::unordered_map<uint64_t, std::unique_ptr<Metal::BoundUniforms>> _cachedBoundUniforms;
+	};
+
+	std::shared_ptr<DrawablesSharedResources> CreateDrawablesSharedResources()
+	{
+		return std::make_shared<DrawablesSharedResources>();
+	}
+
 	struct FixedDescriptorSetBinding
 	{
 		unsigned _slot;
@@ -45,6 +56,7 @@ namespace RenderCore { namespace Techniques
 
 	static Metal::BoundUniforms* GetBoundUniforms(
 		const Metal::GraphicsPipeline& pipeline,
+		DrawablesSharedResources& sharedResources,
         const UniformsStreamInterface& group0,
 		const UniformsStreamInterface& group1)
 	{
@@ -52,10 +64,9 @@ namespace RenderCore { namespace Techniques
 		hash = HashCombine(group0.GetHash(), hash);
 		hash = HashCombine(group1.GetHash(), hash);
 
-		static std::unordered_map<uint64_t, std::unique_ptr<Metal::BoundUniforms>> pipelines;
-		auto i = pipelines.find(hash);
-		if (i == pipelines.end())
-			i = pipelines.insert(
+		auto i = sharedResources._cachedBoundUniforms.find(hash);
+		if (i == sharedResources._cachedBoundUniforms.end())
+			i = sharedResources._cachedBoundUniforms.insert(
 				std::make_pair(
 					hash, 
 					std::make_unique<Metal::BoundUniforms>(pipeline, group0, group1))).first;
@@ -137,6 +148,7 @@ namespace RenderCore { namespace Techniques
 
 			auto* boundUniforms = GetBoundUniforms(
 				*pipeline,
+				*parserContext.GetTechniqueContext()._drawablesSharedResources,
 				sequencerUSI,
 				drawable._looseUniformsInterface ? *drawable._looseUniformsInterface : UniformsStreamInterface{});
 

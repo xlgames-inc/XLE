@@ -427,10 +427,10 @@ namespace SceneEngine
 		std::vector<std::pair<uint64_t, RenderCore::IResourcePtr>> workingAttachments = {
 			{ Techniques::AttachmentSemantics::ColorLDR, renderTarget }
 		};
-		parsingContext.GetNamedResources().Bind(
+		parsingContext.GetTechniqueContext()._attachmentPool->Bind(
 			Techniques::AttachmentSemantics::ColorLDR, renderTarget);
 
-		/*parsingContext.GetNamedResources().Bind(
+		/*parsingContext.GetTechniqueContext()._attachmentPool->Bind(
 			RenderCore::FrameBufferProperties {
 				targetTextureDesc._width, targetTextureDesc._height, 
 				technique._sampling });*/
@@ -440,11 +440,11 @@ namespace SceneEngine
 		for (const auto&rp:technique._renderPasses) {
 			Techniques::RenderPassInstance rpi;
 			if (rp._pipelineType == PipelineType::Graphics) {
-				rpi = Techniques::RenderPassInstance { threadContext, rp._fbDesc, parsingContext.GetFrameBufferPool(), parsingContext.GetNamedResources() };
+				rpi = Techniques::RenderPassInstance { threadContext, rp._fbDesc, *parsingContext.GetTechniqueContext()._frameBufferPool, *parsingContext.GetTechniqueContext()._attachmentPool };
 			} else {
 				// construct a "non-metal" render pass instance. This just handles attachment remapping logic, but doesn't create an renderpass
 				// in the underlying graphics API
-				rpi = Techniques::RenderPassInstance { rp._fbDesc, parsingContext.GetNamedResources() };
+				rpi = Techniques::RenderPassInstance { rp._fbDesc, *parsingContext.GetTechniqueContext()._attachmentPool };
 			}
 
 			RenderStepFragmentInstance rpf(rpi, MakeIteratorRange(rp._perSubpassSequencerConfigs));
@@ -460,14 +460,14 @@ namespace SceneEngine
 			// Note -- we never unbind any "exhausted" attachments. All attachments
 			//		that are written to end up here.
 			for (const auto&w:rp._outputAttachments)
-				parsingContext.GetNamedResources().Bind(w.first, rpi.GetResourceForAttachmentName(w.second));
+				parsingContext.GetTechniqueContext()._attachmentPool->Bind(w.first, rpi.GetResourceForAttachmentName(w.second));
 		}
 
 		// parsingContext._pipelineAcceleratorPool = prevPipelineAccelerator;
 
 		// Bind depth to NamedResources(), so we can find it later with RenderPassToPresentationTargetWithDepthStencil()
 		/*if (merged._mergedFragment._attachments[c].GetOutputSemanticBinding() == Techniques::AttachmentSemantics::MultisampleDepth)
-			parsingContext.GetNamedResources().Bind(
+			parsingContext.GetTechniqueContext()._attachmentPool->Bind(
 				RenderCore::Techniques::AttachmentSemantics::MultisampleDepth,
 				rpi.GetResource(c));*/
 
@@ -696,7 +696,7 @@ namespace SceneEngine
 
 	auto MainTargets::GetSRV(Techniques::ParsingContext& context, uint64_t semantic, const RenderCore::TextureViewDesc& window) const -> RenderCore::IResourceView*
 	{
-		auto& namedResources = context.GetNamedResources();
+		auto& namedResources = *context.GetTechniqueContext()._attachmentPool;
 		RenderCore::FrameBufferDesc::Attachment requestAttachments[1];
 		requestAttachments[0]._semantic = semantic;
 		SubpassDesc fakeSubPass;
@@ -710,14 +710,14 @@ namespace SceneEngine
 
 	RenderCore::IResourcePtr MainTargets::GetResource(Techniques::ParsingContext& context, uint64_t semantic) const
 	{
-		return context.GetNamedResources().GetBoundResource(semantic);
+		return context.GetTechniqueContext()._attachmentPool->GetBoundResource(semantic);
 	}
 
 	UInt2		MainTargets::GetDimensions(Techniques::ParsingContext& context) const
 	{
 		assert(0);
 		return UInt2(0,0);
-		// auto& fbProps = context.GetNamedResources().GetFrameBufferProperties();
+		// auto& fbProps = context.GetTechniqueContext()._attachmentPool->GetFrameBufferProperties();
 		// return { fbProps._outputWidth, fbProps._outputHeight };
 	}
 
@@ -725,7 +725,7 @@ namespace SceneEngine
 	{
 		assert(0);
 		return 0;
-		// auto& fbProps = context.GetNamedResources().GetFrameBufferProperties();
+		// auto& fbProps = context.GetTechniqueContext()._attachmentPool->GetFrameBufferProperties();
 		// return fbProps._samples._sampleCount;
 	}
 

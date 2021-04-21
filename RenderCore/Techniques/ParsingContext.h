@@ -60,9 +60,6 @@ namespace RenderCore { namespace Techniques
 
         SystemUniformsDelegate& GetSystemUniformsDelegate() const;
 
-        AttachmentPool& GetNamedResources() { assert(_namedResources); return *_namedResources; }
-		FrameBufferPool& GetFrameBufferPool() { assert(_frameBufferPool); return *_frameBufferPool; }
-
 			//  ----------------- Overlays for late rendering -----------------
         typedef std::function<void(RenderCore::Metal::DeviceContext&, ParsingContext&)> PendingOverlay;
         std::vector<PendingOverlay> _pendingOverlays;
@@ -84,23 +81,17 @@ namespace RenderCore { namespace Techniques
         bool HasInvalidAssets() const { return _stringHelpers->_invalidAssets[0] != '\0'; }
         bool HasErrorString() const { return _stringHelpers->_errorString[0] != '\0'; }
 
-        ParsingContext(std::shared_ptr<TechniqueContext> techniqueContext, AttachmentPool* namedResources = nullptr, FrameBufferPool* frameBufferPool = nullptr);
+        ParsingContext(TechniqueContext& techniqueContext);
         ~ParsingContext();
 
         ParsingContext& operator=(const ParsingContext&) = delete;
         ParsingContext(const ParsingContext&) = delete;
 
     protected:
-        std::shared_ptr<IResource>					_globalCBs[5];
-		ConstantBufferView							_globalCBVs[5];
+        TechniqueContext*                   _techniqueContext;
+        std::unique_ptr<ProjectionDesc>     _projectionDesc;
 
-        std::shared_ptr<TechniqueContext>           _techniqueContext;
-        std::unique_ptr<ProjectionDesc>             _projectionDesc;
-
-		ParameterBox								_subframeShaderSelectors;
-
-        AttachmentPool*     _namedResources;
-		FrameBufferPool*	_frameBufferPool;
+		ParameterBox                        _subframeShaderSelectors;
 
 		std::vector<std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>> _uniformDelegates;
         std::vector<std::shared_ptr<IShaderResourceDelegate>> _shaderResourceDelegates;

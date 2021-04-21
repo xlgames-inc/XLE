@@ -143,7 +143,7 @@ namespace PlatformRig
 
 			// Bind the presentation target as the default output for the parser context
 			// (including setting the normalized width and height)
-			parserContext.GetNamedResources().Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, presentationTarget);
+			parserContext.GetTechniqueContext()._attachmentPool->Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, presentationTarget);
 
 			////////////////////////////////
 
@@ -191,7 +191,7 @@ namespace PlatformRig
 				}
 			}
 
-			parserContext.GetNamedResources().UnbindAll();
+			parserContext.GetTechniqueContext()._attachmentPool->UnbindAll();
 
             if (_subFrameEvents)
                 _subFrameEvents->_onPrePresent.Invoke(*context);

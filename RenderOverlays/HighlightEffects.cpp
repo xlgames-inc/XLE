@@ -107,7 +107,7 @@ namespace RenderOverlays
         bool onlyHighlighted)
     {
 		std::vector<FrameBufferDesc::Attachment> attachments {
-			{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(parsingContext.GetNamedResources().GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()) },
+			{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(parsingContext.GetTechniqueContext()._attachmentPool->GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()) },
 			{ Techniques::AttachmentSemantics::MultisampleDepth, Format::D24_UNORM_S8_UINT }
 		};
 		SubpassDesc mainPass;
