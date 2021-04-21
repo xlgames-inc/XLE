@@ -39,11 +39,11 @@ namespace Assets
 			return result;
 		}
 		
-		DependencyValidation Make(IteratorRange<const DependentFileState*> filenames) override
+		DependencyValidation Make(IteratorRange<const DependentFileState*> filestates) override
 		{
 			DependencyValidation result = Make();
-			for (const auto& fn:filenames)
-				RegisterFileDependencyAlreadyLocked(result._marker, fn._filename);
+			for (const auto& state:filestates)
+				RegisterFileDependencyAlreadyLocked(result._marker, state._filename);
 			return result;
 		}
 
@@ -58,6 +58,7 @@ namespace Assets
 				_entries.resize(newDepVal+1);
 
 			_entries[newDepVal]._refCount = 1;
+			_entries[newDepVal]._validationIndex = 0;
 			return newDepVal;
 		}
 
@@ -116,7 +117,7 @@ namespace Assets
 				auto fileDesc = MainFileSystem::TryGetDesc(filename);
 				assert(fileDesc._state != FileDesc::State::Invalid);
 				DependentFileState fs;
-				fs._filename = fileDesc._mountedName;
+				fs._filename = filename.AsString();		// (consider using the mounted name instead? translated marker & fs idx would be better)
 				fs._timeMarker = fileDesc._modificationTime;
 				fs._status = (fileDesc._state == FileDesc::State::DoesNotExist) ? DependentFileState::Status::DoesNotExist : DependentFileState::Status::Normal;
 				newMonitoredFile->_states.push_back(fs);
@@ -363,9 +364,24 @@ namespace Assets
 		return *s_depValSystem.lock();
 	}
 
-	std::shared_ptr<IDependencyValidationSystem> CreateDepValSys()
-	{
-		return std::make_shared<DependencyValidationSystem>();
-	}
+	#if defined(_DEBUG)
+		DependencyValidationSystem* g_depValSys = nullptr;
+
+		std::shared_ptr<IDependencyValidationSystem> CreateDepValSys()
+		{
+			// this exists so we can look at the dep val tree through the debugger watch window.
+			// Watch "::Assets::g_depValSys" 
+			auto result = std::make_shared<DependencyValidationSystem>();
+			g_depValSys = result.get();
+			return result;
+		}
+	#else
+		std::shared_ptr<IDependencyValidationSystem> CreateDepValSys()
+		{
+			return std::make_shared<DependencyValidationSystem>();
+		}
+	#endif
+
+	
 }
 

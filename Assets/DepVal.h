@@ -31,6 +31,7 @@ namespace Assets
         operator bool() const { return _marker != DependencyValidationMarker_Invalid; }
         friend bool operator==(const DependencyValidation& lhs, const DependencyValidation& rhs) { return lhs._marker == rhs._marker; }
         friend bool operator!=(const DependencyValidation& lhs, const DependencyValidation& rhs) { return lhs._marker != rhs._marker; }
+        friend bool operator<(const DependencyValidation& lhs, const DependencyValidation& rhs) { return lhs._marker < rhs._marker; }
 
         DependencyValidation();
         DependencyValidation(DependencyValidation&&) never_throws;
@@ -80,8 +81,11 @@ namespace Assets
     {
     public:
         virtual DependencyValidation Make(IteratorRange<const StringSection<>*> filenames) = 0;
-        virtual DependencyValidation Make(IteratorRange<const DependentFileState*> filenames) = 0;
+        virtual DependencyValidation Make(IteratorRange<const DependentFileState*> filestates) = 0;
         virtual DependencyValidation Make() = 0;
+
+        inline DependencyValidation Make(StringSection<> filename);
+        inline DependencyValidation Make(const DependentFileState& filestate);
 
         virtual unsigned GetValidationIndex(DependencyValidationMarker marker) = 0;
         virtual DependentFileState GetDependentFileState(StringSection<> filename) = 0;
@@ -112,4 +116,13 @@ namespace Assets
 
     IDependencyValidationSystem& GetDepValSys();
     std::shared_ptr<IDependencyValidationSystem> CreateDepValSys();
+
+    inline DependencyValidation IDependencyValidationSystem::Make(StringSection<> filename)
+    {
+        return Make(MakeIteratorRange(&filename, &filename+1));
+    }
+    inline DependencyValidation IDependencyValidationSystem::Make(const DependentFileState& filestate)
+    {
+        return Make(MakeIteratorRange(&filestate, &filestate+1));
+    }
 }
