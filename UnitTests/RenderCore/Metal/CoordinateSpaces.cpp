@@ -82,6 +82,7 @@ namespace UnitTests
 	void RenderQuad(
 		MetalTestHelper& testHelper,
 		RenderCore::Metal::DeviceContext& metalContext,
+		RenderCore::Metal::GraphicsEncoder_ProgressivePipeline& encoder,
 		IteratorRange<const VertexPCT*> vertices,
 		const RenderCore::RasterizationDesc& rasterizationDesc,
 		const RenderCore::IResourceView* srv = nullptr,
@@ -96,7 +97,6 @@ namespace UnitTests
 		Metal::BoundInputLayout inputLayout(MakeIteratorRange(inputElePCT), shaderProgram);
 		assert(inputLayout.AllAttributesBound());
 
-		auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper._pipelineLayout);
 		if (srv) {
 			UniformsStreamInterface usi;
 			usi.BindResourceView(0, Hash64("Texture"));
@@ -129,7 +129,7 @@ namespace UnitTests
 		auto testHelper = MakeTestHelper();
 		auto threadContext = testHelper->_device->GetImmediateContext();
 		auto targetDesc = CreateDesc(
-			BindFlag::RenderTarget, 0, GPUAccess::Write,
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
@@ -137,7 +137,8 @@ namespace UnitTests
 		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 		{
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None});
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper->_pipelineLayout);
+			RenderQuad(*testHelper, metalContext, encoder, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None});
 		}
 
 		auto data = fbHelper.GetMainTarget()->ReadBackSynchronized(*threadContext);
@@ -164,7 +165,7 @@ namespace UnitTests
 		auto testHelper = MakeTestHelper();
 		auto threadContext = testHelper->_device->GetImmediateContext();
 		auto targetDesc = CreateDesc(
-			BindFlag::RenderTarget, 0, GPUAccess::Write,
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
@@ -172,8 +173,9 @@ namespace UnitTests
 		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 		{
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad_Red), RasterizationDesc{CullMode::None});
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_bottomLeftQuad_Blue), RasterizationDesc{CullMode::None});
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper->_pipelineLayout);
+			RenderQuad(*testHelper, metalContext, encoder, MakeIteratorRange(vertices_topLeftQuad_Red), RasterizationDesc{CullMode::None});
+			RenderQuad(*testHelper, metalContext, encoder, MakeIteratorRange(vertices_bottomLeftQuad_Blue), RasterizationDesc{CullMode::None});
 		}
 
 		auto breakdown0 = fbHelper.GetFullColorBreakdown(*threadContext);
@@ -182,7 +184,7 @@ namespace UnitTests
 		REQUIRE(breakdown0.size() == (size_t)2);
 		REQUIRE(breakdown0[0xffff0000] == breakdown0[0xff0000ff]);
 
-		auto SetScissorRect = [&](float x, float y, float w, float h, bool originIsUpperLeft)
+		auto SetScissorRect = [&](RenderCore::Metal::GraphicsEncoder_ProgressivePipeline& encoder, float x, float y, float w, float h, bool originIsUpperLeft)
 		{
 			RenderCore::Viewport viewports[1];
 			viewports[0] = RenderCore::Viewport{ 0.f, 0.f, (float)targetDesc._textureDesc._width, (float)targetDesc._textureDesc._height };
@@ -190,16 +192,17 @@ namespace UnitTests
 			RenderCore::ScissorRect scissorRects[1];
 			scissorRects[0] = RenderCore::ScissorRect{ (int)x, (int)y, (unsigned)w, (unsigned)h };
 			scissorRects[0]._originIsUpperLeft = originIsUpperLeft;
-			metalContext.BeginGraphicsEncoder_ProgressivePipeline(nullptr).Bind(MakeIteratorRange(viewports), MakeIteratorRange(scissorRects));
+			encoder.Bind(MakeIteratorRange(viewports), MakeIteratorRange(scissorRects));
 		};
 
 		auto TestScissor = [&](float x, float y, float w, float h, bool originIsUpperLeft)
 		{
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad_Red), RasterizationDesc{CullMode::None});
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_bottomLeftQuad_Blue), RasterizationDesc{CullMode::None});
-			SetScissorRect(x, y, w, h, originIsUpperLeft);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport), RasterizationDesc{CullMode::None});
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper->_pipelineLayout);
+			RenderQuad(*testHelper, metalContext, encoder, MakeIteratorRange(vertices_topLeftQuad_Red), RasterizationDesc{CullMode::None});
+			RenderQuad(*testHelper, metalContext, encoder, MakeIteratorRange(vertices_bottomLeftQuad_Blue), RasterizationDesc{CullMode::None});
+			SetScissorRect(encoder, x, y, w, h, originIsUpperLeft);
+			RenderQuad(*testHelper, metalContext, encoder, MakeIteratorRange(vertices_fullViewport), RasterizationDesc{CullMode::None});
 		};
 
 		{
@@ -258,18 +261,19 @@ namespace UnitTests
 		{
 			// origin is lower-left
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper->_pipelineLayout);
 			REQUIRE_THROWS(
-				[SetScissorRect]() {
-					SetScissorRect(0, 0, 0, 0, false); // zero size, we throw in this case
+				[SetScissorRect, &encoder]() {
+					SetScissorRect(encoder, 0, 0, 0, 0, false); // zero size, we throw in this case
 				}());
-			SetScissorRect(0, 0, 64, 64, false); // full-frame
-			SetScissorRect(-32, 0, 64, 64, false); // outside left
+			SetScissorRect(encoder, 0, 0, 64, 64, false); // full-frame
+			SetScissorRect(encoder, -32, 0, 64, 64, false); // outside left
 			//SetScissorRect(32, 0, 64, 64, false); // outside right (Metal validation error)
 			//SetScissorRect(0, 32, 64, 64, false); // outside top (Metal validation error)
-			SetScissorRect(0, -32, 64, 64, false); // outside bottom
+			SetScissorRect(encoder, 0, -32, 64, 64, false); // outside bottom
 
-			SetScissorRect(32, 0, -32, 64, false); // negative width
-			SetScissorRect(0, 32, 64, -32, false); // negative height
+			SetScissorRect(encoder, 32, 0, -32, 64, false); // negative width
+			SetScissorRect(encoder, 0, 32, 64, -32, false); // negative height
 		}
 	}
 
@@ -284,19 +288,21 @@ namespace UnitTests
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 
 		auto targetDesc = CreateDesc(
-			BindFlag::RenderTarget, 0, GPUAccess::Write,
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out");
 		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 		{
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport), RasterizationDesc{CullMode::Back, FaceWinding::CCW});
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper->_pipelineLayout);
+			RenderQuad(*testHelper, metalContext, encoder, MakeIteratorRange(vertices_fullViewport), RasterizationDesc{CullMode::Back, FaceWinding::CCW});
 		}
 		auto breakdown0 = fbHelper.GetFullColorBreakdown(*threadContext);
 
 		{
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport), RasterizationDesc{CullMode::Back, FaceWinding::CW});
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper->_pipelineLayout);
+			RenderQuad(*testHelper, metalContext, encoder, MakeIteratorRange(vertices_fullViewport), RasterizationDesc{CullMode::Back, FaceWinding::CW});
 		}
 		auto breakdown1 = fbHelper.GetFullColorBreakdown(*threadContext);
 
@@ -316,7 +322,8 @@ namespace UnitTests
 		// of window coordinate space definition
 		{
 			auto rpi = fbHelper.BeginRenderPass(*threadContext);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_fullViewport, &vertices_fullViewport[3]), RasterizationDesc{CullMode::None});
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper->_pipelineLayout);
+			RenderQuad(*testHelper, metalContext, encoder, MakeIteratorRange(vertices_fullViewport, &vertices_fullViewport[3]), RasterizationDesc{CullMode::None});
 		}
 		auto breakdown2 = fbHelper.GetFullColorBreakdown(*threadContext);
 
@@ -360,17 +367,18 @@ namespace UnitTests
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 
 		auto targetDesc0 = CreateDesc(
-			BindFlag::RenderTarget|BindFlag::ShaderResource, CPUAccess::Read, GPUAccess::Read|GPUAccess::Write,
+			BindFlag::RenderTarget|BindFlag::ShaderResource|BindFlag::TransferSrc, 0, GPUAccess::Read|GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out0");
 		UnitTestFBHelper fbHelper0(*testHelper->_device, *threadContext, targetDesc0);
 		{
 			auto rpi = fbHelper0.BeginRenderPass(*threadContext);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None});
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper->_pipelineLayout);
+			RenderQuad(*testHelper, metalContext, encoder, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None});
 		}
 
 		auto targetDesc1 = CreateDesc(
-			BindFlag::RenderTarget, 0, GPUAccess::Write,
+			BindFlag::RenderTarget|BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out1");
 		UnitTestFBHelper fbHelper1(*testHelper->_device, *threadContext, targetDesc1);
@@ -378,7 +386,8 @@ namespace UnitTests
 			auto rpi = fbHelper1.BeginRenderPass(*threadContext);
 			auto srv = fbHelper0.GetMainTarget()->CreateTextureView(BindFlag::ShaderResource);
 			auto sampler = testHelper->_device->CreateSampler(SamplerDesc{ FilterMode::Point });
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None}, srv.get(), sampler.get());
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper->_pipelineLayout);
+			RenderQuad(*testHelper, metalContext, encoder, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None}, srv.get(), sampler.get());
 		}
 
 		// The data in fpHelper1 is should now be the same as what we got through the
@@ -428,17 +437,18 @@ namespace UnitTests
 		auto& metalContext = *Metal::DeviceContext::Get(*threadContext);
 
 		auto targetDesc0 = CreateDesc(
-			BindFlag::RenderTarget|BindFlag::TransferSrc, CPUAccess::Read, GPUAccess::Read|GPUAccess::Write,
+			BindFlag::RenderTarget|BindFlag::TransferSrc, 0, GPUAccess::Read|GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out0");
 		UnitTestFBHelper fbHelper0(*testHelper->_device, *threadContext, targetDesc0);
 		{
 			auto rpi = fbHelper0.BeginRenderPass(*threadContext);
-			RenderQuad(*testHelper, metalContext, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None});
+			auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(testHelper->_pipelineLayout);
+			RenderQuad(*testHelper, metalContext, encoder, MakeIteratorRange(vertices_topLeftQuad), RasterizationDesc{CullMode::None});
 		}
 
 		auto targetDesc1 = CreateDesc(
-			BindFlag::RenderTarget|BindFlag::TransferDst, CPUAccess::Read, GPUAccess::Write,
+			BindFlag::RenderTarget|BindFlag::TransferDst, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(64, 64, Format::R8G8B8A8_UNORM),
 			"temporary-out1");
 		UnitTestFBHelper fbHelper1(*testHelper->_device, *threadContext, targetDesc1);

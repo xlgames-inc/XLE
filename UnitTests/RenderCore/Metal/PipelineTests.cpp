@@ -185,6 +185,8 @@ namespace UnitTests
 			"test-storage-texture");
 		auto result = device.CreateResource(desc);
 
+		Metal::CompleteInitialization(*Metal::DeviceContext::Get(threadContext), {result.get()});
+
 		// fill with data via a staging texture
 		// Vulkan really doesn't like initializing UnorderedAccess with preinitialized data, even if we use
 		// linear tiling. We must do an explicit initialization via a staging texture

@@ -448,33 +448,33 @@ namespace UnitTests
 		};
 
 		RenderCore::DescriptorSetSignature numericSet {
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
+			{DescriptorType::SampledTexture},				// 0
+			{DescriptorType::SampledTexture},				// 1
+			{DescriptorType::SampledTexture},				// 2
+			{DescriptorType::SampledTexture},				// 3
+			{DescriptorType::SampledTexture},				// 4
+			{DescriptorType::SampledTexture},				// 5
+			{DescriptorType::SampledTexture},				// 6
+			{DescriptorType::SampledTexture},				// 7
+			{DescriptorType::SampledTexture},				// 8
+			{DescriptorType::SampledTexture},				// 9
+			{DescriptorType::SampledTexture},				// 10
+			{DescriptorType::SampledTexture},				// 11
+			{DescriptorType::SampledTexture},				// 12
+			{DescriptorType::SampledTexture},				// 13
+			{DescriptorType::SampledTexture},				// 14
+			{DescriptorType::SampledTexture},				// 15
 
-			{DescriptorType::Sampler},
-			{DescriptorType::Sampler},
-			{DescriptorType::Sampler},
+			{DescriptorType::Sampler},						// 16
+			{DescriptorType::Sampler},						// 17
+			{DescriptorType::Sampler},						// 18
 
-			{DescriptorType::UniformBuffer},
-			{DescriptorType::UniformBuffer},
-			{DescriptorType::UniformBuffer},
-			{DescriptorType::UniformBuffer},
+			{DescriptorType::UniformBuffer},				// 19
+			{DescriptorType::UniformBuffer},				// 20
+			{DescriptorType::UniformBuffer},				// 21
+			{DescriptorType::UniformBuffer},				// 22
 
-			{DescriptorType::Sampler}
+			{DescriptorType::Sampler}						// 23
 		};
 
 		RenderCore::PipelineLayoutInitializer desc;
@@ -504,6 +504,13 @@ namespace UnitTests
 		result->AppendEntry(
 			RegisterType::ConstantBuffer, RegisterQualifier::None,
 			Entry{7, 13, Hash64("Sequencer"), 0, 0, 6});
+
+		result->AppendEntry(
+			RegisterType::ShaderResource, RegisterQualifier::None,
+			Entry{0, 16, Hash64("Numeric"), 3, 0, 16});
+		result->AppendEntry(
+			RegisterType::ConstantBuffer, RegisterQualifier::None,
+			Entry{0, 4, Hash64("Numeric"), 3, 19, 23});
 		return result;
 	}
 }

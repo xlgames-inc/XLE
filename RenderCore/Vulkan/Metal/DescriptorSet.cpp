@@ -25,9 +25,28 @@ namespace RenderCore { namespace Metal_Vulkan
 	VkDescriptorType_ AsVkDescriptorType(DescriptorType type);
 
 	template<typename BindingInfo> static BindingInfo const*& InfoPtr(VkWriteDescriptorSet& writeDesc);
-	template<> VkDescriptorImageInfo const*& InfoPtr(VkWriteDescriptorSet& writeDesc) { return writeDesc.pImageInfo; }
-	template<> VkDescriptorBufferInfo const*& InfoPtr(VkWriteDescriptorSet& writeDesc) { return writeDesc.pBufferInfo; }
-	template<> VkBufferView const*& InfoPtr(VkWriteDescriptorSet& writeDesc) { return writeDesc.pTexelBufferView; }
+	template<> VkDescriptorImageInfo const*& InfoPtr(VkWriteDescriptorSet& writeDesc) 
+	{ 
+		assert(writeDesc.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER
+			|| writeDesc.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+			|| writeDesc.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE
+			|| writeDesc.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+		return writeDesc.pImageInfo; 
+	}
+	template<> VkDescriptorBufferInfo const*& InfoPtr(VkWriteDescriptorSet& writeDesc) 
+	{
+		assert(writeDesc.descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+			|| writeDesc.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+			|| writeDesc.descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+			|| writeDesc.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC);
+		return writeDesc.pBufferInfo; 
+	}
+	template<> VkBufferView const*& InfoPtr(VkWriteDescriptorSet& writeDesc) 
+	{ 
+		assert(writeDesc.descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
+			|| writeDesc.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
+		return writeDesc.pTexelBufferView; 
+	}
 
 	template<> 
 		VkDescriptorImageInfo& ProgressiveDescriptorSetBuilder::AllocateInfo(const VkDescriptorImageInfo& init)
@@ -203,6 +222,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		assert(descriptorSetBindPoint < _signature.size());
 		auto slotType = _signature[descriptorSetBindPoint]._type;
 		assert(_signature[descriptorSetBindPoint]._count == 1);
+		assert(uniformBuffer.buffer);
 
 		switch (slotType) {
 		case DescriptorType::UniformBuffer:
