@@ -2,7 +2,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../Framework/MainGeometry.hlsl"
+#include "../Framework/VSOUT.hlsl"
 #include "../SceneEngine/Lighting/Forward.hlsl"
 #include "../../Objects/IllumShader/PerPixel.h"
 

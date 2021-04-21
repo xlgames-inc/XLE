@@ -5,12 +5,12 @@
 #include "ShadowGenGeometryConfiguration.hlsl"
 #include "../../SceneEngine/Lighting/ShadowProjection.hlsl"
 #include "../../Framework/SystemUniforms.hlsl"
-#include "../../Framework/MainGeometry.hlsl"
+#include "../../Framework/VSIN.hlsl"
+#include "../../Framework/VSOUT.hlsl"
 #include "../../Framework/VSShadowOutput.hlsl"
 #include "../../Framework/DeformVertex.hlsl"
-#include "../../Framework/Surface.hlsl"
 #include "../../Math/TransformAlgorithm.hlsl"
-#include "../../Nodes/Templates.vertex.sh"
+#include "../../../Nodes/Templates.vertex.sh"
 
 #if !defined(SHADOW_CASCADE_MODE)
 	#error expecting SHADOW_CASCADE_MODE to be set

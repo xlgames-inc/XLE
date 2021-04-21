@@ -85,7 +85,7 @@ namespace UnitTests
 				#if !defined(SPHERICAL_PREFIX_HLSL)
 				#define SPHERICAL_PREFIX_HLSL
 
-				#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
+				#include "xleres/TechniqueLibrary/Framework/VSOUT.hlsl"
 				float3 SphericalToNormal(float2 coord, float time);
 				float4 SphericalToColor(float2 coord, float time);
 				float3 DeformPosition(float3 inputPosition, float3 inputNormal, float sphericalParam);
@@ -209,8 +209,8 @@ namespace UnitTests
 			"framework-entry.vertex.hlsl",
 			::Assets::AsBlob(R"--(
 				#include "xleres/TechniqueLibrary/Framework/SystemUniforms.hlsl"
-				#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
-				#include "xleres/TechniqueLibrary/Framework/Surface.hlsl"
+				#include "xleres/TechniqueLibrary/Framework/VSIN.hlsl"
+				#include "xleres/TechniqueLibrary/Framework/VSOUT.hlsl"
 				#include "spherical_prefix.hlsl"
 
 				VSOUT frameworkEntry(VSIN input)
@@ -261,7 +261,7 @@ namespace UnitTests
 		std::make_pair(
 			"framework-entry.pixel.hlsl",
 			::Assets::AsBlob(R"--(
-				#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
+				#include "xleres/TechniqueLibrary/Framework/VSOUT.hlsl"
 				#include "xleres/Nodes/Templates.pixel.sh"
 				#include "spherical_prefix.hlsl"
 

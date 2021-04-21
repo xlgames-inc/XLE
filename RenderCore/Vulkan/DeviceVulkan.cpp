@@ -664,7 +664,7 @@ namespace RenderCore { namespace ImplVulkan
 			static std::chrono::steady_clock::time_point lastReport{};		// (defaults to start of epoch)
 			auto now = std::chrono::steady_clock::now();
 			if ((now - lastReport) > 1s) {
-				Log(Verbose) << "Stalling due to insufficient trackers in Vulkan SemaphoreBasedTracker" << std::endl;
+				Log(Verbose) << "Stalling due to insufficient trackers in Vulkan FenceBasedTracker" << std::endl;
 				lastReport = now;
 			}
 
@@ -688,13 +688,12 @@ namespace RenderCore { namespace ImplVulkan
 	void FenceBasedTracker::UpdateConsumer()
 	{
 		for (;;) {
-			if (!_nextConsumerFrameToComplete->_submittedToGPU) break;
+			if (!_nextConsumerFrameToComplete->_submittedToGPU || _nextConsumerFrameToComplete == _currentProducerFrame) break;
 			assert(!_nextConsumerFrameToComplete->_gotGPUCompletion);
 			auto res = vkGetFenceStatus(_device, _nextConsumerFrameToComplete->_fence.get());
 			if (res == VK_SUCCESS) {
 				VkFence fence = _nextConsumerFrameToComplete->_fence.get();
 				vkResetFences(_device, 1, &fence);
-				assert(_nextConsumerFrameToComplete != _currentProducerFrame);
 				_lastCompletedConsumerFrame = _nextConsumerFrameToComplete->_frameMarker;
 				_nextConsumerFrameToComplete->_gotGPUCompletion = true;
 				++_nextConsumerFrameToComplete;
@@ -718,7 +717,7 @@ namespace RenderCore { namespace ImplVulkan
 
 		bool foundTheFence = false;
 		for (unsigned c=0; c<_trackers.size(); ++c)
-			if (_trackers[c]._frameMarker == _lastCompletedConsumerFrame) {
+			if (_trackers[c]._frameMarker == marker) {
 				assert(_trackers[c]._submittedToGPU);
 				foundTheFence = true;
 				break;
@@ -729,7 +728,7 @@ namespace RenderCore { namespace ImplVulkan
 
 		// Wait in order until we complete the one requested
 		for (;;) {
-			if (!_nextConsumerFrameToComplete->_submittedToGPU) break;
+			if (!_nextConsumerFrameToComplete->_submittedToGPU || _nextConsumerFrameToComplete == _currentProducerFrame) break;
 
 			VkFence fence = _nextConsumerFrameToComplete->_fence.get();
 			VkResult res;
@@ -742,7 +741,6 @@ namespace RenderCore { namespace ImplVulkan
 			}
 			if (res == VK_SUCCESS) {
 				vkResetFences(_device, 1, &fence);
-				assert(_nextConsumerFrameToComplete != _currentProducerFrame);
 				_lastCompletedConsumerFrame = _nextConsumerFrameToComplete->_frameMarker;
 				_nextConsumerFrameToComplete->_gotGPUCompletion = true;
 				++_nextConsumerFrameToComplete;
@@ -1502,12 +1500,13 @@ namespace RenderCore { namespace ImplVulkan
 		_renderingCommandPool.FlushDestroys();
 		_tempBufferSpace->FlushDestroys();
 
-		if (waitForCompletion) {
-			_gpuTracker->WaitForFence(_gpuTracker->GetProducerMarker());
-		}
-
+		// Note IncrementProducerFrame() must happen before the wait here
+		auto markerToWaitFor = _gpuTracker->GetProducerMarker();
 		if (_gpuTracker)
 			_gpuTracker->IncrementProducerFrame();
+
+		if (waitForCompletion)
+			_gpuTracker->WaitForFence(markerToWaitFor);
 	}
 
     bool ThreadContext::IsImmediate() const

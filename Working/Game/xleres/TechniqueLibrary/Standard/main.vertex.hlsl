@@ -1,4 +1,5 @@
-#include "../Framework/MainGeometry.hlsl"
+#include "../Framework/VSIN.hlsl"
+#include "../Framework/VSOUT.hlsl"
 #include "../Framework/DeformVertex.hlsl"
 #include "DeformVertex_Standard.vertex.hlsl"
 #include "../Core/BuildVSOUT.vertex.hlsl"

@@ -36,9 +36,9 @@
 #endif
 
 static const char* s_colorFromSelectorShaderFile = R"--(
-	#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
+	#include "xleres/TechniqueLibrary/Framework/VSOUT.hlsl"
 	#include "xleres/TechniqueLibrary/Framework/gbuffer.hlsl"
-	#include "xleres/Nodes/Templates.sh"
+	#include "xleres/Nodes/Templates.pixel.sh"
 
 	GBufferValues PerPixel(VSOUT geo)
 	{
@@ -164,6 +164,7 @@ namespace UnitTests
 			auto compiledPatches = GetCompiledPatchCollectionFromText(s_techniqueForColorFromSelector);
 			RenderCore::Assets::RenderStateSet stateSet;
 			stateSet._doubleSided = true;
+			doubledSidedStateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::DoubleSided;
 			_pipelineAccelerator = pipelineAccelerators.CreatePipelineAccelerator(
 				compiledPatches,
 				ParameterBox { std::make_pair("COLOR_GREEN", "1") },

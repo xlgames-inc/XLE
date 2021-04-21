@@ -1,4 +1,4 @@
-#include "../Framework/MainGeometry.hlsl"
+#include "../Framework/VSOUT.hlsl"
 #include "../../Nodes/Templates.pixel.sh"
 
 #if (VULKAN!=1)

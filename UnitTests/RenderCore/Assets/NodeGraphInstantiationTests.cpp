@@ -291,7 +291,7 @@ namespace UnitTests
 			for (const auto& rawShader:inst._rawShaderFileIncludes)
 				relevanceViaInstantiateShader.MergeIn(GetSelectorRulesFromFile(rawShader));
 
-			REQUIRE(relevanceFromDirectAnalysis._relevanceTable.size() != relevanceViaInstantiateShader._relevanceTable.size());
+			REQUIRE(relevanceFromDirectAnalysis._relevanceTable.size() == relevanceViaInstantiateShader._relevanceTable.size());
 			for (const auto&r:relevanceFromDirectAnalysis._relevanceTable) {
 				auto i = relevanceViaInstantiateShader._relevanceTable.find(relevanceViaInstantiateShader._tokenDictionary.Translate(relevanceFromDirectAnalysis._tokenDictionary, r.first));
 				if (i == relevanceViaInstantiateShader._relevanceTable.end()) continue;

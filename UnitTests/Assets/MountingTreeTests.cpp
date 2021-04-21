@@ -50,7 +50,7 @@ namespace UnitTests
 			// Ensure we can mount and then unmount a FS in the tree
 			auto mountID0 = mountingTree->Mount("ut-data", memoryFS0);
 			REQUIRE(mountingTree->GetMountedFileSystem(mountID0) == memoryFS0.get());
-			REQUIRE(mountingTree->GetMountPoint(mountID0) == "/ut-data/");
+			REQUIRE(mountingTree->GetMountPoint(mountID0) == "ut-data/");
 			mountingTree->Unmount(mountID0);
 			REQUIRE(mountingTree->GetMountedFileSystem(mountID0) == nullptr);
 			REQUIRE(mountingTree->GetMountPoint(mountID0).empty());
@@ -64,10 +64,10 @@ namespace UnitTests
 			REQUIRE(mountingTree->GetMountedFileSystem(mountID2) == memoryFS0.get());
 			REQUIRE(mountingTree->GetMountedFileSystem(mountID3) == memoryFS0.get());
 			REQUIRE(mountingTree->GetMountedFileSystem(mountID4) == memoryFS0.get());
-			REQUIRE(mountingTree->GetMountPoint(mountID1) == "/ut-data/");
-			REQUIRE(mountingTree->GetMountPoint(mountID2) == "/ut-data/subFolder0/");
-			REQUIRE(mountingTree->GetMountPoint(mountID3) == "/ut-data/subFolder1/subFolder2/");
-			REQUIRE(mountingTree->GetMountPoint(mountID4) == "/");
+			REQUIRE(mountingTree->GetMountPoint(mountID1) == "ut-data/");
+			REQUIRE(mountingTree->GetMountPoint(mountID2) == "ut-data/subFolder0/");
+			REQUIRE(mountingTree->GetMountPoint(mountID3) == "ut-data/subFolder1/subFolder2/");
+			REQUIRE(mountingTree->GetMountPoint(mountID4) == "");
 			mountingTree->Unmount(mountID1);
 			mountingTree->Unmount(mountID2);
 			mountingTree->Unmount(mountID3);
@@ -86,7 +86,7 @@ namespace UnitTests
 				auto lookupResult = lookup.TryGetNext(obj);
 				REQUIRE(lookupResult == ::Assets::MountingTree::EnumerableLookup::Result::Success);
 				REQUIRE(obj._fileSystem == memoryFS0);
-				REQUIRE(obj._mountPoint == "/ut-data/");
+				REQUIRE(obj._mountPoint == "ut-data/");
 				lookupResult = lookup.TryGetNext(obj);
 				REQUIRE(lookupResult == ::Assets::MountingTree::EnumerableLookup::Result::NoCandidates);
 
@@ -113,12 +113,12 @@ namespace UnitTests
 				lookup = mountingTree->Lookup("ut-data/internalFolder/one/two/three/exampleFileFive.file");
 				REQUIRE(lookup.IsGood());
 				REQUIRE(lookup.TryGetNext(obj) == ::Assets::MountingTree::EnumerableLookup::Result::Success);
-				REQUIRE(obj._mountPoint == "/ut-data/");
+				REQUIRE(obj._mountPoint == "ut-data/");
 
 				lookup = mountingTree->Lookup("ut-data/internalFolder/one/two/three/exampleFileSix.file");
 				REQUIRE(lookup.IsGood());
 				REQUIRE(lookup.TryGetNext(obj) == ::Assets::MountingTree::EnumerableLookup::Result::Success);
-				REQUIRE(obj._mountPoint == "/ut-data/internalFolder/");
+				REQUIRE(obj._mountPoint == "ut-data/internalFolder/");
 			}
 
 			mountingTree->Unmount(mnt1);
@@ -157,33 +157,33 @@ namespace UnitTests
 				auto lookup = mountingTree->Lookup("ut-data/././internalFolder/exampleFileThree.file");
 				REQUIRE(lookup.IsGood());
 				REQUIRE(lookup.TryGetNext(obj) == ::Assets::MountingTree::EnumerableLookup::Result::Success);
-				REQUIRE(obj._mountPoint == "/ut-data/");
+				REQUIRE(obj._mountPoint == "ut-data/");
 
 				// "./" at the very start
 				lookup = mountingTree->Lookup("./ut-data/internalFolder/exampleFileThree.file");
 				REQUIRE(lookup.IsGood());
 				REQUIRE(!lookup.IsAbsolutePath());
 				REQUIRE(lookup.TryGetNext(obj) == ::Assets::MountingTree::EnumerableLookup::Result::Success);
-				REQUIRE(obj._mountPoint == "/ut-data/");
+				REQUIRE(obj._mountPoint == "ut-data/");
 
 				// "./" in the middle of the mounting name
 				lookup = mountingTree->Lookup("ut-data/./internalFolder/exampleFileFour.file");
 				REQUIRE(lookup.IsGood());
 				REQUIRE(lookup.TryGetNext(obj) == ::Assets::MountingTree::EnumerableLookup::Result::Success);
-				REQUIRE(obj._mountPoint == "/ut-data/internalFolder/");
+				REQUIRE(obj._mountPoint == "ut-data/internalFolder/");
 
 				// "../" to drop back to an earlier directory (effectively ignoring the "internalFolder/" part)
 				lookup = mountingTree->Lookup("ut-data/internalFolder/../exampleFileOne.file");
 				REQUIRE(lookup.IsGood());
 				REQUIRE(lookup.TryGetNext(obj) == ::Assets::MountingTree::EnumerableLookup::Result::Success);
-				REQUIRE(obj._mountPoint == "/ut-data/");
+				REQUIRE(obj._mountPoint == "ut-data/");
 
 				// "./" or "../" within the mounted filesystem part may or may not work depending on the 
 				// filesystem implementation
 				lookup = mountingTree->Lookup("ut-data/././internalFolder/one/two/../../one/two/./three/./././exampleFileFive.file");
 				REQUIRE(lookup.IsGood());
 				REQUIRE(lookup.TryGetNext(obj) == ::Assets::MountingTree::EnumerableLookup::Result::Success);
-				REQUIRE(obj._mountPoint == "/ut-data/");
+				REQUIRE(obj._mountPoint == "ut-data/");
 
 				// When the mounting tree "absolute path mode" is set to MountingTree, the absolute
 				// root is the root of the mounting tree (not the root of the raw FS)
@@ -191,7 +191,7 @@ namespace UnitTests
 				REQUIRE(lookup.IsGood());
 				REQUIRE(lookup.IsAbsolutePath());
 				REQUIRE(lookup.TryGetNext(obj) == ::Assets::MountingTree::EnumerableLookup::Result::Success);
-				REQUIRE(obj._mountPoint == "/ut-data/");
+				REQUIRE(obj._mountPoint == "ut-data/");
 			}
 
 			SECTION("utf16") {
@@ -199,33 +199,33 @@ namespace UnitTests
 				auto lookup = mountingTree->Lookup(u"ut-data/././internalFolder/exampleFileThree.file");
 				REQUIRE(lookup.IsGood());
 				REQUIRE(lookup.TryGetNext(obj) == ::Assets::MountingTree::EnumerableLookup::Result::Success);
-				REQUIRE(obj._mountPoint == "/ut-data/");
+				REQUIRE(obj._mountPoint == "ut-data/");
 
 				// "./" at the very start
 				lookup = mountingTree->Lookup(u"./ut-data/internalFolder/exampleFileThree.file");
 				REQUIRE(lookup.IsGood());
 				REQUIRE(!lookup.IsAbsolutePath());
 				REQUIRE(lookup.TryGetNext(obj) == ::Assets::MountingTree::EnumerableLookup::Result::Success);
-				REQUIRE(obj._mountPoint == "/ut-data/");
+				REQUIRE(obj._mountPoint == "ut-data/");
 
 				// "./" in the middle of the mounting name
 				lookup = mountingTree->Lookup(u"ut-data/./internalFolder/exampleFileFour.file");
 				REQUIRE(lookup.IsGood());
 				REQUIRE(lookup.TryGetNext(obj) == ::Assets::MountingTree::EnumerableLookup::Result::Success);
-				REQUIRE(obj._mountPoint == "/ut-data/internalFolder/");
+				REQUIRE(obj._mountPoint == "ut-data/internalFolder/");
 
 				// "../" to drop back to an earlier directory (effectively ignoring the "internalFolder/" part)
 				lookup = mountingTree->Lookup(u"ut-data/internalFolder/../exampleFileOne.file");
 				REQUIRE(lookup.IsGood());
 				REQUIRE(lookup.TryGetNext(obj) == ::Assets::MountingTree::EnumerableLookup::Result::Success);
-				REQUIRE(obj._mountPoint == "/ut-data/");
+				REQUIRE(obj._mountPoint == "ut-data/");
 
 				// "./" or "../" within the mounted filesystem part may or may not work depending on the 
 				// filesystem implementation
 				lookup = mountingTree->Lookup(u"ut-data/././internalFolder/one/two/../../one/two/./three/./././exampleFileFive.file");
 				REQUIRE(lookup.IsGood());
 				REQUIRE(lookup.TryGetNext(obj) == ::Assets::MountingTree::EnumerableLookup::Result::Success);
-				REQUIRE(obj._mountPoint == "/ut-data/");
+				REQUIRE(obj._mountPoint == "ut-data/");
 
 				// When the mounting tree "absolute path mode" is set to MountingTree, the absolute
 				// root is the root of the mounting tree (not the root of the raw FS)
@@ -233,7 +233,7 @@ namespace UnitTests
 				REQUIRE(lookup.IsGood());
 				REQUIRE(lookup.IsAbsolutePath());
 				REQUIRE(lookup.TryGetNext(obj) == ::Assets::MountingTree::EnumerableLookup::Result::Success);
-				REQUIRE(obj._mountPoint == "/ut-data/");
+				REQUIRE(obj._mountPoint == "ut-data/");
 			}
 
 			mountingTree->Unmount(mnt2);

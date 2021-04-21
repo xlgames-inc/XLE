@@ -117,10 +117,9 @@ namespace UnitTests
 		std::make_pair(
 			"shader_with_selectors.pixel.hlsl",
 			::Assets::AsBlob(R"--(
-				#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
+				#include "xleres/TechniqueLibrary/Framework/VSOUT.hlsl"
 				#include "xleres/TechniqueLibrary/Framework/CommonResources.hlsl"
 				#include "xleres/TechniqueLibrary/Framework/gbuffer.hlsl"
-				#include "xleres/TechniqueLibrary/Framework/Surface.hlsl"
 				#include "xleres/TechniqueLibrary/Utility/Colour.hlsl"
 
 				Texture2D       TextureDif		BIND_MAT_T3;
@@ -288,7 +287,7 @@ namespace UnitTests
 			// mechanisms
 			auto metalTestHelper = MakeTestHelper();
 			auto customShaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
-				CreateDefaultShaderCompiler(*metalTestHelper->_device),
+				CreateDefaultShaderCompiler(*metalTestHelper->_device, *metalTestHelper->_defaultLegacyBindings),
 				std::make_shared<ExpandIncludesPreprocessor>());
 			auto compilerRegistration = RenderCore::Techniques::RegisterInstantiateShaderGraphCompiler(customShaderSource, compilers);
 

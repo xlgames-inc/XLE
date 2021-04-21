@@ -51,7 +51,7 @@ static const char s_exampleTechniqueFragments[] = R"--(
 )--";
 
 static const char* s_colorFromSelectorShaderFile = R"--(
-	#include "xleres/TechniqueLibrary/Framework/MainGeometry.hlsl"
+	#include "xleres/TechniqueLibrary/Framework/VSOUT.hlsl"
 	#include "xleres/TechniqueLibrary/Framework/gbuffer.hlsl"
 	#include "xleres/Nodes/Templates.pixel.sh"
 

@@ -112,7 +112,8 @@ namespace RenderCore { namespace Techniques
         for (unsigned c=0; c<dimof(_globalCBs); ++c)
 			_globalCBVs[c] = { _globalCBs[c].get() };
 
-		_shaderResourceDelegates.push_back(_techniqueContext->_systemUniformsDelegate);
+		if (_techniqueContext->_systemUniformsDelegate)
+			_shaderResourceDelegates.push_back(_techniqueContext->_systemUniformsDelegate);
     }
 
     ParsingContext::~ParsingContext() {}

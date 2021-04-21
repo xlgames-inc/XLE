@@ -1,7 +1,7 @@
 
 #include "../TechniqueLibrary/SceneEngine/Lighting/LightingAlgorithm.hlsl"
 #include "../TechniqueLibrary/Framework/SystemUniforms.hlsl"
-#include "../TechniqueLibrary/Framework/Surface.hlsl"
+#include "../TechniqueLibrary/Framework/VSOUT.hlsl"
 
 float SkyReflectionFresnelFactor(VSOUT geo)
 {

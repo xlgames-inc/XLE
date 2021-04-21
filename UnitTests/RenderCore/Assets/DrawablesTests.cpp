@@ -313,8 +313,8 @@ namespace UnitTests
 
 			{
 				auto rpi = fbHelper.BeginRenderPass(*threadContext);
-				Techniques::TechniqueContext techContext;
-				Techniques::ParsingContext parsingContext{techContext};
+				auto techniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
+				Techniques::ParsingContext parsingContext{techniqueContext};
 				parsingContext.AddShaderResourceDelegate(globalDelegate);
 				Techniques::SequencerContext sequencerContext;
 				sequencerContext._sequencerConfig = cfgId.get();
@@ -360,8 +360,8 @@ namespace UnitTests
 			for (unsigned c=0; c<32; ++c) {
 				{
 					auto rpi = fbHelper.BeginRenderPass(*threadContext);
-					Techniques::TechniqueContext techContext;
-					Techniques::ParsingContext parsingContext{techContext};
+					auto techniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
+					Techniques::ParsingContext parsingContext{techniqueContext};
 					parsingContext.AddShaderResourceDelegate(globalDelegate);
 					Techniques::SequencerContext sequencerContext;
 					sequencerContext._sequencerConfig = cfgId.get();
