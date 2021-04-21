@@ -33,7 +33,7 @@ namespace Assets
 		ConsoleRig::LibVersionDesc _srcVersion = {nullptr, nullptr};
 		IntermediateCompilers::CompileOperationDelegate _delegate;
 		IntermediateCompilers::ArchiveNameDelegate _archiveNameDelegate;
-		DepValPtr _compilerLibraryDepVal;
+		DependencyValidation _compilerLibraryDepVal;
 		IntermediatesStore::CompileProductsGroupId _storeGroupId = 0;
 	};
 
@@ -45,14 +45,14 @@ namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static DepValPtr MakeDepVal(
+	static DependencyValidation MakeDepVal(
 		IteratorRange<const DependentFileState*> deps,
-		const DepValPtr& compilerDepVal)
+		const DependencyValidation& compilerDepVal)
 	{
-		DepValPtr depVal = AsDepVal(deps);
+		auto result = GetDepValSys().Make(deps);
 		if (compilerDepVal)
-			RegisterAssetDependency(depVal, compilerDepVal);
-		return depVal;
+			result.RegisterDependency(compilerDepVal);
+		return result;
 	}
 
     class IntermediateCompilers::Marker : public IIntermediateCompileMarker
@@ -193,17 +193,17 @@ namespace Assets
 		} CATCH(const Exceptions::ConstructionError& e) {
 			auto depVal = MakeDepVal(MakeIteratorRange(deps), delegate._compilerLibraryDepVal);
 			if (deps.empty())
-				RegisterFileDependency(depVal, MakeFileNameSplitter(firstInitializer).AllExceptParameters());		// fallback case -- compiler might have failed because of bad input file. Interpret the initializer as a filename and create a dep val for it
+				depVal.RegisterDependency(MakeFileNameSplitter(firstInitializer).AllExceptParameters());		// fallback case -- compiler might have failed because of bad input file. Interpret the initializer as a filename and create a dep val for it
 			Throw(Exceptions::ConstructionError(e, depVal));
 		} CATCH(const std::exception& e) {
 			auto depVal = MakeDepVal(MakeIteratorRange(deps), delegate._compilerLibraryDepVal);
 			if (deps.empty())
-				RegisterFileDependency(depVal, MakeFileNameSplitter(firstInitializer).AllExceptParameters());
+				depVal.RegisterDependency(MakeFileNameSplitter(firstInitializer).AllExceptParameters());
 			Throw(Exceptions::ConstructionError(e, depVal));
 		} CATCH(...) {
 			auto depVal = MakeDepVal(MakeIteratorRange(deps), delegate._compilerLibraryDepVal);
 			if (deps.empty())
-				RegisterFileDependency(depVal, MakeFileNameSplitter(firstInitializer).AllExceptParameters());
+				depVal.RegisterDependency(MakeFileNameSplitter(firstInitializer).AllExceptParameters());
 			Throw(Exceptions::ConstructionError(Exceptions::ConstructionError::Reason::Unknown, depVal, "%s", "unknown exception"));
 		} CATCH_END
     }
@@ -312,7 +312,7 @@ namespace Assets
 		const std::string& name,
 		const std::string& shortName,
 		ConsoleRig::LibVersionDesc srcVersion,
-		const DepValPtr& compilerDepVal,
+		const DependencyValidation& compilerDepVal,
 		CompileOperationDelegate&& delegate,
 		ArchiveNameDelegate&& archiveNameDelegate
 		) -> CompilerRegistration
@@ -513,8 +513,8 @@ namespace Assets
 				auto lib = library._library;
 				auto fn = library._createCompileOpFunction;
 				for (const auto&kind:library._kinds) {
-					auto compilerDepVal = std::make_shared<DependencyValidation>();
-					RegisterFileDependency(compilerDepVal, MakeStringSection(c));
+					auto compilerFn = MakeStringSection(c);
+					auto compilerDepVal = GetDepValSys().Make(MakeIteratorRange(&compilerFn, &compilerFn+1));
 					auto registrationId = compilerManager.RegisterCompiler(
 						kind._name + " (" + MakeSplitPath(c).Simplify().Rebuild() + ")",
 						kind._shortName,

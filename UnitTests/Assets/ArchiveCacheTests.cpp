@@ -130,7 +130,7 @@ namespace UnitTests
 			REQUIRE(artifactCollection);
 			auto depVal = artifactCollection->GetDependencyValidation();
 			REQUIRE(depVal);
-			REQUIRE(depVal->GetValidationIndex() == 0);
+			REQUIRE(depVal.GetValidationIndex() == 0);
 			
 			::Assets::ArtifactRequest requests[] {
 				::Assets::ArtifactRequest { "--ignored--", Hash64("artifact-one"), 1, ::Assets::ArtifactRequest::DataType::SharedBlob },
@@ -217,7 +217,7 @@ namespace UnitTests
 			REQUIRE(artifactCollection);
 			auto depVal = artifactCollection->GetDependencyValidation();
 			REQUIRE(depVal);
-			REQUIRE(depVal->GetValidationIndex() == 0);
+			REQUIRE(depVal.GetValidationIndex() == 0);
 
 			::Assets::ArtifactRequest requests[] {
 				::Assets::ArtifactRequest { "--ignored--", Hash64("artifact-one"), 1, ::Assets::ArtifactRequest::DataType::SharedBlob },

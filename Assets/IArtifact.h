@@ -46,7 +46,7 @@ namespace Assets
 	{
 	public:
 		virtual std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const = 0;
-		virtual DepValPtr				GetDependencyValidation() const = 0;
+		virtual DependencyValidation 	GetDependencyValidation() const = 0;
 		virtual StringSection<ResChar>	GetRequestParameters() const = 0;		// these are parameters that should be passed through to the asset when it's actually loaded from the blob
 		virtual AssetState				GetAssetState() const = 0;
 		virtual ~IArtifactCollection();
@@ -99,17 +99,17 @@ namespace Assets
 	{
 	public:
 		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const override;
-		DepValPtr GetDependencyValidation() const override;
+		DependencyValidation GetDependencyValidation() const override;
 		StringSection<ResChar> GetRequestParameters() const override;
 		AssetState GetAssetState() const override;
 		ChunkFileArtifactCollection(
 			const std::shared_ptr<IFileInterface>& file,
-			const DepValPtr& depVal,
+			const DependencyValidation& depVal,
 			const std::string& requestParameters = {});
 		~ChunkFileArtifactCollection();
 	private:
 		std::shared_ptr<IFileInterface> _file;
-		DepValPtr _depVal;
+		DependencyValidation _depVal;
 		std::string _requestParameters;
 	};
 
@@ -117,20 +117,20 @@ namespace Assets
 	{
 	public:
 		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const override;
-		DepValPtr GetDependencyValidation() const override;
+		DependencyValidation GetDependencyValidation() const override;
 		StringSection<ResChar> GetRequestParameters() const override;
 		AssetState GetAssetState() const override;
 		BlobArtifactCollection(
 			IteratorRange<const ICompileOperation::SerializedArtifact*> chunks, 
 			AssetState state,
-			const DepValPtr& depVal, 
+			const DependencyValidation& depVal, 
 			const std::string& collectionName = {},
 			const std::string& requestParams = {});
 		~BlobArtifactCollection();
 	private:
 		std::vector<ICompileOperation::SerializedArtifact> _chunks;
 		AssetState _state;
-		DepValPtr _depVal;
+		DependencyValidation _depVal;
 		std::string _collectionName;
 		std::string _requestParams;
 	};
@@ -139,16 +139,16 @@ namespace Assets
 	{
 	public:
 		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const override;
-		DepValPtr GetDependencyValidation() const override;
+		DependencyValidation GetDependencyValidation() const override;
 		StringSection<::Assets::ResChar> GetRequestParameters() const override;
 		AssetState GetAssetState() const override;
 		CompilerExceptionArtifact(
 			const ::Assets::Blob& log,
-			const ::Assets::DepValPtr& depVal);
+			const ::Assets::DependencyValidation& depVal);
 		~CompilerExceptionArtifact();
 	private:
 		::Assets::Blob _log;
-		::Assets::DepValPtr _depVal;
+		::Assets::DependencyValidation _depVal;
 	};
 
 }

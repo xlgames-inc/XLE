@@ -69,7 +69,7 @@ namespace ConsoleRig
         ~LogCentralConfiguration();
     private:
         std::shared_ptr<OSServices::LogConfigurationSet> _cfgSet;
-        std::shared_ptr<::Assets::DependencyValidation> _cfgSetDepVal;
+        ::Assets::DependencyValidation _cfgSetDepVal;
         std::string _logCfgFile;
         std::weak_ptr<OSServices::LogCentral> _attachedLogCentral;
 
@@ -184,6 +184,7 @@ namespace ConsoleRig
 
         AttachablePtr<::Assets::AssetSetManager> _assetsSetsManager;
         AttachablePtr<::Assets::CompileAndAsyncManager> _compileAndAsyncManager;
+        AttachablePtr<::Assets::IDependencyValidationSystem> _depValSys;
 	};
 
     GlobalServices* GlobalServices::s_instance = nullptr;
@@ -204,6 +205,9 @@ namespace ConsoleRig
         if (!_pimpl->_compileAndAsyncManager)
             _pimpl->_compileAndAsyncManager = std::make_shared<::Assets::CompileAndAsyncManager>();
 
+        if (!_pimpl->_depValSys)
+            _pimpl->_depValSys = ::Assets::CreateDepValSys();
+
             // add "nsight" marker to global services when "-nsight" is on
             // the command line. This is an easy way to record a global (&cross-dll)
             // state to use the nsight configuration when the given flag is set.
@@ -217,6 +221,7 @@ namespace ConsoleRig
         assert(s_instance == nullptr);  // (should already have been detached in the Withhold() call)
         _pimpl->_assetsSetsManager = nullptr;
         _pimpl->_compileAndAsyncManager = nullptr;
+        _pimpl->_depValSys = nullptr;
     }
 
 	void GlobalServices::LoadDefaultPlugins()
@@ -297,16 +302,16 @@ namespace ConsoleRig
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static std::pair<std::shared_ptr<OSServices::LogConfigurationSet>, std::shared_ptr<::Assets::DependencyValidation>> LoadConfigSet(StringSection<> fn)
+    static std::pair<std::shared_ptr<OSServices::LogConfigurationSet>, ::Assets::DependencyValidation> LoadConfigSet(StringSection<> fn)
     {
         size_t fileSize = 0;
-        auto file = ::Assets::TryLoadFileAsMemoryBlock(fn, &fileSize);
+        ::Assets::DependentFileState fileState;
+        auto file = ::Assets::TryLoadFileAsMemoryBlock(fn, &fileSize, &fileState);
+        auto depVal = ::Assets::GetDepValSys().Make(MakeIteratorRange(&fileState, &fileState+1));
         if (!file.get() || !fileSize)
-            return std::make_pair(nullptr, nullptr);
+            return std::make_pair(nullptr, depVal);
         
         InputStreamFormatter<char> fmtr(MakeStringSection((const char*)file.get(), (const char*)PtrAdd(file.get(), fileSize)));
-        auto depVal = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterFileDependency(depVal, fn);
         return std::make_pair(
             std::make_shared<OSServices::LogConfigurationSet>(fmtr),
             depVal);
@@ -334,7 +339,7 @@ namespace ConsoleRig
     void LogCentralConfiguration::CheckHotReload()
     {
         #if defined(OSSERVICES_ENABLE_LOG)
-            if (!_cfgSet || !_cfgSetDepVal || _cfgSetDepVal->GetValidationIndex() > 0) {
+            if (!_cfgSet || !_cfgSetDepVal || _cfgSetDepVal.GetValidationIndex() > 0) {
                 std::tie(_cfgSet, _cfgSetDepVal) = LoadConfigSet(_logCfgFile);
                 auto logCentral = _attachedLogCentral.lock();
                 if (logCentral)

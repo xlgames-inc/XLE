@@ -15,12 +15,12 @@ namespace Assets
 			void CheckAssetState(
 				AssetState& currentState, 
 				Blob& actualizationBlob, 
-				std::shared_ptr<DependencyValidation>& exceptionDepVal,
+				DependencyValidation& exceptionDepVal,
 				std::tuple<std::shared_ptr<Tp>...>& actualized,
 				const std::tuple<FuturePtr<Tp>...>& futures)
 		{
 			Blob queriedLog;
-			DepValPtr queriedDepVal;
+			DependencyValidation queriedDepVal;
 			auto state = std::get<I>(futures)->CheckStatusBkgrnd(std::get<I>(actualized), queriedDepVal, queriedLog);
 			if (state != AssetState::Ready)
 				currentState = state;
@@ -65,7 +65,7 @@ namespace Assets
 
 					AssetState currentState = AssetState::Ready;
 					Blob actualizationBlob;
-					std::shared_ptr<DependencyValidation> exceptionDepVal;
+					DependencyValidation exceptionDepVal;
 					std::tuple<std::shared_ptr<AssetTypes>...> actualized;
 					Internal::CheckAssetState(currentState, actualizationBlob, exceptionDepVal, actualized, subFutures);
 
@@ -84,7 +84,7 @@ namespace Assets
 						} CATCH (const Exceptions::InvalidAsset& e) {
 							thatFuture.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
 						} CATCH (const std::exception& e) {
-							thatFuture.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob(e));
+							thatFuture.SetInvalidAsset({}, AsBlob(e));
 						} CATCH_END
 						return false;
 					}
@@ -103,7 +103,7 @@ namespace Assets
 
 					AssetState currentState = AssetState::Ready;
 					Blob actualizationBlob;
-					std::shared_ptr<DependencyValidation> exceptionDepVal;
+					DependencyValidation exceptionDepVal;
 					std::tuple<std::shared_ptr<AssetTypes>...> actualized;
 					Internal::CheckAssetState(currentState, actualizationBlob, exceptionDepVal, actualized, subFutures);
 						
@@ -123,7 +123,7 @@ namespace Assets
 						} CATCH (const Exceptions::InvalidAsset& e) {
 							thatFuture.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
 						} CATCH (const std::exception& e) {
-							thatFuture.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob(e));
+							thatFuture.SetInvalidAsset({}, AsBlob(e));
 						} CATCH_END
 						// the future must either be in non-pending state, or have another polling function
 						// assigned by this point. Otherwise, it will never complete. Unfortunately, there isn't
@@ -143,7 +143,7 @@ namespace Assets
 
 					AssetState currentState = AssetState::Ready;
 					Blob actualizationBlob;
-					std::shared_ptr<DependencyValidation> exceptionDepVal;
+					DependencyValidation exceptionDepVal;
 					std::tuple<std::shared_ptr<AssetTypes>...> actualized;
 					Internal::CheckAssetState(currentState, actualizationBlob, exceptionDepVal, actualized, subFutures);
 						
@@ -162,7 +162,7 @@ namespace Assets
 						} CATCH (const Exceptions::InvalidAsset& e) {
 							thatFuture.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
 						} CATCH (const std::exception& e) {
-							thatFuture.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob(e));
+							thatFuture.SetInvalidAsset({}, AsBlob(e));
 						} CATCH_END
 						return false;
 					}

@@ -17,13 +17,13 @@ namespace Assets
 	public:
 		IteratorRange<const void*> GetData() const { return MakeIteratorRange(_data.get(), PtrAdd(_data.get(), _dataSize)); }
 		const std::string& GetFileName() const { return _fname; }
-		const DepValPtr& GetDependencyValidation() const { return _depVal; }
+		const DependencyValidation& GetDependencyValidation() const { return _depVal; }
 		const DependentFileState& GetFileState() const { return _fileState; }
 
 		RawFileAsset(StringSection<> fname);
 		~RawFileAsset();
 	private:
-		DepValPtr _depVal;
+		DependencyValidation _depVal;
 		DependentFileState _fileState;
 		std::unique_ptr<uint8_t[]> _data;
 		size_t _dataSize;

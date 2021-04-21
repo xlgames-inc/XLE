@@ -22,7 +22,7 @@ namespace Assets
     {
     public:
         const rstring& Filename() const						{ return _filename; }
-		const DepValPtr& GetDependencyValidation() const	{ return _validationCallback; }
+		const DependencyValidation& GetDependencyValidation() const	{ return _validationCallback; }
 
 		std::vector<ArtifactRequestResult> ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const;
         std::vector<ArtifactRequestResult> ResolveRequests(IFileInterface& file, IteratorRange<const ArtifactRequest*> requests) const;
@@ -30,7 +30,7 @@ namespace Assets
 		std::shared_ptr<IFileInterface> OpenFile() const;
 
 		ChunkFileContainer(StringSection<ResChar> assetTypeName);
-		ChunkFileContainer(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar>);
+		ChunkFileContainer(const Blob& blob, const DependencyValidation& depVal, StringSection<ResChar>);
 		ChunkFileContainer();
         ~ChunkFileContainer();
 
@@ -41,7 +41,7 @@ namespace Assets
     private:
         rstring			_filename;
 		Blob			_blob;
-		DepValPtr		_validationCallback;
+		DependencyValidation		_validationCallback;
     };
 
 }

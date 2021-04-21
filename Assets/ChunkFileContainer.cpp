@@ -123,11 +123,11 @@ namespace Assets
     ChunkFileContainer::ChunkFileContainer(StringSection<ResChar> assetTypeName)
     : _filename(assetTypeName.AsString())
     {
-		_validationCallback = std::make_shared<DependencyValidation>();
-		RegisterFileDependency(_validationCallback, MakeStringSection(_filename));
+        StringSection<> initializer = _filename;
+		_validationCallback = GetDepValSys().Make(MakeIteratorRange(&initializer, &initializer+1));
     }
 
-	ChunkFileContainer::ChunkFileContainer(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar>)
+	ChunkFileContainer::ChunkFileContainer(const Blob& blob, const DependencyValidation& depVal, StringSection<ResChar>)
 	: _filename("<<in memory>>")
 	, _blob(blob), _validationCallback(depVal)
 	{			

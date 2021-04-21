@@ -53,7 +53,7 @@ namespace Assets
 
 	static std::shared_ptr<IArtifactCollection> MakeArtifactCollection(
 		const CompileProductsFile& productsFile, 
-		const ::Assets::DepValPtr& depVal,
+		const ::Assets::DependencyValidation& depVal,
 		const std::shared_ptr<StoreReferenceCounts>& refCounts,
 		uint64_t refCountHashCode);
 
@@ -182,7 +182,7 @@ namespace Assets
 		CompileProductsFile finalProductsFile;
 		formatter >> finalProductsFile;
 
-		auto depVal = std::make_shared<DependencyValidation>();
+		auto depVal = GetDepValSys().Make();
 
 		for (const auto&dep:finalProductsFile._dependencies) {
 			if (!finalProductsFile._basePath.empty()) {
@@ -368,12 +368,12 @@ namespace Assets
 			return result;
 		}
 
-		DepValPtr GetDependencyValidation() const override { return _depVal; }
+		DependencyValidation GetDependencyValidation() const override { return _depVal; }
 		StringSection<ResChar> GetRequestParameters() const override { return {}; }
 		AssetState GetAssetState() const override { return _productsFile._state; }
 		CompileProductsArtifactCollection(
 			const CompileProductsFile& productsFile, 
-			const ::Assets::DepValPtr& depVal,
+			const DependencyValidation& depVal,
 			const std::shared_ptr<StoreReferenceCounts>& refCounts,
 			uint64_t refCountHashCode)
 		: _productsFile(productsFile), _depVal(depVal)
@@ -403,14 +403,14 @@ namespace Assets
 		CompileProductsArtifactCollection& operator=(const CompileProductsArtifactCollection&) = delete;
 	private:
 		CompileProductsFile _productsFile;
-		DepValPtr _depVal;
+		DependencyValidation _depVal;
 		std::shared_ptr<StoreReferenceCounts> _refCounts;
 		uint64_t _refCountHashCode;
 	};
 
 	static std::shared_ptr<IArtifactCollection> MakeArtifactCollection(
 		const CompileProductsFile& productsFile, 
-		const ::Assets::DepValPtr& depVal,
+		const DependencyValidation& depVal,
 		const std::shared_ptr<StoreReferenceCounts>& refCounts,
 		uint64_t refCountHashCode)
 	{

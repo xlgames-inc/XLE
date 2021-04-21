@@ -1,95 +1,115 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
 #pragma once
 
-#include "../OSServices/FileSystemMonitor.h"       // (for OnChangeCallback base class)
+#include "../Utility/IteratorUtils.h"
+#include "../Utility/StringUtils.h"
 
 namespace Assets
 {
-    typedef char ResChar;
+    using ResChar = char;
+    using DependencyValidationMarker = unsigned;
+    constexpr DependencyValidationMarker DependencyValidationMarker_Invalid = ~DependencyValidationMarker(0);
+    class DependentFileState;
 
     /// <summary>Handles resource invalidation events</summary>
     /// Utility class used for detecting resource invalidation events (for example, if
     /// a shader source file changes on disk). 
     /// Resources that can receive invalidation events should use this class to declare
     /// that dependency. 
-    /// <example>
-    ///     For example:
-    ///         <code>\code
-    ///             class SomeResource
-    ///             {
-    ///             public:
-    ///                 SomeResource(const char constructorString[]);
-    ///             private:
-    ///                 std::shared_ptr<DependencyValidation> _validator;
-    ///             };
-    /// 
-    ///             SomeResource::SomeResource(const char constructorString[])
-    ///             {
-    ///                    // Load some data from a file named "constructorString
-    ///
-    ///                 auto validator = std::make_shared<DependencyValidation>();
-    ///                 RegisterFileDependency(validator, constructorString);
-    ///
-    ///                 _validator = std::move(validator);
-    ///             }
-    ///         \endcode</code>
-    /// </example>
-    /// <seealso cref="RegisterFileDependency" />
-    /// <seealso cref="RegisterResourceDependency" />
-    class DependencyValidation : public OSServices::OnChangeCallback, public std::enable_shared_from_this<DependencyValidation>
+    class DependencyValidation
     {
     public:
-        virtual void    OnChange();
-        unsigned        GetValidationIndex() const        { return _validationIndex; }
+        unsigned        GetValidationIndex() const;
 
-        void    RegisterDependency(const std::shared_ptr<DependencyValidation>& dependency);
+        void            RegisterDependency(const DependencyValidation&);
+        void            RegisterDependency(StringSection<>);
+        void            RegisterDependency(DependentFileState& state);
 
-        DependencyValidation() : _validationIndex(0)  {}
+        operator bool() const { return _marker != DependencyValidationMarker_Invalid; }
+        friend bool operator==(const DependencyValidation& lhs, const DependencyValidation& rhs) { return lhs._marker == rhs._marker; }
+        friend bool operator!=(const DependencyValidation& lhs, const DependencyValidation& rhs) { return lhs._marker != rhs._marker; }
+
+        DependencyValidation();
         DependencyValidation(DependencyValidation&&) never_throws;
         DependencyValidation& operator=(DependencyValidation&&) never_throws;
         ~DependencyValidation();
 
-        DependencyValidation(const DependencyValidation&) = delete;
-        DependencyValidation& operator=(const DependencyValidation&) = delete;
+        DependencyValidation(const DependencyValidation&);
+        DependencyValidation& operator=(const DependencyValidation&);
 
-        #if defined(_DEBUG)
-            std::vector<std::string> _monitoredFiles;
-        #endif
     private:
-        unsigned _validationIndex;
-
-            // store a fixed number of dependencies (with room to grow)
-            // this is just to avoid extra allocation where possible
-        std::shared_ptr<OSServices::OnChangeCallback> _dependencies[4];
-        std::vector<std::shared_ptr<OSServices::OnChangeCallback>> _dependenciesOverflow;
+        friend class DependencyValidationSystem;
+        DependencyValidation(DependencyValidationMarker marker);
+        DependencyValidationMarker _marker = DependencyValidationMarker_Invalid;
     };
 
-    /// <summary>Registers a dependency on a file on disk</summary>
-    /// Registers a dependency on a file. The system will monitor that file for changes.
-    /// If the file changes on disk, the system will call validationIndex->OnChange();
-    /// Note the system only takes a "weak reference" to validationIndex. This means that
-    /// validationIndex can be destroyed by other objects. When that happens, the system will
-    /// continue to monitor the file, but OnChange() wont be called (because the object has 
-    /// already been destroyed).
-    /// <param name="validationIndex">Callback to receive invalidation events</param>
-    /// <param name="filename">Normally formatted filename</param>
-    void RegisterFileDependency(
-        const std::shared_ptr<DependencyValidation>& validationIndex, 
-        StringSection<ResChar> filename);
+    class DependentFileState
+    {
+    public:
+        std::string _filename;
+        
+        enum class Status { Normal, Shadowed, DoesNotExist };
+        uint64_t _timeMarker;
+        Status _status;
 
-    /// <summary>Registers a dependency on another resource</summary>
-    /// Sometimes resources are dependent on other resources. This function helps registers a 
-    /// dependency between resources.
-    /// If <paramref name="dependency"/> ever gets a OnChange() message, then <paramref name="dependentResource"/> 
-    /// will also receive the OnChange() message.
-    void RegisterAssetDependency(
-        const std::shared_ptr<DependencyValidation>& dependentResource, 
-        const std::shared_ptr<DependencyValidation>& dependency);
+        DependentFileState() : _timeMarker(0ull), _status(Status::Normal) {}
+        DependentFileState(StringSection<ResChar> filename, uint64_t timeMarker, Status status=Status::Normal)
+        : _filename(filename.AsString()), _timeMarker(timeMarker), _status(status) {}
+		DependentFileState(const std::basic_string<ResChar>& filename, uint64_t timeMarker, Status status=Status::Normal)
+		: _filename(filename), _timeMarker(timeMarker), _status(status) {}
 
+		friend bool operator<(const DependentFileState& lhs, const DependentFileState& rhs)
+		{
+			if (lhs._filename < rhs._filename) return true;
+			if (lhs._filename > rhs._filename) return false;
+			if (lhs._timeMarker < rhs._timeMarker) return true;
+			if (lhs._timeMarker > rhs._timeMarker) return false;
+			return (int)lhs._status < (int)rhs._status;
+		}
+
+		friend bool operator==(const DependentFileState& lhs, const DependentFileState& rhs)
+		{
+			return lhs._filename == rhs._filename && lhs._timeMarker == rhs._timeMarker && lhs._status == rhs._status;
+		}
+    };
+
+    class IDependencyValidationSystem
+    {
+    public:
+        virtual DependencyValidation Make(IteratorRange<const StringSection<>*> filenames) = 0;
+        virtual DependencyValidation Make(IteratorRange<const DependentFileState*> filenames) = 0;
+        virtual DependencyValidation Make() = 0;
+
+        virtual unsigned GetValidationIndex(DependencyValidationMarker marker) = 0;
+        virtual DependentFileState GetDependentFileState(StringSection<> filename) = 0;
+        virtual void ShadowFile(StringSection<> filename) = 0;
+
+        /// <summary>Registers a dependency on a file on disk</summary>
+        /// Registers a dependency on a file. The system will monitor that file for changes.
+        /// <param name="validationMarker">Callback to receive invalidation events</param>
+        /// <param name="filename">Normally formatted filename</param>
+        virtual void RegisterFileDependency(
+            DependencyValidationMarker validationMarker, 
+            StringSection<> filename) = 0;
+
+        /// <summary>Registers a dependency on another resource</summary>
+        /// Sometimes resources are dependent on other resources. This function helps registers a 
+        /// dependency between resources.
+        /// If <paramref name="dependency"/> ever gets a OnChange() message, then <paramref name="dependentResource"/> 
+        /// will also receive the OnChange() message.
+        virtual void RegisterAssetDependency(
+            DependencyValidationMarker dependentResource, 
+            DependencyValidationMarker dependency) = 0;
+
+        virtual void AddRef(DependencyValidationMarker) = 0;
+        virtual void Release(DependencyValidationMarker) = 0;
+
+        virtual ~IDependencyValidationSystem() = default;
+    };
+
+    IDependencyValidationSystem& GetDepValSys();
+    std::shared_ptr<IDependencyValidationSystem> CreateDepValSys();
 }
-

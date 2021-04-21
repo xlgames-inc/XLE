@@ -17,7 +17,7 @@ namespace Assets
 	public:
 		rstring		_initializer;
 		AssetState	_state;
-		DepValPtr	_depVal;
+		DependencyValidation	_depVal;
 		Blob		_actualizationLog; 
 		uint64_t	_typeCode;
 		uint64_t	_idInAssetHeap;
@@ -72,14 +72,14 @@ namespace Assets
 		// background, we can restart the compile; even if that invalidated state hasn't
 		// reached the "foreground" yet.
 		AssetPtr<AssetType> actualized;
-		DepValPtr depVal;
+		DependencyValidation depVal;
 		Blob actualizationLog;
 		auto state = future.CheckStatusBkgrnd(actualized, depVal, actualizationLog);
 		if (state == AssetState::Pending)
 			return false;
 		if (!depVal)
 			return false;
-		return depVal->GetValidationIndex() > 0;
+		return depVal.GetValidationIndex() > 0;
 	}
 
 	template<typename AssetType>

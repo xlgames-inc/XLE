@@ -34,11 +34,11 @@ namespace Assets
 
 		AssetState		CheckStatusBkgrnd(
 			AssetPtr<AssetType>& actualized,
-			DepValPtr& depVal,
+			DependencyValidation& depVal,
 			Blob& actualizationLog);
 
 		const std::string&		    Initializer() const { return _initializer; }
-		const DepValPtr&		    GetDependencyValidation() const { return _actualizedDepVal; }
+		const DependencyValidation&	GetDependencyValidation() const { return _actualizedDepVal; }
 		const Blob&				    GetActualizationLog() const { return _actualizationLog; }
 
 		explicit AssetFuture(const std::string& initializer);
@@ -48,7 +48,7 @@ namespace Assets
 		AssetFuture& operator=(AssetFuture&&);
 
 		void SetAsset(AssetPtr<AssetType>&&, const Blob& log);
-		void SetInvalidAsset(const DepValPtr& depVal, const Blob& log);
+		void SetInvalidAsset(DependencyValidation depVal, const Blob& log);
 		void SetAssetForeground(AssetPtr<AssetType>&& newAsset, const Blob& log);
 		void SetPollingFunction(std::function<bool(AssetFuture<AssetType>&)>&&);
 		
@@ -56,15 +56,15 @@ namespace Assets
 		mutable Threading::Mutex		_lock;
 		mutable Threading::Conditional	_conditional;
 
-		volatile AssetState _state;
-		AssetPtr<AssetType> _actualized;
-		Blob				_actualizationLog;
-		DepValPtr			_actualizedDepVal;
+		volatile AssetState 	_state;
+		AssetPtr<AssetType> 	_actualized;
+		Blob					_actualizationLog;
+		DependencyValidation	_actualizedDepVal;
 
-		AssetPtr<AssetType> _pending;
-		AssetState			_pendingState;
-		Blob				_pendingActualizationLog;
-		DepValPtr			_pendingDepVal;
+		AssetPtr<AssetType> 	_pending;
+		AssetState				_pendingState;
+		Blob					_pendingActualizationLog;
+		DependencyValidation	_pendingDepVal;
 
 		std::function<bool(AssetFuture<AssetType>&)> _pollingFunction;
 
@@ -96,7 +96,7 @@ namespace Assets
 		template<typename AssetType, typename std::enable_if<HasGetDependencyValidation<AssetType>::value>::type* =nullptr>
 			decltype(std::declval<AssetType>().GetDependencyValidation()) GetDependencyValidation(const AssetType& asset) { return asset.GetDependencyValidation(); }
 		template<typename AssetType, typename std::enable_if<!HasGetDependencyValidation<AssetType>::value>::type* =nullptr>
-			inline DepValPtr GetDependencyValidation(const AssetType&) { return nullptr; }
+			inline const DependencyValidation& GetDependencyValidation(const AssetType&) { static DependencyValidation dummy; return dummy; }
 
 		unsigned RegisterFrameBarrierCallback(std::function<void()>&& fn);
 		void DeregisterFrameBarrierCallback(unsigned);
@@ -129,7 +129,7 @@ namespace Assets
 					&future,
 					[](void* inputFuture) {
 						AssetPtr<AssetType> actualized;
-						DepValPtr depVal;
+						DependencyValidation depVal;
 						Blob actualizationLog;
 						return ((AssetFuture<AssetType>*)inputFuture)->CheckStatusBkgrnd(actualized, depVal, actualizationLog);
 					});
@@ -173,7 +173,7 @@ namespace Assets
 	}
 
 	template<typename AssetType>
-		AssetState		AssetFuture<AssetType>::CheckStatusBkgrnd(AssetPtr<AssetType>& actualized, DepValPtr& depVal, Blob& actualizationLog)
+		AssetState		AssetFuture<AssetType>::CheckStatusBkgrnd(AssetPtr<AssetType>& actualized, DependencyValidation& depVal, Blob& actualizationLog)
 	{
 		if (_state == AssetState::Ready) {
 			actualized = _actualized;
@@ -188,12 +188,14 @@ namespace Assets
 				actualized = _actualized;
 				depVal = _actualizedDepVal;
 				actualizationLog = _actualizationLog;
+				if (_pendingState == AssetState::Invalid) { assert(depVal); }
 				return _state;
 			}
 			if (_pendingState != AssetState::Pending) {
 				actualized = _pending;
 				depVal = _pendingDepVal;
 				actualizationLog = _pendingActualizationLog;
+				if (_pendingState == AssetState::Invalid) { assert(depVal); }
 				return _pendingState;
 			}
 			if (_pollingFunction) {
@@ -210,6 +212,7 @@ namespace Assets
 					_pendingDepVal = e.GetDependencyValidation();
 					actualized = _pending;
 					depVal = _pendingDepVal;
+					assert(depVal);
 					actualizationLog = _pendingActualizationLog;
 					return _pendingState;
 				} CATCH (const std::exception& e) {
@@ -218,6 +221,7 @@ namespace Assets
 					_pendingActualizationLog = AsBlob(e);
 					actualized = _pending;
 					depVal = _pendingDepVal;
+					assert(depVal);
 					actualizationLog = _pendingActualizationLog;
 					return _pendingState;
 				} CATCH_END
@@ -232,6 +236,7 @@ namespace Assets
 					actualized = _pending;
 					depVal = _pendingDepVal;
 					actualizationLog = _pendingActualizationLog;
+					if (_pendingState == AssetState::Invalid) { assert(depVal); }
 					return _pendingState;
 				}
 			}
@@ -269,7 +274,7 @@ namespace Assets
 				lock = std::unique_lock<decltype(_lock)>(_lock);
 				_pendingState = AssetState::Invalid;
 				_pendingActualizationLog = AsBlob(e);
-				_pendingDepVal = std::make_shared<DependencyValidation>();
+				_pendingDepVal = {};
 			} CATCH_END
 		}
 
@@ -362,7 +367,7 @@ namespace Assets
 					lock = std::unique_lock<decltype(that->_lock)>(that->_lock);
 					that->_pendingState = AssetState::Invalid;
 					that->_pendingActualizationLog = AsBlob(e);
-					that->_pendingDepVal = std::make_shared<DependencyValidation>();
+					that->_pendingDepVal = {};
 					isInLock = true;		// already locked "that->_lock"
 					break;
 				} CATCH_END
@@ -450,7 +455,10 @@ namespace Assets
 			_pending = std::move(newAsset);
 			_pendingState = AssetState::Ready;
 			_pendingActualizationLog = log;
-			_pendingDepVal = _pending ? Internal::GetDependencyValidation(*_pending) : nullptr;
+			if (_pending) {
+				_pendingDepVal = Internal::GetDependencyValidation(*_pending);
+			} else
+				_pendingDepVal = {};
 			RegisterFrameBarrierCallbackAlreadyLocked();
 
 			// If we are already in invalid / ready state, we will never move the pending
@@ -478,14 +486,15 @@ namespace Assets
 	}
 
 	template<typename AssetType>
-		void AssetFuture<AssetType>::SetInvalidAsset(const DepValPtr& depVal, const Blob& log)
+		void AssetFuture<AssetType>::SetInvalidAsset(DependencyValidation depVal, const Blob& log)
 	{
+		assert(depVal);
 		{
 			ScopedLock(_lock);
 			_pending = nullptr;
 			_pendingState = AssetState::Invalid;
 			_pendingActualizationLog = log;
-			_pendingDepVal = depVal;
+			_pendingDepVal = std::move(depVal);
 			RegisterFrameBarrierCallbackAlreadyLocked();
 		}
 		_conditional.notify_all();

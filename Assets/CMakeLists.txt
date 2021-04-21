@@ -12,6 +12,7 @@ set(Src
     ArtifactCollectionFuture.cpp
     CompileAndAsyncManager.cpp
     ConfigFileContainer.cpp
+    DepVal.cpp
     IntermediatesStore.cpp
     IntermediateCompilers.cpp
     MainFileSystem.cpp

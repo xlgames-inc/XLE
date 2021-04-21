@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "DepVal.h"
 #include "../Core/Exceptions.h"
 #include <string>
 #include <memory>
@@ -21,9 +22,7 @@ namespace Assets
 	using Blob = std::shared_ptr<std::vector<uint8_t>>;
 
     enum class AssetState { Pending, Ready, Invalid };
-
     class DependencyValidation;
-    using DepValPtr = std::shared_ptr<DependencyValidation>;
 
 	template<typename AssetType> class AssetFuture;
 	template<typename AssetType>
@@ -68,13 +67,13 @@ namespace Assets
         public: 
             virtual bool CustomReport() const;
             virtual AssetState State() const;
-			const DepValPtr& GetDependencyValidation() const { return _depVal; }
+			const DependencyValidation& GetDependencyValidation() const { return _depVal; }
 			const Blob& GetActualizationLog() const { return _actualizationLog; }
 			virtual const char* what() const noexcept;
 
-            InvalidAsset(StringSection<ResChar> initializer, const DepValPtr&, const Blob& actualizationLog) never_throws;
+            InvalidAsset(StringSection<ResChar> initializer, const DependencyValidation&, const Blob& actualizationLog) never_throws;
 		private:
-			DepValPtr _depVal;
+			DependencyValidation _depVal;
 			Blob _actualizationLog;
 			std::string _whatString;
         };
@@ -116,20 +115,20 @@ namespace Assets
             };
 
             Reason				GetReason() const { return _reason; }
-			const DepValPtr&	GetDependencyValidation() const { return _depVal; }
+			const DependencyValidation&	GetDependencyValidation() const { return _depVal; }
 			const Blob&			GetActualizationLog() const { return _actualizationLog; }
 
 			virtual bool CustomReport() const;
             virtual const char* what() const noexcept;
 
-			ConstructionError(Reason reason, const DepValPtr&, const Blob& actualizationLog) never_throws;
-			ConstructionError(Reason reason, const DepValPtr&, const char format[], ...) never_throws;
-			ConstructionError(const std::exception&, const DepValPtr&) never_throws;
-			ConstructionError(const ConstructionError&, const DepValPtr&) never_throws;
+			ConstructionError(Reason reason, const DependencyValidation&, const Blob& actualizationLog) never_throws;
+			ConstructionError(Reason reason, const DependencyValidation&, const char format[], ...) never_throws;
+			ConstructionError(const std::exception&, const DependencyValidation&) never_throws;
+			ConstructionError(const ConstructionError&, const DependencyValidation&) never_throws;
 
         private:
 			Reason _reason;
-			DepValPtr _depVal;
+			DependencyValidation _depVal;
 			Blob _actualizationLog;
         };
     }

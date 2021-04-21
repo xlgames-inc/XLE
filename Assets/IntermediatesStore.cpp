@@ -153,92 +153,33 @@ namespace Assets
 		return HashCombine(entryId, Hash64(archiveName.begin(), archiveName.end(), groupId));
 	}
 
-	class RetainedFileRecord : public DependencyValidation
-	{
-	public:
-		DependentFileState _state;
-
-		void OnChange()
-		{
-				// on change, update the modification time record
-			auto fileDesc = MainFileSystem::TryGetDesc(_state._filename);
-			_state._timeMarker = fileDesc._modificationTime;
-			_state._status = (fileDesc._state == FileDesc::State::DoesNotExist) ? DependentFileState::Status::DoesNotExist : DependentFileState::Status::Normal;
-			DependencyValidation::OnChange();
-		}
-
-		RetainedFileRecord(StringSection<ResChar> filename)
-		: _state(filename, 0ull) {}
-	};
-
-	static std::vector<std::pair<uint64, std::shared_ptr<RetainedFileRecord>>> RetainedRecords;
-	static Threading::Mutex RetainedRecordsLock;
-
-	static std::shared_ptr<RetainedFileRecord> GetRetainedFileRecord(StringSection<ResChar> filename)
-	{
-		// Use HashFilename to avoid case sensitivity/slash direction problems
-		// todo --	we could also consider a system where we could use MainFileSystem::TryTranslate
-		//			to transform the filename into some more definitive representation
-		auto hash = HashFilename(filename);
-		{
-			ScopedLock(RetainedRecordsLock);
-			auto i = LowerBound(RetainedRecords, hash);
-			if (i!=RetainedRecords.end() && i->first == hash)
-				return i->second;
-		}
-
-		// We (probably) have to create a new marker... Do it outside of the mutex lock, because it
-		// can be expensive.
-		// We should call "AttachFileSystemMonitor" before we query for the
-		// file's current modification time.
-		auto newRecord = std::make_shared<RetainedFileRecord>(filename);
-		RegisterFileDependency(newRecord, filename);
-		auto fileDesc = MainFileSystem::TryGetDesc(filename);
-		assert(fileDesc._state != FileDesc::State::Invalid);
-		newRecord->_state._timeMarker = fileDesc._modificationTime;
-		newRecord->_state._status = (fileDesc._state == FileDesc::State::DoesNotExist) ? DependentFileState::Status::DoesNotExist : DependentFileState::Status::Normal;
-
-		{
-			ScopedLock(RetainedRecordsLock);
-			auto i = LowerBound(RetainedRecords, hash);
-			// It's possible that another thread has just added the record... In that case, we abandon
-			// the new marker we just made, and return the one already there.
-			if (i!=RetainedRecords.end() && i->first == hash)
-				return i->second;		
-
-			RetainedRecords.insert(i, std::make_pair(hash, newRecord));
-			return newRecord;
-		}
-	}
-
 	bool IntermediatesStore::TryRegisterDependency(
-		const std::shared_ptr<DependencyValidation>& target,
+		DependencyValidation& target,
 		const DependentFileState& fileState,
 		const StringSection<> assetName)
 	{
-		auto record = GetRetainedFileRecord(fileState._filename);
+		auto mostRecentState = GetDependentFileState(fileState._filename);
+		target.RegisterDependency(mostRecentState);
 
-		RegisterAssetDependency(target, record);
-
-		if (record->_state._status == DependentFileState::Status::Shadowed) {
+		if (mostRecentState._status == DependentFileState::Status::Shadowed) {
 			Log(Verbose) << "Asset (" << assetName << ") is invalidated because dependency (" << fileState._filename << ") is marked shadowed" << std::endl;
 			return false;
 		}
 
-		if (record->_state._status == fileState._status) {
+		if (mostRecentState._status == fileState._status) {
 			// If the status on both is "DoesNotExist", then we do not consider this as invalidating the asset
-			if (fileState._status != DependentFileState::Status::DoesNotExist && record->_state._timeMarker != fileState._timeMarker) {
+			if (fileState._status != DependentFileState::Status::DoesNotExist && mostRecentState._timeMarker != fileState._timeMarker) {
 				Log(Verbose)
 					<< "Asset (" << assetName
 					<< ") is invalidated because of file data on dependency (" << fileState._filename << ")" << std::endl;
 				return false;
 			}
 		} else {
-			if (record->_state._status == DependentFileState::Status::DoesNotExist && fileState._status != DependentFileState::Status::DoesNotExist) {
+			if (mostRecentState._status == DependentFileState::Status::DoesNotExist && fileState._status != DependentFileState::Status::DoesNotExist) {
 				Log(Verbose)
 					<< "Asset (" << assetName
 					<< ") is invalidated because of missing dependency (" << fileState._filename << ")" << std::endl;
-			} else if (record->_state._status != DependentFileState::Status::DoesNotExist && fileState._status == DependentFileState::Status::DoesNotExist) {
+			} else if (mostRecentState._status != DependentFileState::Status::DoesNotExist && fileState._status == DependentFileState::Status::DoesNotExist) {
 				Log(Verbose)
 					<< "Asset (" << assetName
 					<< ") is invalidated because dependency (" << fileState._filename << ") was not present previously, but now exists" << std::endl;
@@ -255,24 +196,7 @@ namespace Assets
 
 	DependentFileState IntermediatesStore::GetDependentFileState(StringSection<ResChar> filename)
 	{
-		return GetRetainedFileRecord(filename)->_state;
-	}
-
-	void IntermediatesStore::ClearDependentFileStateCache()
-	{
-		ScopedLock(RetainedRecordsLock);
-		RetainedRecords.clear();
-	}
-
-	void IntermediatesStore::ShadowFile(StringSection<ResChar> filename)
-	{
-		auto record = GetRetainedFileRecord(filename);
-		record->_state._status = DependentFileState::Status::Shadowed;
-
-			// propagate change messages...
-			// (duplicating processing from RegisterFileDependency)
-		MainFileSystem::TryFakeFileChange(filename);
-		record->OnChange();
+		return GetDepValSys().GetDependentFileState(filename);
 	}
 
 	std::shared_ptr<IArtifactCollection> IntermediatesStore::RetrieveCompileProducts(

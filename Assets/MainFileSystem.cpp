@@ -5,7 +5,6 @@
 #include "IFileSystem.h"
 #include "MountingTree.h"
 #include "AssetUtils.h"
-#include "IntermediatesStore.h"		// for IntermediatesStore::ClearDependentFileStateCache
 #include "../OSServices/Log.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/MemoryUtils.h"
@@ -333,7 +332,6 @@ namespace Assets
 
     void MainFileSystem::Shutdown()
     {
-		IntermediatesStore::ClearDependentFileStateCache();
         Init(nullptr, nullptr);
     }
 
@@ -438,8 +436,20 @@ namespace Assets
 
 	Blob TryLoadFileAsBlob(StringSection<char> sourceFileName)
 	{
+		return TryLoadFileAsBlob(sourceFileName, nullptr);
+	}
+
+	Blob TryLoadFileAsBlob(StringSection<char> sourceFileName, DependentFileState* fileState)
+	{
 		std::unique_ptr<IFileInterface> file;
 		if (MainFileSystem::TryOpen(file, sourceFileName, "rb", OSServices::FileShareMode::Read) == IFileSystem::IOReason::Success) {
+
+			if (fileState) {
+				fileState->_filename = sourceFileName.AsString();
+				fileState->_status = DependentFileState::Status::Normal;
+				fileState->_timeMarker = file->GetDesc()._modificationTime;
+			}
+
 			size_t size = file->GetSize();
 			if (size) {
 				auto result = std::make_shared<std::vector<uint8_t>>(size);
@@ -448,6 +458,11 @@ namespace Assets
 			}
 		}
 
+		if (fileState) {
+			fileState->_filename = sourceFileName.AsString();
+			fileState->_status = DependentFileState::Status::DoesNotExist;
+			fileState->_timeMarker = 0;
+		}
 		return nullptr;
 	}
 
@@ -744,13 +759,19 @@ namespace Assets
         return nullptr;
 	}
 
-	Blob TryLoadFileAsBlob_TolerateSharingErrors(StringSection<char> sourceFileName)
+	Blob TryLoadFileAsBlob_TolerateSharingErrors(StringSection<char> sourceFileName, DependentFileState* fileState)
 	{
 		std::unique_ptr<IFileInterface> file;
 		unsigned retryCount = 0;
         for (;;) {
 			auto openResult = MainFileSystem::TryOpen(file, sourceFileName, "rb", OSServices::FileShareMode::Read);
 			if (openResult == IFileSystem::IOReason::Success) {
+				if (fileState) {
+					fileState->_filename = sourceFileName.AsString();
+					fileState->_status = DependentFileState::Status::Normal;
+					fileState->_timeMarker = file->GetDesc()._modificationTime;
+				}
+
 				size_t size = file->GetSize();
 				if (size) {
 					auto result = std::make_shared<std::vector<uint8_t>>(size);
@@ -769,7 +790,17 @@ namespace Assets
             Threading::Sleep(retryCount*retryCount*15);
 		}
 
+		if (fileState) {
+			fileState->_filename = sourceFileName.AsString();
+			fileState->_status = DependentFileState::Status::DoesNotExist;
+			fileState->_timeMarker = 0;
+		}
 		return nullptr;
+	}
+
+	Blob TryLoadFileAsBlob_TolerateSharingErrors(StringSection<char> sourceFileName)
+	{
+		return TryLoadFileAsBlob_TolerateSharingErrors(sourceFileName, nullptr);
 	}
 
 	IFileInterface::~IFileInterface() {}

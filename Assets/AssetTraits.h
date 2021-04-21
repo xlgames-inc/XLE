@@ -56,10 +56,10 @@ namespace Assets
 		public:
 			using DivAsset = DivergentAsset<AssetType>;
 
-			static const bool Constructor_Formatter = std::is_constructible<AssetType, InputStreamFormatter<utf8>&, const DirectorySearchRules&, const DepValPtr&>::value;
-			static const bool Constructor_TextFile = std::is_constructible<AssetType, StringSection<>&, const DirectorySearchRules&, const DepValPtr&>::value;
+			static const bool Constructor_Formatter = std::is_constructible<AssetType, InputStreamFormatter<utf8>&, const DirectorySearchRules&, const DependencyValidation&>::value;
+			static const bool Constructor_TextFile = std::is_constructible<AssetType, StringSection<>&, const DirectorySearchRules&, const DependencyValidation&>::value;
 			static const bool Constructor_ChunkFileContainer = std::is_constructible<AssetType, const ChunkFileContainer&>::value;
-			static const bool Constructor_FileSystem = std::is_constructible<AssetType, IFileInterface&, const DirectorySearchRules&, const DepValPtr&>::value;
+			static const bool Constructor_FileSystem = std::is_constructible<AssetType, IFileInterface&, const DirectorySearchRules&, const DependencyValidation&>::value;
 
 			static const bool HasCompileProcessType = HasCompileProcessTypeHelper::value;
 			static const bool HasChunkRequests = decltype(HasChunkRequestsHelper<AssetType>(0))::value;
@@ -81,7 +81,7 @@ namespace Assets
 
 	//
 	//		Auto construct to:
-	//			(InputStreamFormatter<utf8>&, const DirectorySearchRules&, const DepValPtr&)
+	//			(InputStreamFormatter<utf8>&, const DirectorySearchRules&, const DependencyValidation&)
 	//
 	template<typename AssetType, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_Formatter)>
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
@@ -121,7 +121,7 @@ namespace Assets
 	}
 
 	template<typename AssetType, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_Formatter)>
-		std::unique_ptr<AssetType> AutoConstructAsset(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar> requestParameters = {})
+		std::unique_ptr<AssetType> AutoConstructAsset(const Blob& blob, const DependencyValidation& depVal, StringSection<ResChar> requestParameters = {})
 	{
 		TRY {
 			auto container = ConfigFileContainer<>(blob, depVal);
@@ -156,7 +156,7 @@ namespace Assets
 	}
 
 	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer)>
-		std::unique_ptr<AssetType> AutoConstructAsset(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar> requestParameters = {})
+		std::unique_ptr<AssetType> AutoConstructAsset(const Blob& blob, const DependencyValidation& depVal, StringSection<ResChar> requestParameters = {})
 	{
 		TRY {
 			return std::make_unique<AssetType>(ChunkFileContainer(blob, depVal, requestParameters));
@@ -169,7 +169,7 @@ namespace Assets
 
 	//
 	//		Auto construct to:
-	//			(IteratorRange<ArtifactRequestResult>, const DepValPtr&)
+	//			(IteratorRange<ArtifactRequestResult>, const DependencyValidation&)
 	//
 	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::HasChunkRequests)>
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
@@ -187,7 +187,7 @@ namespace Assets
 	}
 
 	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::HasChunkRequests)>
-		std::unique_ptr<AssetType> AutoConstructAsset(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar> requestParameters = {})
+		std::unique_ptr<AssetType> AutoConstructAsset(const Blob& blob, const DependencyValidation& depVal, StringSection<ResChar> requestParameters = {})
 	{
 		TRY {
 			auto chunks = ChunkFileContainer(blob, depVal, requestParameters).ResolveRequests(MakeIteratorRange(AssetType::ChunkRequests));
@@ -214,13 +214,12 @@ namespace Assets
 
 	//
 	//		Auto construct to:
-	//			(IFileInterface&, const DirectorySearchRules&, const DepValPtr&)
+	//			(IFileInterface&, const DirectorySearchRules&, const DependencyValidation&)
 	//
 	template<typename AssetType, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_FileSystem)>
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
 	{
-		auto depVal = std::make_shared<DependencyValidation>();
-		RegisterFileDependency(depVal, initializer);
+		auto depVal = GetDepValSys().Make(MakeIteratorRange(&initializer, &initializer+1));
 		TRY { 
 			auto file = MainFileSystem::OpenFileInterface(initializer, "rb");
 			return std::make_unique<AssetType>(
@@ -236,13 +235,12 @@ namespace Assets
 
 	//
 	//		Auto construct to:
-	//			(StringSection<utf8>&, const DirectorySearchRules&, const DepValPtr&)
+	//			(StringSection<utf8>&, const DirectorySearchRules&, const DependencyValidation&)
 	//
 	template<typename AssetType, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_TextFile)>
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
 	{
-		auto depVal = std::make_shared<DependencyValidation>();
-		RegisterFileDependency(depVal, initializer);
+		auto depVal = GetDepValSys().Make(MakeIteratorRange(&initializer, &initializer+1));
 		TRY { 
 			auto file = MainFileSystem::OpenFileInterface(initializer, "rb");
 			file->Seek(0, OSServices::FileSeekAnchor::End);

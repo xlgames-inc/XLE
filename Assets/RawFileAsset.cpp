@@ -11,8 +11,7 @@ namespace Assets
 	: _fname(fname.AsString())
 	{
 		_data = TryLoadFileAsMemoryBlock_TolerateSharingErrors(fname, &_dataSize, &_fileState);
-		_depVal = std::make_shared<::Assets::DependencyValidation>();
-		::Assets::RegisterFileDependency(_depVal, fname);
+		_depVal = GetDepValSys().Make(MakeIteratorRange(&_fileState, &_fileState+1));
 	}
 
 	RawFileAsset::~RawFileAsset()

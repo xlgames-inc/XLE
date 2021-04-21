@@ -5,6 +5,7 @@
 #include "MemoryFile.h"
 #include "DepVal.h"
 #include <algorithm>
+#include "../OSServices/FileSystemMonitor.h"
 #if !defined(EXCLUDE_Z_LIB)
     #include "../Foreign/zlib/zlib.h"
 #endif

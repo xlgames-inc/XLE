@@ -30,148 +30,6 @@
 
 namespace Assets
 {
-    static Utility::Threading::RecursiveMutex ResourceDependenciesLock;
-    static std::vector<std::pair<const OSServices::OnChangeCallback*, std::weak_ptr<DependencyValidation>>> ResourceDependencies;
-    static unsigned ResourceDepsChangeId = 0;
-
-    void Dependencies_Shutdown()
-    {
-        decltype(ResourceDependencies) temp;
-        temp.swap(ResourceDependencies);
-    }
-
-    void    DependencyValidation::OnChange()
-    { 
-        ++_validationIndex;
-        ResourceDependenciesLock.lock();
-
-        auto range = std::equal_range(
-            ResourceDependencies.begin(), ResourceDependencies.end(), 
-            this, CompareFirst<const OSServices::OnChangeCallback*, std::weak_ptr<DependencyValidation>>());
-
-        unsigned changeIdStart = ResourceDepsChangeId;
-
-        bool foundExpired = false;
-        for (auto i=range.first; i!=range.second; ++i) {
-            auto l = i->second.lock();
-            if (l) { 
-                l->OnChange();
-
-                if (ResourceDepsChangeId != changeIdStart) {
-                    // another object may have changed the list of objects 
-                    // during the OnChange() call. If this happens,
-                    // we need to search through and find the range again.
-                    // then we need to set 'i' to the position of the 
-                    // same element in the new range (it's guaranteed to
-                    // be there, because we have a lock on it!
-                    // Oh, it's a wierd hack... But it should work well.
-
-                    range = std::equal_range(
-                        ResourceDependencies.begin(), ResourceDependencies.end(), 
-                        this, CompareFirst<const OSServices::OnChangeCallback*, std::weak_ptr<DependencyValidation>>());
-
-                    for (i=range.first;; ++i) {
-                        assert(i!=range.second);
-                        if (Equivalent(i->second, l)) break;
-                    }
-
-                    changeIdStart = ResourceDepsChangeId;
-                }
-            }
-            else foundExpired = true;
-        }
-
-        if (foundExpired) {
-                // Remove any pointers that have expired
-                // (note that we only check matching pointers. Non-matching pointers
-                // that have expired are untouched)
-            ResourceDependencies.erase(
-                std::remove_if(range.first, range.second, 
-                    [](std::pair<const OSServices::OnChangeCallback*, std::weak_ptr<DependencyValidation>>& i)
-                    { return i.second.expired(); }),
-                range.second);
-            ++ResourceDepsChangeId; // signal to callers that this has changed
-        }
-
-        ResourceDependenciesLock.unlock();
-    }
-
-    void    DependencyValidation::RegisterDependency(const std::shared_ptr<DependencyValidation>& dependency)
-    {
-		bool hasInvalidationAtStart = false;
-		{
-			ScopedLock(ResourceDependenciesLock);
-			hasInvalidationAtStart = dependency->GetValidationIndex() != 0;
-			auto i = LowerBound(ResourceDependencies, (const OSServices::OnChangeCallback*)dependency.get());
-			ResourceDependencies.insert(i, std::make_pair(dependency.get(), shared_from_this()));
-		}
-
-            // We must hold a reference to the dependency -- otherwise it can be destroyed,
-            // and links to downstream assets/files might be lost
-            // It's a little awkward to hold it here, but it's the only way
-            // to make sure that it gets destroyed when "this" gets destroyed
-
-		bool isOverflow = true;
-        for (unsigned c=0; c<dimof(_dependencies); ++c)
-            if (!_dependencies[c]) { _dependencies[c] = dependency; isOverflow = false; break; }
-        
-		if (isOverflow)
-			_dependenciesOverflow.push_back(dependency);
-
-		// If the attached dependency already has a invalidation index, we must propagate it up the tree now.
-		// This is because of an awkward race condition:
-		//		1) Construct asset A
-		//		2) Begin construction of asset B, using a pointer to asset A
-		//		3) Asset A changes on disk
-		//		4) Filesystem monitor records change to asset A and updates the dependency validation
-		//		5) Asset A is registered as a dependency to asset B
-		// Now, as we complete the construction of asset B, asset A is already invalidated on disk. 
-		// However, the invalidation will not flow up to asset B's dependency invalidation, because the change
-		// was recorded before we completed registering the dependency relationship between the 2 assets.
-		//
-		// However, if we check for any pending invalidations before we unlock the mutex above, and propagate 
-		// the invalidation up the tree now, then we will guard against this case.
-
-		if (hasInvalidationAtStart)
-			OnChange();
-    }
-
-    DependencyValidation::DependencyValidation(DependencyValidation&& moveFrom) never_throws
-    {
-        _validationIndex = moveFrom._validationIndex;
-        for (unsigned c=0; c<dimof(_dependencies); ++c)
-            _dependencies[c] = std::move(moveFrom._dependencies[c]);
-        _dependenciesOverflow = std::move(moveFrom._dependenciesOverflow);
-    }
-
-    DependencyValidation& DependencyValidation::operator=(DependencyValidation&& moveFrom) never_throws
-    {
-        _validationIndex = moveFrom._validationIndex;
-        for (unsigned c=0; c<dimof(_dependencies); ++c)
-            _dependencies[c] = std::move(moveFrom._dependencies[c]);
-        _dependenciesOverflow = std::move(moveFrom._dependenciesOverflow);
-        return *this;
-    }
-
-    DependencyValidation::~DependencyValidation() {}
-
-    void RegisterFileDependency(
-        const std::shared_ptr<DependencyValidation>& validationIndex,
-        StringSection<ResChar> filename)
-    {
-        MainFileSystem::TryMonitor(filename, validationIndex);
-        #if defined(_DEBUG)
-            validationIndex->_monitoredFiles.push_back(filename.AsString());
-        #endif
-    }
-
-    void RegisterAssetDependency(
-        const std::shared_ptr<DependencyValidation>& dependentResource, 
-        const std::shared_ptr<DependencyValidation>& dependency)
-    {
-        assert(dependentResource && dependency);
-        dependentResource->RegisterDependency(dependency);
-    }
 
     void DirectorySearchRules::AddSearchDirectory(StringSection<ResChar> dir)
     {
@@ -472,7 +330,7 @@ namespace Assets
             XlCopyString(_initializer, dimof(_initializer), initializer); 
         }
 
-        InvalidAsset::InvalidAsset(StringSection<ResChar> initializer, const DepValPtr& depVal, const Blob& actualizationLog) never_throws
+        InvalidAsset::InvalidAsset(StringSection<ResChar> initializer, const DependencyValidation& depVal, const Blob& actualizationLog) never_throws
         : RetrievalError(initializer)
 		, _depVal(depVal)
 		, _actualizationLog(actualizationLog)
@@ -548,13 +406,13 @@ namespace Assets
             return buffer;
         }
 
-		ConstructionError::ConstructionError(Reason reason, const DepValPtr& depVal, const Blob& actualizationLog) never_throws
+		ConstructionError::ConstructionError(Reason reason, const DependencyValidation& depVal, const Blob& actualizationLog) never_throws
 		: _reason(reason), _depVal(depVal)
 		, _actualizationLog(actualizationLog)
 		{
 		}
 
-		ConstructionError::ConstructionError(Reason reason, const DepValPtr& depVal, const char format[], ...) never_throws
+		ConstructionError::ConstructionError(Reason reason, const DependencyValidation& depVal, const char format[], ...) never_throws
 		: _reason(reason), _depVal(depVal)
 		{
 			char buffer[512];
@@ -566,22 +424,22 @@ namespace Assets
 			_actualizationLog = AsBlob(MakeIteratorRange(buffer, XlStringEnd(buffer)));
 		}
 
-		ConstructionError::ConstructionError(const std::exception& e, const DepValPtr& depVal) never_throws
+		ConstructionError::ConstructionError(const std::exception& e, const DependencyValidation& depVal) never_throws
 		: _reason(Reason::Unknown)
 		, _depVal(depVal)
 		, _actualizationLog(AsBlob(e))
 		{}
 
-		ConstructionError::ConstructionError(const ConstructionError& copyFrom, const DepValPtr& depVal) never_throws
+		ConstructionError::ConstructionError(const ConstructionError& copyFrom, const DependencyValidation& depVal) never_throws
 		: _reason(copyFrom._reason)
 		, _depVal(copyFrom._depVal)
 		, _actualizationLog(copyFrom._actualizationLog)
 		{
 			// merge the depvals by creating a tree
 			if (_depVal && depVal && _depVal != depVal) {
-				auto parentDepVal = std::make_shared<DependencyValidation>();
-				RegisterAssetDependency(parentDepVal, _depVal);
-				RegisterAssetDependency(parentDepVal, depVal);
+				auto parentDepVal = GetDepValSys().Make();
+				parentDepVal.RegisterDependency(_depVal);
+				parentDepVal.RegisterDependency(depVal);
 				_depVal = std::move(parentDepVal);
 			} else if (depVal) {
 				_depVal = depVal;
@@ -651,14 +509,6 @@ namespace Assets
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	DepValPtr AsDepVal(IteratorRange<const DependentFileState*> deps)
-	{
-		auto result = std::make_shared<DependencyValidation>();
-		for (const auto& i : deps)
-			::Assets::RegisterFileDependency(result, MakeStringSection(i._filename));
-		return result;
-	}
 
 	namespace Internal
 	{

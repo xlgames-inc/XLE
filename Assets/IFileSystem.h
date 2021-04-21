@@ -271,10 +271,12 @@ namespace Assets
 	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult = nullptr);
 	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult, DependentFileState* fileState);
 	Blob TryLoadFileAsBlob(StringSection<char> sourceFileName);
+	Blob TryLoadFileAsBlob(StringSection<char> sourceFileName, DependentFileState* fileState);
 
 	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock_TolerateSharingErrors(StringSection<char> sourceFileName, size_t* sizeResult);
 	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock_TolerateSharingErrors(StringSection<char> sourceFileName, size_t* sizeResult, DependentFileState* fileState);
 	Blob TryLoadFileAsBlob_TolerateSharingErrors(StringSection<char> sourceFileName);
+	Blob TryLoadFileAsBlob_TolerateSharingErrors(StringSection<char> sourceFileName, DependentFileState* fileState);
 
 }
 

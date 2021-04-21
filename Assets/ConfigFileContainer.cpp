@@ -87,16 +87,15 @@ namespace Assets
 	template<typename Formatter>
 		ConfigFileContainer<Formatter>::ConfigFileContainer(StringSection<ResChar> initializer)
 	{
-		_validationCallback = std::make_shared<DependencyValidation>();
-		RegisterFileDependency(_validationCallback, initializer);
-
-		_fileData = ::Assets::TryLoadFileAsBlob_TolerateSharingErrors(initializer);
+        DependentFileState fileState;
+		_fileData = ::Assets::TryLoadFileAsBlob_TolerateSharingErrors(initializer, &fileState);
+        _validationCallback = GetDepValSys().Make(MakeIteratorRange(&fileState, &fileState+1));
 		if (!_fileData)
 			Throw(Exceptions::ConstructionError(Exceptions::ConstructionError::Reason::MissingFile, _validationCallback, "Error loading config file container for %s", initializer.AsString().c_str()));
 	}
 
 	template<typename Formatter>
-		ConfigFileContainer<Formatter>::ConfigFileContainer(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar>)
+		ConfigFileContainer<Formatter>::ConfigFileContainer(const Blob& blob, const DependencyValidation& depVal, StringSection<ResChar>)
 	: _fileData(blob), _validationCallback(depVal)
 	{
 	}

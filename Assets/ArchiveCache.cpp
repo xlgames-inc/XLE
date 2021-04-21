@@ -86,7 +86,7 @@ namespace Assets
 		std::vector<ICompileOperation::SerializedArtifact>    _data;
 		::Assets::AssetState		_state;
 		std::vector<DependentFileState> _deps;
-		std::shared_ptr<DependencyValidation> _depValPtr;
+		DependencyValidation 		_depValPtr;
 		unsigned        			_pendingCommitPtr = 0;      // (only used during FlushToDisk)
 		std::function<void()> 		_onFlush;
 		std::string					_attachedStringName;
@@ -126,7 +126,7 @@ namespace Assets
 
 		i->_data = std::vector<ICompileOperation::SerializedArtifact> { artifacts.begin(), artifacts.end() };
 		i->_deps = std::vector<DependentFileState> { dependentFiles.begin(), dependentFiles.end() };
-		i->_depValPtr = AsDepVal(MakeIteratorRange(i->_deps));
+		i->_depValPtr = GetDepValSys().Make(MakeIteratorRange(i->_deps));
 		i->_state = state;
 		i->_attachedStringName = attachedStringName;
 		i->_onFlush = std::move(onFlush);
@@ -896,13 +896,13 @@ namespace Assets
 			return result;
 		}
 
-		DepValPtr GetDependencyValidation() const
+		DependencyValidation GetDependencyValidation() const
 		{
 			ScopedLock(_archiveCache->_pendingCommitsLock);
 			return GetDependencyValidation_AlreadyLocked();
 		}
 
-		DepValPtr GetDependencyValidation_AlreadyLocked() const
+		DependencyValidation GetDependencyValidation_AlreadyLocked() const
 		{
 			VerifyChangeId_AlreadyLocked(*_archiveCache, _objectId, _changeId);
 
@@ -914,20 +914,20 @@ namespace Assets
 			// missing), we will return nullptr
 			const auto* collections = _archiveCache->GetCollectionBlockList();
 			if (!collections)
-				return nullptr;
+				return {};
 
 			auto collectioni = std::lower_bound(collections->begin(), collections->end(), _objectId, CompareCollectionDirectoryBlock{});
 			if (collectioni == collections->end() || collectioni->_objectId != _objectId)
-				return nullptr;
+				return {};
 
 			auto* depTable = _archiveCache->GetDependencyTable();
-			if (!depTable) return nullptr;
+			if (!depTable) return {};
 
-			auto result = std::make_shared<::Assets::DependencyValidation>();
+			auto result = GetDepValSys().Make();
 			auto depRange = EqualRange(*depTable, _objectId);
 			for (auto r=depRange.first; r!=depRange.second; ++r)
 				if (!IntermediatesStore::TryRegisterDependency(result, r->second, "ArchivedAsset"))
-					return nullptr;
+					return {};
 
 			return result;
 		}

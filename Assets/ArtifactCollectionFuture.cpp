@@ -96,7 +96,7 @@ namespace Assets
 
 			////////////////////////////////////////////////////////////
 
-	::Assets::DepValPtr ChunkFileArtifactCollection::GetDependencyValidation() const { return _depVal; }
+	DependencyValidation ChunkFileArtifactCollection::GetDependencyValidation() const { return _depVal; }
 	StringSection<ResChar>	ChunkFileArtifactCollection::GetRequestParameters() const { return MakeStringSection(_requestParameters); }
 	std::vector<ArtifactRequestResult> ChunkFileArtifactCollection::ResolveRequests(IteratorRange<const ArtifactRequest*> requests) const
 	{
@@ -105,7 +105,7 @@ namespace Assets
 	}
 	AssetState ChunkFileArtifactCollection::GetAssetState() const { return AssetState::Ready; }
 	ChunkFileArtifactCollection::ChunkFileArtifactCollection(
-		const std::shared_ptr<IFileInterface>& file, const ::Assets::DepValPtr& depVal, const std::string& requestParameters)
+		const std::shared_ptr<IFileInterface>& file, const DependencyValidation& depVal, const std::string& requestParameters)
 	: _file(file), _depVal(depVal), _requestParameters(requestParameters) {}
 	ChunkFileArtifactCollection::~ChunkFileArtifactCollection() {}
 
@@ -179,7 +179,7 @@ namespace Assets
 
 		return result;
 	}
-	::Assets::DepValPtr BlobArtifactCollection::GetDependencyValidation() const { return _depVal; }
+	DependencyValidation BlobArtifactCollection::GetDependencyValidation() const { return _depVal; }
 	StringSection<ResChar>	BlobArtifactCollection::GetRequestParameters() const { return MakeStringSection(_requestParams); }
 	AssetState BlobArtifactCollection::GetAssetState() const 
 	{
@@ -188,7 +188,7 @@ namespace Assets
 	BlobArtifactCollection::BlobArtifactCollection(
 		IteratorRange<const ICompileOperation::SerializedArtifact*> chunks, 
 		AssetState state,
-		const ::Assets::DepValPtr& depVal, const std::string& collectionName, const rstring& requestParams)
+		const DependencyValidation& depVal, const std::string& collectionName, const rstring& requestParams)
 	: _chunks(chunks.begin(), chunks.end()), _state(state), _depVal(depVal), _collectionName(collectionName), _requestParams(requestParams) {}
 	BlobArtifactCollection::~BlobArtifactCollection() {}
 
@@ -203,10 +203,10 @@ namespace Assets
 		}
 		Throw(std::runtime_error("Compile operation failed with error: " + AsString(_log)));
 	}
-	::Assets::DepValPtr CompilerExceptionArtifact::GetDependencyValidation() const { return _depVal; }
+	DependencyValidation CompilerExceptionArtifact::GetDependencyValidation() const { return _depVal; }
 	StringSection<::Assets::ResChar>	CompilerExceptionArtifact::GetRequestParameters() const { return {}; }
 	AssetState CompilerExceptionArtifact::GetAssetState() const { return AssetState::Invalid; }
-	CompilerExceptionArtifact::CompilerExceptionArtifact(const ::Assets::Blob& log, const ::Assets::DepValPtr& depVal) : _log(log), _depVal(depVal) {}
+	CompilerExceptionArtifact::CompilerExceptionArtifact(const ::Assets::Blob& log, const DependencyValidation& depVal) : _log(log), _depVal(depVal) {}
 	CompilerExceptionArtifact::~CompilerExceptionArtifact() {}
 
 }

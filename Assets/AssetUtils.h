@@ -56,44 +56,6 @@ namespace Assets
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class DependentFileState
-    {
-    public:
-        std::basic_string<ResChar> _filename;
-        uint64_t _timeMarker;
-
-        enum class Status { Normal, Shadowed, DoesNotExist };
-        Status _status;
-
-        DependentFileState() : _timeMarker(0ull), _status(Status::Normal) {}
-        DependentFileState(StringSection<ResChar> filename, uint64_t timeMarker, Status status=Status::Normal)
-        : _filename(filename.AsString()), _timeMarker(timeMarker), _status(status) {}
-		DependentFileState(const std::basic_string<ResChar>& filename, uint64_t timeMarker, Status status=Status::Normal)
-		: _filename(filename), _timeMarker(timeMarker), _status(status) {}
-
-		friend bool operator<(const DependentFileState& lhs, const DependentFileState& rhs)
-		{
-			if (lhs._filename < rhs._filename) return true;
-			if (lhs._filename > rhs._filename) return false;
-			if (lhs._timeMarker < rhs._timeMarker) return true;
-			if (lhs._timeMarker > rhs._timeMarker) return false;
-			return (int)lhs._status < (int)rhs._status;
-		}
-
-		friend bool operator==(const DependentFileState& lhs, const DependentFileState& rhs)
-		{
-			return lhs._filename == rhs._filename && lhs._timeMarker == rhs._timeMarker && lhs._status == rhs._status;
-		}
-    };
-
-	DepValPtr AsDepVal(IteratorRange<const DependentFileState*> deps);
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    void Dependencies_Shutdown();
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
     class IFileInterface;
     class FileOutputStream : public OutputStream
     {

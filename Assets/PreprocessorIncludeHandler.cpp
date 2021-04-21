@@ -35,12 +35,11 @@ namespace Assets
 		return result;
 	}
 
-	DepValPtr PreprocessorIncludeHandler::MakeDependencyValidation() const
+	DependencyValidation PreprocessorIncludeHandler::MakeDependencyValidation() const
 	{
-		auto result = std::make_shared<DependencyValidation>();
-		for (const auto& i:_depFileStates)
-			::Assets::RegisterFileDependency(result, MakeStringSection(i._filename));
-		return result;
+		if (_depFileStates.empty()) return {};
+		std::vector<DependentFileState> temp { _depFileStates.begin(), _depFileStates.end() };
+		return GetDepValSys().Make(temp);
 	}
 
 	PreprocessorIncludeHandler::PreprocessorIncludeHandler() {}

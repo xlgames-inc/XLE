@@ -14,7 +14,7 @@ namespace Assets
 		virtual Result OpenFile(
 			StringSection<> requestString,
 			StringSection<> fileIncludedFrom) override;
-		DepValPtr MakeDependencyValidation() const;
+		DependencyValidation MakeDependencyValidation() const;
 		PreprocessorIncludeHandler();
 		~PreprocessorIncludeHandler();
 		std::set<DependentFileState> _depFileStates;

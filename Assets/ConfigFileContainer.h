@@ -6,7 +6,8 @@
 
 #pragma once
 
-#include "../Assets/AssetsCore.h"		// (for ResChar)
+#include "DepVal.h"
+#include "AssetsCore.h"		// (for ResChar)
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/StringFormat.h"
 #include <memory>
@@ -63,13 +64,13 @@ namespace Assets
 		static std::unique_ptr<ConfigFileContainer> CreateNew(StringSection<ResChar> initialiser);
 
         ConfigFileContainer(StringSection<ResChar> initializer);
-		ConfigFileContainer(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar> = {});
+		ConfigFileContainer(const Blob& blob, const DependencyValidation& depVal, StringSection<ResChar> = {});
         ~ConfigFileContainer();
 
-        const std::shared_ptr<DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+        const DependencyValidation& GetDependencyValidation() const   { return _validationCallback; }
     protected:
 		Blob _fileData; 
-		std::shared_ptr<DependencyValidation> _validationCallback;		
+		DependencyValidation _validationCallback;		
     };
 
     template<typename CharType>

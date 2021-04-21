@@ -72,7 +72,7 @@ namespace Assets
 			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
 		} CATCH (const std::exception& e) {
 			Log(Warning) << "No dependency validation associated with asset after construction failure. Hot reloading will not function for this asset." << std::endl;
-			future.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob(e));
+			future.SetInvalidAsset({}, AsBlob(e));
 		} CATCH_END
 	}
 
@@ -153,9 +153,9 @@ namespace Assets
 			auto marker = Internal::BeginCompileOperation(targetCode, InitializerPack{std::forward<Args>(args)...});
 			if (!marker) {
 				#if defined(_DEBUG)
-					future.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob("No compiler found for asset " + debugLabel));
+					future.SetInvalidAsset({}, AsBlob("No compiler found for asset " + debugLabel));
 				#else
-					future.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob("No compiler found for asset"));
+					future.SetInvalidAsset({}, AsBlob("No compiler found for asset"));
 				#endif
 				return;
 			}
@@ -182,7 +182,7 @@ namespace Assets
 			#if defined(_DEBUG)
 				Log(Warning) << "No dependency validation associated with asset (" << debugLabel << ") after construction failure. Hot reloading will not function for this asset." << std::endl;
 			#endif
-			future.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob(e));
+			future.SetInvalidAsset({}, AsBlob(e));
 		} CATCH_END
 	}
 

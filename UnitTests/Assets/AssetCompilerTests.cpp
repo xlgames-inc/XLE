@@ -115,7 +115,7 @@ namespace UnitTests
 		std::string _data0, _data1;
 		TestChunkRequestsAsset(
 			IteratorRange<::Assets::ArtifactRequestResult*> chunks, 
-			const ::Assets::DepValPtr& depVal)
+			const ::Assets::DependencyValidation& depVal)
 		{
 			_data0 = ::Assets::AsString(chunks[0]._sharedBlob);
 			_data1 = ::Assets::AsString(chunks[1]._sharedBlob);
@@ -163,7 +163,7 @@ namespace UnitTests
 				"UnitTestCompiler",
 				"UnitTestCompiler",
 				ConsoleRig::GetLibVersionDesc(),
-				nullptr,
+				{},
 				[](auto initializers) {
 					assert(!initializers.IsEmpty());
 					return std::make_shared<TestCompileOperation>(initializers);
@@ -262,7 +262,7 @@ namespace UnitTests
 				"UnitTestCompiler",
 				"UnitTestCompiler",
 				ConsoleRig::GetLibVersionDesc(),
-				nullptr,
+				{},
 				[](auto initializers) {
 					assert(!initializers.IsEmpty() == 1);
 					return std::make_shared<TestCompileOperation>(initializers);
@@ -293,7 +293,7 @@ namespace UnitTests
 			"UnitTestCompiler",
 			"UnitTestCompiler",
 			ConsoleRig::GetLibVersionDesc(),
-			nullptr,
+			{},
 			[](auto initializers) {
 				assert(!initializers.IsEmpty());
 				return std::make_shared<TestCompileOperation>(initializers);
@@ -364,7 +364,7 @@ namespace UnitTests
 			// Now GetExistingAsset() on the same marker should give us something immediately
 			auto existingAsset = marker->GetExistingAsset(Type_UnitTestArtifact);
 			REQUIRE(existingAsset != nullptr);
-			REQUIRE(existingAsset->GetDependencyValidation()->GetValidationIndex() == 0);	// still clean
+			REQUIRE(existingAsset->GetDependencyValidation().GetValidationIndex() == 0);	// still clean
 			artifacts = existingAsset->ResolveRequests(MakeIteratorRange(requests));
 			REQUIRE(::Assets::AsString(artifacts[0]._sharedBlob) == "This is file data from TestCompileOperation for unit-test-asset-one");
 			REQUIRE(::Assets::AsString(artifacts[1]._sharedBlob) == "This is extra file data");
@@ -377,7 +377,7 @@ namespace UnitTests
 			REQUIRE(marker != nullptr);
 			existingAsset = marker->GetExistingAsset(Type_UnitTestArtifact);
 			REQUIRE(existingAsset != nullptr);
-			REQUIRE(existingAsset->GetDependencyValidation()->GetValidationIndex() == 0);	// still clean
+			REQUIRE(existingAsset->GetDependencyValidation().GetValidationIndex() == 0);	// still clean
 			artifacts = existingAsset->ResolveRequests(MakeIteratorRange(requests));
 			REQUIRE(::Assets::AsString(artifacts[0]._sharedBlob) == "This is file data from TestCompileOperation for unit-test-asset-one");
 			REQUIRE(::Assets::AsString(artifacts[1]._sharedBlob) == "This is extra file data");
@@ -436,7 +436,7 @@ namespace UnitTests
 				REQUIRE(compile->GetArtifactCollection(Type_UnitTestArtifact)->GetAssetState() == ::Assets::AssetState::Invalid);
 				auto log = ::Assets::AsString(::Assets::GetErrorMessage(*compile->GetArtifactCollection(Type_UnitTestArtifact)));
 				REQUIRE(XlFindString(MakeStringSection(log), "Throw from serialize target requested"));
-				REQUIRE(compile->GetArtifactCollection(Type_UnitTestArtifact)->GetDependencyValidation() != nullptr);
+				REQUIRE(compile->GetArtifactCollection(Type_UnitTestArtifact)->GetDependencyValidation());
 			}
 		}
 
@@ -448,7 +448,7 @@ namespace UnitTests
 			for (unsigned c=0; c<2; ++c) {
 				auto marker = compilers->Prepare(Type_UnitTestArtifact, ::Assets::InitializerPack { "unit-test-asset-throw-from-serialize-target" } );
 				auto existing = marker->GetExistingAsset(Type_UnitTestArtifact);
-				if (existing && existing->GetDependencyValidation()->GetValidationIndex() == 0) {
+				if (existing && existing->GetDependencyValidation().GetValidationIndex() == 0) {
 					REQUIRE(existing->GetAssetState() == ::Assets::AssetState::Invalid);
 					auto log = ::Assets::AsString(::Assets::GetErrorMessage(*existing));
 					REQUIRE(XlFindString(MakeStringSection(log), "Throw from serialize target requested"));
@@ -473,7 +473,7 @@ namespace UnitTests
 			auto marker = compilers->Prepare(Type_UnitTestArtifact, ::Assets::InitializerPack { "unit-test-asset-throw-from-serialize-target" } );
 			auto existing = marker->GetExistingAsset(Type_UnitTestArtifact);
 			REQUIRE(existing);
-			REQUIRE(existing->GetDependencyValidation()->GetValidationIndex() == 0);
+			REQUIRE(existing->GetDependencyValidation().GetValidationIndex() == 0);
 			REQUIRE(existing->GetAssetState() == ::Assets::AssetState::Invalid);
 			auto log = ::Assets::AsString(::Assets::GetErrorMessage(*existing));
 			REQUIRE(XlFindString(MakeStringSection(log), "Throw from serialize target requested"));
