@@ -9,11 +9,20 @@
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/Threading/ThreadingUtils.h"
+#include "../Utility/Threading/Mutex.h"
 
 namespace Assets
 {
-	static std::shared_ptr<MountingTree> s_mainMountingTree;
-	static std::shared_ptr<IFileSystem> s_defaultFileSystem;
+	struct Ptrs
+	{
+		std::shared_ptr<MountingTree> s_mainMountingTree;
+		std::shared_ptr<IFileSystem> s_defaultFileSystem;
+	};
+	Ptrs& GetPtrs()
+	{
+		static Ptrs ptrs;
+		return ptrs;
+	}
 
 	static IFileSystem::IOReason AsIOReason(IFileSystem::TranslateResult transResult)
 	{
@@ -45,11 +54,12 @@ namespace Assets
 			result = FileType();
 
 			MountingTree::CandidateObject candidateObject;
-			auto lookup = s_mainMountingTree->Lookup(filename);
-			if (lookup.IsAbsolutePath() && s_mainMountingTree->GetAbsolutePathMode() == MountingTree::AbsolutePathMode::RawOS) {
+			auto& ptrs = GetPtrs();
+			auto lookup = ptrs.s_mainMountingTree->Lookup(filename);
+			if (lookup.IsAbsolutePath() && ptrs.s_mainMountingTree->GetAbsolutePathMode() == MountingTree::AbsolutePathMode::RawOS) {
 					// attempt opening with the default file system...
-				if (s_defaultFileSystem)
-					return ::Assets::TryOpen(result, *s_defaultFileSystem, filename, openMode, shareMode);
+				if (ptrs.s_defaultFileSystem)
+					return ::Assets::TryOpen(result, *ptrs.s_defaultFileSystem, filename, openMode, shareMode);
 				return IFileSystem::IOReason::FileNotFound;
 			}
 			
@@ -57,7 +67,7 @@ namespace Assets
 				auto r = lookup.TryGetNext(candidateObject);
 				if (r == LookupResult::Invalidated) {
                     // "Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."
-                    lookup = s_mainMountingTree->Lookup(filename);
+                    lookup = ptrs.s_mainMountingTree->Lookup(filename);
                     continue;
                 }
 
@@ -79,11 +89,12 @@ namespace Assets
 			result = FileType();
 
 			MountingTree::CandidateObject candidateObject;
-			auto lookup = s_mainMountingTree->Lookup(filename);
-			if (lookup.IsAbsolutePath() && s_mainMountingTree->GetAbsolutePathMode() == MountingTree::AbsolutePathMode::RawOS) {
+			auto& ptrs = GetPtrs();
+			auto lookup = ptrs.s_mainMountingTree->Lookup(filename);
+			if (lookup.IsAbsolutePath() && ptrs.s_mainMountingTree->GetAbsolutePathMode() == MountingTree::AbsolutePathMode::RawOS) {
 					// attempt opening with the default file system...
-				if (s_defaultFileSystem)
-					return ::Assets::TryOpen(result, *s_defaultFileSystem, filename, size, openMode, shareMode);
+				if (ptrs.s_defaultFileSystem)
+					return ::Assets::TryOpen(result, *ptrs.s_defaultFileSystem, filename, size, openMode, shareMode);
 				return IFileSystem::IOReason::FileNotFound;
 			}
 
@@ -91,7 +102,7 @@ namespace Assets
                 auto r = lookup.TryGetNext(candidateObject);
                 if (r == LookupResult::Invalidated) {
                     // "Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."
-                    lookup = s_mainMountingTree->Lookup(filename);
+                    lookup = ptrs.s_mainMountingTree->Lookup(filename);
                     continue;
                 }
 
@@ -111,11 +122,12 @@ namespace Assets
 			IFileSystem::IOReason TryMonitor(StringSection<CharType> filename, const std::shared_ptr<IFileMonitor>& evnt)
 		{
 			MountingTree::CandidateObject candidateObject;
-			auto lookup = s_mainMountingTree->Lookup(filename);
-			if (lookup.IsAbsolutePath() && s_mainMountingTree->GetAbsolutePathMode() == MountingTree::AbsolutePathMode::RawOS) {
+			auto& ptrs = GetPtrs();
+			auto lookup = ptrs.s_mainMountingTree->Lookup(filename);
+			if (lookup.IsAbsolutePath() && ptrs.s_mainMountingTree->GetAbsolutePathMode() == MountingTree::AbsolutePathMode::RawOS) {
 					// attempt opening with the default file system...
-				if (s_defaultFileSystem)
-					return ::Assets::TryMonitor(*s_defaultFileSystem, filename, evnt);
+				if (ptrs.s_defaultFileSystem)
+					return ::Assets::TryMonitor(*ptrs.s_defaultFileSystem, filename, evnt);
 				return IFileSystem::IOReason::FileNotFound;
 			}
 
@@ -123,7 +135,7 @@ namespace Assets
 				auto r = lookup.TryGetNext(candidateObject);
 				if (r == LookupResult::Invalidated) {
                     // "Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."
-                    lookup = s_mainMountingTree->Lookup(filename);
+                    lookup = ptrs.s_mainMountingTree->Lookup(filename);
                     continue;
                 }
 
@@ -145,11 +157,12 @@ namespace Assets
 			IFileSystem::IOReason TryFakeFileChange(StringSection<CharType> filename)
 		{
 			MountingTree::CandidateObject candidateObject;
-			auto lookup = s_mainMountingTree->Lookup(filename);
-			if (lookup.IsAbsolutePath() && s_mainMountingTree->GetAbsolutePathMode() == MountingTree::AbsolutePathMode::RawOS) {
+			auto& ptrs = GetPtrs();
+			auto lookup = ptrs.s_mainMountingTree->Lookup(filename);
+			if (lookup.IsAbsolutePath() && ptrs.s_mainMountingTree->GetAbsolutePathMode() == MountingTree::AbsolutePathMode::RawOS) {
 					// attempt opening with the default file system...
-				if (s_defaultFileSystem)
-					return ::Assets::TryFakeFileChange(*s_defaultFileSystem, filename);
+				if (ptrs.s_defaultFileSystem)
+					return ::Assets::TryFakeFileChange(*ptrs.s_defaultFileSystem, filename);
 				return IFileSystem::IOReason::FileNotFound;
 			}
 
@@ -157,7 +170,7 @@ namespace Assets
 				auto r = lookup.TryGetNext(candidateObject);
 				if (r == LookupResult::Invalidated) {
                     // "Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."
-                    lookup = s_mainMountingTree->Lookup(filename);
+                    lookup = ptrs.s_mainMountingTree->Lookup(filename);
                     continue;
                 }
 
@@ -178,11 +191,12 @@ namespace Assets
 			FileDesc TryGetDesc(StringSection<CharType> filename)
 		{
 			MountingTree::CandidateObject candidateObject;
-			auto lookup = s_mainMountingTree->Lookup(filename);
-			if (lookup.IsAbsolutePath() && s_mainMountingTree->GetAbsolutePathMode() == MountingTree::AbsolutePathMode::RawOS) {
+			auto& ptrs = GetPtrs();
+			auto lookup = ptrs.s_mainMountingTree->Lookup(filename);
+			if (lookup.IsAbsolutePath() && ptrs.s_mainMountingTree->GetAbsolutePathMode() == MountingTree::AbsolutePathMode::RawOS) {
 					// attempt opening with the default file system...
-				if (s_defaultFileSystem)
-					return ::Assets::TryGetDesc(*s_defaultFileSystem, filename);
+				if (ptrs.s_defaultFileSystem)
+					return ::Assets::TryGetDesc(*ptrs.s_defaultFileSystem, filename);
 				return FileDesc{ std::basic_string<utf8>(), std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
 			}
 
@@ -190,7 +204,7 @@ namespace Assets
 				auto r = lookup.TryGetNext(candidateObject);
 				if (r == LookupResult::Invalidated) {
                     // "Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."
-                    lookup = s_mainMountingTree->Lookup(filename);
+                    lookup = ptrs.s_mainMountingTree->Lookup(filename);
                     continue;
                 }
 
@@ -308,26 +322,27 @@ namespace Assets
 
 	IFileSystem* MainFileSystem::GetFileSystem(FileSystemId id)
 	{
-		return s_mainMountingTree->GetMountedFileSystem(id);		// in all current cases the FileSystemId overlaps with the MountId in s_mainMountingTree
+		return GetPtrs().s_mainMountingTree->GetMountedFileSystem(id);		// in all current cases the FileSystemId overlaps with the MountId in s_mainMountingTree
 	}
 
 	std::basic_string<utf8> MainFileSystem::GetMountPoint(FileSystemId id)
 	{
-		return s_mainMountingTree->GetMountPoint(id);
+		return GetPtrs().s_mainMountingTree->GetMountPoint(id);
 	}
 
 	FileSystemWalker MainFileSystem::BeginWalk(StringSection<utf8> initialSubDirectory)
 	{
-		return s_mainMountingTree->BeginWalk(initialSubDirectory);
+		return GetPtrs().s_mainMountingTree->BeginWalk(initialSubDirectory);
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	const std::shared_ptr<MountingTree>& MainFileSystem::GetMountingTree() { return s_mainMountingTree; }
+	const std::shared_ptr<MountingTree>& MainFileSystem::GetMountingTree() { return GetPtrs().s_mainMountingTree; }
 	void MainFileSystem::Init(const std::shared_ptr<MountingTree>& mountingTree, const std::shared_ptr<IFileSystem>& defaultFileSystem)
 	{
-		s_mainMountingTree = mountingTree;
-		s_defaultFileSystem = defaultFileSystem;
+		auto& ptrs = GetPtrs();
+		ptrs.s_mainMountingTree = mountingTree;
+		ptrs.s_defaultFileSystem = defaultFileSystem;
 	}
 
     void MainFileSystem::Shutdown()
