@@ -386,97 +386,109 @@ namespace Utility
 			TokenQueue_t&& input,
 			const PreprocessorSubstitutions& substitutions)
 		{
-			ExpressionTokenList reversePolishOrdering;		// we use this indirection here because we're expecting tokens (particular variables) to be frequently reused
-			reversePolishOrdering.reserve(input.size());
+			TRY {
+				ExpressionTokenList reversePolishOrdering;		// we use this indirection here because we're expecting tokens (particular variables) to be frequently reused
+				reversePolishOrdering.reserve(input.size());
 
-			while (!input.empty()) {
-				TokenBase& base  = *input.front();
-				
-				if (base.type == OP) {
-					auto op = static_cast<::Token<std::string>*>(&base)->val;
+				while (!input.empty()) {
+					TokenBase& base  = *input.front();
+					
+					if (base.type == OP) {
+						auto op = static_cast<::Token<std::string>*>(&base)->val;
 
-					if (op == "()") {
-						Throw(std::runtime_error("Only defined() is supported in relevance checks. Other functions are not supported"));
-					} else {
-						dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::Operation, op);
-					}
-
-				} else if (base.type == UNARY) {
-
-					dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::UnaryMarker);
-				
-				} else if (base.type == VAR) {
-
-					std::string key = static_cast<::Token<std::string>*>(&base)->val;
-					auto sub = std::find_if(substitutions._substitutions.rbegin(), substitutions._substitutions.rend(), [key](const auto& c) { return c._symbol == key; });
-					if (sub == substitutions._substitutions.rend() || !IsTrue(sub->_condition) || sub->_type == PreprocessorSubstitutions::Type::Undefine) {
-						dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::Variable, key);
-					} else {
-						// We need to substitute in the expression provided in the substitutions table
-						// This is used for things like #define
-						// Note that "key" never becomes a token in our output. So no relevance information
-						// will be calculated for it -- but if the expression substituted in refers to variables,
-						// then we can get relevance information for them
-						assert(sub->_type == PreprocessorSubstitutions::Type::Define || sub->_type == PreprocessorSubstitutions::Type::DefaultDefine);
-						auto translated = dictionary.Translate(substitutions._dictionary, sub->_substitution);
-						if (!translated.empty()) {
-							reversePolishOrdering.insert(
-								reversePolishOrdering.end(),
-								translated.begin(), translated.end());
+						if (op == "()") {
+							Throw(std::runtime_error("Only defined() is supported in relevance checks. Other functions are not supported"));
 						} else {
-							// a symbol that is defined to nothing is treated as if it's defined to 1
+							dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::Operation, op);
+						}
+
+					} else if (base.type == UNARY) {
+
+						dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::UnaryMarker);
+					
+					} else if (base.type == VAR) {
+
+						std::string key = static_cast<::Token<std::string>*>(&base)->val;
+						auto sub = std::find_if(substitutions._substitutions.rbegin(), substitutions._substitutions.rend(), [key](const auto& c) { return c._symbol == key; });
+						if (sub == substitutions._substitutions.rend() || !IsTrue(sub->_condition) || sub->_type == PreprocessorSubstitutions::Type::Undefine) {
+							dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::Variable, key);
+						} else {
+							// We need to substitute in the expression provided in the substitutions table
+							// This is used for things like #define
+							// Note that "key" never becomes a token in our output. So no relevance information
+							// will be calculated for it -- but if the expression substituted in refers to variables,
+							// then we can get relevance information for them
+							assert(sub->_type == PreprocessorSubstitutions::Type::Define || sub->_type == PreprocessorSubstitutions::Type::DefaultDefine);
+							auto translated = dictionary.Translate(substitutions._dictionary, sub->_substitution);
+							if (!translated.empty()) {
+								reversePolishOrdering.insert(
+									reversePolishOrdering.end(),
+									translated.begin(), translated.end());
+							} else {
+								// a symbol that is defined to nothing is treated as if it's defined to 1
+								reversePolishOrdering.push_back(s_fixedTokenTrue);
+							}
+						}
+
+					} else if (base.type & REF) {
+
+						// This will appear when calling the "defined" pseudo-function
+						// We want to transform the pattern
+						//		<REF "&Function defined()"> <VARIABLE var> <Op "()">
+						// to be just 
+						//		<IsDefinedTest var>
+
+						auto* resolvedRef = static_cast<RefToken*>(&base)->resolve();
+						if (!resolvedRef || static_cast<CppFunction*>(resolvedRef)->name() != "defined()")
+							Throw(std::runtime_error("Only defined() is supported in relevance checks. Other functions are not supported"));
+						delete resolvedRef;
+
+						delete input.front();
+						input.pop();
+						if (input.empty())
+							Throw(std::runtime_error("Missing parameters to defined() function in token stream"));
+						TokenBase& varToTest  = *input.front();
+						if (varToTest.type != VAR)
+							Throw(std::runtime_error("Missing parameters to defined() function in token stream"));
+						std::string key = static_cast<::Token<std::string>*>(&varToTest)->val;
+						delete input.front();
+						input.pop();
+						if (input.empty())
+							Throw(std::runtime_error("Missing parameters to defined() function in token stream"));
+						TokenBase& callOp  = *input.front();
+						if (callOp.type != OP || static_cast<::Token<std::string>*>(&callOp)->val != "()")
+							Throw(std::runtime_error("Missing call token for defined() function in token stream"));
+						// (final pop still happens below)
+
+						auto sub = std::find_if(substitutions._substitutions.rbegin(), substitutions._substitutions.rend(), [key](const auto& c) { return c._symbol == key; });
+						if (sub == substitutions._substitutions.rend() || !IsTrue(sub->_condition) || sub->_type == PreprocessorSubstitutions::Type::Undefine) {
+							dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::IsDefinedTest, key);
+						} else {
+							// This is actually doing a defined(...) check on one of our substitutions. We can treat it
+							// as just "true"
+							assert(sub->_type == PreprocessorSubstitutions::Type::Define || sub->_type == PreprocessorSubstitutions::Type::DefaultDefine);
 							reversePolishOrdering.push_back(s_fixedTokenTrue);
 						}
-					}
-
-				} else if (base.type & REF) {
-
-					// This will appear when calling the "defined" pseudo-function
-					// We want to transform the pattern
-					//		<REF "&Function defined()"> <VARIABLE var> <Op "()">
-					// to be just 
-					//		<IsDefinedTest var>
-
-					auto* resolvedRef = static_cast<RefToken*>(&base)->resolve();
-					if (!resolvedRef || static_cast<CppFunction*>(resolvedRef)->name() != "defined()")
-						Throw(std::runtime_error("Only defined() is supported in relevance checks. Other functions are not supported"));
-
-					input.pop();
-					if (input.empty())
-						Throw(std::runtime_error("Missing parameters to defined() function in token stream"));
-					TokenBase& varToTest  = *input.front();
-					if (varToTest.type != VAR)
-						Throw(std::runtime_error("Missing parameters to defined() function in token stream"));
-					std::string key = static_cast<::Token<std::string>*>(&varToTest)->val;
-					input.pop();
-					if (input.empty())
-						Throw(std::runtime_error("Missing parameters to defined() function in token stream"));
-					TokenBase& callOp  = *input.front();
-					if (callOp.type != OP || static_cast<::Token<std::string>*>(&callOp)->val != "()")
-						Throw(std::runtime_error("Missing call token for defined() function in token stream"));
-					// (final pop still happens below)
-
-					auto sub = std::find_if(substitutions._substitutions.rbegin(), substitutions._substitutions.rend(), [key](const auto& c) { return c._symbol == key; });
-					if (sub == substitutions._substitutions.rend() || !IsTrue(sub->_condition) || sub->_type == PreprocessorSubstitutions::Type::Undefine) {
-						dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::IsDefinedTest, key);
+						
 					} else {
-						// This is actually doing a defined(...) check on one of our substitutions. We can treat it
-						// as just "true"
-						assert(sub->_type == PreprocessorSubstitutions::Type::Define || sub->_type == PreprocessorSubstitutions::Type::DefaultDefine);
-						reversePolishOrdering.push_back(s_fixedTokenTrue);
-					}
-					
-				} else {
-					
-					std::string literal = packToken::str(&base);
-					dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::Literal, literal);
+						
+						std::string literal = packToken::str(&base);
+						dictionary.PushBack(reversePolishOrdering, TokenDictionary::TokenType::Literal, literal);
 
+					}
+
+					delete input.front();
+					input.pop();
 				}
 
-				input.pop();
-			}
-
-			return reversePolishOrdering;
+				return reversePolishOrdering;
+			} CATCH (...) {
+				while (!input.empty()) {
+					delete input.front();
+					input.pop();
+				}
+				throw;
+			} CATCH_END
 		}
 
 		ExpressionTokenList AsExpressionTokenList(
