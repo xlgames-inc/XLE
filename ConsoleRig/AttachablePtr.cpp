@@ -172,7 +172,10 @@ namespace ConsoleRig
 				if ((type.second._localStrongReferenceCounts + type.second._localWeakReferenceCounts) != 0 && type.second._currentValue && type.second._detachModuleFn)
 					type.second._detachModuleFn(type.second._currentValue);
 			_pimpl->_registeredTypes.clear();
-			_pimpl->_crossModuleRegistration = ~0u;
+			if (_pimpl->_crossModuleRegistration != ~0u) {
+				CrossModule::GetInstance().Deregister(_pimpl->_crossModuleRegistration);
+				_pimpl->_crossModuleRegistration = ~0u;
+			}
 		}
 
 		InfraModuleManager::InfraModuleManager()
@@ -268,6 +271,17 @@ namespace ConsoleRig
 		assert(i != _pimpl->_moduleSpecificManagers.end());
 		if (i != _pimpl->_moduleSpecificManagers.end())
 			_pimpl->_moduleSpecificManagers.erase(i);
+	}
+
+	void CrossModule::Shutdown()
+	{
+		std::vector<Internal::InfraModuleManager*> moduleManagers;
+		for (const auto&c:_pimpl->_moduleSpecificManagers)
+			moduleManagers.push_back(c.second);
+		for (const auto&c:moduleManagers)
+			c->CrossModuleShuttingDown();
+		assert(_pimpl->_moduleSpecificManagers.empty());
+		_pimpl->_cannonicalPtrs.clear();
 	}
 
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS

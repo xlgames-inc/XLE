@@ -134,15 +134,9 @@ namespace Sample
         Log(Verbose) << "Starting shutdown" << std::endl;
         RenderCore::Metal::DeviceContext::PrepareForDestruction(sampleGlobals._renderDevice.get(), sampleGlobals._windowApparatus->_presentationChain.get());
         ::Assets::Services::GetAssetSets().Clear();
-        
+        ::ConsoleRig::GlobalServices::GetInstance().UnloadDefaultPlugins();
         ::Assets::MainFileSystem::GetMountingTree()->Unmount(rawosmnt);
-
-		ConsoleRig::ResourceBoxes_Shutdown();
-		::ConsoleRig::GlobalServices::GetInstance().UnloadDefaultPlugins();
-		::Assets::Services::GetAssetSets().Clear();
-		ConsoleRig::ResourceBoxes_Shutdown();
     }
-
 
 	void ISampleOverlay::OnStartup(const SampleGlobals& globals) {}
 	void ISampleOverlay::OnUpdate(float deltaTime) {}

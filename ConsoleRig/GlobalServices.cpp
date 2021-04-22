@@ -223,6 +223,7 @@ namespace ConsoleRig
         _pimpl->_assetsSetsManager = nullptr;
         _pimpl->_compileAndAsyncManager = nullptr;
         _pimpl->_depValSys = nullptr;
+        CrossModule::GetInstance().Shutdown();
     }
 
 	void GlobalServices::LoadDefaultPlugins()

@@ -104,10 +104,12 @@ namespace Assets
 		using IdentifiersList = IteratorRange<const StringSection<>*>;
         std::shared_ptr<IArtifactCollection> GetExistingAsset(TargetCode) const override;
         std::shared_ptr<ArtifactCollectionFuture> InvokeCompile() override;
+		RegisteredCompilerId GetRegisteredCompilerId() { return _registeredCompilerId; }
 
         Marker(
             InitializerPack&& requestName,
             std::shared_ptr<ExtensionAndDelegate> delegate,
+			RegisteredCompilerId registeredCompilerId,
 			std::shared_ptr<IntermediatesStore> intermediateStore);
         ~Marker();
     private:
@@ -115,6 +117,7 @@ namespace Assets
         std::weak_ptr<ExtensionAndDelegate> _delegate;
 		std::shared_ptr<IntermediatesStore> _intermediateStore;
         InitializerPack _initializers;
+		RegisteredCompilerId _registeredCompilerId;
 
 		static void PerformCompile(
 			const ExtensionAndDelegate& delegate,
@@ -294,9 +297,11 @@ namespace Assets
 	IntermediateCompilers::Marker::Marker(
         InitializerPack&& initializers,
         std::shared_ptr<ExtensionAndDelegate> delegate,
+		RegisteredCompilerId registeredCompilerId,
 		std::shared_ptr<IntermediatesStore> intermediateStore)
     : _delegate(std::move(delegate)), _intermediateStore(std::move(intermediateStore))
 	, _initializers(std::move(initializers))
+	, _registeredCompilerId(registeredCompilerId)
     {
 	}
 
@@ -323,7 +328,7 @@ namespace Assets
 				// find the associated delegate and use that
 				for (const auto&d:_delegates) {
 					if (d.first != a.first) continue;
-					auto result = std::make_shared<Marker>(std::move(initializers), d.second, _store);
+					auto result = std::make_shared<Marker>(std::move(initializers), d.second, d.first, _store);
 					for (auto markerTargetCode:a.second._targetCodes)
 						_markers.insert(std::make_pair(HashCombine(initializerArchivableHash, markerTargetCode), result));
 					return result;
@@ -363,13 +368,15 @@ namespace Assets
 		ScopedLock(_delegatesLock);
 		_extensionsAndDelegatesMap.erase(id);
 		_requestAssociations.erase(id);
-		for (auto i=_delegates.begin(); i!=_delegates.end();) {
+		for (auto i=_markers.begin(); i!=_markers.end();)
+			if (i->second->GetRegisteredCompilerId() == id) {
+				i = _markers.erase(i);
+			} else ++i;
+
+		for (auto i=_delegates.begin(); i!=_delegates.end();)
 			if (i->first == id) {
 				i = _delegates.erase(i);
-			} else {
-				++i;
-			}
-		}
+			} else ++i;
 	}
 
 	void IntermediateCompilers::AssociateRequest(

@@ -160,6 +160,7 @@ namespace ConsoleRig
 	public:
 		VariantFunctions _services;
 
+		void Shutdown();
 		static CrossModule& GetInstance();
 	private:
 		friend class Internal::InfraModuleManager;

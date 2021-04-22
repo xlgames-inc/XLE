@@ -289,6 +289,8 @@ namespace Assets
 		Threading::Mutex _lock;
 	};
 
+	static ConsoleRig::WeakAttachablePtr<IDependencyValidationSystem> s_depValSystem;
+
 	void    DependencyValidationSystem::MonitoredFile::OnChange()
 	{
 			// on change, update the modification time record
@@ -358,14 +360,19 @@ namespace Assets
 	}
 	DependencyValidation::~DependencyValidation()
 	{
-		if (_marker != DependencyValidationMarker_Invalid)
-			checked_cast<DependencyValidationSystem*>(&GetDepValSys())->Release(_marker);
+		if (_marker != DependencyValidationMarker_Invalid) {
+			// Be a little tolerant here, because the dep val system may have already been shutdown
+			// It shouldn't be too big of an issue if the shutdown order is not perfect, and just a 
+			// bit of hassle to ensure that all DependencyValidation are destroyed before the system
+			// is shutdown
+			auto sys = s_depValSystem.lock();
+			if (sys)
+				checked_cast<DependencyValidationSystem*>(sys.get())->Release(_marker);
+		}
 	}
 
 	DependencyValidation::DependencyValidation(DependencyValidationMarker marker) : _marker(marker)
 	{}
-
-	static ConsoleRig::WeakAttachablePtr<IDependencyValidationSystem> s_depValSystem;
 
 	IDependencyValidationSystem& GetDepValSys()
 	{
