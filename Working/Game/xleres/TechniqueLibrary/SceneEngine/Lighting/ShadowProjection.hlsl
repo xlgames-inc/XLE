@@ -10,7 +10,7 @@
 #define SHADOW_CASCADE_MODE_ARBITRARY 1
 #define SHADOW_CASCADE_MODE_ORTHOGONAL 2
 
-#include "../../Framework/MainGeometry.hlsl"
+#include "../../Framework/VSIN.hlsl"
 #include "../../Framework/Binding.hlsl"
 
 static const uint ShadowMaxSubProjections = 6;

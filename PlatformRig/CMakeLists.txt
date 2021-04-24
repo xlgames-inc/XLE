@@ -56,10 +56,10 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         DebuggingDisplays/TestDisplays.h)
 
     set(MiniSceneEngineSrc
-        ../SceneEngine/LightingParser.cpp
-        ../SceneEngine/LightInternal.cpp
-        ../SceneEngine/PreparedScene.cpp
-        ../SceneEngine/RenderStepUtils.cpp
+#        ../SceneEngine/LightingParser.cpp
+#        ../SceneEngine/LightInternal.cpp
+#        ../SceneEngine/PreparedScene.cpp
+#        ../SceneEngine/RenderStepUtils.cpp
         ../Tools/ToolsRig/PreviewSceneRegistry.cpp
     )
 

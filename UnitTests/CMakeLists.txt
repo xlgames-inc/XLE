@@ -84,6 +84,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         RenderCore/Assets/ColladaModelConversion.cpp
         RenderCore/Assets/PipelineConfigurationTests.cpp
         RenderCore/Assets/ImmediateDrawablesTests.cpp
+        RenderCore/LightingEngine/LightingEngineTests.cpp
         RenderCore/Metal/MetalTestHelper.cpp
         EmbeddedRes.cpp
         ../Tools/ToolsRig/VisualisationGeo.cpp
@@ -96,6 +97,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
     target_link_libraries(UnitTests-RenderCoreAssetsTechniques-${metal_name} PRIVATE RenderCore)
     target_link_libraries(UnitTests-RenderCoreAssetsTechniques-${metal_name} PRIVATE RenderCore_${metal_name})
     target_link_libraries(UnitTests-RenderCoreAssetsTechniques-${metal_name} PRIVATE RenderCoreTechniques-${metal_name})
+    target_link_libraries(UnitTests-RenderCoreAssetsTechniques-${metal_name} PRIVATE RenderCoreLightingEngine-${metal_name})
     target_link_libraries(UnitTests-RenderCoreAssetsTechniques-${metal_name} PRIVATE BufferUploads-${metal_name})
     xle_executable_post_build(UnitTests-RenderCoreAssetsTechniques-${metal_name})
 

@@ -10,12 +10,6 @@
 #include "../RenderCore/Techniques/RenderPass.h"
 #include <memory>
 
-namespace RenderCore { namespace Techniques 
-{
-	class FrameBufferDescFragment;
-	class ITechniqueDelegate;
-	class SequencerConfig;
-}}
 
 namespace SceneEngine
 {
@@ -28,49 +22,6 @@ namespace SceneEngine
 	};
 
 	class LightingParserContext;
-
-	class RenderStepFragmentInterface
-	{
-	public:
-		RenderCore::AttachmentName DefineAttachment(uint64_t semantic, const RenderCore::AttachmentDesc& request = {});
-        RenderCore::AttachmentName DefineTemporaryAttachment(const RenderCore::AttachmentDesc& request);
-        void AddSubpass(
-			RenderCore::SubpassDesc&& subpass,
-			const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& techniqueDelegate = nullptr,
-			ParameterBox&& sequencerSelectors = {});
-
-		RenderStepFragmentInterface(RenderCore::PipelineType);
-		~RenderStepFragmentInterface();
-
-		const RenderCore::Techniques::FrameBufferDescFragment& GetFrameBufferDescFragment() const { return _frameBufferDescFragment; }
-
-		struct SubpassExtension
-		{
-			std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
-			ParameterBox _sequencerSelectors;
-		};
-		IteratorRange<const SubpassExtension*> GetSubpassAddendums() const { return MakeIteratorRange(_subpassExtensions); }
-	private:
-		RenderCore::Techniques::FrameBufferDescFragment _frameBufferDescFragment;
-		std::vector<SubpassExtension> _subpassExtensions;
-	};
-
-	class RenderStepFragmentInstance
-	{
-	public:
-		const RenderCore::Techniques::SequencerConfig* GetSequencerConfig() const;
-		const RenderCore::Techniques::RenderPassInstance& GetRenderPassInstance() const { return *_rpi; }
-		RenderCore::Techniques::RenderPassInstance& GetRenderPassInstance() { return *_rpi; }
-
-		RenderStepFragmentInstance(
-			RenderCore::Techniques::RenderPassInstance& rpi,
-			IteratorRange<const std::shared_ptr<RenderCore::Techniques::SequencerConfig>*> sequencerConfigs);
-		RenderStepFragmentInstance();
-	private:
-		RenderCore::Techniques::RenderPassInstance* _rpi;
-		IteratorRange<const std::shared_ptr<RenderCore::Techniques::SequencerConfig>*> _sequencerConfigs;
-		unsigned _firstSubpassIndex;
-	};
 
 	class IRenderStep
 	{

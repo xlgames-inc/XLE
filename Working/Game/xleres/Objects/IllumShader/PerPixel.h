@@ -8,8 +8,7 @@
 #define ILLUM_PER_PIXEL
 
 #include "../../TechniqueLibrary/Framework/CommonResources.hlsl"
-#include "../../TechniqueLibrary/Framework/MainGeometry.hlsl"
-#include "../../TechniqueLibrary/Framework/Surface.hlsl"
+#include "../../TechniqueLibrary/Framework/VSOUT.hlsl"
 #include "../../TechniqueLibrary/Framework/LegacySurface.hlsl"
 #include "../../TechniqueLibrary/Framework/gbuffer.hlsl"
 #include "../../BasicMaterial.hlsl"

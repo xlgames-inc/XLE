@@ -501,10 +501,7 @@ namespace UnitTests
 			Entry{16, 23, Hash64("Sequencer"), 0, 6, 13});
 		result->AppendEntry(
 			RegisterType::Sampler, RegisterQualifier::None,
-			Entry{0, 3, Hash64("Sequencer"), 0, 13, 16});
-		result->AppendEntry(
-			RegisterType::Sampler, RegisterQualifier::None,
-			Entry{16, 17, Hash64("Sequencer"), 0, 16, 17});
+			Entry{0, 4, Hash64("Sequencer"), 0, 13, 17});
 		result->AppendEntry(
 			RegisterType::ConstantBuffer, RegisterQualifier::None,
 			Entry{7, 13, Hash64("Sequencer"), 0, 0, 6});
@@ -515,6 +512,9 @@ namespace UnitTests
 		result->AppendEntry(
 			RegisterType::ConstantBuffer, RegisterQualifier::None,
 			Entry{0, 4, Hash64("Numeric"), 3, 19, 23});
+		result->AppendEntry(
+			RegisterType::Sampler, RegisterQualifier::None,
+			Entry{16, 17, Hash64("Numeric"), 3, 23, 24});
 		return result;
 	}
 }

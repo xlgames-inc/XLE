@@ -107,7 +107,7 @@ namespace RenderCore { namespace Techniques
 		std::vector<std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>> _sequencerUniforms;
 		std::vector<std::shared_ptr<IShaderResourceDelegate>> _sequencerResources;
 
-		const SequencerConfig*	_sequencerConfig = nullptr;
+		SequencerConfig*	_sequencerConfig = nullptr;
 	};
 	
 	void Draw(

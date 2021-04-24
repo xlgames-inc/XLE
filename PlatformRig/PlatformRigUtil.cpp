@@ -7,7 +7,7 @@
 #include "PlatformRigUtil.h"
 #include "FrameRig.h"
 #include "../RenderCore/IDevice.h"
-#include "../SceneEngine/LightDesc.h"
+#include "../RenderCore/LightingEngine/LightDesc.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Format.h"
@@ -174,7 +174,7 @@ template<> const ClassAccessors& Legacy_GetAccessors<PlatformRig::DefaultShadowF
     if (!init) {
         props.Add("FrustumCount",
             [](const Obj& obj) { return obj._frustumCount; },
-            [](Obj& obj, unsigned value) { obj._frustumCount = Clamp(value, 1u, SceneEngine::MaxShadowTexturesPerLight); });
+            [](Obj& obj, unsigned value) { obj._frustumCount = Clamp(value, 1u, RenderCore::LightingEngine::MaxShadowTexturesPerLight); });
         props.Add("MaxDistanceFromCamera",  &Obj:: _maxDistanceFromCamera);
         props.Add("FrustumSizeFactor", &Obj::_frustumSizeFactor);
         props.Add("FocusDistance", &Obj::_focusDistance);
@@ -210,13 +210,13 @@ namespace PlatformRig
             MakeCameraToWorld(-negativeLightDirection, Float3(1.f, 0.f, 0.f), position));
     }
 
-    static std::pair<SceneEngine::ShadowProjectionDesc::Projections, Float4x4> 
+    static std::pair<RenderCore::LightingEngine::ShadowProjectionDesc::Projections, Float4x4> 
         BuildBasicShadowProjections(
             const SceneEngine::LightDesc& lightDesc,
             const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc,
             const DefaultShadowFrustumSettings& settings)
     {
-        using namespace SceneEngine;
+        using namespace RenderCore::LightingEngine;
         ShadowProjectionDesc::Projections result;
 
         const float shadowNearPlane = 1.f;
@@ -347,7 +347,7 @@ namespace PlatformRig
         return std::make_pair(result, ExtractMinimalProjection(projMatrix));
     }
 
-    static std::pair<SceneEngine::ShadowProjectionDesc::Projections, Float4x4>  
+    static std::pair<RenderCore::LightingEngine::ShadowProjectionDesc::Projections, Float4x4>  
         BuildSimpleOrthogonalShadowProjections(
             const SceneEngine::LightDesc& lightDesc,
             const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc,
@@ -360,7 +360,7 @@ namespace PlatformRig
         // cascade edges) but it means that the cascades might not be as tightly
         // bound as they might be.
 
-        using namespace SceneEngine;
+        using namespace RenderCore::LightingEngine;
         using namespace RenderCore;
 
         ShadowProjectionDesc::Projections result;
@@ -492,11 +492,11 @@ namespace PlatformRig
 
     
 
-	SceneEngine::ShadowGeneratorDesc
+	RenderCore::LightingEngine::ShadowGeneratorDesc
 		CalculateShadowGeneratorDesc(
 			const DefaultShadowFrustumSettings& settings)
 	{
-		SceneEngine::ShadowGeneratorDesc result;
+		RenderCore::LightingEngine::ShadowGeneratorDesc result;
 		result._width   = settings._textureSize;
         result._height  = settings._textureSize;
         if (settings._flags & DefaultShadowFrustumSettings::Flags::HighPrecisionDepths) {
@@ -510,17 +510,17 @@ namespace PlatformRig
 		if (settings._flags & DefaultShadowFrustumSettings::Flags::ArbitraryCascades) {
 			result._arrayCount = 5;
 			result._enableNearCascade = false;
-			result._projectionMode = SceneEngine::ShadowProjectionMode::Arbitrary;
+			result._projectionMode = RenderCore::LightingEngine::ShadowProjectionMode::Arbitrary;
 		} else {
 			result._arrayCount = settings._frustumCount + 1;		// (add one for the special "near" cascade
 			result._enableNearCascade = true;
-			result._projectionMode = SceneEngine::ShadowProjectionMode::Ortho;
+			result._projectionMode = RenderCore::LightingEngine::ShadowProjectionMode::Ortho;
 		}
 
         if (settings._flags & DefaultShadowFrustumSettings::Flags::RayTraced) {
-            result._resolveType = SceneEngine::ShadowResolveType::RayTraced;
+            result._resolveType = RenderCore::LightingEngine::ShadowResolveType::RayTraced;
         } else {
-            result._resolveType = SceneEngine::ShadowResolveType::DepthTexture;
+            result._resolveType = RenderCore::LightingEngine::ShadowResolveType::DepthTexture;
         }
 
         if (settings._flags & DefaultShadowFrustumSettings::Flags::CullFrontFaces) {
@@ -538,9 +538,9 @@ namespace PlatformRig
 		return result;
 	}
 
-    SceneEngine::ShadowProjectionDesc 
+    RenderCore::LightingEngine::ShadowProjectionDesc 
         CalculateDefaultShadowCascades(
-            const SceneEngine::LightDesc& lightDesc,
+            const RenderCore::LightingEngine::LightDesc& lightDesc,
             unsigned lightId,
             const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc,
             const DefaultShadowFrustumSettings& settings)
@@ -550,7 +550,7 @@ namespace PlatformRig
             //          But it actually works ok.
             //          Still, it's just a placeholder.
 
-        using namespace SceneEngine;
+        using namespace RenderCore::LightingEngine;
 
         ShadowProjectionDesc result;
         

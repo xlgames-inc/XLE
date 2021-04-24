@@ -12,7 +12,7 @@
 #include "../Utility/FunctionUtils.h"
 
 namespace RenderOverlays { namespace DebuggingDisplay { class DebugScreensSystem; }}
-namespace SceneEngine { class ShadowProjectionDesc; class LightDesc; class ShadowGeneratorDesc; }
+namespace RenderCore { namespace LightingEngine { class ShadowProjectionDesc; class LightDesc; class ShadowGeneratorDesc; }}
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class TechniqueContext; } }
 
 namespace PlatformRig
@@ -96,13 +96,13 @@ namespace PlatformRig
     /// <param name="mainSceneCameraDesc">This is the projection desc used when rendering the 
     /// the main scene from this camera (it's the project desc for the shadows render). This
     /// is required for adapting the shadows projection to the main scene camera.</param>
-    SceneEngine::ShadowProjectionDesc CalculateDefaultShadowCascades(
-        const SceneEngine::LightDesc& lightDesc,
+    RenderCore::LightingEngine::ShadowProjectionDesc CalculateDefaultShadowCascades(
+        const RenderCore::LightingEngine::LightDesc& lightDesc,
         unsigned lightId,
         const RenderCore::Techniques::ProjectionDesc& mainSceneCameraDesc,
         const DefaultShadowFrustumSettings& settings);
 
-	SceneEngine::ShadowGeneratorDesc
+	RenderCore::LightingEngine::ShadowGeneratorDesc
 		CalculateShadowGeneratorDesc(
 			const DefaultShadowFrustumSettings& settings);
 

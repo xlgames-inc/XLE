@@ -42,10 +42,9 @@ namespace RenderCore { namespace Techniques
 
     struct RSDepthBias
     {
-    public:
-        int _depthBias; float _depthBiasClamp; float _slopeScaledBias;
-        RSDepthBias(int depthBias=0, float depthBiasClamp=0, float slopeScaledBias=0.f)
-            : _depthBias(depthBias), _depthBiasClamp(depthBiasClamp), _slopeScaledBias(slopeScaledBias) {}
+        int _depthBias = 0;
+        float _depthBiasClamp = 0.f;
+        float _slopeScaledBias = 0.f;
     };
     std::shared_ptr<IRenderStateDelegate> CreateRenderStateDelegate_DepthOnly(
         const RSDepthBias& singleSidedBias = RSDepthBias(),

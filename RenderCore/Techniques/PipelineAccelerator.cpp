@@ -94,13 +94,13 @@ namespace RenderCore { namespace Techniques
 		std::shared_ptr<Metal::GraphicsPipeline> InternalCreatePipeline(
 			const Metal::ShaderProgram& shader,
 			const DepthStencilDesc& depthStencil,
-			const AttachmentBlendDesc& blend,
+			IteratorRange<const AttachmentBlendDesc*> attachmentBlends,
 			const RasterizationDesc& rasterization,
 			const SequencerConfig& sequencerCfg)
 		{
 			Metal::GraphicsPipelineBuilder builder;
 			builder.Bind(shader);
-			builder.Bind(MakeIteratorRange(&blend, &blend+1));
+			builder.Bind(attachmentBlends);
 			builder.Bind(depthStencil);
 			builder.Bind(rasterization);
 
@@ -385,9 +385,6 @@ namespace RenderCore { namespace Techniques
 						const std::shared_ptr<GraphicsPipelineDescWithFilteringRules>& pipelineDescWithFiltering) {
 
 						const auto& pipelineDesc = pipelineDescWithFiltering->_pipelineDesc;
-						if (pipelineDesc->_blend.empty())
-							Throw(std::runtime_error("No blend modes specified in GraphicsPipelineDesc. There must be at least one blend mode specified"));
-
 						UniqueShaderVariationSet::FilteredSelectorSet filteredSelectors[dimof(ITechniqueDelegate::GraphicsPipelineDesc::_shaders)];
 
 						auto containingPipelineAccelerator = weakThis.lock();
@@ -448,7 +445,7 @@ namespace RenderCore { namespace Techniques
 								result->_metalPipeline = containingPipelineAccelerator->InternalCreatePipeline(
 									*shaderProgram, 
 									pipelineDesc->_depthStencil, 
-									pipelineDesc->_blend[0], 
+									pipelineDesc->_blend, 
 									pipelineDesc->_rasterization, 
 									cfg);
 								result->_depVal = configurationDepVal;

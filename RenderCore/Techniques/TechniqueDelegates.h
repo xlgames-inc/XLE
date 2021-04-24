@@ -56,19 +56,19 @@ namespace RenderCore { namespace Techniques
 		using BitField = unsigned;
 	}
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_Forward(
-		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const ::Assets::FuturePtr<TechniqueSetFile>& techniqueSet,
 		const std::shared_ptr<TechniqueSharedResources>& sharedResources,
 		TechniqueDelegateForwardFlags::BitField flags = 0);
 
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_DepthOnly(
-		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const ::Assets::FuturePtr<TechniqueSetFile>& techniqueSet,
 		const std::shared_ptr<TechniqueSharedResources>& sharedResources,
 		const RSDepthBias& singleSidedBias = RSDepthBias(),
         const RSDepthBias& doubleSidedBias = RSDepthBias(),
         CullMode cullMode = CullMode::Back);
 
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_ShadowGen(
-		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const ::Assets::FuturePtr<TechniqueSetFile>& techniqueSet,
 		const std::shared_ptr<TechniqueSharedResources>& sharedResources,
 		const RSDepthBias& singleSidedBias = RSDepthBias(),
         const RSDepthBias& doubleSidedBias = RSDepthBias(),

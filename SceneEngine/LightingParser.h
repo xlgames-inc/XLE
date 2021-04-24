@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "LightDesc.h"		// (required for ShadowGeneratorDesc in SceneTechniqueDesc)
 #include "../RenderCore/IDevice_Forward.h"
 #include "../RenderCore/ResourceDesc.h"
 #include "../Math/Matrix.h"
