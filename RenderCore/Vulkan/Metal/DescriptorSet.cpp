@@ -271,7 +271,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			VkDescriptorImageInfo {
 				globalPools._dummyResources._blankSampler->GetUnderlying(),
 				globalPools._dummyResources._blankSrv.GetImageView(),
-				VK_IMAGE_LAYOUT_GENERAL });
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
 		auto& blankSampler = AllocateInfo(
 			VkDescriptorImageInfo {
 				globalPools._dummyResources._blankSampler->GetUnderlying(),
@@ -281,7 +281,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			VkDescriptorImageInfo {
 				globalPools._dummyResources._blankSampler->GetUnderlying(),
 				globalPools._dummyResources._blankUavImage.GetImageView(),
-				VK_IMAGE_LAYOUT_GENERAL });
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
 		auto& blankStorageBuffer = AllocateInfo(
 			VkDescriptorBufferInfo {
 				globalPools._dummyResources._blankUavBuffer.GetResource()->GetBuffer(),

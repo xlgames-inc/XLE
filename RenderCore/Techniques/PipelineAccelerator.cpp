@@ -35,6 +35,7 @@ namespace RenderCore { namespace Techniques
 		ParameterBox _sequencerSelectors;
 
 		FrameBufferDesc _fbDesc;
+		unsigned _subpassIdx = 0;
 		uint64_t _fbRelevanceValue = 0;
 	};
 
@@ -113,7 +114,7 @@ namespace RenderCore { namespace Techniques
 				builder.Bind(ia, _topology);
 			}
 
-			builder.SetRenderPassConfiguration(sequencerCfg._fbDesc, 0);
+			builder.SetRenderPassConfiguration(sequencerCfg._fbDesc, sequencerCfg._subpassIdx);
 
 			return builder.CreatePipeline(Metal::GetObjectFactory());
 		}
@@ -749,10 +750,22 @@ namespace RenderCore { namespace Techniques
 		cfg._sequencerSelectors = sequencerSelectors;
 
 		cfg._fbDesc = fbDesc;
-		if (subpassIndex != 0 || fbDesc.GetSubpasses().size() > 1)
-			cfg._fbDesc = SeparateSingleSubpass(fbDesc, subpassIndex);
+		cfg._subpassIdx = subpassIndex;
 
-		cfg._fbRelevanceValue = Metal::GraphicsPipelineBuilder::CalculateFrameBufferRelevance(cfg._fbDesc);
+		// In Vulkan, the "subpass index" value (and subpass count of the containing pipeline layout) is
+		// important when building a pipeline. That if there are 2 render passes that contain identical 
+		// subpasses, just at different subpass indices, then we can't use the same pipelines in both
+		// those subpasses (ie, pipelines created for one aren't compatible with the other)
+		//
+		// However, we can get away with this on other APIs... When we can, we can use this trick to
+		// take advantage of it
+		const bool apiSupportsSeparatingSubpasses = false;
+		if ((subpassIndex != 0 || fbDesc.GetSubpasses().size() > 1) && apiSupportsSeparatingSubpasses) {
+			cfg._fbDesc = SeparateSingleSubpass(fbDesc, subpassIndex);
+			cfg._subpassIdx = 0;
+		}
+
+		cfg._fbRelevanceValue = Metal::GraphicsPipelineBuilder::CalculateFrameBufferRelevance(cfg._fbDesc, cfg._subpassIdx);
 
 		hash = HashCombine(sequencerSelectors.GetHash(), sequencerSelectors.GetParameterNamesHash());
 		hash = HashCombine(cfg._fbRelevanceValue, hash);
@@ -919,14 +932,13 @@ namespace RenderCore { namespace Techniques
 					});
 			}
 		} else {
-			RenderCore::Assets::PredefinedDescriptorSetLayout emptyDescriptorSet;
 			ConstructDescriptorSet(
 				*result->_descriptorSet,
 				_device,
 				constantBindings,
 				resourceBindings,
 				MakeIteratorRange(metalSamplers),
-				emptyDescriptorSet,
+				*_matDescSetLayout.GetLayout(),
 				(_flags & PipelineAcceleratorPoolFlags::RecordDescriptorSetBindingInfo) ? &result->_bindingInfo : nullptr);
 		}
 

@@ -434,24 +434,35 @@ namespace RenderCore { namespace Metal_Vulkan
 				if (i == deps.end())
 					i = deps.insert(deps.end(), {
 						d._first._subpassIdx, c, 
-						// note -- making assumptions about attachments usage here -- (in particular, ignoring shader resources bound to shaders other than the fragment shader)
-						VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                        0, 0,	// access flags set below
+						0, 0, 0, 0,	// mask and access flags set below
 						0});
 
-				if (d._first._usage | Internal::AttachmentUsageType::Output)
+				// note -- making assumptions about attachments usage here -- (in particular, ignoring shader resources bound to shaders other than the fragment shader)
+				if (d._first._usage | Internal::AttachmentUsageType::Output) {
 					i->srcAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-				if (d._first._usage | Internal::AttachmentUsageType::DepthStencil)
+					i->srcStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+				}
+				if (d._first._usage | Internal::AttachmentUsageType::DepthStencil) {
 					i->srcAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-				if (d._first._usage | Internal::AttachmentUsageType::Input)
+					i->srcStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+				}
+				if (d._first._usage | Internal::AttachmentUsageType::Input) {
 					i->srcAccessMask |= VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+					i->srcStageMask |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				}
 
-				if (d._second._usage | Internal::AttachmentUsageType::Output)
+				if (d._second._usage | Internal::AttachmentUsageType::Output) {
 					i->dstAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-				if (d._second._usage | Internal::AttachmentUsageType::DepthStencil)
+					i->dstStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+				}
+				if (d._second._usage | Internal::AttachmentUsageType::DepthStencil) {
 					i->dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-				if (d._second._usage | Internal::AttachmentUsageType::Input)
+					i->dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+				}
+				if (d._second._usage | Internal::AttachmentUsageType::Input) {
 					i->dstAccessMask |= VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+					i->dstStageMask |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				}
 			}
 
 			vkDeps.insert(vkDeps.end(), deps.begin(), deps.end());
