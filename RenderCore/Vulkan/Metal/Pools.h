@@ -134,6 +134,8 @@ namespace RenderCore { namespace Metal_Vulkan
         std::shared_ptr<Resource>            _blankBuffer;
         std::unique_ptr<SamplerState> _blankSampler;
 
+        void CompleteInitialization(DeviceContext&);
+
         DummyResources(ObjectFactory& factory);
         DummyResources();
         ~DummyResources();

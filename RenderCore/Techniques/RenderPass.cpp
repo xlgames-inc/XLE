@@ -126,7 +126,7 @@ namespace RenderCore { namespace Techniques
     IResourcePtr NamedAttachmentsWrapper::GetResource(AttachmentName resName, const AttachmentDesc& requestDesc, const FrameBufferProperties& props) const
     {
         assert(resName < _poolMapping->size());
-        auto result = _pool->GetResource((*_poolMapping)[resName]);
+        auto result = _pool->GetResource((*_poolMapping)[resName])._resource;
 
         #if defined(_DEBUG)
             // Validate that the "desc" for the returned resource matches what the caller was requesting
@@ -210,11 +210,16 @@ namespace RenderCore { namespace Techniques
         auto poolAttachments = attachmentPool.Request(desc);
 		assert(poolAttachments.size() == desc.GetAttachments().size());
 
+        Result result;
+
         uint64_t hashValue = desc.GetHash();
         for (const auto&a:poolAttachments) {
-            auto *res = attachmentPool.GetResource(a).get();
-            assert(res);
-            hashValue = HashCombine(res->GetGUID(), hashValue);
+            auto resResult = attachmentPool.GetResource(a);
+            assert(resResult._resource);
+            hashValue = HashCombine(resResult._resource->GetGUID(), hashValue);
+
+            if (resResult._needsCompleteResource)
+                result._uncompletedInitializationResources.push_back(resResult._resource.get());
         }
         assert(hashValue != ~0ull);     // using ~0ull has a sentinel, so this will cause some problems
 
@@ -251,10 +256,9 @@ namespace RenderCore { namespace Techniques
         _pimpl->_entries[earliestEntry]._hash = hashValue;
         _pimpl->_entries[earliestEntry]._poolAttachmentsRemapping = std::move(poolAttachments);
         _pimpl->IncreaseTickId();
-        return {
-            _pimpl->_entries[earliestEntry]._fb,
-            MakeIteratorRange(_pimpl->_entries[earliestEntry]._poolAttachmentsRemapping)
-        };
+        result._frameBuffer = _pimpl->_entries[earliestEntry]._fb;
+        result._poolAttachmentsRemapping = MakeIteratorRange(_pimpl->_entries[earliestEntry]._poolAttachmentsRemapping);
+        return result;
     }
 
     void FrameBufferPool::Reset()
@@ -315,7 +319,7 @@ namespace RenderCore { namespace Techniques
     {
         assert(_attachmentPool);
         if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName]);
+            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName])._resource;
         return nullptr;
     }
 
@@ -345,7 +349,7 @@ namespace RenderCore { namespace Techniques
 		auto resName = subPass.GetInputs()[inputAttachmentSlot]._resourceName;
 		assert(_attachmentPool);
         if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName]);
+            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName])._resource;
         return nullptr;
 	}
 
@@ -387,7 +391,7 @@ namespace RenderCore { namespace Techniques
 		auto resName = subPass.GetOutputs()[inputAttachmentSlot]._resourceName;
 		assert(_attachmentPool);
         if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName]);
+            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName])._resource;
         return nullptr;
 	}
 
@@ -427,7 +431,7 @@ namespace RenderCore { namespace Techniques
 		auto resName = subPass.GetDepthStencil()._resourceName;
 		assert(_attachmentPool);
         if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName]);
+            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName])._resource;
         return nullptr;
 	}
 
@@ -459,11 +463,15 @@ namespace RenderCore { namespace Techniques
         const RenderPassBeginDesc& beginInfo)
 	: _layout(layout)
     {
+        _attachedContext = Metal::DeviceContext::Get(context).get();
+
         auto fb = frameBufferPool.BuildFrameBuffer(
             Metal::GetObjectFactory(*context.GetDevice()),
             layout, attachmentPool);
 
-        _attachedContext = Metal::DeviceContext::Get(context).get();
+        if (!fb._uncompletedInitializationResources.empty())
+            Metal::CompleteInitialization(*_attachedContext, MakeIteratorRange(fb._uncompletedInitializationResources));
+
         _frameBuffer = std::move(fb._frameBuffer);
         _attachmentPoolRemapping = std::vector<AttachmentName>(fb._poolAttachmentsRemapping.begin(), fb._poolAttachmentsRemapping.end());
         _attachmentPool = &attachmentPool;
@@ -650,21 +658,23 @@ namespace RenderCore { namespace Techniques
     }
 #endif
     
-    IResourcePtr AttachmentPool::GetResource(AttachmentName attachName) const
+    auto AttachmentPool::GetResource(AttachmentName attachName) const -> GetResourceResult
     {
         Pimpl::Attachment* attach = nullptr;
         if (attachName & (1u<<31u)) {
             auto semanticAttachIdx = attachName & ~(1u<<31u);
-            if (semanticAttachIdx >= _pimpl->_semanticAttachments.size()) return nullptr;
+            if (semanticAttachIdx >= _pimpl->_semanticAttachments.size()) return {nullptr};
             attach = &_pimpl->_semanticAttachments[semanticAttachIdx];
         } else {
-            if (attachName >= _pimpl->_attachments.size()) return nullptr;
+            if (attachName >= _pimpl->_attachments.size()) return {nullptr};
             attach = &_pimpl->_attachments[attachName];
         }
         assert(attach);
-        if (!attach->_resource)
-            _pimpl->BuildAttachment(attachName);
-        return attach->_resource;
+        if (attach->_resource)
+            return GetResourceResult { attach->_resource, false };
+            
+        _pimpl->BuildAttachment(attachName);
+        return GetResourceResult { attach->_resource, true };
 	}
 
     static TextureViewDesc CompleteTextureViewDesc(const TextureViewDesc& viewDesc, TextureViewDesc::Aspect defaultAspect)

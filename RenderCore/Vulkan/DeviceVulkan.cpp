@@ -808,6 +808,10 @@ namespace RenderCore { namespace ImplVulkan
 				std::move(tempBufferSpace));
 			_foregroundPrimaryContext->AttachDestroyer(destroyer);
 			_foregroundPrimaryContext->SetGPUTracker(_gpuTracker);
+
+			// We need to ensure that the "dummy" resources get their layout change to complete initialization
+			_foregroundPrimaryContext->GetMetalContext()->BeginCommandList();
+			_pools._dummyResources.CompleteInitialization(*_foregroundPrimaryContext->GetMetalContext());
 		}
     }
 

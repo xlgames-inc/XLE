@@ -69,7 +69,12 @@ namespace RenderCore { namespace Techniques
 
         std::vector<AttachmentName> Request(const FrameBufferDesc& fbDesc);
 
-        auto GetResource(AttachmentName resName) const -> IResourcePtr;
+        struct GetResourceResult
+        {
+            IResourcePtr _resource;
+            bool _needsCompleteResource = false;
+        };
+        GetResourceResult GetResource(AttachmentName resName) const;
         auto GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const -> IResourceView*;
 
         void ResetActualized();
@@ -113,6 +118,7 @@ namespace RenderCore { namespace Techniques
         public:
             std::shared_ptr<Metal::FrameBuffer> _frameBuffer;
             IteratorRange<const AttachmentName*> _poolAttachmentsRemapping;
+            std::vector<IResource*> _uncompletedInitializationResources;
         };
         Result BuildFrameBuffer(
             Metal::ObjectFactory& factory,

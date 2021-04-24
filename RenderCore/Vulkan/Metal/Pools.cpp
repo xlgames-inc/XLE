@@ -632,6 +632,12 @@ namespace RenderCore { namespace Metal_Vulkan
         return Internal::CreateResource(factory, desc);
     }
 
+	void DummyResources::CompleteInitialization(DeviceContext& devContext)
+	{
+		IResource* res[] = { _blankTexture.get(), _blankUAVImageRes.get(), _blankUAVBufferRes.get() }; 
+		Metal_Vulkan::CompleteInitialization(devContext, MakeIteratorRange(res));
+	}
+
     DummyResources::DummyResources(ObjectFactory& factory)
     : _blankTexture(CreateDummyTexture(factory))
     , _blankUAVImageRes(CreateDummyUAVImage(factory))
