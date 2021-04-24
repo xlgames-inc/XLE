@@ -25,13 +25,13 @@ namespace Assets
 		::Assets::DependentFileState mainFileState;
 		
 		result._fileContents = ::Assets::TryLoadFileAsMemoryBlock_TolerateSharingErrors(result._filename, &result._fileContentsSize, &mainFileState);
+		_depFileStates.insert(mainFileState);
 		if (!result._fileContentsSize) {
 			if (!fileIncludedFrom.IsEmpty())
 				Throw(std::runtime_error("Missing or empty file when loading: " + result._filename + " (included from: " + fileIncludedFrom.AsString() + ")"));
 			Throw(std::runtime_error("Missing or empty file when loading: " + result._filename));
 		}
 		assert(!mainFileState._filename.empty());
-		_depFileStates.insert(mainFileState);
 		return result;
 	}
 
