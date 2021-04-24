@@ -4,6 +4,7 @@
 
 #include "SystemUniformsDelegate.h"
 #include "CommonResources.h"
+#include "ParsingContext.h"
 #include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Techniques
@@ -12,7 +13,7 @@ namespace RenderCore { namespace Techniques
 	{
 		switch (idx) {
 		case 0:
-			*(GlobalTransformConstants*)dst.begin() = _globalTransform;
+			*(GlobalTransformConstants*)dst.begin() = BuildGlobalTransformConstants(context.GetProjectionDesc());
 			break;
 		case 1:
 			*(LocalTransformConstants*)dst.begin() = _localTransformFallback;
@@ -46,9 +47,7 @@ namespace RenderCore { namespace Techniques
 		_interface.BindImmediateData(0, Hash64("GlobalTransform"));
 		_interface.BindImmediateData(1, Hash64("LocalTransform"));
 
-		XlZeroMemory(_globalTransform);
 		XlZeroMemory(_localTransformFallback);
-		_globalTransform = BuildGlobalTransformConstants(ProjectionDesc{});
 		_localTransformFallback._localToWorld = Identity<Float3x4>();
 		_localTransformFallback._localSpaceView = Float3(0.f, 0.f, 0.f);
 

@@ -151,23 +151,6 @@ namespace SceneEngine
 		}
     }
 
-    LightDesc::LightDesc()
-    {
-        _shape = Directional;
-        _position = Normalize(Float3(-.1f, 0.33f, 1.f));
-        _orientation = Identity<Float3x3>();
-        _cutoffRange = 10000.f;
-        _radii = Float2(1.f, 1.f);
-        _diffuseColor = Float3(1.f, 1.f, 1.f);
-        _specularColor = Float3(1.f, 1.f, 1.f);
-
-        _diffuseWideningMin = 0.5f;
-        _diffuseWideningMax = 2.5f;
-        _diffuseModel = 1;
-
-        _shadowResolveModel = 0;
-    }
-
     LightDesc::LightDesc(const Utility::ParameterBox& props)
     : LightDesc()
     {

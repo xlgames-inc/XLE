@@ -515,6 +515,13 @@ namespace UnitTests
 		result->AppendEntry(
 			RegisterType::Sampler, RegisterQualifier::None,
 			Entry{16, 17, Hash64("Numeric"), 3, 23, 24});
+
+		result->AppendEntry(
+			RegisterType::ShaderResource, RegisterQualifier::None,
+			Entry{23, 31, Hash64("Material"), 1, 3, 11});
+		result->AppendEntry(
+			RegisterType::ConstantBuffer, RegisterQualifier::None,
+			Entry{4, 7, Hash64("Material"), 1, 0, 3});
 		return result;
 	}
 }

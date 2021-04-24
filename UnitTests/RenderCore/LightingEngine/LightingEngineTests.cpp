@@ -13,6 +13,8 @@
 #include "../../../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../../../RenderCore/Techniques/Services.h"
 #include "../../../RenderCore/Techniques/ParsingContext.h"
+#include "../../../RenderCore/Techniques/CommonResources.h"
+#include "../../../RenderCore/Techniques/SystemUniformsDelegate.h"
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/OSFileSystem.h"
@@ -43,25 +45,40 @@ namespace UnitTests
 {
 	static RenderCore::Techniques::DescriptorSetLayoutAndBinding MakeMaterialDescriptorSetLayout()
 	{
-		auto layout = std::make_shared<RenderCore::Assets::PredefinedDescriptorSetLayout>();
-		layout->_slots = {
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::UniformBuffer },
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::UniformBuffer },
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::UniformBuffer },
-			
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
+		const char* unitTestsMaterialDescSet = R"(
+			UniformBuffer BasicMaterialConstants
+			{
+				float3  MaterialDiffuse = {1,1,1};
+				float   Opacity = 1;
+				float3  MaterialSpecular = {1,1,1};
+				float   AlphaThreshold = .5f;
 
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::UnorderedAccessBuffer },
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Sampler }
-		};
+				float   RoughnessMin = 0.1f;
+				float   RoughnessMax = 0.6f;
+				float   SpecularMin = 0.0f;
+				float   SpecularMax = 0.5f;
+				float   MetalMin = 0.f;
+				float   MetalMax = 1.f;
+			};
+			UniformBuffer cb1;						// 1
+			UniformBuffer cb2;						// 2
 
+			SampledTexture tex0;					// 3
+			SampledTexture tex1;					// 4
+			SampledTexture tex2;					// 5
+			SampledTexture tex3;					// 6
+			SampledTexture tex4;					// 7
+			SampledTexture tex5;					// 8
+			SampledTexture tex6;					// 9
+			SampledTexture tex7;					// 10
+
+			UnorderedAccessBuffer uab0;				// 11
+			Sampler sampler0;						// 12
+		)";
+
+		auto layout = std::make_shared<RenderCore::Assets::PredefinedDescriptorSetLayout>(
+			unitTestsMaterialDescSet, ::Assets::DirectorySearchRules{}, ::Assets::DependencyValidation{}
+		);
 		return RenderCore::Techniques::DescriptorSetLayoutAndBinding { layout, 1 };
 	}
 
@@ -72,8 +89,8 @@ namespace UnitTests
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{"GlobalTransform"}, RenderCore::DescriptorType::UniformBuffer },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{"LocalTransform"}, RenderCore::DescriptorType::UniformBuffer },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::UniformBuffer },
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::UniformBuffer },
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::UniformBuffer },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{"BasicLightingEnvironment"}, RenderCore::DescriptorType::UniformBuffer },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{"ArbitraryShadowProjection"}, RenderCore::DescriptorType::UniformBuffer },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::UniformBuffer },
 			
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
@@ -100,6 +117,8 @@ namespace UnitTests
 		result._position = Float3{0.f, 1.0f, 0.f};
 		result._radii = Float2{1.0f, 1.0f};
 		result._shape = RenderCore::LightingEngine::LightDesc::Shape::Directional;
+		result._diffuseColor = Float3{1.0f, 1.0f, 1.0f};
+		result._radii = Float2{100.f, 100.f};
 		return result;
 	}
 
@@ -122,6 +141,7 @@ namespace UnitTests
 	public:
 		std::shared_ptr<RenderCore::Techniques::DrawableGeo> _geo;
 		std::shared_ptr<RenderCore::Techniques::PipelineAccelerator> _pipelineAccelerator;
+		std::shared_ptr<RenderCore::Techniques::DescriptorSetAccelerator> _descriptorSetAccelerator;
 		size_t _vertexCount;
 
 		void WriteDrawable(RenderCore::Techniques::DrawablesPacket& pkt)
@@ -129,7 +149,7 @@ namespace UnitTests
 			struct CustomDrawable : public RenderCore::Techniques::Drawable { unsigned _vertexCount; };
 			auto* drawable = pkt._drawables.Allocate<CustomDrawable>();
 			drawable->_pipeline = _pipelineAccelerator;
-			drawable->_descriptorSet = nullptr;
+			drawable->_descriptorSet = _descriptorSetAccelerator;
 			drawable->_geo = _geo;
 			drawable->_vertexCount = _vertexCount;
 			drawable->_drawFn = [](RenderCore::Techniques::ParsingContext&, const RenderCore::Techniques::ExecuteDrawableContext& drawFnContext, const RenderCore::Techniques::Drawable& drawable)
@@ -142,9 +162,9 @@ namespace UnitTests
 		{
 			auto sphereGeo = ToolsRig::BuildGeodesicSphere();
 			auto sphereVb = testHelper.CreateVB(sphereGeo);
-			auto drawableGeo = std::make_shared<RenderCore::Techniques::DrawableGeo>();
-			drawableGeo->_vertexStreams[0]._resource = sphereVb;
-			drawableGeo->_vertexStreamCount = 1;
+			_geo = std::make_shared<RenderCore::Techniques::DrawableGeo>();
+			_geo->_vertexStreams[0]._resource = sphereVb;
+			_geo->_vertexStreamCount = 1;
 			_vertexCount = sphereGeo.size();
 
 			_pipelineAccelerator = pipelineAcceleratorPool.CreatePipelineAccelerator(
@@ -153,6 +173,10 @@ namespace UnitTests
 				ToolsRig::Vertex3D_InputLayout,
 				RenderCore::Topology::TriangleList,
 				RenderCore::Assets::RenderStateSet{});
+
+			_descriptorSetAccelerator = pipelineAcceleratorPool.CreateDescriptorSetAccelerator(
+				nullptr,
+				{}, {}, {});
 		}
 	};
 
@@ -197,18 +221,26 @@ namespace UnitTests
 
 		auto techniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
 		techniqueContext->_drawablesSharedResources = RenderCore::Techniques::CreateDrawablesSharedResources();
+		auto commonResources = std::make_shared<RenderCore::Techniques::CommonResourceBox>(*testHelper->_device);
+		techniqueContext->_systemUniformsDelegate = std::make_shared<RenderCore::Techniques::SystemUniformsDelegate>(*testHelper->_device, *commonResources);
 
 		DrawableWriter drawableWriter(*testHelper, *pipelineAcceleratorPool);
+
+		testHelper->BeginFrameCapture();
 
 		{
 			RenderCore::LightingEngine::SceneLightingDesc lightingDesc;
 			lightingDesc._lights.push_back(CreateTestLight());
 			lightingDesc._shadowProjections.push_back(CreateTestShadowProjection());
 
+			RenderCore::Techniques::CameraDesc camera;
+			camera._cameraToWorld = MakeCameraToWorld(Float3{1.0f, 0.0f, 0.0f}, Float3{0.0f, 1.0f, 0.0f}, Float3{-5.0f, 0.f, 0.f});
+
 			Techniques::AttachmentPool attachmentPool(testHelper->_device);
 			Techniques::FrameBufferPool frameBufferPool;
 			
 			Techniques::ParsingContext parsingContext{*techniqueContext};
+			parsingContext.GetProjectionDesc() = BuildProjectionDesc(camera, UInt2{targetDesc._textureDesc._width, targetDesc._textureDesc._height});
 			RenderCore::LightingEngine::LightingTechniqueInstance lightingIterator(
 				*threadContext, parsingContext, *pipelineAcceleratorPool, attachmentPool, frameBufferPool, lightingDesc, *lightingTechnique);
 
@@ -220,5 +252,7 @@ namespace UnitTests
 				drawableWriter.WriteDrawable(*next._pkt);
 			}
 		}
+
+		testHelper->EndFrameCapture();
 	}
 }

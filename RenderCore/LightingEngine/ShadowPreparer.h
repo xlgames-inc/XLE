@@ -33,7 +33,7 @@ namespace RenderCore { namespace LightingEngine
 			IThreadContext& threadContext, 
 			Techniques::ParsingContext& parsingContext,
 			Techniques::RenderPassInstance& rpi) = 0;
-		virtual std::shared_ptr<Techniques::SequencerConfig> GetSequencerConfig() = 0;
+		virtual std::pair<std::shared_ptr<Techniques::SequencerConfig>, std::shared_ptr<Techniques::IShaderResourceDelegate>> GetSequencerConfig() = 0;
 		~ICompiledShadowPreparer();
 	};
 

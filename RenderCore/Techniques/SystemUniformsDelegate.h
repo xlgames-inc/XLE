@@ -16,7 +16,6 @@ namespace RenderCore { namespace Techniques
 	class SystemUniformsDelegate : public IShaderResourceDelegate
 	{
 	public:
-		void SetGlobalTransform(const GlobalTransformConstants& input) { _globalTransform = input; }
 		void SetLocalTransformFallback(const LocalTransformConstants& input) { _localTransformFallback = input; }
 
 		const UniformsStreamInterface& GetInterface() override;
@@ -27,7 +26,6 @@ namespace RenderCore { namespace Techniques
 		~SystemUniformsDelegate();
 	private:
 		UniformsStreamInterface _interface;
-		GlobalTransformConstants _globalTransform;
 		LocalTransformConstants _localTransformFallback;
 		std::shared_ptr<ISampler> _samplers[4];
 	};

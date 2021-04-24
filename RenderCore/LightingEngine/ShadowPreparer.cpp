@@ -31,7 +31,7 @@ namespace RenderCore { namespace LightingEngine
 			Techniques::ParsingContext& parsingContext,
 			Techniques::RenderPassInstance& rpi) override;
 
-		std::shared_ptr<Techniques::SequencerConfig> GetSequencerConfig() override;
+		std::pair<std::shared_ptr<Techniques::SequencerConfig>, std::shared_ptr<Techniques::IShaderResourceDelegate>> GetSequencerConfig() override;
 
 		CompiledShadowPreparer(
 			const ShadowGeneratorDesc& desc,
@@ -43,9 +43,53 @@ namespace RenderCore { namespace LightingEngine
 		std::shared_ptr<Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
 
 		FrameBufferDesc _fbDesc;
-		std::vector<std::shared_ptr<Techniques::SequencerConfig>> _sequencerConfigs;
+		std::shared_ptr<Techniques::SequencerConfig> _sequencerConfigs;
+		std::shared_ptr<Techniques::IShaderResourceDelegate> _uniformDelegate;
+
+		Techniques::ProjectionDesc _savedProjectionDesc;
 
 		PreparedDMShadowFrustum _workingDMFrustum;
+
+		class UniformDelegate : public Techniques::IShaderResourceDelegate
+		{
+		public:
+			virtual const UniformsStreamInterface& GetInterface() override { return _interface; }
+			void WriteImmediateData(Techniques::ParsingContext& context, const void* objectContext, unsigned idx, IteratorRange<void*> dst) override
+			{
+				switch (idx) {
+				case 0:
+					assert(dst.size() == sizeof(CB_ArbitraryShadowProjection)); 
+					std::memcpy(dst.begin(), &_preparer->_workingDMFrustum._arbitraryCBSource, sizeof(CB_ArbitraryShadowProjection));
+					break;
+				case 1:
+					assert(dst.size() == sizeof(CB_OrthoShadowProjection)); 
+					std::memcpy(dst.begin(), &_preparer->_workingDMFrustum._orthoCBSource, sizeof(CB_OrthoShadowProjection));
+					break;
+				default:
+					assert(0);
+					break;
+				}
+			}
+
+			size_t GetImmediateDataSize(Techniques::ParsingContext& context, const void* objectContext, unsigned idx) override
+			{
+				switch (idx) {
+				case 0: return sizeof(CB_ArbitraryShadowProjection);
+				case 1: return sizeof(CB_OrthoShadowProjection);
+				default:
+					assert(0);
+					return 0;
+				}
+			}
+		
+			UniformDelegate(CompiledShadowPreparer& preparer) : _preparer(&preparer)
+			{
+				_interface.BindImmediateData(0, Utility::Hash64("ArbitraryShadowProjection"), {});
+				_interface.BindImmediateData(1, Utility::Hash64("OrthogonalShadowProjection"), {});
+			}
+			UniformsStreamInterface _interface;
+			CompiledShadowPreparer* _preparer;
+		};
 	};
 
 	ICompiledShadowPreparer::~ICompiledShadowPreparer() {}
@@ -60,6 +104,7 @@ namespace RenderCore { namespace LightingEngine
 		_workingDMFrustum = SetupPreparedDMShadowFrustum(frustum);
 		assert(_workingDMFrustum.IsReady());
 		assert(!_fbDesc.GetSubpasses().empty());
+		_savedProjectionDesc = parsingContext.GetProjectionDesc();
 		parsingContext.GetProjectionDesc()._worldToProjection = frustum._worldToClip;
 		return Techniques::RenderPassInstance{threadContext, _fbDesc, shadowGenFrameBufferPool, shadowGenAttachmentPool};
 	}
@@ -90,12 +135,13 @@ namespace RenderCore { namespace LightingEngine
 		}
 		*/
 
+		parsingContext.GetProjectionDesc() = _savedProjectionDesc;
 		return std::move(_workingDMFrustum);
 	}
 
-	std::shared_ptr<Techniques::SequencerConfig> CompiledShadowPreparer::GetSequencerConfig()
+	std::pair<std::shared_ptr<Techniques::SequencerConfig>, std::shared_ptr<Techniques::IShaderResourceDelegate>> CompiledShadowPreparer::GetSequencerConfig()
 	{
-		return _sequencerConfigs[0];
+		return std::make_pair(_sequencerConfigs, _uniformDelegate);
 	}
 
 	static const auto s_shadowCascadeModeString = "SHADOW_CASCADE_MODE";
@@ -145,13 +191,12 @@ namespace RenderCore { namespace LightingEngine
 			{}, MakeIteratorRange(&fragment.GetFrameBufferDescFragment(), &fragment.GetFrameBufferDescFragment()+1));
 		_fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment), FrameBufferProperties{});
 
-		auto sequencerConfig = pipelineAccelerators->CreateSequencerConfig(
+		_sequencerConfigs = pipelineAccelerators->CreateSequencerConfig(
 			fragment.GetSubpassAddendums()[0]._techniqueDelegate,
 			fragment.GetSubpassAddendums()[0]._sequencerSelectors,
 			_fbDesc,
 			0);
-
-		_sequencerConfigs.push_back(std::move(sequencerConfig));
+		_uniformDelegate = std::make_shared<UniformDelegate>(*this);
 	}
 
 	CompiledShadowPreparer::~CompiledShadowPreparer() {}

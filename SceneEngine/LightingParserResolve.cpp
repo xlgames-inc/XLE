@@ -76,57 +76,8 @@ namespace SceneEngine
 
         LightingResolveResources(const Desc& desc);
     private:
-        ::Assets::DependencyValidation  _validationCallback
+        ::Assets::DependencyValidation  _validationCallback;
     };
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    static ShaderLightDesc::Ambient AsShaderDesc(const GlobalLightingDesc& desc)
-    {
-        return ShaderLightDesc::Ambient 
-            { 
-                desc._ambientLight, desc._skyReflectionScale, desc._skyReflectionBlurriness, {0,0,0},
-            };
-    }
-
-    static ShaderLightDesc::RangeFog AsRangeFogDesc(const GlobalLightingDesc& desc)
-    {
-        if (desc._doRangeFog)
-            return ShaderLightDesc::RangeFog { desc._rangeFogInscatter, desc._rangeFogThickness };
-        return ShaderLightDesc::RangeFog { Float3(0.f, 0.f, 0.f), 0 };
-    }
-
-    static ShaderLightDesc::Light AsShaderDesc(const LightDesc& light)
-    {
-        return ShaderLightDesc::Light 
-            {
-                light._position, light._cutoffRange, 
-                light._diffuseColor, light._radii[0],
-                light._specularColor, light._radii[1],
-                ExtractRight(light._orientation), light._diffuseWideningMin, 
-                ExtractForward(light._orientation), light._diffuseWideningMax, 
-                ExtractUp(light._orientation), 0
-            };
-    }
-
-    static ShaderLightDesc::Light BlankLightDesc()
-    {
-        return ShaderLightDesc::Light
-            {   Float3(0.f, 0.f, 0.f), 0.f, 
-                Float3(0.f, 0.f, 0.f), 0.f,
-                Float3(0.f, 0.f, 0.f), 0.f,
-                Float3(0.f, 0.f, 0.f), 0.f,
-                Float3(0.f, 0.f, 0.f), 0.f,
-                Float3(0.f, 0.f, 0.f), 0 };
-    }
-
-    static ShaderLightDesc::VolumeFog BlankVolumeFogDesc()
-    {
-        return ShaderLightDesc::VolumeFog
-            {   0.f, 0.f, 0.f, 0,
-                Float3(0.f, 0.f, 0.f), 0, 
-                Float3(0.f, 0.f, 0.f), 0 };
-    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

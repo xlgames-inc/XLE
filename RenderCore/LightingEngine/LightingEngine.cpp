@@ -4,6 +4,7 @@
 
 #include "LightingEngine.h"
 #include "LightDesc.h"
+#include "LightUniforms.h"		// might be able to remove if we shift the forward delegate out
 #include "ShadowPreparer.h"
 #include "RenderStepFragments.h"
 #include "SharedTechniqueDelegates.h"
@@ -11,9 +12,9 @@
 #include "../Techniques/CommonBindings.h"
 #include "../Techniques/TechniqueDelegates.h"
 #include "../Techniques/PipelineAccelerator.h"
+#include "../Techniques/ParsingContext.h"		// likewise could remove when shifting the forward delegate 
 #include "../FrameBufferDesc.h"
 #include "../../Assets/AssetFutureContinuation.h"
-
 
 // For invalid asset report:
 #include "../../Assets/AssetSetManager.h"
@@ -35,6 +36,7 @@ namespace RenderCore { namespace LightingEngine
 			Type _type = Type::None;
 			Techniques::BatchFilter _batch = Techniques::BatchFilter::Max;
 			std::shared_ptr<Techniques::SequencerConfig> _sequencerConfig;
+			std::shared_ptr<Techniques::IShaderResourceDelegate> _shaderResourceDelegate;
 			FrameBufferDesc _fbDesc;
 
 			using FnSig = void(LightingTechniqueIterator&);
@@ -44,7 +46,9 @@ namespace RenderCore { namespace LightingEngine
 
 		void Push(std::function<Step::FnSig>&&);
 		void PushParseScene(Techniques::BatchFilter);
-		void PushExecuteDrawables(std::shared_ptr<Techniques::SequencerConfig> sequencerConfig);
+		void PushExecuteDrawables(
+			std::shared_ptr<Techniques::SequencerConfig> sequencerConfig,
+			std::shared_ptr<Techniques::IShaderResourceDelegate> uniformDelegate);
 		void Push(RenderStepFragmentInterface&& fragmentInterface);
 
 		std::vector<Techniques::PreregisteredAttachment> _workingAttachments;
@@ -77,11 +81,14 @@ namespace RenderCore { namespace LightingEngine
 		_steps.emplace_back(std::move(newStep));
 	}
 
-	void CompiledLightingTechnique::PushExecuteDrawables(std::shared_ptr<Techniques::SequencerConfig> sequencerConfig)
+	void CompiledLightingTechnique::PushExecuteDrawables(
+		std::shared_ptr<Techniques::SequencerConfig> sequencerConfig,
+		std::shared_ptr<Techniques::IShaderResourceDelegate> uniformDelegate)
 	{
 		Step newStep;
 		newStep._type = Step::Type::ParseScene;
 		newStep._sequencerConfig = std::move(sequencerConfig);
+		newStep._shaderResourceDelegate = std::move(uniformDelegate);
 		_steps.emplace_back(std::move(newStep));
 	}
 
@@ -187,11 +194,12 @@ namespace RenderCore { namespace LightingEngine
 			_stepIterator = _steps.begin() + d0;
 		}
 
-		void PushFollowingStep(std::shared_ptr<Techniques::SequencerConfig> seqConfig)
+		void PushFollowingStep(std::shared_ptr<Techniques::SequencerConfig> seqConfig, std::shared_ptr<Techniques::IShaderResourceDelegate> uniformDelegate)
 		{
 			CompiledLightingTechnique::Step newStep;
 			newStep._type = CompiledLightingTechnique::Step::Type::ExecuteDrawables;
-			newStep._sequencerConfig = seqConfig;
+			newStep._sequencerConfig = std::move(seqConfig);
+			newStep._shaderResourceDelegate = std::move(uniformDelegate);
 			size_t d0 = std::distance(_steps.begin(), _stepIterator);
 			_pushFollowingIterator = _steps.insert(_pushFollowingIterator, std::move(newStep)) + 1;
 			_stepIterator = _steps.begin() + d0;
@@ -244,6 +252,8 @@ namespace RenderCore { namespace LightingEngine
 				{
 					Techniques::SequencerContext context;
 					context._sequencerConfig = next->_sequencerConfig.get();
+					if (next->_shaderResourceDelegate)
+						context._sequencerResources.push_back(next->_shaderResourceDelegate);
 
 					auto preparation = Techniques::PrepareResources(*_iterator->_pipelineAcceleratorPool, *context._sequencerConfig, _iterator->_drawablePkt);
 					if (preparation) {
@@ -319,6 +329,33 @@ namespace RenderCore { namespace LightingEngine
 		std::shared_ptr<ICompiledShadowPreparer> _shadowPreparer;
 		std::shared_ptr<Techniques::FrameBufferPool> _shadowGenFrameBufferPool;
 		std::shared_ptr<Techniques::AttachmentPool> _shadowGenAttachmentPool;
+		SceneLightingDesc _sceneLightDesc;
+
+		class UniformsDelegate : public Techniques::IShaderResourceDelegate
+		{
+		public:
+			virtual const UniformsStreamInterface& GetInterface() override { return _interface; }
+			void WriteImmediateData(Techniques::ParsingContext& context, const void* objectContext, unsigned idx, IteratorRange<void*> dst) override
+			{
+				assert(idx==0);
+				assert(dst.size() == sizeof(CB_BasicEnvironment));
+				*(CB_BasicEnvironment*)dst.begin() = MakeBasicEnvironmentUniforms(_captures->_sceneLightDesc);
+			}
+
+			size_t GetImmediateDataSize(Techniques::ParsingContext& context, const void* objectContext, unsigned idx) override
+			{
+				assert(idx==0);
+				return sizeof(CB_BasicEnvironment);
+			}
+		
+			UniformsDelegate(ForwardLightingCaptures& captures) : _captures(&captures)
+			{
+				_interface.BindImmediateData(0, Utility::Hash64("BasicLightingEnvironment"), {});
+			}
+			UniformsStreamInterface _interface;
+			ForwardLightingCaptures* _captures;
+		};
+		std::shared_ptr<UniformsDelegate> _uniformsDelegate;
 	};
 
 	static void SetupDMShadowPrepare(
@@ -337,7 +374,8 @@ namespace RenderCore { namespace LightingEngine
 					*captures->_shadowGenAttachmentPool);
 			});
 		iterator.PushFollowingStep(Techniques::BatchFilter::General);
-		iterator.PushFollowingStep(captures->_shadowPreparer->GetSequencerConfig());
+		auto cfg = captures->_shadowPreparer->GetSequencerConfig();
+		iterator.PushFollowingStep(std::move(cfg.first), std::move(cfg.second));
 		iterator.PushFollowingStep(
 			[captures](LightingTechniqueIterator& iterator) {
 				iterator._rpi.End();
@@ -410,11 +448,13 @@ namespace RenderCore { namespace LightingEngine
 		auto captures = std::make_shared<ForwardLightingCaptures>();
 		captures->_shadowGenAttachmentPool = std::make_shared<Techniques::AttachmentPool>(device);
 		captures->_shadowGenFrameBufferPool = std::make_shared<Techniques::FrameBufferPool>();
+		captures->_uniformsDelegate = std::make_shared<ForwardLightingCaptures::UniformsDelegate>(*captures.get());
 
 		// Reset captures
 		lightingTechnique->Push(
 			[captures](LightingTechniqueIterator& iterator) {
-				
+				captures->_sceneLightDesc = *iterator._sceneLightingDesc;
+				iterator._parsingContext->AddShaderResourceDelegate(captures->_uniformsDelegate);
 			});
 
 		// Prepare shadows
@@ -434,6 +474,12 @@ namespace RenderCore { namespace LightingEngine
 			techDelBox->_forwardIllumDelegate_DisableDepthWrite,
 			techDelBox->_depthOnlyDelegate, 
 			false));
+
+		lightingTechnique->Push(
+			[captures](LightingTechniqueIterator& iterator) {
+				iterator._parsingContext->RemoveShaderResourceDelegate(*captures->_uniformsDelegate);
+			});
+			
 		return lightingTechnique;
 	}
 

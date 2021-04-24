@@ -32,6 +32,8 @@ namespace RenderCore { namespace LightingEngine
 		float       _diffuseWideningMax;
 		unsigned    _diffuseModel;
 		unsigned    _shadowResolveModel;
+
+		LightDesc();
 	};
 
 		//////////////////////////////////////////////////////////////////
@@ -176,7 +178,46 @@ namespace RenderCore { namespace LightingEngine
 	public:
 		std::vector<LightDesc> _lights;
 		std::vector<ShadowProjectionDesc> _shadowProjections;
+
+		std::string   _skyTexture;   ///< use "<texturename>_*" when using a half cube style sky texture. The system will fill in "_*" with appropriate characters
+		enum class SkyTextureType { HemiCube, Cube, Equirectangular, HemiEquirectangular };
+		SkyTextureType _skyTextureType;
+
+		std::string   _diffuseIBL;   ///< Diffuse IBL map. Sometimes called irradiance map or ambient map
+		std::string   _specularIBL;  ///< Prefiltered specular IBL map.
+
+		Float3	_ambientLight = Float3(0.f, 0.f, 0.f);
+
+		float   _skyBrightness = 1.f;
+		float   _skyReflectionScale = 1.0f;
+		float   _skyReflectionBlurriness = 2.f;
+
+		bool    _doRangeFog = false;
+		Float3  _rangeFogInscatter = Float3(0.f, 0.f, 0.f);
+		float   _rangeFogThickness = 10000.f;     // optical thickness for range based fog
+
+		bool    _doAtmosphereBlur = false;
+		float   _atmosBlurStdDev = 1.3f;
+		float   _atmosBlurStart = 1000.f;
+		float   _atmosBlurEnd = 1500.f;
 	};
+
+	inline LightDesc::LightDesc()
+	{
+        _shape = Directional;
+        _position = Normalize(Float3(-.1f, 0.33f, 1.f));
+        _orientation = Identity<Float3x3>();
+        _cutoffRange = 10000.f;
+        _radii = Float2(1.f, 1.f);
+        _diffuseColor = Float3(1.f, 1.f, 1.f);
+        _specularColor = Float3(1.f, 1.f, 1.f);
+
+        _diffuseWideningMin = 0.5f;
+        _diffuseWideningMax = 2.5f;
+        _diffuseModel = 1;
+
+        _shadowResolveModel = 0;
+	}
 
 }}
 
