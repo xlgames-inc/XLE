@@ -18,8 +18,6 @@
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderCore/IDevice.h"
-#include "../../RenderCore/Assets/Services.h"
-#include "../../BufferUploads/IBufferUploads.h"
 #include "../../Utility/PtrUtils.h"
 
 using namespace System::Windows::Forms;
@@ -283,10 +281,10 @@ namespace GUILayer
     {
         auto result = std::make_unique<WindowRig>(*engineDevice->GetNative().GetRenderDevice(), nativeWindowHandle);
 
-        BufferUploads::IManager* bufferUploads = engineDevice->GetNative().GetBufferUploads();
+        /*BufferUploads::IManager* bufferUploads = engineDevice->GetNative().GetBufferUploads();
         result->GetFrameRig().AddPostPresentCallback(
             [bufferUploads](RenderCore::IThreadContext& threadContext)
-            { bufferUploads->Update(threadContext, false); });
+            { bufferUploads->Update(threadContext, false); });*/
 
         return std::move(result);
     }

@@ -38,11 +38,7 @@ namespace ControlsLibraryExt
 
         private float CurrentAnimationTime(int currentTickCount)
         {
-            if (_animationState.CurrentState == GUILayer.VisAnimationState.State.Playing) {
-                return (_animationState.AnimationTime + (currentTickCount - _animationState.AnchorTime) / 1000.0f) % SelectedAnimationLength;
-            } else {
-                return _animationState.AnimationTime;
-            }
+            return _animationState.CurrentAnimationTime % SelectedAnimationLength;
         }
 
         private void UpdateTimeBar(object sender, EventArgs e)
@@ -59,9 +55,7 @@ namespace ControlsLibraryExt
 
         private void checkBox1_CheckedChanged(object sender, EventArgs e)
         {
-            var tickCount = Environment.TickCount;
-            _animationState.AnimationTime = CurrentAnimationTime(tickCount);
-            _animationState.AnchorTime = (uint)tickCount;
+            _animationState.RefreshAnimationTimeAnchor();
             _animationState.CurrentState = _playButton.Checked ? GUILayer.VisAnimationState.State.Playing : GUILayer.VisAnimationState.State.Stopped;
             updateTimer.Enabled = _animationState.CurrentState == GUILayer.VisAnimationState.State.Playing;
             if (_animationState.CurrentState == GUILayer.VisAnimationState.State.Playing)
@@ -77,8 +71,7 @@ namespace ControlsLibraryExt
 
         private void _animationSelection_SelectedIndexChanged(object sender, EventArgs e)
         {
-            _animationState.AnimationTime = 0.0f;
-            _animationState.AnchorTime = (uint)Environment.TickCount;
+            _animationState.CurrentAnimationTime = 0.0f;
             if (string.Compare(_animationSelection.Text, BindPoseStr)==0)
             {
                 _animationState.ActiveAnimation = string.Empty;
@@ -100,8 +93,7 @@ namespace ControlsLibraryExt
 
         private void _timeBar_Scroll(object sender, EventArgs e)
         {
-            _animationState.AnimationTime = (_timeBar.Value / 1000000.0f) * SelectedAnimationLength;
-            _animationState.AnchorTime = (uint)Environment.TickCount;
+            _animationState.CurrentAnimationTime = (_timeBar.Value / 1000000.0f) * SelectedAnimationLength;
             InvokeOnInvalidateViews();
         }
 

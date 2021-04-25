@@ -357,6 +357,8 @@ namespace GUILayer
                 Throw(Utility::FormatException("Expected either value or element", formatter.GetLocation()));
             }
         }
+
+        return result;
     }
 
     static void SerializeAllMaterials(OutputStreamFormatter& formatter, std::vector<std::pair<std::string, RenderCore::Assets::RawMaterial>>& mats)

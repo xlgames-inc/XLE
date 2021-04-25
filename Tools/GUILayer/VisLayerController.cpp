@@ -155,6 +155,8 @@ namespace GUILayer
 		_pimpl->_modelLayer->Set(ToolsRig::VisEnvSettings{});
 
 		_pimpl->_visOverlay = std::make_shared<ToolsRig::VisualisationOverlay>(
+			pipelineAcceleratorPool,
+			immediateDrawables,
 			ToolsRig::VisOverlaySettings{},
             _pimpl->_mouseOver);
 		_pimpl->_visOverlay->Set(_pimpl->_modelLayer->GetCamera());

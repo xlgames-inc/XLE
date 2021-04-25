@@ -11,6 +11,7 @@
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../ToolsRig/DivergentAsset.h"
 #include "../../SceneEngine/SceneParser.h"
+#include "../../RenderCore/Techniques/RenderStateResolver.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../Assets/AssetUtils.h"
@@ -19,7 +20,7 @@
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/AssetHeap.h"
-#include "../../RenderCore/Techniques/RenderStateResolver.h"
+#include "../../Math/MathSerialization.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Conversion.h"
 #include <msclr/auto_gcroot.h>
@@ -213,25 +214,39 @@ namespace GUILayer
 		_animState->_activeAnimation = clix::marshalString<clix::E_UTF8>(value);
 	}
 
-    float VisAnimationState::AnimationTime::get()
+    float VisAnimationState::AnimationTimeAtAnchor::get()
 	{
 		return _animState->_animationTime;
 	}
 
-	void VisAnimationState::AnimationTime::set(float value)
+	void VisAnimationState::AnimationTimeAtAnchor::set(float value)
 	{
 		_animState->_animationTime = value;
 	}
 
-	unsigned VisAnimationState::AnchorTime::get()
+	float VisAnimationState::CurrentAnimationTime::get()
 	{
-		return _animState->_anchorTime;
+        if (_animState->_state == ToolsRig::VisAnimationState::State::Playing) {
+            auto now = std::chrono::steady_clock::now();
+            return _animState->_animationTime + std::chrono::duration_cast<std::chrono::microseconds>(now - _animState->_anchorTime).count() / 1000000.0f;
+        } else {
+            return _animState->_animationTime;
+        }
 	}
 	
-	void VisAnimationState::AnchorTime::set(unsigned value)
+	void VisAnimationState::CurrentAnimationTime::set(float value)
 	{
-		_animState->_anchorTime = value;
+		_animState->_animationTime = value;
+        _animState->_anchorTime = std::chrono::steady_clock::now();
 	}
+
+    void VisAnimationState::RefreshAnimationTimeAnchor()
+    {
+        auto now = std::chrono::steady_clock::now();
+        if (_animState->_state == ToolsRig::VisAnimationState::State::Playing)
+            _animState->_animationTime = _animState->_animationTime + std::chrono::duration_cast<std::chrono::microseconds>(now - _animState->_anchorTime).count() / 1000000.0f;
+        _animState->_anchorTime = now;
+    }
 
 	VisAnimationState::State VisAnimationState::CurrentState::get()
 	{

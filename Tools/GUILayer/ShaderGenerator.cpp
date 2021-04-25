@@ -188,6 +188,9 @@ namespace GUILayer
 		IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions,
 		MessageRelayWrapper^ logMessages)
 	{
+		assert(0);
+		return nullptr;
+#if 0
 		ShaderSourceParser::PreviewOptions options { ShaderSourceParser::PreviewOptions::Type::Object, std::string{} };
 		if (settings) {
 			options._type = (settings->Geometry == PreviewGeometry::Chart) ? ShaderSourceParser::PreviewOptions::Type::Chart : ShaderSourceParser::PreviewOptions::Type::Object;
@@ -210,6 +213,7 @@ namespace GUILayer
 			logMessages->_native->AddMessage(str.str());
 			return nullptr;
 		}
+#endif
 	}
 
 	static std::shared_ptr<RenderCore::Assets::RawMaterial> RawMaterialFromRestriction(

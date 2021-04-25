@@ -58,6 +58,8 @@ namespace ToolsRig
 		std::unique_ptr<Pimpl> _pimpl;
 	};
 
+	using PatchCollectionFuture = ::Assets::FuturePtr<RenderCore::Techniques::CompiledShaderPatchCollection>;
+
 #if 0
 	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeShaderPatchAnalysisDelegate(
 		const ShaderSourceParser::PreviewOptions& previewOptions);
@@ -71,8 +73,7 @@ namespace ToolsRig
 		const GraphLanguage::NodeGraphSignature& nodeGraphSignature,
 		uint32_t previewNodeId,
 		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& subProvider);
-
-	using PatchCollectionFuture = ::Assets::FuturePtr<RenderCore::Techniques::CompiledShaderPatchCollection>;
+#endif
 
 	PatchCollectionFuture MakeCompiledShaderPatchCollectionAsync(
 		GraphLanguage::NodeGraph&& nodeGraph,
@@ -94,11 +95,10 @@ namespace ToolsRig
 	private:
 		std::unique_ptr<PatchCollectionFuture> _future;
 	};
-#endif
 
 	class IPatchCollectionVisualizationScene
 	{
 	public:
-		// virtual void SetPatchCollection(const PatchCollectionFuture& patchCollection) = 0;
+		virtual void SetPatchCollection(const PatchCollectionFuture& patchCollection) = 0;
 	};
 }

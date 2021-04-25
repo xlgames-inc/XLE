@@ -27,9 +27,9 @@
 #include "../../RenderCore/Techniques/RenderPassUtils.h"
 #include "../../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../../RenderCore/IDevice.h"
-#include "../../RenderCore/Metal/Buffer.h"
-#include "../../RenderCore/Metal/DeviceContext.h"
-#include "../../RenderCore/Metal/InputLayout.h"
+// #include "../../RenderCore/Metal/Buffer.h"
+// #include "../../RenderCore/Metal/DeviceContext.h"
+// #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Format.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
@@ -94,6 +94,7 @@ namespace GUILayer
         _vfRecord[7]._vertexStride = 2*4;
     }
 
+#if 0
     /// <summary>Create and maintain rendering resources for SimpleRenderingContext</summary>
     /// Create & maintain vertex and index buffers. Intended for use when linking to
     /// C# GUI apps.
@@ -156,6 +157,7 @@ namespace GUILayer
         CATCH_ASSETS_END(parsingContext)
         return false;
     }
+#endif
 
     void SimpleRenderingContext::DrawPrimitive(
         unsigned primitiveType,
@@ -164,6 +166,8 @@ namespace GUILayer
         unsigned vertexCount,
         const float color[], const float xform[])
     {
+        // \todo -- this should be converted across to using a drawable based system
+#if 0
         // We need to bind the technique and technique interface
         //      (including vertex input format)
         // "color" can be passed as a Float4 as the material parameter "MaterialDiffuse"
@@ -179,6 +183,7 @@ namespace GUILayer
             _devContext->Bind((RenderCore::Topology)primitiveType);
             _devContext->Draw(vertexCount, startVertex);
         }
+#endif
     }
 
     void SimpleRenderingContext::DrawIndexedPrimitive(
@@ -189,6 +194,7 @@ namespace GUILayer
         unsigned startVertex,
         const float color[], const float xform[]) 
     {
+#if 0
         auto* ibuffer = _retainedRes->GetIndexBuffer(ib);
         auto* vbuffer = _retainedRes->GetVertexBuffer(vb);
         if (!ibuffer || !vbuffer) return;
@@ -201,20 +207,24 @@ namespace GUILayer
             _devContext->Bind((RenderCore::Topology)primitiveType);
             devContext.DrawIndexed(indexCount, startIndex, startVertex);
         }
+#endif
     }
 
     void SimpleRenderingContext::InitState(bool depthTest, bool depthWrite)
     {
+#if 0
         if (depthWrite) _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadWrite);
         else if (depthTest) _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadOnly);
         else _devContext->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
                 
         _devContext->Bind(RenderCore::Techniques::CommonResources()._blendStraightAlpha);
         _devContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
+#endif
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0
     uint64  RetainedRenderResources::CreateVertexBuffer(void* data, size_t size, unsigned format)
     {
 		auto newBuffer = RenderCore::Techniques::CreateStaticVertexBuffer(*_pimpl->_device, MakeIteratorRange(data, PtrAdd(data, size)));
@@ -279,6 +289,7 @@ namespace GUILayer
 
     RetainedRenderResources::~RetainedRenderResources() { _pimpl.reset(); }
     RetainedRenderResources::!RetainedRenderResources() { _pimpl.reset(); }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////?//
 
@@ -289,13 +300,13 @@ namespace GUILayer
     : _retainedRes(savedRes), _parsingContext((RenderCore::Techniques::ParsingContext*)parsingContext)
     , _threadContext(threadContext)
     {
-        _devContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
     }
-    SimpleRenderingContext::~SimpleRenderingContext() { _devContext.reset(); }
-    SimpleRenderingContext::!SimpleRenderingContext() { _devContext.reset(); }
+    SimpleRenderingContext::~SimpleRenderingContext() {}
+    SimpleRenderingContext::!SimpleRenderingContext() {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////?//
 
+#if 0
     public ref class RenderingUtil
     {
     public:
@@ -343,7 +354,7 @@ namespace GUILayer
             metalContext.Clear(dsv, ClearFilter::Depth|ClearFilter::Stencil, 1.f, 0u);
         }
     };
-
+#endif
 
 	public delegate void RenderCallback(GUILayer::SimpleRenderingContext^ context);
 

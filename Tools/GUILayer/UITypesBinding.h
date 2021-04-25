@@ -236,11 +236,13 @@ namespace GUILayer
         [Description("Active Animation")]
         property System::String^ ActiveAnimation { System::String^ get(); void set(System::String^); }
 
-        [Description("Animation Time")]
-        property float AnimationTime { float get(); void set(float); }
+        [Description("Animation Time At Anchor")]
+        property float AnimationTimeAtAnchor { float get(); void set(float); }
 
-        [Description("Anchor Time")]
-        property unsigned AnchorTime { unsigned get(); void set(unsigned); }
+        [Description("Current Animation Time")]
+        property float CurrentAnimationTime { float get(); void set(float); }
+
+        void RefreshAnimationTimeAnchor();
 
 		enum class State { Stopped, Playing, BindPose };
 		

@@ -27,7 +27,6 @@ namespace GUILayer
     public:
         void AddDefaultCameraHandler(VisCameraSettings^);
         void AddSystem(IOverlaySystem^ overlay);
-        void SetUpdateAsyncMan(bool updateAsyncMan);
 
         TechniqueContextWrapper^ GetTechniqueContext();
 

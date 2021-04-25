@@ -25,8 +25,9 @@
 #include "../../RenderCore/MinimalShaderSource.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/IThreadContext.h"
+#include "../../RenderCore/ResourceUtils.h"
 
-#include "../../BufferUploads/IBufferUploads.h"
+// #include "../../BufferUploads/IBufferUploads.h"
 
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
@@ -133,7 +134,7 @@ namespace GUILayer
 				ToolsRig::VisEnvSettings envSettings;
 				envSettings._lightingType = ToolsRig::VisEnvSettings::LightingType::Direct;
 
-				Techniques::ParsingContext parserContext { _globalTechniqueContext };
+				Techniques::ParsingContext parserContext { *_globalTechniqueContext };
 
 				// Can no longer render to multiple output targets using this path. We only get to input the single "presentation target"
 				// to the lighting parser.
@@ -165,7 +166,7 @@ namespace GUILayer
 
 				// We use a short-lived pipeline accelerator pool here, because
 				// everything we put into it is temporary
-			_pipelineAcceleratorPool = RenderCore::Techniques::CreatePipelineAcceleratorPool();
+			_pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
 			_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
 			_globalTechniqueContext->_attachmentPool = std::make_shared<RenderCore::Techniques::AttachmentPool>(device);
 			_globalTechniqueContext->_frameBufferPool = std::make_shared<RenderCore::Techniques::FrameBufferPool>();
@@ -217,8 +218,10 @@ namespace GUILayer
 			if (patchScene)
 				patchScene->SetPatchCollection(patchCollection->GetFuture());
 
-			if (customTechniqueDelegate)
-				_customRenderStep = SceneEngine::CreateRenderStep_Direct(customTechniqueDelegate);
+			if (customTechniqueDelegate) {
+				assert(0);
+				// _customRenderStep = SceneEngine::CreateRenderStep_Direct(customTechniqueDelegate);
+			}
 
 			_width = width;
 			_height = height;
@@ -229,7 +232,6 @@ namespace GUILayer
 
 	static System::Drawing::Bitmap^ GenerateWindowsBitmap(RenderCore::IThreadContext& threadContext, const std::shared_ptr<RenderCore::IResource>& res)
 	{
-		auto& uploads = RenderCore::Techniques::Services::GetBufferUploads();
 		auto readback = res->ReadBackSynchronized(threadContext);
 		if (!readback.empty()) {
 			auto desc = res->GetDesc();
@@ -371,15 +373,19 @@ namespace GUILayer
 		System::Drawing::Size^ size)
     {
 		// We have to pump some services, or assets will never complete loading/compiling
+		assert(0);
+		/*
 		::Assets::Services::GetAsyncMan().Update();
 		::Assets::Services::GetAssetSets().OnFrameBarrier();
 		auto& uploads = RenderCore::Techniques::Services::GetBufferUploads();
 		uploads.Update(*EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext());
+		*/
 
             ////////////
 
 		auto preparer = std::make_shared<PreviewImagePreparer>(
 			visSettings,
+			EngineDevice::GetInstance()->GetNative().GetRenderDevice(),
 			patchCollection->_patchCollection.GetNativePtr(),
 			techniqueDelegate->_techniqueDelegate.GetNativePtr(),
 			clix::marshalString<clix::E_UTF8>(materialNames),

@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CLIXAutoPtr.h"
-#include "../../RenderCore/Metal/Forward.h"
 #include "../../Core/Types.h"
 #include <memory>
 
@@ -45,7 +44,6 @@ namespace GUILayer
 
         void InitState(bool depthTest, bool depthWrite);
         RenderCore::Techniques::ParsingContext& GetParsingContext() { return *_parsingContext; }
-        RenderCore::Metal::DeviceContext& GetDevContext() { return *_devContext.get(); }
         RenderCore::IThreadContext& GetThreadContext() { return *_threadContext; }
 
         SimpleRenderingContext(
@@ -57,7 +55,6 @@ namespace GUILayer
     protected:
         RetainedRenderResources^ _retainedRes;
         RenderCore::Techniques::ParsingContext* _parsingContext;
-        clix::shared_ptr<RenderCore::Metal::DeviceContext> _devContext;
         RenderCore::IThreadContext* _threadContext;     // note -- keeping an unprotected pointer here (SimpleRenderingContext is typically short lived). Create must be careful to manage lifetimes
     };
 }

@@ -15,6 +15,7 @@
 #include "GUILayerUtil.h"
 #include "ExportedNativeTypes.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderCore/Techniques/Techniques.h"
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/IManipulator.h"
 #include "../ToolsRig/BasicManipulators.h"
@@ -22,22 +23,6 @@
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlaySystem.h"
-
-#if 0
-#include "../../RenderOverlays/DebuggingDisplay.h"
-#include "../../RenderOverlays/Font.h"
-#include "../../RenderCore/IThreadContext.h"
-#include "../../RenderCore/Techniques/Techniques.h"
-#include "../../RenderCore/Techniques/RenderPass.h"
-#include "../../RenderCore/Techniques/RenderPassUtils.h"
-#include "../../RenderCore/Techniques/ParsingContext.h"
-#include "../../RenderCore/Assets/MaterialScaffold.h"
-#include "../../FixedFunctionModel/ModelCache.h"
-#include "../../Utility/PtrUtils.h"
-#include "../../Utility/StringFormat.h"
-#include <stack>
-#include <iomanip>
-#endif
 
 using namespace System;
 
@@ -65,7 +50,7 @@ namespace GUILayer
         TRY
         {
             auto& frameRig = windowRig.GetFrameRig();
-			RenderCore::Techniques::ParsingContext parserContext(_pimpl->_globalTechniqueContext);
+			RenderCore::Techniques::ParsingContext parserContext(*_pimpl->_globalTechniqueContext);
             auto frResult = frameRig.ExecuteFrame(
                 threadContext, windowRig.GetPresentationChain().get(), 
                 parserContext, nullptr);
@@ -87,17 +72,12 @@ namespace GUILayer
 	void LayerControl::OnResize()
     {
 		// We must reset the framebuffer in order to dump references to the presentation chain on DX (because it's going to be resized along with the window)
-		_pimpl->_frameBufferPool->Reset();
+		assert(0);
+        // _pimpl->_frameBufferPool->Reset();
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     
-    void LayerControl::SetUpdateAsyncMan(bool updateAsyncMan)
-    {
-        // ::Assets::Services::GetAsyncMan().Update();
-        GetWindowRig().GetFrameRig().SetUpdateAsyncMan(updateAsyncMan);
-    }
-
     namespace Internal
     {
         class OverlaySystemAdapter : public PlatformRig::IOverlaySystem
@@ -132,7 +112,7 @@ namespace GUILayer
 
     void LayerControl::AddSystem(IOverlaySystem^ overlay)
     {
-        auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
+        auto& overlaySet = GetWindowRig().GetMainOverlaySystemSet();
         overlaySet.AddSystem(std::shared_ptr<Internal::OverlaySystemAdapter>(
             new Internal::OverlaySystemAdapter(overlay)));
     }
@@ -146,7 +126,7 @@ namespace GUILayer
             ToolsRig::ManipulatorStack::CameraManipulator,
             ToolsRig::CreateCameraManipulator(settings->GetUnderlying()));
 
-        auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
+        auto& overlaySet = GetWindowRig().GetMainOverlaySystemSet();
         overlaySet.AddSystem(ToolsRig::MakeLayerForInput(manipulators));
     }
 
@@ -168,8 +148,8 @@ namespace GUILayer
     {
         _pimpl.reset(new LayerControlPimpl());
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
-        _pimpl->_namedResources = std::make_shared<RenderCore::Techniques::AttachmentPool>();
-		_pimpl->_frameBufferPool = std::make_shared<RenderCore::Techniques::FrameBufferPool>();
+        // _pimpl->_namedResources = std::make_shared<RenderCore::Techniques::AttachmentPool>();
+		// _pimpl->_frameBufferPool = std::make_shared<RenderCore::Techniques::FrameBufferPool>();
         _techContextWrapper = gcnew TechniqueContextWrapper(_pimpl->_globalTechniqueContext);
         _pimpl->_activePaint = false;
     }

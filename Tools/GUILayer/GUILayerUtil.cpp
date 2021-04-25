@@ -13,6 +13,7 @@
 #include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/Techniques/DrawableDelegates.h"
 #include "../../RenderCore/Techniques/CompiledShaderPatchCollection.h"
+#include "../../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/CompileAndAsyncManager.h"

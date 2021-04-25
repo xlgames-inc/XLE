@@ -72,13 +72,14 @@ namespace GUILayer
             platformWindowHandle,
 			RenderCore::PresentationChainDesc {
 				unsigned(clientRect.right - clientRect.left), unsigned(clientRect.bottom - clientRect.top)});
-        _frameRig = std::make_shared<PlatformRig::FrameRig>(false); // (not "main" frame rig by default)
+        std::shared_ptr<RenderCore::Techniques::SubFrameEvents> subFrameEvents;
+        _frameRig = std::make_shared<PlatformRig::FrameRig>(subFrameEvents); // (not "main" frame rig by default)
 
-        {
+        /*{
             auto overlaySwitch = std::make_shared<PlatformRig::OverlaySystemSwitch>();
             overlaySwitch->AddSystem(PlatformRig::KeyId_Make("~"), PlatformRig::CreateConsoleOverlaySystem());
             _frameRig->GetMainOverlaySystem()->AddSystem(overlaySwitch);
-        }
+        }*/
 
         AddWindowHandler(std::make_shared<ResizePresentationChain>(_presentationChain));
     }
