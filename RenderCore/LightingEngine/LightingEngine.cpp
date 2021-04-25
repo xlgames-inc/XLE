@@ -13,6 +13,7 @@
 #include "../Techniques/TechniqueDelegates.h"
 #include "../Techniques/PipelineAccelerator.h"
 #include "../Techniques/ParsingContext.h"		// likewise could remove when shifting the forward delegate 
+#include "../Techniques/DrawableDelegates.h"
 #include "../FrameBufferDesc.h"
 #include "../../Assets/AssetFutureContinuation.h"
 

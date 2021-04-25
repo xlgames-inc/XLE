@@ -22,6 +22,7 @@
 #include "../../../RenderCore/StateDesc.h"
 #include "../../../RenderCore/IDevice.h"
 #include "../../../RenderCore/IAnnotator.h"
+#include "../../../RenderCore/MinimalShaderSource.h"
 #include "../../../BufferUploads/IBufferUploads.h"
 #include "../../../ShaderParser/ShaderInstantiation.h"
 #include "../../../ShaderParser/DescriptorSetInstantiation.h"

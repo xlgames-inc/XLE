@@ -5,6 +5,7 @@
 #include "SharedTechniqueDelegates.h"
 #include "../Techniques/TechniqueDelegates.h"
 #include "../Techniques/Apparatuses.h"
+#include "../Techniques/Techniques.h"
 #include "../../Assets/AssetTraits.h"
 #include "../../Assets/Assets.h"
 #include "../../xleres/FileList.h"

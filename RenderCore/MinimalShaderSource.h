@@ -13,18 +13,18 @@ namespace Assets { class DirectorySearchRules; }
 
 namespace RenderCore
 {
+	class SourceCodeWithRemapping
+    {
+    public:
+        std::string _processedSource;
+		unsigned _processedSourceLineCount = 0;
+        std::vector<ILowLevelCompiler::SourceLineMarker> _lineMarkers;
+        std::vector<::Assets::DependentFileState> _dependencies;
+    };
+
 	class ISourceCodePreprocessor
     {
     public:
-        struct SourceCodeWithRemapping
-        {
-        public:
-            std::string _processedSource;
-			unsigned _processedSourceLineCount = 0;
-            std::vector<ILowLevelCompiler::SourceLineMarker> _lineMarkers;
-            std::vector<::Assets::DependentFileState> _dependencies;
-        };
-
         virtual SourceCodeWithRemapping RunPreprocessor(
             StringSection<> inputSource, 
             StringSection<> definesTable,

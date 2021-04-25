@@ -10,6 +10,7 @@
 #include "../../../RenderCore/Metal/Shader.h"
 #include "../../../RenderCore/IDevice.h"
 #include "../../../RenderCore/ShaderService.h"
+#include "../../../RenderCore/MinimalShaderSource.h"
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/MountingTree.h"
 #include "../../../Assets/MemoryFile.h"
@@ -32,7 +33,7 @@ namespace UnitTests
 	class ExpandIncludesPreprocessor : public RenderCore::ISourceCodePreprocessor
 	{
 	public:
-		virtual SourceCodeWithRemapping RunPreprocessor(
+		virtual RenderCore::SourceCodeWithRemapping RunPreprocessor(
 			StringSection<> inputSource, 
 			StringSection<> definesTable,
 			const ::Assets::DirectorySearchRules& searchRules) override

@@ -103,7 +103,7 @@ namespace PlatformRig
 ///////////////////////////////////////////////////////////////////////////////
 
     auto FrameRig::ExecuteFrame(
-        std::shared_ptr<RenderCore::IThreadContext> context,
+        RenderCore::IThreadContext& context,
         RenderCore::IPresentationChain* presChain,
 		RenderCore::Techniques::ParsingContext& parserContext,
         HierarchicalCPUProfiler* cpuProfiler) -> FrameResult
@@ -127,17 +127,15 @@ namespace PlatformRig
         }
         _pimpl->_prevFrameStartTime = startTime;
 
-		auto presentationTarget = context->BeginFrame(*presChain);
+		auto presentationTarget = context.BeginFrame(*presChain);
 		auto presentationTargetDesc = presentationTarget->GetDesc();
 
-		context->GetAnnotator().Frame_Begin(_pimpl->_frameRenderCount);		// (on Vulkan, we must do this after IThreadContext::BeginFrame(), because that primes the command list in the vulkan device)
+		context.GetAnnotator().Frame_Begin(_pimpl->_frameRenderCount);		// (on Vulkan, we must do this after IThreadContext::BeginFrame(), because that primes the command list in the vulkan device)
 
             //  We must invalidate the cached state at least once per frame.
             //  It appears that the driver might forget bound constant buffers
             //  during the begin frame or present
-        context->InvalidateCachedState();
-
-        RenderCore::Techniques::SetThreadContext(context);
+        context.InvalidateCachedState();
 
 		TRY {
 
@@ -149,10 +147,10 @@ namespace PlatformRig
 
 			TRY {
 				if (_mainOverlaySys) {
-                    _mainOverlaySys->Render(*context, presentationTarget, parserContext);
+                    _mainOverlaySys->Render(context, presentationTarget, parserContext);
                 } else {
                     // We must at least clear, because the _debugScreenOverlaySystem might have something to render
-                    RenderCore::Metal::DeviceContext::Get(*context)->Clear(*presentationTarget->CreateTextureView(RenderCore::BindFlag::RenderTarget), Float4(0,0,0,1));
+                    RenderCore::Metal::DeviceContext::Get(context)->Clear(*presentationTarget->CreateTextureView(RenderCore::BindFlag::RenderTarget), Float4(0,0,0,1));
                 }
 			}
 			CATCH_ASSETS(parserContext)
@@ -163,7 +161,7 @@ namespace PlatformRig
 
 			TRY {
 				if (_debugScreenOverlaySystem)
-                    _debugScreenOverlaySystem->Render(*context, presentationTarget, parserContext);
+                    _debugScreenOverlaySystem->Render(context, presentationTarget, parserContext);
 			}
 			CATCH_ASSETS(parserContext)
 			CATCH(const std::exception& e) {
@@ -194,26 +192,24 @@ namespace PlatformRig
 			parserContext.GetTechniqueContext()._attachmentPool->UnbindAll();
 
             if (_subFrameEvents)
-                _subFrameEvents->_onPrePresent.Invoke(*context);
+                _subFrameEvents->_onPrePresent.Invoke(context);
 
 			{
 				CPUProfileEvent_Conditional pEvnt2("Present", cpuProfiler);
-				context->Present(*presChain);
+				context.Present(*presChain);
 			}
 
             if (_subFrameEvents)
-                _subFrameEvents->_onPostPresent.Invoke(*context);
+                _subFrameEvents->_onPostPresent.Invoke(context);
 
 		} CATCH(const std::exception& e) {
 			Log(Error) << "Suppressed error in frame rig render: " << e.what() << std::endl;
 		} CATCH_END
 
-		context->GetAnnotator().Frame_End();
+		context.GetAnnotator().Frame_End();
 
         if (_subFrameEvents)
             _subFrameEvents->_onFrameBarrier.Invoke();
-
-        RenderCore::Techniques::SetThreadContext(nullptr);
 
         uint64_t duration = OSServices::GetPerformanceCounter() - startTime;
         _pimpl->_frameRate.PushFrameDuration(duration);

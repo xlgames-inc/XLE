@@ -10,6 +10,7 @@
 #include "../../../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../../../RenderCore/Techniques/CompiledShaderPatchCollection.h"
 #include "../../../RenderCore/Techniques/TechniqueDelegates.h"
+#include "../../../RenderCore/MinimalShaderSource.h"
 #include "../../../RenderCore/IDevice.h"
 #include "../../../ShaderParser/ShaderInstantiation.h"
 #include "../../../ShaderParser/DescriptorSetInstantiation.h"
@@ -187,7 +188,7 @@ namespace UnitTests
 	class ExpandIncludesPreprocessor : public RenderCore::ISourceCodePreprocessor
 	{
 	public:
-		virtual SourceCodeWithRemapping RunPreprocessor(
+		virtual RenderCore::SourceCodeWithRemapping RunPreprocessor(
             StringSection<> inputSource, 
             StringSection<> definesTable,
             const ::Assets::DirectorySearchRules& searchRules) override

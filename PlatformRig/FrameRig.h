@@ -29,7 +29,7 @@ namespace PlatformRig
         };
 
         FrameResult ExecuteFrame(
-            std::shared_ptr<RenderCore::IThreadContext> context,
+            RenderCore::IThreadContext& context,
             RenderCore::IPresentationChain* presChain,
 			RenderCore::Techniques::ParsingContext& parserContext,
             Utility::HierarchicalCPUProfiler* profiler);

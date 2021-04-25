@@ -9,6 +9,7 @@
 #include "../Assets/PredefinedPipelineLayout.h"
 #include "../Assets/IntermediateCompilers.h"
 #include "../Assets/IntermediatesStore.h"
+#include "../MinimalShaderSource.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../ShaderParser/NodeGraphProvider.h"
@@ -219,7 +220,7 @@ namespace RenderCore { namespace Techniques
 	auto AssembleShader(
 		const CompiledShaderPatchCollection& patchCollection,
 		IteratorRange<const uint64_t*> redirectedPatchFunctions,
-		StringSection<> definesTable) -> ISourceCodePreprocessor::SourceCodeWithRemapping
+		StringSection<> definesTable) -> SourceCodeWithRemapping
 
 	{
 		// We can assemble the final shader in 3 fragments:
@@ -276,7 +277,7 @@ namespace RenderCore { namespace Techniques
 				output << i->_scaffoldInFunction;
 		}
 
-		ISourceCodePreprocessor::SourceCodeWithRemapping result;
+		SourceCodeWithRemapping result;
 		result._processedSource = output.str();
 		for (const auto& dep:patchCollection._dependencies) { assert(!dep._filename.empty()); }
 		result._dependencies.insert(
@@ -288,13 +289,13 @@ namespace RenderCore { namespace Techniques
 		return result;
 	}
 
-	static auto AssembleDirectFromFile(StringSection<> filename) -> ISourceCodePreprocessor::SourceCodeWithRemapping
+	static auto AssembleDirectFromFile(StringSection<> filename) -> SourceCodeWithRemapping
 	{
 		assert(!XlEqString(filename, "-0"));
 		assert(!filename.IsEmpty());
 
 		// Fall back to loading the file directly (without any real preprocessing)
-		ISourceCodePreprocessor::SourceCodeWithRemapping result;
+		SourceCodeWithRemapping result;
 		result._dependencies.push_back(::Assets::IntermediatesStore::GetDependentFileState(filename));
 
 		size_t sizeResult = 0;

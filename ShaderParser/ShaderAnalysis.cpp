@@ -4,6 +4,7 @@
 
 #include "ShaderAnalysis.h"
 #include "AutomaticSelectorFiltering.h"
+#include "../RenderCore/MinimalShaderSource.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/IntermediatesStore.h"		// (for GetDependentFileState)
 #include "../Assets/AssetUtils.h"
@@ -135,7 +136,7 @@ namespace ShaderSourceParser
 		return false;
 	}
 
-	RenderCore::ISourceCodePreprocessor::SourceCodeWithRemapping ExpandIncludes(
+	RenderCore::SourceCodeWithRemapping ExpandIncludes(
 		StringSection<> src,
 		const std::string& srcName,
 		const ::Assets::DirectorySearchRules& searchRules)
@@ -156,7 +157,7 @@ namespace ShaderSourceParser
 
 		std::stringstream outputStream;
 		unsigned outputStreamLineCount = 0;
-		RenderCore::ISourceCodePreprocessor::SourceCodeWithRemapping result;
+		RenderCore::SourceCodeWithRemapping result;
 
 		LineDetails::LineType prevLineType = LineDetails::LineType::Normal;
 		auto i = src.begin();

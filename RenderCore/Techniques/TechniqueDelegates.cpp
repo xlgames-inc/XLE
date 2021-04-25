@@ -4,6 +4,8 @@
 
 #include "TechniqueDelegates.h"
 #include "CommonResources.h"
+#include "CompiledShaderPatchCollection.h"
+#include "Techniques.h"
 #include "../Assets/MaterialScaffold.h"
 #include "../IDevice.h"
 #include "../Format.h"

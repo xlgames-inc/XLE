@@ -14,10 +14,10 @@ namespace RenderCore { namespace Techniques
 {
     namespace ObjectCB
     {
-        static const auto LocalTransform = Hash64("LocalTransform");
-		static const auto DrawCallProperties = Hash64("DrawCallProperties");
-        static const auto BasicMaterialConstants = Hash64("BasicMaterialConstants");
-        static const auto Globals = Hash64("$Globals");
+        static const auto LocalTransform = Utility::Hash64("LocalTransform");
+		static const auto DrawCallProperties = Utility::Hash64("DrawCallProperties");
+        static const auto BasicMaterialConstants = Utility::Hash64("BasicMaterialConstants");
+        static const auto Globals = Utility::Hash64("$Globals");
     }
 
     /// <summary>Technique type binding indicies</summary>
@@ -59,16 +59,16 @@ namespace RenderCore { namespace Techniques
 
     namespace CommonSemantics
     {        
-        static const auto POSITION = Hash64("POSITION");
-        static const auto TEXCOORD = Hash64("TEXCOORD");
-		static const auto COLOR = Hash64("COLOR");
-		static const auto NORMAL = Hash64("NORMAL");
-		static const auto TEXTANGENT = Hash64("TEXTANGENT");
-		static const auto TEXBITANGENT = Hash64("TEXBITANGENT");
-		static const auto BONEINDICES = Hash64("BONEINDICES");
-		static const auto BONEWEIGHTS = Hash64("BONEWEIGHTS");
-		static const auto PER_VERTEX_AO = Hash64("PER_VERTEX_AO");
-        static const auto RADIUS = Hash64("RADIUS");
+        static const auto POSITION = Utility::Hash64("POSITION");
+        static const auto TEXCOORD = Utility::Hash64("TEXCOORD");
+		static const auto COLOR = Utility::Hash64("COLOR");
+		static const auto NORMAL = Utility::Hash64("NORMAL");
+		static const auto TEXTANGENT = Utility::Hash64("TEXTANGENT");
+		static const auto TEXBITANGENT = Utility::Hash64("TEXBITANGENT");
+		static const auto BONEINDICES = Utility::Hash64("BONEINDICES");
+		static const auto BONEWEIGHTS = Utility::Hash64("BONEWEIGHTS");
+		static const auto PER_VERTEX_AO = Utility::Hash64("PER_VERTEX_AO");
+        static const auto RADIUS = Utility::Hash64("RADIUS");
 
         std::pair<const char*, unsigned> TryDehash(uint64_t);
     }

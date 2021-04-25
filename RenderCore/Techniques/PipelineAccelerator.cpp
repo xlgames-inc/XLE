@@ -6,6 +6,7 @@
 #include "DescriptorSetAccelerator.h"
 #include "CompiledShaderPatchCollection.h"
 #include "CommonResources.h"
+#include "ShaderVariationSet.h"
 #include "../FrameBufferDesc.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/InputLayout.h"

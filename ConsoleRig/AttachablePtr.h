@@ -53,7 +53,7 @@ namespace ConsoleRig
 
 			static InfraModuleManager& GetInstance() 
 				#if COMPILER_ACTIVE == COMPILER_TYPE_CLANG
-					__attribute__((visibility("hidden")))
+					__attribute__((visibility("hidden")));
 				#else
 					;
 				#endif
@@ -81,7 +81,7 @@ namespace ConsoleRig
 		template<typename Obj>
 			void TryConfigureType() 
 				#if COMPILER_ACTIVE == COMPILER_TYPE_CLANG
-					__attribute__((visibility("hidden")))
+					__attribute__((visibility("hidden")));
 				#else
 					;
 				#endif

@@ -4,17 +4,17 @@
 
 #pragma once
 
-#include "../RenderCore/MinimalShaderSource.h"
 #include "../Utility/ParameterBox.h"
 #include <unordered_map>
 #include <string>
 #include <set>
 
 namespace Assets { class DirectorySearchRules; }
+namespace RenderCore { class SourceCodeWithRemapping; }
 
 namespace ShaderSourceParser
 {
-	RenderCore::ISourceCodePreprocessor::SourceCodeWithRemapping ExpandIncludes(
+	RenderCore::SourceCodeWithRemapping ExpandIncludes(
 		StringSection<> src,
 		const std::string& srcName,
 		const ::Assets::DirectorySearchRules& searchRules);

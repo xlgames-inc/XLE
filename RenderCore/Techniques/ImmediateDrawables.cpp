@@ -7,6 +7,7 @@
 #include "DrawableDelegates.h"
 #include "TechniqueDelegates.h"
 #include "CommonResources.h"
+#include "CompiledShaderPatchCollection.h"
 #include "../Assets/MaterialScaffold.h"
 #include "../Assets/AssetFutureContinuation.h"
 #include "../Assets/Assets.h"

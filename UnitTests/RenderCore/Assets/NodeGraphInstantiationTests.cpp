@@ -12,6 +12,7 @@
 #include "../../../ShaderParser/ShaderAnalysis.h"
 #include "../../../ShaderParser/AutomaticSelectorFiltering.h"
 #include "../../../RenderCore/Assets/PredefinedCBLayout.h"
+#include "../../../RenderCore/MinimalShaderSource.h"
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/OSFileSystem.h"

@@ -12,6 +12,8 @@
 #include "../Techniques/RenderPass.h"
 #include "../Techniques/TechniqueDelegates.h"
 #include "../Techniques/RenderStateResolver.h"
+#include "../Techniques/DrawableDelegates.h"
+#include "../Techniques/CommonBindings.h"
 #include <vector>
 
 namespace RenderCore { namespace LightingEngine

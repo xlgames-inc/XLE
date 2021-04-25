@@ -12,6 +12,7 @@
 #include "../../../ShaderParser/NodeGraphSignature.h"
 #include "../../../ShaderParser/ShaderAnalysis.h"
 #include "../../../ShaderParser/AutomaticSelectorFiltering.h"
+#include "../../../RenderCore/MinimalShaderSource.h"
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/OSFileSystem.h"

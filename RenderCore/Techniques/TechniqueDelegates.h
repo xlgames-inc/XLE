@@ -4,16 +4,14 @@
 
 #pragma once
 
-#include "DrawableDelegates.h"
-#include "ShaderVariationSet.h"
 #include "CompiledShaderPatchCollection.h"
-#include "RenderStateResolver.h"		// (for RSDepthBias)
-#include "../MinimalShaderSource.h"		// (for ISourceCodePreprocessor)
-#include "../../ShaderParser/ShaderAnalysis.h"
-#include "../../Assets/AssetFuture.h"
+#include "RenderStateResolver.h"				// (for RSDepthBias)
+#include "../../ShaderParser/ShaderAnalysis.h"	// (for ManualSelectorFiltering)
+#include "../../Assets/DepVal.h"
+#include "../../Assets/AssetsCore.h"
 #include <memory>
 
-namespace RenderCore { class StreamOutputInitializers; }
+namespace RenderCore { class StreamOutputInitializers; class IDevice; }
 namespace ShaderSourceParser { class SelectorFilteringRules; }
 
 namespace RenderCore { namespace Techniques
@@ -45,6 +43,8 @@ namespace RenderCore { namespace Techniques
 	};
 
 	class TechniqueSharedResources;
+	class TechniqueSetFile;
+	class CompiledShaderPatchCollection;
 	std::shared_ptr<TechniqueSharedResources> CreateTechniqueSharedResources(IDevice&);
 
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_Deferred(
@@ -98,7 +98,7 @@ namespace RenderCore { namespace Techniques
 	auto AssembleShader(
 		const CompiledShaderPatchCollection& patchCollection,
 		IteratorRange<const uint64_t*> redirectedPatchFunctions,
-		StringSection<> definesTable) -> ISourceCodePreprocessor::SourceCodeWithRemapping;
+		StringSection<> definesTable) -> SourceCodeWithRemapping;
 
 }}
 
