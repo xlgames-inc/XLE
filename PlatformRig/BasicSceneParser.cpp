@@ -5,16 +5,19 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "BasicSceneParser.h"
+#include "../../RenderCore/LightingEngine/LightDesc.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetFutureContinuation.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/MathSerialization.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/Meta/AccessorSerialize.h"
-
-#include "../../SceneEngine/LightingParserStandardPlugin.h"     // (for stubbing out)
+#include "../../Utility/Meta/ClassAccessors.h"
+ 
+// #include "../../SceneEngine/LightingParserStandardPlugin.h"     // (for stubbing out)
 
 namespace PlatformRig
 {
@@ -27,7 +30,7 @@ namespace PlatformRig
 
     auto BasicLightingParserDelegate::GetShadowProjectionDesc(
         unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
-        -> ShadowProjectionDesc
+        -> RenderCore::LightingEngine::ShadowProjectionDesc
     {
         return PlatformRig::CalculateDefaultShadowCascades(
             GetEnvSettings()._shadowProj[index]._light, 
@@ -41,14 +44,14 @@ namespace PlatformRig
         return (unsigned)GetEnvSettings()._lights.size(); 
     }
 
-    auto BasicLightingParserDelegate::GetLightDesc(unsigned index) const -> const LightDesc&
+    auto BasicLightingParserDelegate::GetLightDesc(unsigned index) const -> const RenderCore::LightingEngine::LightDesc&
     {
         return GetEnvSettings()._lights[index];
     }
 
-    auto BasicLightingParserDelegate::GetGlobalLightingDesc() const -> GlobalLightingDesc
+    auto BasicLightingParserDelegate::GetSceneLightingDesc() const -> RenderCore::LightingEngine::SceneLightingDesc
     {
-        return GetEnvSettings()._globalLightingDesc;
+        return GetEnvSettings()._sceneLightingDesc;
     }
 
     ToneMapSettings BasicLightingParserDelegate::GetToneMapSettings() const
@@ -90,10 +93,10 @@ namespace PlatformRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    SceneEngine::LightDesc DefaultDominantLight()
+    RenderCore::LightingEngine::LightDesc DefaultDominantLight()
     {
-        SceneEngine::LightDesc light;
-        light._shape = SceneEngine::LightDesc::Directional;
+        RenderCore::LightingEngine::LightDesc light;
+        light._shape = RenderCore::LightingEngine::LightDesc::Directional;
         light._position = Normalize(Float3(-0.15046243f, 0.97377890f, 0.17063323f));
         light._cutoffRange = 10000.f;
         light._diffuseColor = Float3(3.2803922f, 2.2372551f, 1.9627452f);
@@ -104,14 +107,14 @@ namespace PlatformRig
         return light;
     }
 
-    SceneEngine::GlobalLightingDesc DefaultGlobalLightingDesc()
+    RenderCore::LightingEngine::SceneLightingDesc DefaultSceneLightingDesc()
     {
-        SceneEngine::GlobalLightingDesc result;
+        RenderCore::LightingEngine::SceneLightingDesc result;
         result._ambientLight = Float3(0.f, 0.f, 0.f);
-        XlCopyString(result._skyTexture, "xleres/defaultresources/sky/samplesky2.dds");
-        XlCopyString(result._diffuseIBL, "xleres/defaultresources/sky/samplesky2_diffuse.dds");
-        XlCopyString(result._specularIBL, "xleres/defaultresources/sky/samplesky2_specular.dds");
-        result._skyTextureType = GlobalLightingDesc::SkyTextureType::Cube;
+        result._skyTexture = "xleres/defaultresources/sky/samplesky2.dds";
+        result._diffuseIBL = "xleres/defaultresources/sky/samplesky2_diffuse.dds";
+        result._specularIBL = "xleres/defaultresources/sky/samplesky2_specular.dds";
+        result._skyTextureType = RenderCore::LightingEngine::SkyTextureType::Cube;
         result._skyReflectionScale = 1.f;
         result._doAtmosphereBlur = false;
         return result;
@@ -120,7 +123,7 @@ namespace PlatformRig
     EnvironmentSettings DefaultEnvironmentSettings()
     {
         EnvironmentSettings result;
-        result._globalLightingDesc = DefaultGlobalLightingDesc();
+        result._sceneLightingDesc = DefaultSceneLightingDesc();
 
         auto defLight = DefaultDominantLight();
         result._lights.push_back(defLight);
@@ -129,8 +132,8 @@ namespace PlatformRig
         result._shadowProj.push_back(EnvironmentSettings::ShadowProj { defLight, 0, frustumSettings });
 
         if (constant_expression<false>::result()) {
-            SceneEngine::LightDesc secondaryLight;
-            secondaryLight._shape = SceneEngine::LightDesc::Directional;
+            RenderCore::LightingEngine::LightDesc secondaryLight;
+            secondaryLight._shape = RenderCore::LightingEngine::LightDesc::Directional;
             secondaryLight._position = Normalize(Float3(0.71622938f, 0.48972201f, -0.49717990f));
             secondaryLight._cutoffRange = 10000.f;
             secondaryLight._diffuseColor = Float3(3.2803922f, 2.2372551f, 1.9627452f);
@@ -140,8 +143,8 @@ namespace PlatformRig
             secondaryLight._diffuseModel = 0;
             result._lights.push_back(secondaryLight);
 
-            SceneEngine::LightDesc tertiaryLight;
-            tertiaryLight._shape = SceneEngine::LightDesc::Directional;
+            RenderCore::LightingEngine::LightDesc tertiaryLight;
+            tertiaryLight._shape = RenderCore::LightingEngine::LightDesc::Directional;
             tertiaryLight._position = Normalize(Float3(-0.75507462f, -0.62672323f, 0.19256261f));
             tertiaryLight._cutoffRange = 10000.f;
             tertiaryLight._diffuseColor = Float3(0.13725491f, 0.18666667f, 0.18745099f);
@@ -155,9 +158,123 @@ namespace PlatformRig
         return std::move(result);
     }
 
+        static ParameterBox::ParameterNameHash ParamHash(const char name[])
+    {
+        return ParameterBox::MakeParameterNameHash(name);
+    }
+
+    static Float3 AsFloat3Color(unsigned packedColor)
+    {
+        return Float3(
+            (float)((packedColor >> 16) & 0xff) / 255.f,
+            (float)((packedColor >>  8) & 0xff) / 255.f,
+            (float)(packedColor & 0xff) / 255.f);
+    }
+
+    RenderCore::LightingEngine::SceneLightingDesc MakeSceneLightingDesc(const ParameterBox& props)
+    {
+        static const auto ambientHash = ParamHash("AmbientLight");
+        static const auto ambientBrightnessHash = ParamHash("AmbientBrightness");
+
+        static const auto skyTextureHash = ParamHash("SkyTexture");
+        static const auto skyTextureTypeHash = ParamHash("SkyTextureType");
+        static const auto skyReflectionScaleHash = ParamHash("SkyReflectionScale");
+        static const auto skyReflectionBlurriness = ParamHash("SkyReflectionBlurriness");
+        static const auto skyBrightness = ParamHash("SkyBrightness");
+        static const auto diffuseIBLHash = ParamHash("DiffuseIBL");
+        static const auto specularIBLHash = ParamHash("SpecularIBL");
+
+        static const auto rangeFogInscatterHash = ParamHash("RangeFogInscatter");
+        static const auto rangeFogInscatterReciprocalScaleHash = ParamHash("RangeFogInscatterReciprocalScale");
+        static const auto rangeFogInscatterScaleHash = ParamHash("RangeFogInscatterScale");
+        static const auto rangeFogThicknessReciprocalScaleHash = ParamHash("RangeFogThicknessReciprocalScale");
+
+        static const auto atmosBlurStdDevHash = ParamHash("AtmosBlurStdDev");
+        static const auto atmosBlurStartHash = ParamHash("AtmosBlurStart");
+        static const auto atmosBlurEndHash = ParamHash("AtmosBlurEnd");
+
+        static const auto flagsHash = ParamHash("Flags");
+
+            ////////////////////////////////////////////////////////////
+
+        RenderCore::LightingEngine::SceneLightingDesc result;
+        result._ambientLight = props.GetParameter(ambientBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(ambientHash, ~0x0u));
+        result._skyReflectionScale = props.GetParameter(skyReflectionScaleHash, result._skyReflectionScale);
+        result._skyReflectionBlurriness = props.GetParameter(skyReflectionBlurriness, result._skyReflectionBlurriness);
+        result._skyBrightness = props.GetParameter(skyBrightness, result._skyBrightness);
+        result._skyTextureType = (RenderCore::LightingEngine::SkyTextureType)props.GetParameter(skyTextureTypeHash, unsigned(result._skyTextureType));
+
+        float inscatterScaleScale = 1.f / std::max(1e-5f, props.GetParameter(rangeFogInscatterReciprocalScaleHash, 1.f));
+        inscatterScaleScale = props.GetParameter(rangeFogInscatterScaleHash, inscatterScaleScale);
+        result._rangeFogInscatter = inscatterScaleScale * AsFloat3Color(props.GetParameter(rangeFogInscatterHash, 0));
+        result._rangeFogThickness = 1.f / std::max(1e-5f, props.GetParameter(rangeFogThicknessReciprocalScaleHash, 0.f));
+
+        result._atmosBlurStdDev = props.GetParameter(atmosBlurStdDevHash, result._atmosBlurStdDev);
+        result._atmosBlurStart = props.GetParameter(atmosBlurStartHash, result._atmosBlurStart);
+        result._atmosBlurEnd = std::max(result._atmosBlurStart, props.GetParameter(atmosBlurEndHash, result._atmosBlurEnd));
+
+        auto flags = props.GetParameter<unsigned>(flagsHash);
+        if (flags.has_value()) {
+            result._doAtmosphereBlur = !!(flags.value() & (1<<0));
+            result._doRangeFog = !!(flags.value() & (1<<1));
+        }
+
+        auto skyTexture = props.GetParameterAsString(skyTextureHash);
+        if (skyTexture.has_value())
+            result._skyTexture = skyTexture.value();
+        auto diffuseIBL = props.GetParameterAsString(diffuseIBLHash);
+        if (diffuseIBL.has_value())
+            result._diffuseIBL = diffuseIBL.value();
+        auto specularIBL = props.GetParameterAsString(specularIBLHash);
+        if (specularIBL.has_value())
+            result._specularIBL = specularIBL.value();
+
+		// If we don't have a diffuse IBL texture, or specular IBL texture, then attempt to build
+		// the filename from the sky texture
+		if ((result._diffuseIBL.empty() || result._specularIBL.empty()) && !result._skyTexture.empty()) {
+			auto splitter = MakeFileNameSplitter(result._skyTexture);
+
+			if (result._diffuseIBL.empty())
+				result._diffuseIBL = Concatenate(MakeStringSection(splitter.DriveAndPath().begin(), splitter.File().end()), "_diffuse", splitter.ExtensionWithPeriod());
+
+			if (result._specularIBL.empty())
+				result._specularIBL = Concatenate(MakeStringSection(splitter.DriveAndPath().begin(), splitter.File().end()), "_specular", splitter.ExtensionWithPeriod());
+		}
+
+        return result;
+    }
+
+    RenderCore::LightingEngine::LightDesc MakeLightDesc(const Utility::ParameterBox& props)
+    {
+        static const auto diffuseHash = ParameterBox::MakeParameterNameHash("Diffuse");
+        static const auto diffuseBrightnessHash = ParameterBox::MakeParameterNameHash("DiffuseBrightness");
+        static const auto diffuseModel = ParameterBox::MakeParameterNameHash("DiffuseModel");
+        static const auto diffuseWideningMin = ParameterBox::MakeParameterNameHash("DiffuseWideningMin");
+        static const auto diffuseWideningMax = ParameterBox::MakeParameterNameHash("DiffuseWideningMax");
+        static const auto specularHash = ParameterBox::MakeParameterNameHash("Specular");
+        static const auto specularBrightnessHash = ParameterBox::MakeParameterNameHash("SpecularBrightness");
+        static const auto shadowResolveModel = ParameterBox::MakeParameterNameHash("ShadowResolveModel");
+        static const auto cutoffRange = ParameterBox::MakeParameterNameHash("CutoffRange");
+        static const auto shape = ParameterBox::MakeParameterNameHash("Shape");
+
+        RenderCore::LightingEngine::LightDesc result;
+        result._diffuseColor = props.GetParameter(diffuseBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(diffuseHash, ~0x0u));
+        result._specularColor = props.GetParameter(specularBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(specularHash, ~0x0u));
+
+        result._diffuseWideningMin = props.GetParameter(diffuseWideningMin, result._diffuseWideningMin);
+        result._diffuseWideningMax = props.GetParameter(diffuseWideningMax, result._diffuseWideningMax);
+        result._diffuseModel = props.GetParameter(diffuseModel, 1);
+        result._cutoffRange = props.GetParameter(cutoffRange, result._cutoffRange);
+
+        result._shape = (RenderCore::LightingEngine::LightDesc::Shape)props.GetParameter(shape, unsigned(result._shape));
+
+        result._shadowResolveModel = props.GetParameter(shadowResolveModel, 0);
+        return result;
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void ReadTransform(SceneEngine::LightDesc& light, const ParameterBox& props)
+    static void ReadTransform(RenderCore::LightingEngine::LightDesc& light, const ParameterBox& props)
     {
         static const auto transformHash = ParameterBox::MakeParameterNameHash("Transform");
         auto transform = Transpose(props.GetParameter(transformHash, Identity<Float4x4>()));
@@ -168,7 +285,7 @@ namespace PlatformRig
         light._radii = Float2(decomposed._scale[0], decomposed._scale[1]);
 
             // For directional lights we need to normalize the position (it will be treated as a direction)
-        if (light._shape == SceneEngine::LightDesc::Shape::Directional)
+        if (light._shape == RenderCore::LightingEngine::LightDesc::Shape::Directional)
             light._position = (MagnitudeSquared(light._position) > 1e-5f) ? Normalize(light._position) : Float3(0.f, 0.f, 0.f);
     }
     
@@ -201,7 +318,7 @@ namespace PlatformRig
     {
         using namespace SceneEngine;
 
-        _globalLightingDesc = DefaultGlobalLightingDesc();
+        _sceneLightingDesc = DefaultSceneLightingDesc();
 
         std::vector<std::pair<uint64, DefaultShadowFrustumSettings>> shadowSettings;
         std::vector<uint64> lightNames;
@@ -218,7 +335,7 @@ namespace PlatformRig
                     RequireBeginElement(formatter);
 
                     if (XlEqString(name, EntityTypeName::AmbientSettings)) {
-                        _globalLightingDesc = GlobalLightingDesc(ParameterBox(formatter));
+                        _sceneLightingDesc = MakeSceneLightingDesc(ParameterBox(formatter));
                     } else if (XlEqString(name, EntityTypeName::ToneMapSettings)) {
                         AccessorDeserialize(formatter, _toneMapSettings);
                     } else if (XlEqString(name, EntityTypeName::DirectionalLight) || XlEqString(name, EntityTypeName::AreaLight)) {
@@ -229,9 +346,9 @@ namespace PlatformRig
                         if (paramValue.has_value())
                             hashName = Hash64(paramValue.value());
 
-                        SceneEngine::LightDesc lightDesc(params);
+                        auto lightDesc = MakeLightDesc(params);
                         if (XlEqString(name, EntityTypeName::DirectionalLight))
-                            lightDesc._shape = LightDesc::Shape::Directional;
+                            lightDesc._shape = RenderCore::LightingEngine::LightDesc::Shape::Directional;
                         ReadTransform(lightDesc, params);
 
                         _lights.push_back(lightDesc);
@@ -295,7 +412,7 @@ namespace PlatformRig
                 assert(lightIndex < ptrdiff_t(_lights.size()));
 
                 _shadowProj.push_back(
-                    EnvironmentSettings::ShadowProj { _lights[lightIndex], SceneEngine::LightId(lightIndex), f->second });
+                    EnvironmentSettings::ShadowProj { _lights[lightIndex], RenderCore::LightingEngine::LightId(lightIndex), f->second });
             }
         }
     }
@@ -326,6 +443,8 @@ namespace PlatformRig
         }
     }*/
 }
+
+#if 0
 
 #include "../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../RenderCore/Techniques/Drawables.h"
@@ -452,6 +571,8 @@ namespace SceneEngine
         RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
         ShaderLightDesc::BasicEnvironment& env) const {}
 }
+
+#endif
 
 template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::ToneMapSettings>()
 {

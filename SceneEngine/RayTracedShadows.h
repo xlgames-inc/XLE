@@ -15,7 +15,6 @@ namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
-    class ShadowProjectionDesc;
     class PreparedRTShadowFrustum;
     class PreparedScene;
 	class LightingParserContext;

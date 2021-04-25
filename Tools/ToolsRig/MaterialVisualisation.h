@@ -34,12 +34,19 @@ namespace ToolsRig
 		const MaterialVisSettings& visObject, 
 		const std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial>& material = nullptr);
 
+	class OnChangeCallback
+    {
+    public:
+        virtual void    OnChange() = 0;
+        virtual ~OnChangeCallback() = default;
+    };
+
 	class MessageRelay
 	{
 	public:
 		std::string GetMessages() const;
 
-		unsigned AddCallback(const std::shared_ptr<Utility::OnChangeCallback>& callback);
+		unsigned AddCallback(const std::shared_ptr<OnChangeCallback>& callback);
 		void RemoveCallback(unsigned);
 
 		void AddMessage(const std::string& msg);
@@ -51,6 +58,7 @@ namespace ToolsRig
 		std::unique_ptr<Pimpl> _pimpl;
 	};
 
+#if 0
 	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeShaderPatchAnalysisDelegate(
 		const ShaderSourceParser::PreviewOptions& previewOptions);
 
@@ -86,10 +94,11 @@ namespace ToolsRig
 	private:
 		std::unique_ptr<PatchCollectionFuture> _future;
 	};
+#endif
 
 	class IPatchCollectionVisualizationScene
 	{
 	public:
-		virtual void SetPatchCollection(const PatchCollectionFuture& patchCollection) = 0;
+		// virtual void SetPatchCollection(const PatchCollectionFuture& patchCollection) = 0;
 	};
 }

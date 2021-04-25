@@ -7,8 +7,8 @@
 #pragma once
 
 #include "PlatformRigUtil.h"
+#include "../RenderCore/LightingEngine/LightDesc.h"
 #include "../SceneEngine/LightingParser.h"
-#include "../SceneEngine/LightDesc.h"
 #include "../SceneEngine/SceneParser.h"
 #include "../SceneEngine/Tonemap.h"
 #if 0
@@ -29,19 +29,19 @@ namespace PlatformRig
     /// This contains all of the settings and properties required
     /// for constructing a basic lighting environment.
     /// This can be used to implement the ISceneParser functions that
-    /// return lighting settings (like ISceneParser::GetLightDesc() and ISceneParser::GetGlobalLightingDesc())
+    /// return lighting settings (like ISceneParser::GetLightDesc() and ISceneParser::GetSceneLightingDesc())
     class EnvironmentSettings
     {
     public:
-        std::vector<SceneEngine::LightDesc> _lights;
-        SceneEngine::GlobalLightingDesc _globalLightingDesc;
+        std::vector<RenderCore::LightingEngine::LightDesc> _lights;
+        RenderCore::LightingEngine::SceneLightingDesc _sceneLightingDesc;
         SceneEngine::ToneMapSettings _toneMapSettings;
 
         class ShadowProj
         {
         public:
-            SceneEngine::LightDesc _light;
-            SceneEngine::LightId _lightId;
+            RenderCore::LightingEngine::LightDesc _light;
+            RenderCore::LightingEngine::LightId _lightId;
             DefaultShadowFrustumSettings _shadowFrustumSettings;
         };
         std::vector<ShadowProj> _shadowProj;
@@ -76,11 +76,11 @@ namespace PlatformRig
         auto        GetShadowProjectionDesc(
             ShadowProjIndex index, 
             const ProjectionDesc& mainSceneProj) const
-            -> SceneEngine::ShadowProjectionDesc;
+            -> RenderCore::LightingEngine::ShadowProjectionDesc;
 
         unsigned    GetLightCount() const;
-        auto        GetLightDesc(unsigned index) const -> const SceneEngine::LightDesc&;
-        auto        GetGlobalLightingDesc() const -> SceneEngine::GlobalLightingDesc;
+        auto        GetLightDesc(unsigned index) const -> const RenderCore::LightingEngine::LightDesc&;
+        auto        GetSceneLightingDesc() const -> RenderCore::LightingEngine::SceneLightingDesc;
         auto        GetToneMapSettings() const -> SceneEngine::ToneMapSettings;
 
 		float		GetTimeValue() const;
@@ -102,8 +102,8 @@ namespace PlatformRig
 		float									_timeValue;
     };
 
-    SceneEngine::LightDesc          DefaultDominantLight();
-    SceneEngine::GlobalLightingDesc DefaultGlobalLightingDesc();
-    EnvironmentSettings             DefaultEnvironmentSettings();
+    RenderCore::LightingEngine::LightDesc           DefaultDominantLight();
+    RenderCore::LightingEngine::SceneLightingDesc  DefaultSceneLightingDesc();
+    EnvironmentSettings                             DefaultEnvironmentSettings();
 }
 

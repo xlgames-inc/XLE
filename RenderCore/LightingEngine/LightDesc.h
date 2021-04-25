@@ -8,6 +8,7 @@
 #include "../RenderCore/Format.h"
 #include "../Math/Matrix.h"
 #include "../Math/Vector.h"
+#include "../Utility/MemoryUtils.h"
 
 namespace Utility { class ParameterBox; }
 namespace RenderCore { namespace LightingEngine
@@ -76,7 +77,7 @@ namespace RenderCore { namespace LightingEngine
 		bool					_enableNearCascade = false;
 	};
 
-	uint64_t Hash(const ShadowGeneratorDesc&);
+	uint64_t Hash64(const ShadowGeneratorDesc& shadowGeneratorDesc, uint64_t seed = DefaultSeed64);
 
 	/// <summary>Represents a set of shared projections</summary>
 	/// This class is intended to be used with cascaded shadows (and similiar
@@ -173,14 +174,14 @@ namespace RenderCore { namespace LightingEngine
 		LightId         _lightId = ~0u;
 	};
 
+	enum class SkyTextureType { HemiCube, Cube, Equirectangular, HemiEquirectangular };
 	class SceneLightingDesc
 	{
 	public:
 		std::vector<LightDesc> _lights;
 		std::vector<ShadowProjectionDesc> _shadowProjections;
 
-		std::string   _skyTexture;   ///< use "<texturename>_*" when using a half cube style sky texture. The system will fill in "_*" with appropriate characters
-		enum class SkyTextureType { HemiCube, Cube, Equirectangular, HemiEquirectangular };
+		std::string   _skyTexture;   ///< use "<texturename>_*" when using a half cube style sky texture. The system will fill in "_*" with appropriate characters	
 		SkyTextureType _skyTextureType;
 
 		std::string   _diffuseIBL;   ///< Diffuse IBL map. Sometimes called irradiance map or ambient map

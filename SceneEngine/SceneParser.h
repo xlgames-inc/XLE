@@ -10,15 +10,10 @@
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 
 namespace RenderCore { class IThreadContext; }
-namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; class ParsingContext; class DrawablesPacket; enum class BatchFilter; } }
+namespace RenderCore { namespace Techniques { class ProjectionDesc; class ParsingContext; class DrawablesPacket; enum class BatchFilter; } }
 
 namespace SceneEngine
 {
-    class LightingParserContext;
-    class ShadowProjectionDesc;
-    class GlobalLightingDesc;
-    class LightDesc;
-    class ToneMapSettings;
     class PreparedScene;
 
 #pragma warning(push)

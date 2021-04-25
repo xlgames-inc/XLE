@@ -17,7 +17,7 @@
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetFuture.h"
 #include "../../Assets/AssetFutureContinuation.h"
-#include "../../Utility/TimeUtils.h"
+#include "../../OSServices/TimeUtils.h"
 
 #pragma warning(disable:4505)
 
@@ -37,7 +37,7 @@ namespace ToolsRig
 	{
 	public:
 		virtual bool OnDraw( 
-			RenderCore::Metal::DeviceContext& metalContext, RenderCore::Techniques::ParsingContext&,
+			const RenderCore::Techniques::ExecuteDrawableContext&, RenderCore::Techniques::ParsingContext&,
 			const RenderCore::Techniques::Drawable&,
 			uint64_t materialGuid, unsigned drawCallIdx) override
 		{
@@ -76,7 +76,7 @@ namespace ToolsRig
 				auto foundAnimation = animData._animationSet.FindAnimation(animHash);
 				float time = _animationState->_animationTime;
 				if (_animationState->_state == VisAnimationState::State::Playing)
-					time += (Millisecond_Now() - _animationState->_anchorTime) / 1000.f;
+					time += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _animationState->_anchorTime).count() / 1000.f;
 				time = fmodf(time - foundAnimation._beginTime, foundAnimation._endTime - foundAnimation._beginTime) + foundAnimation._beginTime;
 
 				auto params = animData._animationSet.BuildTransformationParameterSet(
@@ -155,7 +155,7 @@ namespace ToolsRig
 				auto foundAnimation = animData._animationSet.FindAnimation(animHash);
 				float time = _animationState->_animationTime;
 				if (_animationState->_state == VisAnimationState::State::Playing) {
-					time += (Millisecond_Now() - _animationState->_anchorTime) / 1000.f;
+					time += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _animationState->_anchorTime).count() / 1000.f;
 					time = fmodf(time - foundAnimation._beginTime, foundAnimation._endTime - foundAnimation._beginTime) + foundAnimation._beginTime;
 				}
 

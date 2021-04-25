@@ -210,5 +210,46 @@ namespace RenderCore { namespace LightingEngine
 	}
 
 
+	template<int BitCount, typename Input>
+		static uint64_t GetBits(Input i)
+	{
+		auto mask = (1ull<<uint64_t(BitCount))-1ull;
+		assert((uint64_t(i) & ~mask) == 0);
+		return uint64_t(i) & mask;
+	}
+
+	inline uint32_t FloatBits(float i) { return *(uint32_t*)&i; }
+
+	uint64_t Hash64(const ShadowGeneratorDesc& shadowGeneratorDesc, uint64_t seed)
+	{
+		uint64_t h0 = 
+			  (GetBits<12>(shadowGeneratorDesc._width)			<< 0ull)
+			| (GetBits<12>(shadowGeneratorDesc._height)			<< 12ull)
+			| (GetBits<8>(shadowGeneratorDesc._format)			<< 24ull)
+			| (GetBits<4>(shadowGeneratorDesc._arrayCount)		<< 32ull)
+			| (GetBits<4>(shadowGeneratorDesc._projectionMode)	<< 36ull)
+			| (GetBits<4>(shadowGeneratorDesc._cullMode)		<< 40ull)
+			| (GetBits<4>(shadowGeneratorDesc._resolveType)		<< 44ull)
+			| (GetBits<1>(shadowGeneratorDesc._enableNearCascade)  << 48ull)
+			;
+
+		uint64_t h1 = 
+				uint64_t(FloatBits(shadowGeneratorDesc._slopeScaledBias))
+			|  (uint64_t(FloatBits(shadowGeneratorDesc._depthBiasClamp)) << 32ull)
+			;
+
+		uint64_t h2 = 
+				uint64_t(FloatBits(shadowGeneratorDesc._dsSlopeScaledBias))
+			|  (uint64_t(FloatBits(shadowGeneratorDesc._dsDepthBiasClamp)) << 32ull)
+			;
+
+		uint64_t h3 = 
+				uint64_t(shadowGeneratorDesc._rasterDepthBias)
+			|  (uint64_t(shadowGeneratorDesc._dsRasterDepthBias) << 32ull)
+			;
+
+		return HashCombine(h0, HashCombine(h1, HashCombine(h2, HashCombine(h3, seed))));
+	}
+
 }}
 

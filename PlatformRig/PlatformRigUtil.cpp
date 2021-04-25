@@ -212,7 +212,7 @@ namespace PlatformRig
 
     static std::pair<RenderCore::LightingEngine::ShadowProjectionDesc::Projections, Float4x4> 
         BuildBasicShadowProjections(
-            const SceneEngine::LightDesc& lightDesc,
+            const RenderCore::LightingEngine::LightDesc& lightDesc,
             const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc,
             const DefaultShadowFrustumSettings& settings)
     {
@@ -283,7 +283,7 @@ namespace PlatformRig
     }
 
     static std::pair<Float4x4, Float4> BuildCameraAlignedOrthogonalShadowProjection(
-        const SceneEngine::LightDesc& lightDesc,
+        const RenderCore::LightingEngine::LightDesc& lightDesc,
         const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc,
         float depth, float maxDistanceFromCamera)
     {
@@ -349,7 +349,7 @@ namespace PlatformRig
 
     static std::pair<RenderCore::LightingEngine::ShadowProjectionDesc::Projections, Float4x4>  
         BuildSimpleOrthogonalShadowProjections(
-            const SceneEngine::LightDesc& lightDesc,
+            const RenderCore::LightingEngine::LightDesc& lightDesc,
             const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc,
             const DefaultShadowFrustumSettings& settings)
     {

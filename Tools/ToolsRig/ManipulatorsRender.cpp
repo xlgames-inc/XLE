@@ -6,9 +6,9 @@
 
 #include "ManipulatorsRender.h"
 #include "../../SceneEngine/PlacementsManager.h"
-#include "../../SceneEngine/SceneEngineUtils.h"
-#include "../../SceneEngine/MetalStubs.h"
-#include "../../SceneEngine/RenderStep.h"
+// #include "../../SceneEngine/SceneEngineUtils.h"
+// #include "../../SceneEngine/MetalStubs.h"
+// #include "../../SceneEngine/RenderStep.h"
 #include "../../FixedFunctionModel/ModelRunTime.h"
 #include "../../FixedFunctionModel/PreboundShaders.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -34,7 +34,7 @@
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../xleres/FileList.h"
 
-#include "../../RenderCore/DX11/Metal/DX11Utils.h"
+// #include "../../RenderCore/DX11/Metal/DX11Utils.h"
 
 namespace ToolsRig
 {
@@ -105,6 +105,7 @@ namespace ToolsRig
     void Placements_RenderHighlight(
         RenderCore::IThreadContext& threadContext,
         Techniques::ParsingContext& parserContext,
+        Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
         SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementCellSet& cellSet,
         const SceneEngine::PlacementGUID* filterBegin,
@@ -112,9 +113,12 @@ namespace ToolsRig
         uint64 materialGuid)
     {
         CATCH_ASSETS_BEGIN
-            RenderOverlays::BinaryHighlight highlight(threadContext, parserContext.GetFrameBufferPool(), parserContext.GetNamedResources());
+            RenderOverlays::BinaryHighlight highlight(
+                threadContext,
+                *parserContext.GetTechniqueContext()._frameBufferPool,
+                *parserContext.GetTechniqueContext()._attachmentPool);
 			RenderCore::Techniques::SequencerContext seqContext;
-			auto sequencerCfg = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
+			auto sequencerCfg = pipelineAccelerators.CreateSequencerConfig(
 				ConsoleRig::FindCachedBoxDep2<TechniqueBox>()._forwardIllumDelegate, ParameterBox{}, 
 				highlight.GetFrameBufferDesc());
 			seqContext._sequencerConfig = sequencerCfg.get();
@@ -129,6 +133,7 @@ namespace ToolsRig
 	void Placements_RenderHighlightWithOutlineAndOverlay(
         RenderCore::IThreadContext& threadContext,
         Techniques::ParsingContext& parserContext,
+        Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
         SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementCellSet& cellSet,
 		const SceneEngine::PlacementGUID* filterBegin,
@@ -136,9 +141,12 @@ namespace ToolsRig
         uint64 materialGuid)
     {
 		CATCH_ASSETS_BEGIN
-            RenderOverlays::BinaryHighlight highlight(threadContext, parserContext.GetFrameBufferPool(), parserContext.GetNamedResources());
+            RenderOverlays::BinaryHighlight highlight(
+                threadContext,
+                *parserContext.GetTechniqueContext()._frameBufferPool,
+                *parserContext.GetTechniqueContext()._attachmentPool);
 			RenderCore::Techniques::SequencerContext seqContext;
-			auto sequencerCfg = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
+			auto sequencerCfg = pipelineAccelerators.CreateSequencerConfig(
 				ConsoleRig::FindCachedBoxDep2<TechniqueBox>()._forwardIllumDelegate, ParameterBox{}, 
 				highlight.GetFrameBufferDesc());
 			seqContext._sequencerConfig = sequencerCfg.get();
@@ -157,6 +165,7 @@ namespace ToolsRig
     void Placements_RenderShadow(
         RenderCore::IThreadContext& threadContext,
         Techniques::ParsingContext& parserContext,
+        Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
         SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementCellSet& cellSet,
         const SceneEngine::PlacementGUID* filterBegin,
@@ -164,9 +173,12 @@ namespace ToolsRig
         uint64 materialGuid)
     {
         CATCH_ASSETS_BEGIN
-            RenderOverlays::BinaryHighlight highlight(threadContext, parserContext.GetFrameBufferPool(), parserContext.GetNamedResources());
+            RenderOverlays::BinaryHighlight highlight(
+                threadContext,
+                *parserContext.GetTechniqueContext()._frameBufferPool,
+                *parserContext.GetTechniqueContext()._attachmentPool);
             RenderCore::Techniques::SequencerContext seqContext;
-			auto sequencerCfg = parserContext._pipelineAcceleratorPool->CreateSequencerConfig(
+			auto sequencerCfg = pipelineAccelerators.CreateSequencerConfig(
 				ConsoleRig::FindCachedBoxDep2<TechniqueBox>()._forwardIllumDelegate, ParameterBox{}, 
 				highlight.GetFrameBufferDesc());
 			seqContext._sequencerConfig = sequencerCfg.get();
@@ -181,6 +193,7 @@ namespace ToolsRig
     void RenderCylinderHighlight(
         IThreadContext& threadContext, 
         Techniques::ParsingContext& parserContext,
+        Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
         const Float3& centre, float radius)
     {
 		std::vector<FrameBufferDesc::Attachment> attachments {
@@ -194,11 +207,11 @@ namespace ToolsRig
 		FrameBufferDesc fbDesc{ std::move(attachments), {mainPass} };
 		Techniques::RenderPassInstance rpi {
 			threadContext, fbDesc, 
-			parserContext.GetFrameBufferPool(),
-			parserContext.GetNamedResources() };
+			parserContext.GetTechniqueContext()._frameBufferPool,
+			parserContext.GetTechniqueContext()._attachmentPool };
 
         auto depthSrv = rpi.GetInputAttachmentSRV(0, TextureViewDesc{{TextureViewDesc::Aspect::Depth}});
-        if (!depthSrv || !depthSrv->IsGood()) return;
+        if (!depthSrv) return;
 
         TRY
         {
@@ -216,12 +229,12 @@ namespace ToolsRig
             constantBufferPackets[0] = MakeSharedPkt(highlightParameters);
 
             auto& circleHighlight = *::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L")->Actualize();
-            const Metal::ShaderResourceView* resources[] = { depthSrv, &circleHighlight.GetShaderResource() };
+            const IResourceView* resources[] = { depthSrv, circleHighlight.GetShaderResource().get() };
 
 			UniformsStreamInterface usi;
-			usi.BindConstantBuffer(0, {Hash64("CircleHighlightParameters")});
-            usi.BindShaderResource(0, Hash64("DepthTexture"));
-            usi.BindShaderResource(1, Hash64("HighlightResource"));
+			usi.BindImmediateData(0, Hash64("CircleHighlightParameters"));
+            usi.BindResourceView(0, Hash64("DepthTexture"));
+            usi.BindResourceView(1, Hash64("HighlightResource"));
 
 			Metal::BoundUniforms boundLayout(
 				shaderProgram,
@@ -257,6 +270,7 @@ namespace ToolsRig
     void RenderRectangleHighlight(
         IThreadContext& threadContext, 
         Techniques::ParsingContext& parserContext,
+        Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
         const Float3& mins, const Float3& maxs,
 		RectangleHighlightType type)
     {
@@ -271,8 +285,8 @@ namespace ToolsRig
 		FrameBufferDesc fbDesc{ std::move(attachments), {mainPass} };
 		Techniques::RenderPassInstance rpi {
 			threadContext, fbDesc, 
-			parserContext.GetFrameBufferPool(),
-			parserContext.GetNamedResources() };
+			parserContext.GetTechniqueContext()._frameBufferPool,
+			parserContext.GetTechniqueContext()._attachmentPool };
 
         auto depthSrv = rpi.GetInputAttachmentSRV(0, TextureViewDesc{{TextureViewDesc::Aspect::Depth}});
         if (!depthSrv || !depthSrv->IsGood()) return;

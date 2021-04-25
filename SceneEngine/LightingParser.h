@@ -14,11 +14,18 @@
 #include <functional>
 #include <memory>
 
-namespace RenderCore { namespace Techniques { 
+namespace RenderCore { namespace Techniques 
+{ 
 	class CameraDesc; class ProjectionDesc; 
 	class ParsingContext; 
 	enum class BatchFilter; 
 	class IPipelineAcceleratorPool; 
+}}
+
+namespace RenderCore { namespace LightingEngine 
+{ 
+    class LightDesc;
+    class SceneLightingDesc;
 }}
 
 namespace RenderCore { class IThreadContext; class AttachmentDesc; }
@@ -106,9 +113,6 @@ namespace SceneEngine
 
         ///////////////////////////////////////////////////////////////////////////
 
-	class ShadowProjectionDesc;
-	class GlobalLightingDesc;
-	class LightDesc;
 	class ToneMapSettings;
 	class MainTargets;
 
@@ -121,11 +125,11 @@ namespace SceneEngine
 
         virtual ShadowProjIndex GetShadowProjectionCount() const = 0;
         virtual auto            GetShadowProjectionDesc(ShadowProjIndex index, const ProjectionDesc& mainSceneProj) const
-            -> ShadowProjectionDesc = 0;
+            -> RenderCore::LightingEngine::ShadowProjectionDesc = 0;
 
         virtual LightIndex  GetLightCount() const = 0;
-        virtual auto        GetLightDesc(LightIndex index) const -> const LightDesc& = 0;
-        virtual auto        GetGlobalLightingDesc() const -> GlobalLightingDesc = 0;
+        virtual auto        GetLightDesc(LightIndex index) const -> const RenderCore::LightingEngine::LightDesc& = 0;
+        virtual auto        GetSceneLightingDesc() const -> RenderCore::LightingEngine::SceneLightingDesc = 0;
         virtual auto        GetToneMapSettings() const -> ToneMapSettings = 0;
 
         virtual float       GetTimeValue() const = 0;

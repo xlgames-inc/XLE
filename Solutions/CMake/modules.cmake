@@ -21,6 +21,8 @@ add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../RenderOverlays RenderOverlays)
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../BufferUploads BufferUploads)
 #add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../FixedFunctionModel FixedFunctionModel)
 
+add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../Tools/ToolsRig ToolsRig)
+
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../ColladaConversion ColladaConversion)
 
 add_subdirectory(${XLE_MAIN_CMAKE_DIR}/../../Foreign ForeignMisc)

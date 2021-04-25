@@ -480,7 +480,10 @@ namespace Assets
 			ClearFrameBarrierCallbackAlreadyLocked();
 			_actualized = std::move(newAsset);
 			_actualizationLog = log;
-			_actualizedDepVal = _actualized ? Internal::GetDependencyValidation(*_actualized) : nullptr;
+			if (_actualized) {
+				_actualizedDepVal = Internal::GetDependencyValidation(*_actualized);
+			} else
+				_actualizedDepVal = {};
 			_state = _actualized ? AssetState::Ready : AssetState::Invalid;
 		}
 		_conditional.notify_all();

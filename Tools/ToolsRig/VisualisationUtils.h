@@ -13,6 +13,7 @@
 #include "../../Math/Vector.h"
 #include "../../Utility/Optional.h"
 #include <string>
+#include <chrono>
 
 namespace RenderCore { namespace Techniques { 
 	class CameraDesc; class TechniqueContext; class Technique; 
@@ -105,7 +106,7 @@ namespace ToolsRig
 		std::vector<AnimationDetails> _animationList;
 		std::string _activeAnimation;
 		float _animationTime = 0.f;
-		unsigned _anchorTime = 0;
+		std::chrono::steady_clock::time_point _anchorTime;
 		enum class State { Stopped, Playing, BindPose };
 		State _state = State::Stopped;
 

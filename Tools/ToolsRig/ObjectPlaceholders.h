@@ -12,7 +12,7 @@
 #include <string>
 
 namespace RenderCore { namespace Techniques { class ParsingContext; class DrawablesPacket; class IPipelineAcceleratorPool; } }
-namespace SceneEngine { class IIntersectionTester; }
+// namespace SceneEngine { class IIntersectionTester; }
 
 namespace EntityInterface { class RetainedEntities; }
 
@@ -21,16 +21,11 @@ namespace ToolsRig
     class ObjectPlaceholders : public std::enable_shared_from_this<ObjectPlaceholders>
     {
     public:
-        void Render(
-            RenderCore::Metal::DeviceContext& threadContext, 
-            RenderCore::Techniques::ParsingContext& parserContext,
-            unsigned techniqueIndex);
-
 		void BuildDrawables(IteratorRange<RenderCore::Techniques::DrawablesPacket** const> pkts);
 
         void AddAnnotation(EntityInterface::ObjectTypeId typeId, const std::string& geoType);
 
-        std::shared_ptr<SceneEngine::IIntersectionTester> CreateIntersectionTester();
+        // std::shared_ptr<SceneEngine::IIntersectionTester> CreateIntersectionTester();
 
         ObjectPlaceholders(
 			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,

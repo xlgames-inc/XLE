@@ -36,6 +36,7 @@
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetFutureContinuation.h"
 #include "../../ConsoleRig/ResourceBox.h"
+#include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Threading/Mutex.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
@@ -55,23 +56,21 @@ namespace ToolsRig
     class CachedVisGeo
     {
     public:
-        class Desc {};
-
         IResourcePtr _cubeBuffer;
         IResourcePtr _sphereBuffer;
         unsigned _cubeVCount;
         unsigned _sphereVCount;
 
-        CachedVisGeo(const Desc&);
+        CachedVisGeo(IDevice&);
     };
 
-    CachedVisGeo::CachedVisGeo(const Desc&)
+    CachedVisGeo::CachedVisGeo(IDevice& device)
     {
         auto sphereGeometry = BuildGeodesicSphere();
-        _sphereBuffer = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(sphereGeometry));
+        _sphereBuffer = RenderCore::Techniques::CreateStaticVertexBuffer(device, MakeIteratorRange(sphereGeometry));
         _sphereVCount = unsigned(sphereGeometry.size());
         auto cubeGeometry = BuildCube();
-        _cubeBuffer = RenderCore::Techniques::CreateStaticVertexBuffer(MakeIteratorRange(cubeGeometry));
+        _cubeBuffer = RenderCore::Techniques::CreateStaticVertexBuffer(device, MakeIteratorRange(cubeGeometry));
         _cubeVCount = unsigned(cubeGeometry.size());
     }
 
@@ -82,15 +81,18 @@ namespace ToolsRig
 
 		static void DrawFn(
 			Techniques::ParsingContext& parserContext,
-			const ExecuteDrawableContext& drawFnContext,
+			const Techniques::ExecuteDrawableContext& drawFnContext,
 			const MaterialSceneParserDrawable& drawable)
 		{
-			if (drawFnContext.UniformBindingBitField() != 0) {
-				ConstantBufferView cbvs[] = {
+			if (drawFnContext.GetBoundLooseImmediateDatas() != 0) {
+				auto transformPkt = 
 					Techniques::MakeLocalTransformPacket(
 						Identity<Float4x4>(), 
-						ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld))};
-				drawFnContext.ApplyUniforms(UniformsStream{MakeIteratorRange(cbvs)});
+						ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
+				IteratorRange<const void*> pkts[] = { MakeIteratorRange(transformPkt) };
+				UniformsStream uniforms;
+				uniforms._immediateData = MakeIteratorRange(pkts);
+				drawFnContext.ApplyLooseUniforms(uniforms);
 			}
 
 			assert(!drawable._geo->_ib);
@@ -106,7 +108,7 @@ namespace ToolsRig
                     IteratorRange<Techniques::DrawablesPacket** const> pkts) const
         {
 			auto usi = std::make_shared<UniformsStreamInterface>();
-			usi->BindConstantBuffer(0, {Techniques::ObjectCB::LocalTransform});
+			usi->BindImmediateData(0, Techniques::ObjectCB::LocalTransform);
 
 			auto& pkt = *pkts[unsigned(RenderCore::Techniques::BatchFilter::General)];
 
@@ -134,21 +136,20 @@ namespace ToolsRig
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._vbOffset = space._startOffset;
 				drawable._geo->_vertexStreamCount = 1;
-				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&MaterialSceneParserDrawable::DrawFn;
+				drawable._drawFn = (Techniques::ExecuteDrawableFn*)&MaterialSceneParserDrawable::DrawFn;
 				drawable._vertexCount = (unsigned)dimof(vertices);
-				drawable._uniformsInterface = usi;
+				drawable._looseUniformsInterface = usi;
 
             } else {
 
                 unsigned count = 0;
-                const auto& cachedGeo = ConsoleRig::FindCachedBox2<CachedVisGeo>();
 				RenderCore::IResourcePtr vb;
                 if (geoType == MaterialVisSettings::GeometryType::Sphere) {
-					vb = cachedGeo._sphereBuffer;
-                    count = cachedGeo._sphereVCount;
+					vb = _visGeo._sphereBuffer;
+                    count = _visGeo._sphereVCount;
                 } else if (geoType == MaterialVisSettings::GeometryType::Cube) {
-					vb = cachedGeo._cubeBuffer;
-                    count = cachedGeo._cubeVCount;
+					vb = _visGeo._cubeBuffer;
+                    count = _visGeo._cubeVCount;
                 } else return;
 
 				auto& drawable = *pkt._drawables.Allocate<MaterialSceneParserDrawable>();
@@ -157,9 +158,9 @@ namespace ToolsRig
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._resource = vb;
 				drawable._geo->_vertexStreamCount = 1;
-				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&MaterialSceneParserDrawable::DrawFn;
+				drawable._drawFn = (Techniques::ExecuteDrawableFn*)&MaterialSceneParserDrawable::DrawFn;
 				drawable._vertexCount = count;
-				drawable._uniformsInterface = usi;
+				drawable._looseUniformsInterface = usi;
 
             }
         }
@@ -187,6 +188,7 @@ namespace ToolsRig
 		void BindAnimationState(const std::shared_ptr<VisAnimationState>& animState) {}
 		bool HasActiveAnimation() const { return false; }
 
+#if 0
 		void SetPatchCollection(const PatchCollectionFuture& patchCollectionFuture)
 		{
 			auto mat = _material;
@@ -220,12 +222,14 @@ namespace ToolsRig
 					return pendingPipeline;
 				});
 		}
+#endif
 
 		MaterialVisualizationScene(
 			const MaterialVisSettings& settings,
 			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,
 			const std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial>& material)
         : _settings(settings)
+		, _visGeo(*pipelineAcceleratorPool->GetDevice())
 		{
 			_pipelineAcceleratorPool = pipelineAcceleratorPool;
 			_material = material;
@@ -267,6 +271,8 @@ namespace ToolsRig
 
 		::Assets::DependencyValidation				_depVal;
 
+		CachedVisGeo _visGeo;
+
 		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
 		std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial> _material;
     };
@@ -307,18 +313,21 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 	std::unique_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> MakeCompiledShaderPatchCollection(
 		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& provider,
+		const RenderCore::Techniques::DescriptorSetLayoutAndBinding& materialDescSetLayout,
 		const std::shared_ptr<MessageRelay>& logMessages)
 	{
 		ShaderSourceParser::InstantiationRequest instRequest;
 		instRequest._customProvider = provider;
 		ShaderSourceParser::GenerateFunctionOptions generateOptions;
+		generateOptions._shaderLanguage = RenderCore::Techniques::GetDefaultShaderLanguage();
 		return std::make_unique<RenderCore::Techniques::CompiledShaderPatchCollection>(
 			ShaderSourceParser::InstantiateShader(
 				MakeIteratorRange(&instRequest, &instRequest+1),
-				generateOptions,
-				RenderCore::Techniques::GetDefaultShaderLanguage()));
+				generateOptions),
+			materialDescSetLayout);
 	}
 
 	class PatchAnalysisHelper
@@ -349,7 +358,7 @@ namespace ToolsRig
 			return result;
 		}
 
-		::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(StringSection<> defines)
+		::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(const std::shared_ptr<RenderCore::ICompiledPipelineLayout>& pipelineLayout, StringSection<> defines)
 		{
 			using namespace RenderCore::Techniques;
 			auto patchCollection = RenderCore::Techniques::AssembleShader(
@@ -358,7 +367,7 @@ namespace ToolsRig
 
 			auto vsCode = MakeByteCodeFuture(ShaderStage::Vertex, patchCollection._processedSource, _vsTechniqueCode, "vs_main", defines);
 			auto psCode = MakeByteCodeFuture(ShaderStage::Pixel, patchCollection._processedSource, _psTechniqueCode, "ps_main", defines);
-			return CreateShaderProgramFromByteCode(vsCode, psCode, "ShaderPatchFactory");
+			return CreateShaderProgramFromByteCode(pipelineLayout, vsCode, psCode, "ShaderPatchFactory");
 		}
 
 		const RenderCore::Techniques::CompiledShaderPatchCollection* _patchCollection;
@@ -439,13 +448,17 @@ namespace ToolsRig
 		std::shared_ptr<RenderCore::IShaderSource> _shaderSource;
 		ShaderSourceParser::PreviewOptions _previewOptions;
 	};
+#endif
 
 	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeShaderPatchAnalysisDelegate(
 		const ShaderSourceParser::PreviewOptions& previewOptions)
 	{
-		return std::make_unique<ShaderPatchAnalysisDelegate>(previewOptions);
+		assert(0);		// broken in technique delegate refactor
+		Throw(std::runtime_error("Unimplemented"));
+		// return std::make_unique<ShaderPatchAnalysisDelegate>(previewOptions);
 	}
 
+#if 0
 	std::unique_ptr<RenderCore::Techniques::CompiledShaderPatchCollection> MakeCompiledShaderPatchCollection(
 		const GraphLanguage::NodeGraph& nodeGraph,
 		const GraphLanguage::NodeGraphSignature& nodeGraphSignature,
@@ -457,13 +470,13 @@ namespace ToolsRig
 		if (previewNodeId != ~0u)
 			generateOptions._generateDanglingOutputs = previewNodeId;
 		generateOptions._generateDanglingInputs = true;
+		generateOptions._shaderLanguage = RenderCore::Techniques::GetDefaultShaderLanguage();
 
 		auto mainInstantiation = ShaderSourceParser::InstantiateShader(
 			GraphLanguage::INodeGraphProvider::NodeGraph { "preview_graph", nodeGraph, nodeGraphSignature, subProvider },
 			false,
 			instantiationReq,
-			generateOptions,
-			RenderCore::Techniques::GetDefaultShaderLanguage());
+			generateOptions);
 
 		return std::make_unique<RenderCore::Techniques::CompiledShaderPatchCollection>(mainInstantiation);
 	}
@@ -563,6 +576,7 @@ namespace ToolsRig
 				subProvider));
 	}
 	DeferredCompiledShaderPatchCollection::~DeferredCompiledShaderPatchCollection() {}
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -572,7 +586,7 @@ namespace ToolsRig
 		std::vector<std::string> _messages;
 		Threading::RecursiveMutex _lock;
 
-		std::vector<std::pair<unsigned, std::shared_ptr<Utility::OnChangeCallback>>> _callbacks;
+		std::vector<std::pair<unsigned, std::shared_ptr<OnChangeCallback>>> _callbacks;
 		unsigned _nextCallbackId = 1;
 	};
 
@@ -589,7 +603,7 @@ namespace ToolsRig
 		return result;
 	}
 
-	unsigned MessageRelay::AddCallback(const std::shared_ptr<Utility::OnChangeCallback>& callback)
+	unsigned MessageRelay::AddCallback(const std::shared_ptr<OnChangeCallback>& callback)
 	{
 		ScopedLock(_pimpl->_lock);
 		_pimpl->_callbacks.push_back(std::make_pair(_pimpl->_nextCallbackId, callback));
@@ -601,7 +615,7 @@ namespace ToolsRig
 		ScopedLock(_pimpl->_lock);
 		auto i = std::find_if(
 			_pimpl->_callbacks.begin(), _pimpl->_callbacks.end(),
-			[id](const std::pair<unsigned, std::shared_ptr<Utility::OnChangeCallback>>& p) { return p.first == id; } );
+			[id](const std::pair<unsigned, std::shared_ptr<OnChangeCallback>>& p) { return p.first == id; } );
 		_pimpl->_callbacks.erase(i);
 	}
 

@@ -5,15 +5,15 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "VisualisationUtils.h"
-#include "../../SceneEngine/LightDesc.h"
-#include "../../SceneEngine/LightingParserContext.h"
-#include "../../SceneEngine/LightingParserStandardPlugin.h"
-// #include "../../SceneEngine/SceneEngineUtils.h"
-#include "../../SceneEngine/RenderStep.h"
+#include "../../RenderCore/LightingEngine/LightDesc.h"
+//#include "../../SceneEngine/LightingParserContext.h"
+//#include "../../SceneEngine/LightingParserStandardPlugin.h"
+//#include "../../SceneEngine/SceneEngineUtils.h"
+//#include "../../SceneEngine/RenderStep.h"
 #include "../../SceneEngine/RayVsModel.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../PlatformRig/BasicSceneParser.h"
-#include "../../PlatformRig/Screenshot.h"
+//#include "../../PlatformRig/Screenshot.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderOverlays/HighlightEffects.h"
@@ -206,6 +206,8 @@ namespace ToolsRig
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
+		assert(0);		// \todo -- switch to LightingEngine based lighting resolve 
+#if 0
         using namespace SceneEngine;
 
 		if (_pimpl->_preparingEnvSettings) {
@@ -295,6 +297,7 @@ namespace ToolsRig
 				// SceneEngine::DrawString(threadContext, RenderOverlays::GetDefaultFont(), _pimpl->_envSettingsErrorMessage);
 			}
 		}
+#endif
     }
 
     void SimpleSceneLayer::Set(const VisEnvSettings& envSettings)
@@ -358,8 +361,10 @@ namespace ToolsRig
 		_pimpl->_pipelineAccelerators = pipelineAccelerators;
 		_pimpl->_immediateDrawables = immediateDrawables;
 
+#if 0
 		_pimpl->_lightingPlugins.push_back(std::make_shared<SceneEngine::LightingParserStandardPlugin>());
 		_pimpl->_renderSteps = SceneEngine::CreateStandardRenderSteps(SceneEngine::LightingModel::Deferred);
+#endif
     }
 
     SimpleSceneLayer::~SimpleSceneLayer() {}
@@ -389,6 +394,8 @@ namespace ToolsRig
 		SceneEngine::IScene& scene,
 		const std::shared_ptr<SceneEngine::IRenderStep>& renderStep)
     {
+		assert(0);	// update for LightingEngine
+#if 0
 		try
         {
 			auto future = ::Assets::MakeAsset<PlatformRig::EnvironmentSettings>(envSettings._envConfigFile);
@@ -433,6 +440,7 @@ namespace ToolsRig
         }
         catch (::Assets::Exceptions::InvalidAsset& e) { return std::make_pair(DrawPreviewResult::Error, e.what()); }
         catch (::Assets::Exceptions::PendingAsset& e) { return std::make_pair(DrawPreviewResult::Pending, e.Initializer()); }
+#endif
 
         return std::make_pair(DrawPreviewResult::Error, std::string());
     }
@@ -552,7 +560,7 @@ namespace ToolsRig
 			mainPass.SetName("VisualisationOverlay");
 			mainPass.AppendOutput(0);
 			mainPass.SetDepthStencil(1, LoadStore::Retain_ClearStencil);		// ensure stencil is cleared (but ok to keep depth)
-			FrameBufferDesc fbDesc{ std::move(attachments), {mainPass} };
+			FrameBufferDesc fbDesc{ std::move(attachments), std::vector<SubpassDesc>{mainPass} };
 			Techniques::RenderPassInstance rpi {
 				threadContext, fbDesc, 
 				*parserContext.GetTechniqueContext()._frameBufferPool,

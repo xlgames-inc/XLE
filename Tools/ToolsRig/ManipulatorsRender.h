@@ -11,8 +11,8 @@
 #include "../../Core/Types.h"
 #include <utility>
 
-namespace RenderCore { class IThreadContext; }
-namespace RenderCore { namespace Techniques { class ParsingContext; class SequencerContext; }}
+namespace RenderCore { class IThreadContext; class IResourceView; }
+namespace RenderCore { namespace Techniques { class ParsingContext; class SequencerContext; class IPipelineAcceleratorPool; }}
 namespace SceneEngine 
 { 
     class PlacementCellSet;
@@ -25,6 +25,7 @@ namespace ToolsRig
     void Placements_RenderHighlight(
         RenderCore::IThreadContext& threadContext,
         RenderCore::Techniques::ParsingContext& parserContext,
+        RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
         SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementCellSet& cellSet,
         const SceneEngine::PlacementGUID* filterBegin = nullptr,
@@ -34,6 +35,7 @@ namespace ToolsRig
 	void Placements_RenderHighlightWithOutlineAndOverlay(
         RenderCore::IThreadContext& threadContext,
         RenderCore::Techniques::ParsingContext& parserContext,
+        RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
         SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementCellSet& cellSet,
 		const SceneEngine::PlacementGUID* filterBegin = nullptr,
@@ -43,6 +45,7 @@ namespace ToolsRig
     void Placements_RenderFiltered(
         RenderCore::IThreadContext& threadContext,
         RenderCore::Techniques::ParsingContext& parserContext,
+        RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
         const RenderCore::Techniques::SequencerContext& sequencerTechnique,
         SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementCellSet& cellSet,
@@ -53,6 +56,7 @@ namespace ToolsRig
     void Placements_RenderShadow(
         RenderCore::IThreadContext& threadContext,
         RenderCore::Techniques::ParsingContext& parserContext,
+        RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
         SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementCellSet& cellSet,
         const SceneEngine::PlacementGUID* filterBegin = nullptr,
@@ -62,6 +66,7 @@ namespace ToolsRig
     void RenderCylinderHighlight(
         RenderCore::IThreadContext& threadContext, 
         RenderCore::Techniques::ParsingContext& parserContext,
+        RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
         const Float3& centre, float radius);
 
     void DrawWorldSpaceCylinder(
@@ -72,12 +77,13 @@ namespace ToolsRig
     void RenderRectangleHighlight(
         RenderCore::IThreadContext& threadContext, 
         RenderCore::Techniques::ParsingContext& parserContext,
+        RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
         const Float3& mins, const Float3& maxs,
 		RectangleHighlightType type = RectangleHighlightType::Tool);
 
     void DrawQuadDirect(
         RenderCore::IThreadContext& threadContext, 
-        const RenderCore::Metal::ShaderResourceView& srv, 
+        const std::shared_ptr<RenderCore::IResourceView>& srv, 
         Float2 screenMins, Float2 screenMaxs);
 }
 
