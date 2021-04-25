@@ -13,7 +13,6 @@
 #include "../../SceneEngine/SceneParser.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
-#include "../../RenderCore/Metal/State.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/AssetSetManager.h"

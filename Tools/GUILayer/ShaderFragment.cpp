@@ -38,13 +38,13 @@ namespace GUILayer
 		~ShaderFragment();
 
 	private:
-        clix::shared_ptr<Utility::OnChangeCallback> _fileChangeCallback;
+        clix::shared_ptr<OSServices::OnChangeCallback> _fileChangeCallback;
         unsigned _changeMarker;
     };
 
 	namespace Internal
 	{
-		class ShaderFragmentChangeCallback : public Utility::OnChangeCallback
+		class ShaderFragmentChangeCallback : public OSServices::OnChangeCallback
 		{
 		public:
 			virtual void    OnChange();

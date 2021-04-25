@@ -12,7 +12,6 @@
 #include "DelayedDeleteQueue.h"
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/DivergentAsset.h"
-#include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlappedWindow.h"
 #include "../../PlatformRig/WinAPI/RunLoop_WinAPI.h"
@@ -29,7 +28,6 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
-#include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/MountingTree.h"
 #include "../../Assets/OSFileSystem.h"
@@ -67,9 +65,9 @@ namespace GUILayer
     void EngineDevice::SetDefaultWorkingDirectory()
     {
         utf8 appPath[MaxPath];
-        GetProcessPath(appPath, dimof(appPath));
+        OSServices::GetProcessPath(appPath, dimof(appPath));
 		auto splitter = MakeFileNameSplitter(appPath);
-		ChDir((splitter.DriveAndPath().AsString() + "/../Working").c_str());
+		OSServices::ChDir((splitter.DriveAndPath().AsString() + "/../Working").c_str());
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -155,7 +153,7 @@ namespace GUILayer
         Assets::Services::GetAsyncMan().Update();
 
             // Some tools need buffer uploads to be updated from here
-        _pimpl->GetBufferUploads()->Update(*_pimpl->GetImmediateContext(), false);
+        _pimpl->GetBufferUploads()->Update(*_pimpl->GetImmediateContext());
     }
 
     void EngineDevice::PrepareForShutdown()

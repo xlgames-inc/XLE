@@ -16,7 +16,11 @@ namespace Utility
         enum class TypeHint : uint8_t { None, Vector, Matrix, Color, String };
         enum class CastType : uint8_t { Narrowing, Equal, Widening};
 #pragma pack(push,1)
-        class __attribute__((packed)) TypeDesc
+        class 
+            #if COMPILER_ACTIVE == COMPILER_TYPE_CLANG
+                __attribute__((packed)) 
+            #endif
+            TypeDesc
         {
         public:
             TypeCat     _type = TypeCat::UInt32;

@@ -37,12 +37,37 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{E1E9A4C1-97A8-44B7-8279-D287313C5B6B}</ProjectGuid>
     <RootNamespace>GUILayer</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
     <CLRSupport>true</CLRSupport>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|Win32'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|x64'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|Win32'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="..\..\..\Solutions\Main.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -52,46 +77,6 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\..\..\Foreign\CommonForClients.props" />
     <Import Project="GUILayer.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">
-    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
-    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
-    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|Win32'">
-    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
-    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
-    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">
-    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
-    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
-    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|x64'">
-    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
-    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
-    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">
-    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
-    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
-    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|Win32'">
-    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
-    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
-    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">
-    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
-    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
-    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">
-    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
-    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
-    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">
@@ -158,15 +143,21 @@
     <ClCompile Include="..\DelayedDeleteQueue.cpp" />
     <ClCompile Include="..\DivergentAssetList.cpp" />
     <ClCompile Include="..\EditorInterfaceUtils.cpp" />
-    <ClCompile Include="..\EditorSceneParser.cpp" />
+    <ClCompile Include="..\EditorSceneParser.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\EngineDevice.cpp" />
     <ClCompile Include="..\EngineControl.cpp" />
     <ClCompile Include="..\EntityLayer.cpp" />
     <ClCompile Include="..\Exceptions.cpp" />
     <ClCompile Include="..\GUILayerUtil.cpp" />
-    <ClCompile Include="..\IterativeSystemDebugger.cpp" />
+    <ClCompile Include="..\IterativeSystemDebugger.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\LayerControl.cpp" />
-    <ClCompile Include="..\LevelEditorScene.cpp" />
+    <ClCompile Include="..\LevelEditorScene.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\ManipulatorUtils.cpp" />
     <ClCompile Include="..\VisSettingsLayer.cpp" />
     <ClCompile Include="..\NativeManipulators.cpp" />
@@ -175,8 +166,12 @@
     <ClCompile Include="..\ShaderFragment.cpp" />
     <ClCompile Include="..\ShaderGenerator.cpp" />
     <ClCompile Include="..\SimpleRenderingContext.cpp" />
-    <ClCompile Include="..\ManipulatorsLayer.cpp" />
-    <ClCompile Include="..\TerrainLayer.cpp" />
+    <ClCompile Include="..\ManipulatorsLayer.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\TerrainLayer.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\TweakableBridge.cpp" />
     <ClCompile Include="..\TypeRules.cpp" />
     <ClCompile Include="..\UITypesBinding.cpp" />
@@ -196,17 +191,25 @@
     <ClInclude Include="..\ExportedNativeTypes.h" />
     <ClInclude Include="..\GUILayerUtil.h" />
     <ClInclude Include="..\IOverlaySystem.h" />
-    <ClInclude Include="..\IterativeSystemDebugger.h" />
+    <ClInclude Include="..\IterativeSystemDebugger.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="..\IWindowRig.h" />
     <ClInclude Include="..\LayerControl.h" />
-    <ClInclude Include="..\LevelEditorScene.h" />
+    <ClInclude Include="..\LevelEditorScene.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="..\ManipulatorUtils.h" />
     <ClInclude Include="..\MarshalString.h" />
-    <ClInclude Include="..\ManipulatorsLayer.h" />
+    <ClInclude Include="..\ManipulatorsLayer.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="..\NativeManipulators.h" />
     <ClInclude Include="..\NodeGraph.h" />
     <ClInclude Include="..\ShaderGenerator.h" />
-    <ClInclude Include="..\TerrainLayer.h" />
+    <ClInclude Include="..\TerrainLayer.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="..\TypeRules.h" />
     <ClInclude Include="..\UITypesBinding.h" />
     <ClInclude Include="..\MathLayer.h" />
@@ -224,59 +227,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Assets\Project\Assets.vcxproj">
-      <Project>{fff83be8-5136-7370-2ee8-298176bea610}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\ConsoleRig\Project\ConsoleRig.vcxproj">
-      <Project>{587a5b72-36e9-ff50-36f4-c0e96bbfa841}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\FixedFunctionModel\Project\FixedFunctionModel.vcxproj">
-      <Project>{be4b2816-52ba-4a12-ac28-d338da574cd2}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\Foreign\FreeType\builds\windows\vc2010\freetype.vcxproj">
-      <Project>{78b079bd-9fc7-4b9e-b4a6-96da0f00248b}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\Foreign\Project\Foreign.vcxproj">
-      <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
-    </ProjectReference>
     <ProjectReference Include="..\..\..\Foreign\TreeViewAdv-1.7.0.0\Aga.Controls\Aga.Controls.csproj">
       <Project>{e73bb233-d88b-44a7-a98f-d71ee158381d}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\Math\Project\Math.vcxproj">
-      <Project>{2e51aa64-7e29-cd4a-fb7f-bac486a3575c}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\PlatformRig\Project\PlatformRig.vcxproj">
-      <Project>{e3be4078-fc62-469c-b9f7-2447c6f88a50}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore.vcxproj">
-      <Project>{116fe083-50bc-1393-470f-f834ef6e02ff}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore_Assets.vcxproj">
-      <Project>{962ea621-c2a6-d312-53cb-7b545d981b75}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore_DX11.vcxproj">
-      <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore_Techniques.vcxproj">
-      <Project>{8188bb13-0b12-c110-2a31-515435fd3bb5}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore_Vulkan.vcxproj">
-      <Project>{b7525b97-9195-416a-8019-ed7f239cf3e8}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\RenderOverlays\Project\RenderOverlays.vcxproj">
-      <Project>{726e12f1-b69b-188d-390b-3a1e1889126d}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\ShaderParser\Project\ShaderParser.vcxproj">
-      <Project>{d7818769-51d6-7fe8-161b-71f0f96a076f}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\Utility\Project\Utility.vcxproj">
-      <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\EntityInterface\Project\EntityInterface.vcxproj">
-      <Project>{a3ec21db-3586-490f-b30b-5da403d908b5}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\ToolsRig\Project\ToolsRig.vcxproj">
-      <Project>{f47f1b0a-ae7c-482a-baf8-d47a6b09b817}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

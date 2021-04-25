@@ -122,7 +122,7 @@ namespace GUILayer
 
 	void VisLayerController::AttachToView(LayerControl^ view)
 	{
-		auto& overlaySet = *view->GetWindowRig().GetFrameRig().GetMainOverlaySystem();
+		auto& overlaySet = view->GetWindowRig().GetMainOverlaySystemSet();
         overlaySet.AddSystem(_pimpl->_modelLayer);
 		overlaySet.AddSystem(_pimpl->_visOverlay);
 		overlaySet.AddSystem(_pimpl->_manipulatorLayer);
@@ -131,7 +131,7 @@ namespace GUILayer
 
 	void VisLayerController::DetachFromView(LayerControl^ view)
 	{
-		auto& overlaySet = *view->GetWindowRig().GetFrameRig().GetMainOverlaySystem();
+		auto& overlaySet = view->GetWindowRig().GetMainOverlaySystemSet();
 		overlaySet.RemoveSystem(*_pimpl->_trackingLayer);
 		overlaySet.RemoveSystem(*_pimpl->_manipulatorLayer);
 		overlaySet.RemoveSystem(*_pimpl->_visOverlay);

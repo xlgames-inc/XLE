@@ -17,6 +17,7 @@ namespace GUILayer
     {
     public:
         PlatformRig::FrameRig& GetFrameRig() { return *_frameRig; }
+        PlatformRig::OverlaySystemSet& GetMainOverlaySystemSet();
         std::shared_ptr<RenderCore::IPresentationChain>& GetPresentationChain() { return _presentationChain; }
 
         void AddWindowHandler(std::shared_ptr<PlatformRig::IWindowHandler> windowHandler);

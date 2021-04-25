@@ -98,8 +98,13 @@ namespace OSServices
         // that with visibility attributes when using clang. This ensures that shared
         // libraries that are loaded by the main executable will use the implementation
         // from that main executable
-        static const std::shared_ptr<LogCentral>& GetInstance() __attribute__((visibility("default")));
-        static void DestroyInstance() __attribute__((visibility("default")));
+        #if COMPILER_ACTIVE == COMPILER_TYPE_CLANG
+            static const std::shared_ptr<LogCentral>& GetInstance() __attribute__((visibility("default")));
+            static void DestroyInstance() __attribute__((visibility("default")));
+        #else
+            static const std::shared_ptr<LogCentral>& GetInstance();
+            static void DestroyInstance();
+        #endif
 
         void Register(MessageTarget<>& target, StringSection<> id);
         void Deregister(MessageTarget<>& target);

@@ -33,9 +33,6 @@
 #include <regex>
 #include <msclr/auto_gcroot.h>
 
-#include "../../RenderCore/Metal/Shader.h"
-#include "../../RenderCore/Metal/ObjectFactory.h"
-
 #pragma warning (disable:4505) // 'ShaderPatcherLayer::StateTypeToString': unreferenced local function has been removed
 
 using namespace System::Runtime::Serialization;
@@ -82,14 +79,11 @@ namespace GUILayer
 		if (!entryPoint || !shaderModel) return {};
 
 		auto future = shaderSource.CompileFromMemory(sourceCode, entryPoint, shaderModel, definesTable);
-		auto state = future->GetAssetState();
-		auto artifacts = future->GetArtifacts();
-		assert(!artifacts.empty());
-		if (state == ::Assets::AssetState::Invalid)
-			Throw(::Assets::Exceptions::InvalidAsset(entryPoint, artifacts[0].second->GetDependencyValidation(), future->GetErrorMessage()));
+		if (!future._payload)
+			Throw(::Assets::Exceptions::InvalidAsset(entryPoint, ::Assets::GetDepValSys().Make(future._deps), future._errors));
 
 		return RenderCore::CompiledShaderByteCode{
-			artifacts[0].second->GetBlob(), artifacts[0].second->GetDependencyValidation(), artifacts[0].second->GetRequestParameters()};
+			future._payload, ::Assets::GetDepValSys().Make(future._deps), {}};
 	}
 
 #if 0
@@ -385,7 +379,7 @@ namespace GUILayer
 
 		{
 			std::stringstream str;
-			GraphLanguage::Serialize(str, nodeGraphFile->ConvertToNative());
+			str << nodeGraphFile->ConvertToNative();
 			sw->Write(clix::marshalString<clix::E_UTF8>(str.str()));
 			sw->Flush();
 		}

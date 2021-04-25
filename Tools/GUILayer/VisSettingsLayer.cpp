@@ -7,6 +7,7 @@
 #include "UITypesBinding.h"
 #include "ExportedNativeTypes.h"
 #include "EditorInterfaceUtils.h"
+#include "GUILayerUtil.h"
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../ToolsRig/MaterialVisualisation.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
@@ -95,43 +96,29 @@ namespace GUILayer
     void ModelVisSettings::ModelName::set(System::String^ value)
     {
             //  we need to make a filename relative to the current working
-            //  directory
-        auto nativeName = clix::marshalString<clix::E_UTF8>(value);
-        ::Assets::ResolvedAssetFile resName;
-        ::Assets::MakeAssetName(resName, nativeName.c_str());
-                
-        _modelName = clix::marshalString<clix::E_UTF8>(resName._fn);
+            //  directory                
+        _modelName = Utils::MakeAssetName(value);
 
             // also set the material name (the old material file probably won't match the new model file)
-        XlChopExtension(resName._fn);
-        XlCatString(resName._fn, dimof(resName._fn), ".material");
-        _materialName = clix::marshalString<clix::E_UTF8>(resName._fn);
+        auto nativeName = clix::marshalString<clix::E_UTF8>(value);
+        auto split = MakeFileNameSplitter(nativeName);
+        nativeName = split.DrivePathAndFilename().AsString() + ".material";
+        _materialName = Utils::MakeAssetName(clix::marshalString<clix::E_UTF8>(nativeName));
     }
 
     void ModelVisSettings::MaterialName::set(System::String^ value)
     {
-            //  we need to make a filename relative to the current working
-            //  directory
-        auto nativeName = clix::marshalString<clix::E_UTF8>(value);
-        ::Assets::ResolvedAssetFile resName;
-        ::Assets::MakeAssetName(resName, nativeName.c_str());
-        _materialName = clix::marshalString<clix::E_UTF8>(resName._fn);
+        _materialName = Utils::MakeAssetName(value);
     }
 
 	void ModelVisSettings::AnimationFileName::set(System::String^ value)
     {
-        auto nativeName = clix::marshalString<clix::E_UTF8>(value);
-        ::Assets::ResolvedAssetFile resName;
-        ::Assets::MakeAssetName(resName, nativeName.c_str());
-        _animationFileName = clix::marshalString<clix::E_UTF8>(resName._fn);
+        _animationFileName = Utils::MakeAssetName(value);
     }
 
 	void ModelVisSettings::SkeletonFileName::set(System::String^ value)
     {
-        auto nativeName = clix::marshalString<clix::E_UTF8>(value);
-        ::Assets::ResolvedAssetFile resName;
-        ::Assets::MakeAssetName(resName, nativeName.c_str());
-        _skeletonFileName = clix::marshalString<clix::E_UTF8>(resName._fn);
+        _skeletonFileName = Utils::MakeAssetName(value);
     }
 
 	ModelVisSettings^ ModelVisSettings::CreateDefault()

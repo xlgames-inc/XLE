@@ -30,10 +30,7 @@ namespace GUILayer
 
 	System::String^ Utils::MakeAssetName(System::String^ value)
 	{
-		auto nativeName = clix::marshalString<clix::E_UTF8>(value);
-        ::Assets::ResolvedAssetFile resName;
-        ::Assets::MakeAssetName(resName, nativeName.c_str());
-		return clix::marshalString<clix::E_UTF8>(resName._fn);
+		return value;
 	}
 
 	static System::Collections::Generic::IEnumerable<Utils::AssetExtension^>^ ToManaged(
@@ -51,14 +48,14 @@ namespace GUILayer
 
 	System::Collections::Generic::IEnumerable<Utils::AssetExtension^>^ Utils::GetModelExtensions()
 	{
-		auto exts = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers().GetExtensionsForType(
+		auto exts = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers().GetExtensionsForTargetCode(
 			RenderCore::Assets::ModelScaffold::CompileProcessType);
 		return ToManaged(MakeIteratorRange(exts));
 	}
 
 	System::Collections::Generic::IEnumerable<Utils::AssetExtension^>^ Utils::GetAnimationSetExtensions()
 	{
-		auto exts = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers().GetExtensionsForType(
+		auto exts = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers().GetExtensionsForTargetCode(
 			RenderCore::Assets::AnimationSetScaffold::CompileProcessType);
 		return ToManaged(MakeIteratorRange(exts));
 	}
@@ -74,7 +71,7 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class MessageRelayWrapper_Helper : public Utility::OnChangeCallback
+	class MessageRelayWrapper_Helper : public ToolsRig::OnChangeCallback
 	{
 	public:
 		virtual void    OnChange()
@@ -97,7 +94,7 @@ namespace GUILayer
 	{
 		_native = techniqueDelegate;
 		_callbackId = _native->AddCallback(
-			std::shared_ptr<Utility::OnChangeCallback>(new MessageRelayWrapper_Helper(this)));
+			std::shared_ptr<ToolsRig::OnChangeCallback>(new MessageRelayWrapper_Helper(this)));
 	}
 
 	MessageRelayWrapper::MessageRelayWrapper(ToolsRig::MessageRelay* techniqueDelegate)

@@ -526,7 +526,7 @@ namespace GUILayer
 
 	std::shared_ptr<GraphLanguage::INodeGraphProvider> NodeGraphFile::MakeNodeGraphProvider()
 	{
-		return MakeGraphSyntaxProvider(this, GetImportTable(this), GetSearchRules()->GetNative(), nullptr, {});
+		return MakeGraphSyntaxProvider(this, GetImportTable(this), GetSearchRules()->GetNative(), {}, {});
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

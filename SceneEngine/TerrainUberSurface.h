@@ -19,7 +19,6 @@
 #include <memory>
 #include <assert.h>
 
-namespace Utility { class MemoryMappedFile; }
 namespace ConsoleRig { class IProgress; }
 namespace BufferUploads { class ResourceLocator; }
 namespace RenderCore { class IThreadContext; }
@@ -52,7 +51,7 @@ namespace SceneEngine
         TerrainUberSurfaceGeneric(TerrainUberSurfaceGeneric&& moveFrom);
         TerrainUberSurfaceGeneric& operator=(TerrainUberSurfaceGeneric&& moveFrom);
     protected:
-        Utility::MemoryMappedFile _mappedFile;
+        OSServices::MemoryMappedFile _mappedFile;
 
         unsigned _width, _height;
         void* _dataStart;

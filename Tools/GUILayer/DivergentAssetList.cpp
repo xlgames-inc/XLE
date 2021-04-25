@@ -19,6 +19,7 @@
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/Data.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/OutputStreamFormatter.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
 #include "../../Utility/Conversion.h"
@@ -332,31 +333,28 @@ namespace GUILayer
         std::vector<std::pair<::Assets::rstring, RenderCore::Assets::RawMaterial>> result;
 
         using Blob = InputStreamFormatter<utf8>::Blob;
-        for (;;) {
+        StringSection<> name;
+        while (formatter.TryKeyedItem(name)) {
             switch(formatter.PeekNext()) {
             case Blob::BeginElement:
                 {
-                    InputStreamFormatter<utf8>::InteriorSection eleName;
-                    formatter.TryBeginElement(eleName);
+                    formatter.TryBeginElement();
                     RenderCore::Assets::RawMaterial mat(formatter, searchRules, ::Assets::DependencyValidation());
                     result.emplace_back(
                         std::make_pair(
-                            Conversion::Convert<::Assets::rstring>(eleName.AsString()), std::move(mat)));
+                            Conversion::Convert<::Assets::rstring>(name.AsString()), std::move(mat)));
 
                     if (!formatter.TryEndElement())
                         Throw(Utility::FormatException("Expecting end element", formatter.GetLocation()));
                 }
                 break;
 
-            case Blob::AttributeName:
-                {
-                    InputStreamFormatter<utf8>::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-                }
+            case Blob::Value:
+                RequireValue(formatter);
                 break;
 
             default:
-                return result;
+                Throw(Utility::FormatException("Expected either value or element", formatter.GetLocation()));
             }
         }
     }
@@ -364,7 +362,7 @@ namespace GUILayer
     static void SerializeAllMaterials(OutputStreamFormatter& formatter, std::vector<std::pair<std::string, RenderCore::Assets::RawMaterial>>& mats)
     {
         for (const auto&m:mats) {
-            auto ele = formatter.BeginElement(m.first.c_str());
+            auto ele = formatter.BeginKeyedElement(m.first);
             SerializationOperator(formatter, m.second);
             formatter.EndElement(ele);
         }

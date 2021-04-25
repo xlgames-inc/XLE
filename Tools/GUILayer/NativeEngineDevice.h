@@ -15,6 +15,7 @@ namespace RenderCore { namespace Assets { class Services; } }
 namespace ToolsRig { class DivergentAssetManager; }
 namespace ConsoleRig { class GlobalServices; class CrossModule; }
 namespace RenderCore { namespace Techniques { class ShaderPatchCollectionRegistry; class IPipelineAcceleratorPool; class Services; }}
+namespace BufferUploads { class IManager; }
 
 namespace GUILayer
 {

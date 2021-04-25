@@ -14,6 +14,7 @@
 #include "NativeEngineDevice.h"
 #include "GUILayerUtil.h"
 #include "ExportedNativeTypes.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/IManipulator.h"
 #include "../ToolsRig/BasicManipulators.h"
@@ -22,13 +23,9 @@
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlaySystem.h"
 
+#if 0
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/Font.h"
-#include "../../SceneEngine/SceneEngineUtils.h"
-#include "../../SceneEngine/LightingParserStandardPlugin.h"
-#include "../../SceneEngine/LightingParserContext.h"
-#include "../../SceneEngine/IntersectionTest.h"
-#include "../../SceneEngine/VegetationSpawn.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
@@ -40,6 +37,7 @@
 #include "../../Utility/StringFormat.h"
 #include <stack>
 #include <iomanip>
+#endif
 
 using namespace System;
 
@@ -67,14 +65,13 @@ namespace GUILayer
         TRY
         {
             auto& frameRig = windowRig.GetFrameRig();
-			RenderCore::Techniques::ParsingContext parserContext(*_pimpl->_globalTechniqueContext, _pimpl->_namedResources.get(), _pimpl->_frameBufferPool.get());
-			parserContext._pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool().get();
+			RenderCore::Techniques::ParsingContext parserContext(_pimpl->_globalTechniqueContext);
             auto frResult = frameRig.ExecuteFrame(
                 threadContext, windowRig.GetPresentationChain().get(), 
                 parserContext, nullptr);
 
             // return false if when we have pending resources (encourage another redraw)
-            result = !frResult._renderResult._hasPendingResources;
+            result = !frResult._hasPendingResources;
 
 			if (frameRig.GetMainOverlaySystem()->GetOverlayState()._refreshMode == PlatformRig::IOverlaySystem::RefreshMode::RegularAnimation)
 				result = false;
@@ -97,6 +94,7 @@ namespace GUILayer
     
     void LayerControl::SetUpdateAsyncMan(bool updateAsyncMan)
     {
+        // ::Assets::Services::GetAsyncMan().Update();
         GetWindowRig().GetFrameRig().SetUpdateAsyncMan(updateAsyncMan);
     }
 

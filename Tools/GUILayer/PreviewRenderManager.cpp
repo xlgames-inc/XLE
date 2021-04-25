@@ -14,7 +14,7 @@
 #include "../ToolsRig/VisualisationUtils.h"
 
 #include "../../SceneEngine/SceneParser.h"
-#include "../../SceneEngine/RenderStep.h"
+// #include "../../SceneEngine/RenderStep.h"
 
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
@@ -27,8 +27,6 @@
 #include "../../RenderCore/IThreadContext.h"
 
 #include "../../BufferUploads/IBufferUploads.h"
-#include "../../BufferUploads/DataPacket.h"
-#include "../../BufferUploads/ResourceLocator.h"
 
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
@@ -130,14 +128,12 @@ namespace GUILayer
 						TextureDesc::Plain2D(_width, _height, Format::R8G8B8A8_UNORM_SRGB),
 						"PreviewBuilderTarget"));
 
-				RenderCore::Techniques::AttachmentPool attachmentPool;
-				RenderCore::Techniques::FrameBufferPool frameBufferPool;
-				attachmentPool.Bind(FrameBufferProperties{(unsigned)_width, (unsigned)_height, TextureSamples::Create()});
+				FrameBufferProperties fbProps{(unsigned)_width, (unsigned)_height, TextureSamples::Create()};
 
 				ToolsRig::VisEnvSettings envSettings;
 				envSettings._lightingType = ToolsRig::VisEnvSettings::LightingType::Direct;
 
-				Techniques::ParsingContext parserContext { *_globalTechniqueContext, &attachmentPool, &frameBufferPool };
+				Techniques::ParsingContext parserContext { _globalTechniqueContext };
 
 				// Can no longer render to multiple output targets using this path. We only get to input the single "presentation target"
 				// to the lighting parser.
@@ -159,6 +155,7 @@ namespace GUILayer
 
 		PreviewImagePreparer(
 			GUILayer::MaterialVisSettings^ visSettings,
+			const std::shared_ptr<RenderCore::IDevice>& device,
 			const std::shared_ptr<ToolsRig::DeferredCompiledShaderPatchCollection>& patchCollection,
 			const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& customTechniqueDelegate,
 			const std::string& materialNames,
@@ -170,6 +167,8 @@ namespace GUILayer
 				// everything we put into it is temporary
 			_pipelineAcceleratorPool = RenderCore::Techniques::CreatePipelineAcceleratorPool();
 			_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
+			_globalTechniqueContext->_attachmentPool = std::make_shared<RenderCore::Techniques::AttachmentPool>(device);
+			_globalTechniqueContext->_frameBufferPool = std::make_shared<RenderCore::Techniques::FrameBufferPool>();
 
 				////////////
 
@@ -231,8 +230,8 @@ namespace GUILayer
 	static System::Drawing::Bitmap^ GenerateWindowsBitmap(RenderCore::IThreadContext& threadContext, const std::shared_ptr<RenderCore::IResource>& res)
 	{
 		auto& uploads = RenderCore::Techniques::Services::GetBufferUploads();
-		auto readback = uploads.Resource_ReadBack(BufferUploads::UnderlyingResourcePtr{res});
-		if (readback && readback->GetDataSize()) {
+		auto readback = res->ReadBackSynchronized(threadContext);
+		if (!readback.empty()) {
 			auto desc = res->GetDesc();
             using System::Drawing::Bitmap;
             using namespace System::Drawing;
@@ -241,11 +240,12 @@ namespace GUILayer
                 System::Drawing::Rectangle(0, 0, desc._textureDesc._width, desc._textureDesc._height), 
                 Imaging::ImageLockMode::WriteOnly, 
                 Imaging::PixelFormat::Format32bppArgb);
+			auto pitches = RenderCore::MakeTexturePitches(desc._textureDesc);
             try
             {
                     // we have to flip ABGR -> ARGB!
                 for (unsigned y=0; y<desc._textureDesc._height; ++y) {
-                    void* sourcePtr = PtrAdd(readback->GetData(), y * readback->GetPitches()._rowPitch);
+                    void* sourcePtr = PtrAdd(readback.data(), y * pitches._rowPitch);
                     System::IntPtr destinationPtr = data->Scan0 + y * desc._textureDesc._width * sizeof(unsigned);
                     for (unsigned x=0; x<desc._textureDesc._width; ++x) {
                         ((unsigned*)(void*)destinationPtr)[x] = 
@@ -374,7 +374,7 @@ namespace GUILayer
 		::Assets::Services::GetAsyncMan().Update();
 		::Assets::Services::GetAssetSets().OnFrameBarrier();
 		auto& uploads = RenderCore::Techniques::Services::GetBufferUploads();
-		uploads.Update(*EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(), false);
+		uploads.Update(*EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext());
 
             ////////////
 

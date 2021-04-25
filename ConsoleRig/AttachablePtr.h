@@ -51,7 +51,12 @@ namespace ConsoleRig
 			InfraModuleManager(InfraModuleManager&&) = delete;
 			InfraModuleManager& operator=(InfraModuleManager&& moveFrom) = delete;
 
-			static InfraModuleManager& GetInstance() __attribute__((visibility("hidden")));
+			static InfraModuleManager& GetInstance() 
+				#if COMPILER_ACTIVE == COMPILER_TYPE_CLANG
+					__attribute__((visibility("hidden")))
+				#else
+					;
+				#endif
 		private:
 			class Pimpl;
 			std::unique_ptr<Pimpl> _pimpl;
@@ -74,7 +79,12 @@ namespace ConsoleRig
 		};
 
 		template<typename Obj>
-			void TryConfigureType() __attribute__((visibility("hidden")));
+			void TryConfigureType() 
+				#if COMPILER_ACTIVE == COMPILER_TYPE_CLANG
+					__attribute__((visibility("hidden")))
+				#else
+					;
+				#endif
 	}
 
 	/**
@@ -272,7 +282,11 @@ namespace ConsoleRig
 		template<typename Obj>
 			void TryConfigureType()
 		{
-			static __attribute__((visibility("hidden"))) bool s_typeConfigured = false;
+			#if COMPILER_ACTIVE == COMPILER_TYPE_CLANG
+				static __attribute__((visibility("hidden"))) bool s_typeConfigured = false;
+			#else
+				static __attribute__((visibility("hidden"))) bool s_typeConfigured = false;
+			#endif
 			if (!s_typeConfigured) {
 				Internal::InfraModuleManager::GetInstance().ConfigureType(
 					Internal::KeyForType<Obj>(),

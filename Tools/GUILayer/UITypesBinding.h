@@ -13,6 +13,7 @@
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../OSServices/RawFS.h"
 #include "../../Utility/ParameterBox.h"
+#include "../../Utility/Streams/PathUtils.h"
 
 using namespace System::ComponentModel;
 using namespace System::Drawing::Design;
@@ -22,6 +23,7 @@ using System::Runtime::InteropServices::OutAttribute;
 namespace RenderCore { namespace Assets { class RawMaterial; class MaterialScaffoldMaterial; } }
 namespace ToolsRig { class VisOverlaySettings; class VisMouseOver; class VisAnimationState; class MaterialVisSettings; }
 namespace Assets { class DirectorySearchRules; }
+namespace SceneEngine { class IScene; }
 
 namespace GUILayer
 {
@@ -41,7 +43,7 @@ namespace GUILayer
             ofd->FileName = value ? value->ToString() : "";
 
             char dirName[MaxPath];
-            XlDirname(dirName, dimof(dirName), clix::marshalString<clix::E_UTF8>(ofd->FileName).c_str());
+            Utility::Legacy::XlDirname(dirName, dimof(dirName), clix::marshalString<clix::E_UTF8>(ofd->FileName).c_str());
 
             ofd->InitialDirectory = clix::marshalString<clix::E_UTF8>(dirName);
             ofd->Filter = "Model files|*.dae|Material files|*.material|All Files|*.*";

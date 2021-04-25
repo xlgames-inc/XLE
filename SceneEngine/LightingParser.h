@@ -26,6 +26,7 @@ namespace RenderCore { namespace LightingEngine
 { 
     class LightDesc;
     class SceneLightingDesc;
+    class ShadowProjectionDesc;
 }}
 
 namespace RenderCore { class IThreadContext; class AttachmentDesc; }

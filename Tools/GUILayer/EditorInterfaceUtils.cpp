@@ -24,7 +24,6 @@
 #include "../../SceneEngine/TerrainConfig.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/IDevice.h"
-#include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Math/Transformations.h"
