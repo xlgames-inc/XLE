@@ -6,7 +6,7 @@
 #include "../../EmbeddedRes.h"
 #include "../Metal/MetalTestHelper.h"
 #include "../../../RenderCore/LightingEngine/LightingEngine.h"
-#include "../../../RenderCore/LightingEngine/SharedTechniqueDelegates.h"
+#include "../../../RenderCore/LightingEngine/LightingEngineApparatus.h"
 #include "../../../RenderCore/LightingEngine/LightDesc.h"
 #include "../../../RenderCore/Techniques/RenderPass.h"
 #include "../../../RenderCore/Techniques/Drawables.h"

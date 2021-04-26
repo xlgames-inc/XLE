@@ -9,13 +9,13 @@
 #include "../../Tools/ToolsRig/BasicManipulators.h"
 #include "../../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderCore/Techniques/Apparatuses.h"
+#include "../../RenderCore/LightingEngine/LightingEngineApparatus.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/StringFormat.h"
 #include <iomanip>
-
-#pragma warning(disable:4505) // 'Sample::RenderTrackingOverlay': unreferenced local function has been removed
 
 namespace Sample
 {
@@ -49,14 +49,19 @@ namespace Sample
 
 	void NativeModelViewerOverlay::OnStartup(const SampleGlobals& globals)
 	{
-		auto modelLayer = std::make_shared<ToolsRig::ModelVisLayer>(_pipelineAccelerators);
+		auto pipelineAccelerators = globals._drawingApparatus->_pipelineAccelerators;
+		auto immediateDrawables = globals._immediateDrawingApparatus->_immediateDrawables;
+		auto lightingEngineApparatus = std::make_shared<RenderCore::LightingEngine::LightingEngineApparatus>(globals._drawingApparatus);
+		auto techniqueContext = globals._drawingApparatus->_techniqueContext;
 
-		ToolsRig::ModelVisSettings visSettings;
-		// visSettings._modelName = "game/model/character/skin.dae";
-		// visSettings._materialName = "game/model/character/skin.dae";
-		// visSettings._animationFileName = "game/model/character/animations.daelst";
-			 
-		auto scene = ToolsRig::MakeScene(_pipelineAccelerators, visSettings);
+		auto modelLayer = std::make_shared<ToolsRig::SimpleSceneLayer>(
+			pipelineAccelerators,
+			immediateDrawables,
+			lightingEngineApparatus);
+
+		ToolsRig::ModelVisSettings visSettings {};
+
+		auto scene = ToolsRig::MakeScene(pipelineAccelerators, visSettings);
 		modelLayer->Set(scene);
 		modelLayer->Set(ToolsRig::VisEnvSettings{});
 		AddSystem(modelLayer);
@@ -68,20 +73,20 @@ namespace Sample
 		overlaySettings._drawWireframe = false;
 
 		auto visOverlay = std::make_shared<ToolsRig::VisualisationOverlay>(
-			overlaySettings,
-			mouseOver);
+			pipelineAccelerators, immediateDrawables,
+			overlaySettings, mouseOver);
 		visOverlay->Set(scene);
 		visOverlay->Set(modelLayer->GetCamera());
 		AddSystem(visOverlay);
 
 		auto trackingOverlay = std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
-			mouseOver, globals._techniqueContext, _pipelineAccelerators,
-			modelLayer->GetCamera(), &RenderTrackingOverlay);
+			mouseOver, techniqueContext, pipelineAccelerators,
+			modelLayer->GetCamera());
 		trackingOverlay->Set(scene);
 		AddSystem(trackingOverlay);
 
 		{
-			auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(modelLayer->GetCamera(), globals._techniqueContext);
+			auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(modelLayer->GetCamera(), techniqueContext, pipelineAccelerators);
 			manipulators->Register(
 				ToolsRig::ManipulatorStack::CameraManipulator,
 				ToolsRig::CreateCameraManipulator(modelLayer->GetCamera(), ToolsRig::CameraManipulatorMode::Blender_RightButton));
@@ -104,14 +109,11 @@ namespace Sample
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
 	{
-		parserContext._pipelineAcceleratorPool = _pipelineAccelerators.get();
 		OverlaySystemSet::Render(threadContext, renderTarget, parserContext);
-		parserContext._pipelineAcceleratorPool = nullptr;
 	}
 
 	NativeModelViewerOverlay::NativeModelViewerOverlay()
 	{
-		_pipelineAccelerators = std::make_shared<RenderCore::Techniques::PipelineAcceleratorPool>();
 	}
 
 	NativeModelViewerOverlay::~NativeModelViewerOverlay()

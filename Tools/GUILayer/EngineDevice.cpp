@@ -16,6 +16,7 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/Services.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
+#include "../../RenderCore/LightingEngine/LightingEngineApparatus.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Init.h"
 #include "../../Assets/IFileSystem.h"
@@ -72,6 +73,11 @@ namespace GUILayer
         return _drawingApparatus->_techniqueContext;
     }
 
+    const std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus>& NativeEngineDevice::GetLightingEngineApparatus()
+    {
+        return _lightingEngineApparatus;
+    }
+
     void NativeEngineDevice::ResetFrameBufferPool()
     {
         _frameRenderingApparatus->_frameBufferPool->Reset();
@@ -100,6 +106,7 @@ namespace GUILayer
         _frameRenderingApparatus = std::make_shared<RenderCore::Techniques::FrameRenderingApparatus>(_renderDevice);
         _drawingApparatus->_techniqueContext->_frameBufferPool = _frameRenderingApparatus->_frameBufferPool;
         _drawingApparatus->_techniqueContext->_attachmentPool = _frameRenderingApparatus->_attachmentPool;
+        _lightingEngineApparatus = std::make_shared<RenderCore::LightingEngine::LightingEngineApparatus>(_drawingApparatus);
         _previewSceneRegistry = ToolsRig::CreatePreviewSceneRegistry();
 
         ::ConsoleRig::GlobalServices::GetInstance().LoadDefaultPlugins();

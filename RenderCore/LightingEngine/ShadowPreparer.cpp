@@ -6,7 +6,7 @@
 #include "LightDesc.h"
 #include "ShadowUniforms.h"
 #include "RenderStepFragments.h"
-#include "SharedTechniqueDelegates.h"
+#include "LightingEngineApparatus.h"
 #include "../Techniques/PipelineAccelerator.h"
 #include "../Techniques/ParsingContext.h"
 #include "../Techniques/RenderPass.h"

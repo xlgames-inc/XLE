@@ -6,14 +6,10 @@
 
 #include "VisualisationUtils.h"
 #include "../../RenderCore/LightingEngine/LightDesc.h"
-//#include "../../SceneEngine/LightingParserContext.h"
-//#include "../../SceneEngine/LightingParserStandardPlugin.h"
-//#include "../../SceneEngine/SceneEngineUtils.h"
-//#include "../../SceneEngine/RenderStep.h"
 #include "../../SceneEngine/RayVsModel.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/BasicLightingStateDelegate.h"
-//#include "../../PlatformRig/Screenshot.h"
+#include "../../SceneEngine/ExecuteScene.h"
 #include "../../PlatformRig/OverlappedWindow.h"	// (for GetOSRunLoop())
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/OverlayContext.h"
@@ -242,8 +238,8 @@ namespace ToolsRig
 				ResetCamera();
 
 				_pimpl->_preparingPipelineAccelerators = true;
-				_pimpl->_pendingPipelines = SceneEngine::PreparePipelines(
-					threadContext, *compiledTechnique, *_pimpl->_envSettings, *_pimpl->_scene);
+				_pimpl->_pendingPipelines = SceneEngine::PrepareResources(
+					*_pimpl->_pipelineAccelerators, *compiledTechnique, *_pimpl->_scene);
 			}
 		}
 
@@ -264,7 +260,7 @@ namespace ToolsRig
 			*/
 
 			{
-				auto lightingIterator = BeginLightingTechnique(
+				auto lightingIterator = SceneEngine::BeginLightingTechnique(
 					threadContext, parserContext, *_pimpl->_pipelineAccelerators,
 					IteratorRange<const RenderCore::Techniques::PreregisteredAttachment*>{},
 					*_pimpl->_envSettings, *compiledTechnique);
@@ -366,11 +362,6 @@ namespace ToolsRig
 		_pimpl->_pipelineAccelerators = pipelineAccelerators;
 		_pimpl->_immediateDrawables = immediateDrawables;
 		_pimpl->_lightingApparatus = lightingEngineApparatus;
-
-#if 0
-		_pimpl->_lightingPlugins.push_back(std::make_shared<SceneEngine::LightingParserStandardPlugin>());
-		_pimpl->_renderSteps = SceneEngine::CreateStandardRenderSteps(SceneEngine::LightingModel::Deferred);
-#endif
     }
 
     SimpleSceneLayer::~SimpleSceneLayer() {}
@@ -541,13 +532,6 @@ namespace ToolsRig
 		if (!_pimpl->_scene || !_pimpl->_cameraSettings || GetAsyncSceneState(*_pimpl->_scene) == ::Assets::AssetState::Pending) return;
 
 		RenderCore::Techniques::SequencerContext sequencerTechnique;
-
-#if 0
-		auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
-		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)
-			sequencerTechnique._sequencerUniforms.emplace_back(std::make_pair(techUSI._cbBindings[c]._hashName, std::make_shared<RenderCore::Techniques::GlobalCBDelegate>(c)));
-#endif
-
 		auto cam = AsCameraDesc(*_pimpl->_cameraSettings);
 		SceneEngine::SceneView sceneView {
 			SceneEngine::SceneView::Type::Normal,
@@ -767,14 +751,14 @@ namespace ToolsRig
 
 	static SceneEngine::IntersectionTestResult FirstRayIntersection(
 		RenderCore::IThreadContext& threadContext,
-		const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext,
+		RenderCore::Techniques::TechniqueContext& techniqueContext,
 		RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
         std::pair<Float3, Float3> worldSpaceRay,
 		SceneEngine::IScene& scene)
 	{
 		using namespace RenderCore;
 
-		Techniques::ParsingContext parserContext { *techniqueContext };
+		Techniques::ParsingContext parserContext { techniqueContext };
 		
 		SceneEngine::ModelIntersectionStateContext stateContext {
             SceneEngine::ModelIntersectionStateContext::RayTest,
@@ -815,8 +799,6 @@ namespace ToolsRig
 
             return result;
         }
-
-		
 
 		return {};
     }

@@ -689,15 +689,22 @@ namespace GUILayer
     RawMaterial^ RawMaterial::CreateUntitled() 
     { 
         static unsigned counter = 0;
-        return gcnew RawMaterial("untitled" + (counter++) + ".material");
+        RawMaterial^ result = gcnew RawMaterial(nullptr);
+        result->_initializer = "untitled" + (counter++) + ".material";
+        s_table->Add(result->_initializer, gcnew WeakReference(result));
+        return result;
     }
 
     RawMaterial::RawMaterial(System::String^ initialiser)
     {
 		_transId = 0;
-        _initializer = initialiser;
-        auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
-        _underlying = ToolsRig::CreateDivergentAsset<RenderCore::Assets::RawMaterial>(MakeStringSection(nativeInit));
+        if (initialiser) {
+            _initializer = initialiser;
+            auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
+            _underlying = ToolsRig::CreateDivergentAsset<RenderCore::Assets::RawMaterial>(MakeStringSection(nativeInit));
+        } else {
+            _underlying = ToolsRig::DefaultConstructNewDivergentAsset<RenderCore::Assets::RawMaterial>();
+        }
         _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
     }
 

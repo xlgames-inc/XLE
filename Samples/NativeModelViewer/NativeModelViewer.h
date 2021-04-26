@@ -5,9 +5,10 @@
 #pragma once
 
 #include "../Shared/SampleRig.h"
+#include <memory>
 
-namespace SceneEngine { class IScene; }
-namespace RenderCore { namespace Techniques { class IPipelineAcceleratorPool; } }
+namespace SceneEngine { class IScene; class ILightingStateDelegate; class BasicLightingStateDelegate; }
+namespace RenderCore { namespace Techniques { class CameraDesc; class IPipelineAcceleratorPool; }}
 
 namespace Sample
 {
@@ -28,7 +29,5 @@ namespace Sample
 
 		NativeModelViewerOverlay();
 		~NativeModelViewerOverlay();
-	private:
-		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
 	};
 }

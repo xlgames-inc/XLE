@@ -7,7 +7,7 @@
 #include "LightUniforms.h"		// might be able to remove if we shift the forward delegate out
 #include "ShadowPreparer.h"
 #include "RenderStepFragments.h"
-#include "SharedTechniqueDelegates.h"
+#include "LightingEngineApparatus.h"
 #include "../Techniques/RenderPass.h"
 #include "../Techniques/CommonBindings.h"
 #include "../Techniques/TechniqueDelegates.h"

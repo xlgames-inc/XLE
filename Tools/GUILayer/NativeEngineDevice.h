@@ -23,6 +23,9 @@ namespace RenderCore { namespace Techniques
     class FrameRenderingApparatus;
     class TechniqueContext;
 }}
+namespace RenderCore { namespace LightingEngine { 
+    class LightingEngineApparatus;
+}}
 
 namespace GUILayer
 {
@@ -38,6 +41,7 @@ namespace GUILayer
 		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& GetMainPipelineAcceleratorPool();
         const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& GetImmediateDrawables();
         const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& GetTechniqueContext();
+        const std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus>& GetLightingEngineApparatus();
 
         void ResetFrameBufferPool();
 
@@ -55,6 +59,7 @@ namespace GUILayer
         std::shared_ptr<RenderCore::Techniques::ImmediateDrawingApparatus> _immediateDrawingApparatus;
         std::shared_ptr<RenderCore::Techniques::PrimaryResourcesApparatus> _primaryResourcesApparatus;
         std::shared_ptr<RenderCore::Techniques::FrameRenderingApparatus> _frameRenderingApparatus;
+        std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus> _lightingEngineApparatus;
 
         uint32_t _mountId0 = ~0u;
         uint32_t _mountId1 = ~0u;

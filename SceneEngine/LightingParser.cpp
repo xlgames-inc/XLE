@@ -749,8 +749,6 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    IScene::~IScene() {}
-	ILightingStateDelegate::~ILightingStateDelegate() {}
 	IViewDelegate::~IViewDelegate() {}
 	std::shared_ptr<IViewDelegate> IRenderStep::CreateViewDelegate() { return nullptr; }
 	IRenderStep::~IRenderStep() {}

@@ -57,6 +57,6 @@ namespace SceneEngine
         virtual auto        GetEnvironmentalLightingDesc() const -> RenderCore::LightingEngine::EnvironmentalLightingDesc = 0;
         virtual auto        GetToneMapSettings() const -> ToneMapSettings = 0;
 
-		virtual ~ILightingStateDelegate();
+		virtual ~ILightingStateDelegate() = default;
     };
 }

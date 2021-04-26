@@ -34,4 +34,12 @@ namespace SceneEngine
 			threadContext, parsingContext, pipelineAccelerators,
 			RenderCore::LightingEngine::SceneLightingDesc{}, compiledTechnique};
 	}
+
+	std::shared_ptr<::Assets::IAsyncMarker> PrepareResources(
+		const RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
+		RenderCore::LightingEngine::CompiledLightingTechnique& compiledTechnique,
+		IScene& scene)
+	{
+		return nullptr;
+	}
 }

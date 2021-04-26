@@ -8,7 +8,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
 		RenderStepFragments.cpp
 		ShadowPreparer.cpp
 		ShadowUniforms.cpp
-		SharedTechniqueDelegates.cpp
+		LightingEngineApparatus.cpp
 		)
 
 	xle_configure_library(RenderCoreLightingEngine-${metal_name})

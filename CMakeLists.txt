@@ -4,4 +4,4 @@ include(Solutions/CMake/main.cmake RESULT_VARIABLE MAIN_CMAKE_LOCATION)
 include(Solutions/CMake/modules.cmake)
 
 add_subdirectory(UnitTests UnitTests)
-
+add_subdirectory(Samples/NativeModelViewer NativeModelViewer)

@@ -375,6 +375,16 @@ namespace SceneEngine
     IntersectionTestScene::~IntersectionTestScene()
     {}
 
+    std::shared_ptr<IIntersectionScene> CreateIntersectionTestScene(
+        std::shared_ptr<TerrainManager> terrainManager,
+        std::shared_ptr<PlacementCellSet> placements,
+        std::shared_ptr<PlacementsEditor> placementsEditor,
+        IteratorRange<const std::shared_ptr<SceneEngine::IIntersectionScene>*> extraTesters)
+    {
+        assert(0);
+        return nullptr;
+    }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
     
     IIntersectionScene::~IIntersectionScene() {}

@@ -5,6 +5,7 @@
 #pragma once 
 
 #include "IScene.h"
+#include <memory>
 
 namespace RenderCore { namespace Techniques 
 {
@@ -18,6 +19,7 @@ namespace RenderCore { namespace LightingEngine
     class CompiledLightingTechnique;
     class LightingTechniqueInstance;
 }}
+namespace Assets { class IAsyncMarker; }
 
 namespace SceneEngine
 {
@@ -36,4 +38,9 @@ namespace SceneEngine
 		IteratorRange<const RenderCore::Techniques::PreregisteredAttachment*> preregisteredAttachment,
 		SceneEngine::ILightingStateDelegate& lightingState,
 		RenderCore::LightingEngine::CompiledLightingTechnique& compiledTechnique);
+
+	std::shared_ptr<::Assets::IAsyncMarker> PrepareResources(
+		const RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
+		RenderCore::LightingEngine::CompiledLightingTechnique& compiledTechnique,
+		IScene& scene);
 }

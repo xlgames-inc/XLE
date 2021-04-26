@@ -85,4 +85,13 @@ namespace SceneEngine
 		std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
 		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
     };
+
+    class TerrainManager;
+    class PlacementCellSet;
+    class PlacementsEditor;
+    std::shared_ptr<IIntersectionScene> CreateIntersectionTestScene(
+        std::shared_ptr<TerrainManager> terrainManager,
+        std::shared_ptr<PlacementCellSet> placements,
+        std::shared_ptr<PlacementsEditor> placementsEditor,
+        IteratorRange<const std::shared_ptr<SceneEngine::IIntersectionScene>*> extraTesters = {});
 }

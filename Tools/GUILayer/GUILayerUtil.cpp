@@ -161,7 +161,7 @@ namespace GUILayer
         const std::shared_ptr<SceneEngine::PlacementsEditor>& placementsEditor,
         std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionScene>> extraTesters)
     {
-		_scene = std::make_shared<SceneEngine::IIntersectionScene>(
+		_scene = SceneEngine::CreateIntersectionTestScene(
             terrainManager, 
             placements, placementsEditor, extraTesters);
     }

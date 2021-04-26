@@ -10,7 +10,7 @@
 #include "../../Math/Vector.h"
 
 namespace RenderCore { namespace Techniques { class ParsingContext; class AttachmentPool; class FrameBufferPool; } }
-namespace RenderCore { class FrameBufferDesc; }
+namespace RenderCore { class FrameBufferDesc; class IThreadContext; }
 
 namespace RenderOverlays
 {

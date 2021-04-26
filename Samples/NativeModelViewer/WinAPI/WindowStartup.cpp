@@ -13,9 +13,6 @@
 #include "../../../OSServices/Log.h"
 #include "../../../ConsoleRig/GlobalServices.h"
 #include "../../../ConsoleRig/AttachablePtr.h"
-#include "../../../Assets/CompileAndAsyncManager.h"
-#include "../../../OSServices/RawFS.h"
-#include "../../../Core/Exceptions.h"
 
     // Note --  when you need to include <windows.h>, generally
     //          prefer to to use the following header ---
@@ -44,12 +41,15 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
 
     TRY {
-		::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
+		auto mnt0 = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres", ConsoleRig::GlobalServices::GetInstance().GetPollingThread()));
         Sample::ExecuteSample(std::make_shared<Sample::NativeModelViewerOverlay>());
+        ::Assets::MainFileSystem::GetMountingTree()->Unmount(mnt0);
     } CATCH (const std::exception& e) {
         Log(Error) << "Hit top level exception. Aborting program!" << std::endl;
         Log(Error) << e.what() << std::endl;
     } CATCH_END
+
+    services = nullptr;
 
     return 0;
 }
