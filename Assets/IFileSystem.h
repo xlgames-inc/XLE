@@ -257,6 +257,7 @@ namespace Assets
 		static FileSystemWalker BeginWalk(StringSection<utf8> initialSubDirectory = "");
 
 		static const std::shared_ptr<MountingTree>& GetMountingTree();
+		static const std::shared_ptr<IFileSystem>& GetDefaultFileSystem();
 		static void Init(const std::shared_ptr<MountingTree>& mountingTree, const std::shared_ptr<IFileSystem>& defaultFileSystem);
         static void Shutdown();
 	};

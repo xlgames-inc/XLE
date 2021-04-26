@@ -168,6 +168,7 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\RenderCore\Vulkan\RegisterVulkan.cpp" />
     <ClCompile Include="..\AssemblyInfo.cpp" />
     <ClCompile Include="..\AssetsLayer.cpp" />
     <ClCompile Include="..\CustomDataGridEditor.cpp" />

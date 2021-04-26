@@ -10,6 +10,7 @@
 
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
 	#include "../OSServices/WinAPI/IncludeWindows.h"
+	#include <psapi.h>
 #elif PLATFORMOS_TARGET == PLATFORMOS_OSX
 	#include <dlfcn.h>
 	#include <mach-o/dyld.h>
@@ -293,6 +294,9 @@ namespace ConsoleRig
 
 	CrossModule& CrossModule::GetInstance()
 	{
+		static CrossModule* s_cachedInstance = nullptr;
+		if (s_cachedInstance) return *s_cachedInstance;
+
 		// Here's a little bit of Windows funkiness; a small thing that makes a lot of big things happen
 		// We need to have a least one thing that shared between all modules: the CrossModule object.
 		//
@@ -320,10 +324,36 @@ namespace ConsoleRig
 		// (assuming, you know, code compatibility)
 		using RealCrossModuleGetInstanceFn = CrossModule*(*)();
 		auto* realGetInstance = (RealCrossModuleGetInstanceFn)GetProcAddress(GetModuleHandleA(nullptr), "RealCrossModuleGetInstance");
-		if (!realGetInstance)
-			Throw(std::runtime_error("CrossModule instance not detected in host process"));
+		if (!realGetInstance) {
+			// In GUI tools, we usually won't have any engine code loaded into the main module
+			// We need to tool for the GUILayer module (which is the only module that will always be present
+			// in gui tools) and we'll use that as the centralized CrossModule
+			// This means that the GUILayer dll must always be loaded before any other modules with engine code
+			// (we can also just search for a specific version of the dll by calling GetModuleHandleA("GUILayer"), for example)
+			HMODULE hMods[1024];
+			DWORD cbNeeded;
+			auto currentProcess = GetCurrentProcess();
+			if (EnumProcessModules(currentProcess, hMods, sizeof(hMods), &cbNeeded)) {
+				for (auto i = 0u; i < (cbNeeded / sizeof(HMODULE)); i++) {
+					TCHAR szModName[MAX_PATH];
+					if (GetModuleFileNameEx(currentProcess, hMods[i], szModName, sizeof(szModName) / sizeof(TCHAR))) {
+						if (XlFindString(szModName, "GUILayer")) {
+							realGetInstance = (RealCrossModuleGetInstanceFn)GetProcAddress(hMods[i], "RealCrossModuleGetInstance");
+							if (realGetInstance) break;
+						}
+					}
+				}
+			}
 
-		return *(realGetInstance)();
+			auto fallbackModule = GetModuleHandleA("GUILayerVulkan");
+			realGetInstance = (RealCrossModuleGetInstanceFn)GetProcAddress(fallbackModule, "RealCrossModuleGetInstance");
+
+			if (!realGetInstance)
+				Throw(std::runtime_error("CrossModule instance not detected in host process"));
+		}
+
+		s_cachedInstance = (realGetInstance)();
+		return *s_cachedInstance;
 	}
 #else
 	CrossModule* CrossModule::Pimpl::RealCrossModuleGetInstance()

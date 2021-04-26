@@ -73,6 +73,7 @@
     <ClCompile Include="..\VisSettingsLayer.cpp">
       <Filter>Vis</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\RenderCore\Vulkan\RegisterVulkan.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />

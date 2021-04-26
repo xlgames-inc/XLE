@@ -338,6 +338,7 @@ namespace Assets
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	const std::shared_ptr<MountingTree>& MainFileSystem::GetMountingTree() { return GetPtrs().s_mainMountingTree; }
+	const std::shared_ptr<IFileSystem>& MainFileSystem::GetDefaultFileSystem() { return GetPtrs().s_defaultFileSystem; }
 	void MainFileSystem::Init(const std::shared_ptr<MountingTree>& mountingTree, const std::shared_ptr<IFileSystem>& defaultFileSystem)
 	{
 		auto& ptrs = GetPtrs();
