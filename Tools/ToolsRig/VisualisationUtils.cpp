@@ -26,6 +26,8 @@
 #include "../../RenderCore/Techniques/RenderPassUtils.h"
 #include "../../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../../RenderCore/Techniques/PipelineAccelerator.h"
+#include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/DeviceContext.h"

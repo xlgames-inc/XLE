@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -12,9 +10,18 @@
 #include <msclr\auto_gcroot.h>
 
 namespace RenderCore { namespace Assets { class Services; } }
-namespace ToolsRig { class DivergentAssetManager; }
+namespace ToolsRig { class DivergentAssetManager; class IPreviewSceneRegistry; }
 namespace ConsoleRig { class GlobalServices; class CrossModule; }
-namespace RenderCore { namespace Techniques { class ShaderPatchCollectionRegistry; class IPipelineAcceleratorPool; class Services; }}
+namespace RenderCore { namespace Techniques 
+{ 
+    class IPipelineAcceleratorPool;
+    class IImmediateDrawables;
+    class Services;
+    class DrawingApparatus;
+    class ImmediateDrawingApparatus;
+    class PrimaryResourcesApparatus;
+    class FrameRenderingApparatus;
+}}
 namespace BufferUploads { class IManager; }
 
 namespace GUILayer
@@ -25,31 +32,36 @@ namespace GUILayer
         const std::shared_ptr<RenderCore::IDevice>&        GetRenderDevice() { return _renderDevice; }
         BufferUploads::IManager*    GetBufferUploads();
         ::Assets::Services*         GetAssetServices() { return _assetServices.get(); }
-        void                        AttachDefaultCompilers();
         RenderCore::IThreadContext* GetImmediateContext();
         ConsoleRig::GlobalServices* GetGlobalServices() { return _services.get(); }
-		ConsoleRig::CrossModule*	GetCrossModule() { return _crossModule; }
         int                         GetCreationThreadId() { return _creationThreadId; }
-        RenderCore::Assets::Services* GetRenderAssetServices() { return _renderAssetsServices.get(); }
 
-		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& GetMainPipelineAcceleratorPool() { return _pipelineAcceleratorPool; }
+		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& GetMainPipelineAcceleratorPool();
+        const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& GetImmediateDrawables();
 
         NativeEngineDevice();
         ~NativeEngineDevice();
 
     protected:
+        ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _services;
+		ConsoleRig::AttachablePtr<::Assets::Services> _assetServices;
+        ConsoleRig::AttachablePtr<RenderCore::Techniques::Services> _techniquesServices;
         std::shared_ptr<RenderCore::IDevice> _renderDevice;
         std::shared_ptr<RenderCore::IThreadContext> _immediateContext;
-        ConsoleRig::AttachablePtr<::Assets::Services> _assetServices;
-        std::unique_ptr<ConsoleRig::Console> _console;
-        ConsoleRig::AttachablePtr<RenderCore::Assets::Services> _renderAssetsServices;
-		ConsoleRig::AttachablePtr<RenderCore::Techniques::Services> _techniquesServices;
-        ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _services;
-		std::unique_ptr<ToolsRig::DivergentAssetManager> _divAssets;
-		ConsoleRig::CrossModule* _crossModule;
+
+        std::shared_ptr<RenderCore::Techniques::DrawingApparatus> _drawingApparatus;
+        std::shared_ptr<RenderCore::Techniques::ImmediateDrawingApparatus> _immediateDrawingApparatus;
+        std::shared_ptr<RenderCore::Techniques::PrimaryResourcesApparatus> _primaryResourcesApparatus;
+        std::shared_ptr<RenderCore::Techniques::FrameRenderingApparatus> _frameRenderingApparatus;
+
+        uint32_t _mountId0 = ~0u;
+        uint32_t _mountId1 = ~0u;
+        
+        ConsoleRig::AttachablePtr<ToolsRig::IPreviewSceneRegistry> _previewSceneRegistry;
+        std::unique_ptr<ToolsRig::DivergentAssetManager> _divAssets;
+
         int _creationThreadId;
 		msclr::auto_gcroot<System::Windows::Forms::IMessageFilter^> _messageFilter;
-		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
     };
 
 	class RenderTargetWrapper

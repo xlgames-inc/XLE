@@ -188,9 +188,9 @@ namespace ToolsRig
 		void BindAnimationState(const std::shared_ptr<VisAnimationState>& animState) {}
 		bool HasActiveAnimation() const { return false; }
 
-#if 0
 		void SetPatchCollection(const PatchCollectionFuture& patchCollectionFuture)
 		{
+#if 0
 			auto mat = _material;
 			if (!mat)
 				mat = std::make_shared<RenderCore::Assets::MaterialScaffoldMaterial>();
@@ -221,8 +221,8 @@ namespace ToolsRig
 
 					return pendingPipeline;
 				});
-		}
 #endif
+		}
 
 		MaterialVisualizationScene(
 			const MaterialVisSettings& settings,

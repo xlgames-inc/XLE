@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -12,36 +10,21 @@
 #include "DelayedDeleteQueue.h"
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/DivergentAsset.h"
-#include "../../PlatformRig/FrameRig.h"
-#include "../../PlatformRig/OverlappedWindow.h"
+#include "../ToolsRig/PreviewSceneRegistry.h"
 #include "../../PlatformRig/WinAPI/RunLoop_WinAPI.h"
-#include "../../RenderCore/IDevice.h"
-#include "../../RenderCore/Init.h"
-#include "../../RenderCore/Assets/Services.h"
+#include "../../RenderCore/Techniques/Apparatuses.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/Services.h"
-#include "../../RenderOverlays/Font.h"
-#include "../../BufferUploads/IBufferUploads.h"
-#include "../../ConsoleRig/Console.h"
-#include "../../ConsoleRig/ResourceBox.h"
-#include "../../ConsoleRig/AttachablePtr.h"
-#include "../../Assets/AssetUtils.h"
-#include "../../Assets/AssetServices.h"
-#include "../../Assets/CompileAndAsyncManager.h"
+#include "../../RenderCore/IDevice.h"
+#include "../../RenderCore/Init.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/MountingTree.h"
 #include "../../Assets/OSFileSystem.h"
+#include "../../Assets/AssetServices.h"
+#include "../../ConsoleRig/AttachablePtr.h"
+#include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Streams/PathUtils.h"
-#include "../../OSServices/RawFS.h"
-#include "../../OSServices/RawFS.h"
-#include "../../Utility/StringFormat.h"
 
-#include "../../Tools/ToolsRig/GenerateAO.h"
-
-namespace RenderCore { namespace Techniques
-{
-	std::shared_ptr<IPipelineAcceleratorPool> CreatePipelineAcceleratorPool();
-}}
 
 namespace GUILayer
 {
@@ -71,49 +54,52 @@ namespace GUILayer
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void NativeEngineDevice::AttachDefaultCompilers()
-    {
-        _renderAssetsServices->InitModelCompilers();
+    BufferUploads::IManager*		NativeEngineDevice::GetBufferUploads()		{ return _primaryResourcesApparatus->_bufferUploads.get(); }
+    RenderCore::IThreadContext*		NativeEngineDevice::GetImmediateContext()	{ return _renderDevice->GetImmediateContext().get(); }
 
-            // add compiler for precalculated internal AO
-		auto& asyncMan = ::Assets::Services::GetAsyncMan();
-        asyncMan.GetIntermediateCompilers().AddCompiler(std::make_shared<ToolsRig::AOSupplementCompiler>(_immediateContext));
+    const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& NativeEngineDevice::GetMainPipelineAcceleratorPool()
+    {
+        return _drawingApparatus->_pipelineAccelerators;
     }
 
-    BufferUploads::IManager*		NativeEngineDevice::GetBufferUploads()		{ return &_techniquesServices->GetBufferUploads(); }
-    RenderCore::IThreadContext*		NativeEngineDevice::GetImmediateContext()	{ return _renderDevice->GetImmediateContext().get(); }
+    const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& NativeEngineDevice::GetImmediateDrawables()
+    {
+        return _immediateDrawingApparatus->_immediateDrawables;
+    }
 
     NativeEngineDevice::NativeEngineDevice()
     {
         ConsoleRig::StartupConfig cfg;
         cfg._applicationName = clix::marshalString<clix::E_UTF8>(System::Windows::Forms::Application::ProductName);
-        _services = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(cfg);
-		_crossModule = &ConsoleRig::CrossModule::GetInstance();
+        _services = std::make_shared<ConsoleRig::GlobalServices>(cfg);
 
-		::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
+		_assetServices = std::make_shared<::Assets::Services>();
+        _mountId0 = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
+        _mountId1 = ::Assets::MainFileSystem::GetMountingTree()->Mount("res", ::Assets::CreateFileSystem_OS("C:/code/XLEExt/res"));
 
         _renderDevice = RenderCore::CreateDevice(RenderCore::Techniques::GetTargetAPI());
         _immediateContext = _renderDevice->GetImmediateContext();
-		RenderCore::Techniques::SetThreadContext(_immediateContext);
 
-        _assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
-        _renderAssetsServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(_renderDevice);
-		_techniquesServices = ConsoleRig::MakeAttachablePtr<RenderCore::Techniques::Services>(_renderDevice);
-		_divAssets = std::make_unique<ToolsRig::DivergentAssetManager>();
+        _techniquesServices = std::make_shared<RenderCore::Techniques::Services>(_renderDevice);
+
+        _drawingApparatus = std::make_shared<RenderCore::Techniques::DrawingApparatus>(_renderDevice);
+        _immediateDrawingApparatus = std::make_shared<RenderCore::Techniques::ImmediateDrawingApparatus>(_drawingApparatus);
+        _primaryResourcesApparatus = std::make_shared<RenderCore::Techniques::PrimaryResourcesApparatus>(_renderDevice);
+        _frameRenderingApparatus = std::make_shared<RenderCore::Techniques::FrameRenderingApparatus>(_renderDevice);
+        _previewSceneRegistry = ToolsRig::CreatePreviewSceneRegistry();
+
+        ::ConsoleRig::GlobalServices::GetInstance().LoadDefaultPlugins();
+
+        _divAssets = std::make_unique<ToolsRig::DivergentAssetManager>();
         _creationThreadId = System::Threading::Thread::CurrentThread->ManagedThreadId;
-		_pipelineAcceleratorPool = RenderCore::Techniques::CreatePipelineAcceleratorPool();
 
-		// hack for plugin startup -- need to find the resources for the plugin:
-		::Assets::MainFileSystem::GetMountingTree()->Mount("res", ::Assets::CreateFileSystem_OS("C:/code/XLEExt/res"));
-		::ConsoleRig::GlobalServices::GetInstance().LoadDefaultPlugins();
-
-		TimerMessageFilter^ messageFilter = gcnew TimerMessageFilter();
 		auto osRunLoop = std::make_shared<PlatformRig::OSRunLoop_BasicTimer>((HWND)0);
-		messageFilter->_osRunLoop = osRunLoop;
 		PlatformRig::SetOSRunLoop(osRunLoop);
 
-		_messageFilter = messageFilter;
+        auto messageFilter = gcnew TimerMessageFilter();
+        messageFilter->_osRunLoop = osRunLoop;
 		System::Windows::Forms::Application::AddMessageFilter(messageFilter);
+        _messageFilter = messageFilter;
     }
 
     NativeEngineDevice::~NativeEngineDevice()
@@ -121,39 +107,16 @@ namespace GUILayer
 		if (_messageFilter)
 			System::Windows::Forms::Application::RemoveMessageFilter(_messageFilter.get());
 		PlatformRig::SetOSRunLoop(nullptr);
+        // ::Assets::Services::GetAssetSets().Clear();
 		::ConsoleRig::GlobalServices::GetInstance().UnloadDefaultPlugins();
-		_pipelineAcceleratorPool.reset();
-		_divAssets.reset();
-        _renderAssetsServices.reset();
-        _assetServices.reset();
-        _immediateContext.reset();
-        _renderDevice.reset();
-        _console.reset();
-
-        _services.reset();
+        ::Assets::MainFileSystem::GetMountingTree()->Unmount(_mountId1);
+        ::Assets::MainFileSystem::GetMountingTree()->Unmount(_mountId0);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void EngineDevice::AttachDefaultCompilers()
-    {
-        _pimpl->AttachDefaultCompilers();
-    }
-
     RenderCore::IThreadContext* EngineDevice::GetNativeImmediateContext()
     {
         return _pimpl->GetImmediateContext();
-    }
-
-    void EngineDevice::ForegroundUpdate()
-    {
-            // This is intended to be run in the foreground thread
-            // It can be run inconsistantly... But typically it is
-            // run approximately once per frame.
-        assert(System::Threading::Thread::CurrentThread->ManagedThreadId == _pimpl->GetCreationThreadId());
-        Assets::Services::GetAsyncMan().Update();
-
-            // Some tools need buffer uploads to be updated from here
-        _pimpl->GetBufferUploads()->Update(*_pimpl->GetImmediateContext());
     }
 
     void EngineDevice::PrepareForShutdown()
@@ -172,7 +135,6 @@ namespace GUILayer
         System::GC::WaitForPendingFinalizers();
         DelayedDeleteQueue::FlushQueue();
         
-        ConsoleRig::ResourceBoxes_Shutdown();
         //if (_pimpl->GetAssetServices())
         //    _pimpl->GetAssetServices()->GetAssetSets().Clear();
     }
@@ -198,10 +160,8 @@ namespace GUILayer
         s_instance = nullptr;
 
         PrepareForShutdown();
-        Assets::Dependencies_Shutdown();
         delete _pimpl;
 		_pimpl = nullptr;
-        TerminateFileSystemMonitoring();
     }
 
     EngineDevice::!EngineDevice() 

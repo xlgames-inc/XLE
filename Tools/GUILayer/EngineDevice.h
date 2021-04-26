@@ -39,9 +39,7 @@ namespace GUILayer
         NativeEngineDevice& GetNative() { return *_pimpl; }
 
         RenderCore::IThreadContext* GetNativeImmediateContext();
-        void ForegroundUpdate();
 
-        void AttachDefaultCompilers();
         void PrepareForShutdown();
 
         void AddOnShutdown(IOnEngineShutdown^ callback);
