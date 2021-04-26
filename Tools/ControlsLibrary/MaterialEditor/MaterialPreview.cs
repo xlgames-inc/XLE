@@ -65,6 +65,7 @@ namespace ControlsLibrary.MaterialEditor
             InvalidatePreview();
         }
 
+#if GUILAYER_SCENEENGINE
         public GUILayer.EnvironmentSettingsSet EnvironmentSet
         {
             set
@@ -74,6 +75,7 @@ namespace ControlsLibrary.MaterialEditor
                 _environment.Visible = true;
             }
         }
+#endif
 
         public Tuple<string, ulong> PreviewModel
         {
@@ -136,7 +138,9 @@ namespace ControlsLibrary.MaterialEditor
 
         protected GUILayer.VisLayerController layerController;
         protected GUILayer.MaterialVisSettings visSettings;
+#if GUILAYER_SCENEENGINE
         protected GUILayer.EnvironmentSettingsSet envSettings;
+#endif
         protected Tuple<string, ulong> previewModel = null;
         protected List<GUILayer.RawMaterial> _attachedMaterials = new List<GUILayer.RawMaterial>();
         protected List<GUILayer.RenderStateSet> _attachedStateSets = new List<GUILayer.RenderStateSet>();

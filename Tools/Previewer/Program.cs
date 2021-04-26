@@ -148,9 +148,6 @@ namespace Previewer
             batch.AddPart(mainForm);
             container.Compose(batch);
 
-            // We need to attach compilers for models, etc
-            engineDevice.AttachDefaultCompilers();
-
             container.InitializeAll();
 
             // if there is a model filename on the command line, we will load it into our viewer

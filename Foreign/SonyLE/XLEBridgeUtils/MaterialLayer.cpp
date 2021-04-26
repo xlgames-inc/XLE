@@ -55,8 +55,8 @@ namespace XLEBridgeUtils
                         if (type == Boolean::typeid) {
                             auto parsed = ImpliedTyping::ParseFullMatch<bool>(
                                 clix::marshalString<clix::E_UTF8>(v->Value).c_str());
-                            if (parsed.first) {
-                                result = gcnew Boolean(parsed.second);
+                            if (parsed.has_value()) {
+                                result = gcnew Boolean(parsed.value());
                                 return true;
                             }
                         }

@@ -80,6 +80,7 @@ namespace Assets
 
 		virtual void RegisterExtensions(RegisteredCompilerId associatedCompiler, const std::string& commaSeparatedExtensions) override;
 		virtual std::vector<std::pair<std::string, std::string>> GetExtensionsForTargetCode(TargetCode typeCode) override;
+		virtual std::vector<uint64_t> GetTargetCodesForExtension(StringSection<>) override;
 
 		virtual void FlushCachedMarkers() override;
 
@@ -409,6 +410,24 @@ namespace Assets
 			}
 		}
 		return ext;
+	}
+
+	std::vector<uint64_t> IntermediateCompilers::GetTargetCodesForExtension(StringSection<> extension)
+	{
+		std::vector<uint64_t> result;
+
+		ScopedLock(_delegatesLock);
+		for (const auto&d:_extensionsAndDelegatesMap) {
+			if (!XlEqString(extension, d.second)) continue;
+
+			auto a = _requestAssociations.equal_range(d.first);
+			for (auto association=a.first; association != a.second; ++association)
+				for (auto targetCode:association->second._targetCodes)
+					if (std::find(result.begin(), result.end(), targetCode) == result.end())
+						result.push_back(targetCode);
+		}
+
+		return result;
 	}
 
 	void IntermediateCompilers::RegisterExtensions(

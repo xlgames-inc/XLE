@@ -2,7 +2,7 @@
 foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
 
     set(Src
-        #AnimationVisualization.cpp
+        AnimationVisualization.cpp
         DebuggingDisplay.cpp
         Font.cpp
         FontRectanglePacking.cpp

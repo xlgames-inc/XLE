@@ -7,7 +7,6 @@
 #include "DrawableDelegates.h"					// for IUniformBufferDelegate
 #include "Drawables.h"							// for ExecuteDrawableContext
 #include "../Assets/ModelImmutableData.h"		// for SkeletonBinding
-#include "../Metal/Forward.h"
 #include "../../Math/Matrix.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/StringUtils.h"

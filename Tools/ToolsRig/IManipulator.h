@@ -60,7 +60,7 @@ namespace ToolsRig
         virtual IteratorRange<const IntParameter*> GetIntParameters() const = 0;
         virtual void SetActivationState(bool newState) = 0;
 
-        virtual ~IManipulator();
+        virtual ~IManipulator() = default;
     };
 }
 

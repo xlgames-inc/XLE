@@ -19,7 +19,6 @@ namespace GUILayer
     ref class IOverlaySystem;
     ref class VisCameraSettings;
     ref class VisMouseOver;
-    ref class TechniqueContextWrapper;
     ref class VisResources;
 
     public ref class LayerControl : public EngineControl
@@ -28,30 +27,13 @@ namespace GUILayer
         void AddDefaultCameraHandler(VisCameraSettings^);
         void AddSystem(IOverlaySystem^ overlay);
 
-        TechniqueContextWrapper^ GetTechniqueContext();
-
         LayerControl(System::Windows::Forms::Control^ control);
         ~LayerControl();
-        !LayerControl();
-		virtual void OnEngineShutdown() override;
 
     protected:
-        clix::auto_ptr<LayerControlPimpl> _pimpl;
-        TechniqueContextWrapper^ _techContextWrapper;
+        bool _activePaint;
 
         virtual bool Render(RenderCore::IThreadContext&, IWindowRig&) override;
 		virtual void OnResize() override;
     };
-
-    class LayerControlPimpl 
-    {
-    public:
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
-        std::shared_ptr<RenderCore::Techniques::AttachmentPool> _namedResources;
-		std::shared_ptr<RenderCore::Techniques::FrameBufferPool> _frameBufferPool;
-        bool _activePaint;
-    };
-
 }
-
-

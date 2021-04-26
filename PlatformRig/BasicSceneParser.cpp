@@ -453,6 +453,7 @@ namespace PlatformRig
 #include "../SceneEngine/RenderStep_PrepareShadows.h"
 #include "../SceneEngine/RenderStepUtils.h"
 #include "../SceneEngine/LightInternal.h"
+#include "../SceneEngine/IntersectionTest.h"
 #include "../Utility/Meta/AccessorSerialize.h"
 #include "../Utility/Meta/ClassAccessors.h"
 
@@ -559,6 +560,52 @@ namespace SceneEngine
     std::vector<std::shared_ptr<IRenderStep>> CreateStandardRenderSteps(LightingModel lightingModel)
     {
         return {};
+    }
+
+    auto IntersectionTestScene::FirstRayIntersection(
+        const IntersectionTestContext& context,
+        std::pair<Float3, Float3> worldSpaceRay,
+        Type::BitField filter) const -> Result
+    {
+        return {};
+    }
+
+    auto IntersectionTestScene::FrustumIntersection(
+        const IntersectionTestContext& context,
+        const Float4x4& worldToProjection,
+        Type::BitField filter) const -> std::vector<Result>
+    {
+        return {};
+    }
+
+    auto IntersectionTestScene::UnderCursor(
+        const IntersectionTestContext& context,
+        Int2 cursorPosition, Type::BitField filter) const -> Result
+    {
+        return {};
+    }
+
+    IntersectionTestScene::IntersectionTestScene(
+        std::shared_ptr<TerrainManager> terrainManager,
+        std::shared_ptr<PlacementCellSet> placements,
+        std::shared_ptr<PlacementsEditor> placementsEditor,
+        std::initializer_list<std::shared_ptr<IIntersectionTester>> extraTesters)
+    {
+    }
+
+    IntersectionTestScene::~IntersectionTestScene()
+    {}
+
+    std::pair<Float3, Float3> IntersectionTestContext::CalculateWorldSpaceRay(Int2 screenCoord) const
+    {
+		return {Zero<Float3>(), Zero<Float3>()};
+    }
+
+    std::pair<Float3, Float3> IntersectionTestContext::CalculateWorldSpaceRay(
+        const RenderCore::Techniques::CameraDesc& sceneCamera,
+        Int2 screenCoord, UInt2 viewMins, UInt2 viewMaxs)
+    {
+        return {Zero<Float3>(), Zero<Float3>()};
     }
 }
 

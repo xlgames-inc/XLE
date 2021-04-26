@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 #include <stdint.h>
+#include <stdexcept>
 
 #if !defined(_M_CEE)	// cannot be included into CLR builds, for reasons known only to Microsoft
 #include "Threading/Mutex.h"

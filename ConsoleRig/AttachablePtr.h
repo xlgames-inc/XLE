@@ -285,7 +285,7 @@ namespace ConsoleRig
 			#if COMPILER_ACTIVE == COMPILER_TYPE_CLANG
 				static __attribute__((visibility("hidden"))) bool s_typeConfigured = false;
 			#else
-				static __attribute__((visibility("hidden"))) bool s_typeConfigured = false;
+				static bool s_typeConfigured = false;
 			#endif
 			if (!s_typeConfigured) {
 				Internal::InfraModuleManager::GetInstance().ConfigureType(

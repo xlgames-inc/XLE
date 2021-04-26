@@ -29,6 +29,7 @@ namespace GUILayer
         std::shared_ptr<PlatformRig::FrameRig> _frameRig;
         std::shared_ptr<RenderCore::IPresentationChain> _presentationChain;
         std::vector<std::shared_ptr<PlatformRig::IWindowHandler>> _windowHandlers;
+        std::shared_ptr<PlatformRig::OverlaySystemSet> _mainOverlaySystemSet;
     };
 }
 

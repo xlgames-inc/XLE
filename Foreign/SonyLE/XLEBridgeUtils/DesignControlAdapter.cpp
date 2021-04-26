@@ -11,8 +11,6 @@
 #include "../../Tools/GUILayer/NativeEngineDevice.h"
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
-#include "../../RenderCore/Techniques/RenderPassUtils.h"
-#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/IDevice.h"
 #include <msclr\auto_handle.h>
 #include <memory>

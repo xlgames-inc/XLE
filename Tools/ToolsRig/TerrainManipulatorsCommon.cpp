@@ -32,8 +32,6 @@ namespace ToolsRig
         return std::make_pair(Float3(0.f, 0.f, 0.f), false);
     }
 
-    IManipulator::~IManipulator() {}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     TerrainManipulatorBase::TerrainManipulatorBase(

@@ -190,6 +190,7 @@ namespace ToolsRig
 
 		void SetPatchCollection(const PatchCollectionFuture& patchCollectionFuture)
 		{
+			assert(0);
 #if 0
 			auto mat = _material;
 			if (!mat)
@@ -576,6 +577,22 @@ namespace ToolsRig
 				subProvider));
 	}
 	DeferredCompiledShaderPatchCollection::~DeferredCompiledShaderPatchCollection() {}
+#else
+	const PatchCollectionFuture& DeferredCompiledShaderPatchCollection::GetFuture()
+	{
+		assert(0);
+		static PatchCollectionFuture dummy;
+		return dummy;
+	}
+
+	DeferredCompiledShaderPatchCollection::DeferredCompiledShaderPatchCollection(
+		GraphLanguage::NodeGraph&& nodeGraph,
+		GraphLanguage::NodeGraphSignature&& nodeGraphSignature,
+		uint32_t previewNodeId,
+		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& subProvider)
+	{}
+	DeferredCompiledShaderPatchCollection::~DeferredCompiledShaderPatchCollection() {}
+
 #endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

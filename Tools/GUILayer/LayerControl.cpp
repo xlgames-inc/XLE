@@ -15,7 +15,6 @@
 #include "GUILayerUtil.h"
 #include "ExportedNativeTypes.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
-#include "../../RenderCore/Techniques/Techniques.h"
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/IManipulator.h"
 #include "../ToolsRig/BasicManipulators.h"
@@ -35,7 +34,7 @@ namespace GUILayer
             // rendering)
             // Re-entering rendering recursively can cause some bad problems, however
             //  -- so we need to prevent it.
-        if (_pimpl->_activePaint)
+        if (_activePaint)
             return false;
 
             // Check for cases where a paint operation can be begun on one window
@@ -43,14 +42,14 @@ namespace GUILayer
         static bool activePaintCheck2 = false;
         if (activePaintCheck2) return false;
 
-        _pimpl->_activePaint = true;
+        _activePaint = true;
         activePaintCheck2 = true;
         
         bool result = true;
         TRY
         {
             auto& frameRig = windowRig.GetFrameRig();
-			RenderCore::Techniques::ParsingContext parserContext(*_pimpl->_globalTechniqueContext);
+			RenderCore::Techniques::ParsingContext parserContext(*EngineDevice::GetInstance()->GetNative().GetTechniqueContext());
             auto frResult = frameRig.ExecuteFrame(
                 threadContext, windowRig.GetPresentationChain().get(), 
                 parserContext, nullptr);
@@ -64,7 +63,7 @@ namespace GUILayer
         } CATCH (...) {
         } CATCH_END
         activePaintCheck2 = false;
-        _pimpl->_activePaint = false;
+        _activePaint = false;
 
         return result;
     }
@@ -72,8 +71,7 @@ namespace GUILayer
 	void LayerControl::OnResize()
     {
 		// We must reset the framebuffer in order to dump references to the presentation chain on DX (because it's going to be resized along with the window)
-		assert(0);
-        // _pimpl->_frameBufferPool->Reset();
+		EngineDevice::GetInstance()->GetNative().ResetFrameBufferPool();
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -121,7 +119,8 @@ namespace GUILayer
     {
             // create an input listener that feeds into a stack of manipulators
 		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
-        auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(settings->GetUnderlying(), _pimpl->_globalTechniqueContext, pipelineAcceleratorPool);
+        auto techContext = EngineDevice::GetInstance()->GetNative().GetTechniqueContext();
+        auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(settings->GetUnderlying(), techContext, pipelineAcceleratorPool);
         manipulators->Register(
             ToolsRig::ManipulatorStack::CameraManipulator,
             ToolsRig::CreateCameraManipulator(settings->GetUnderlying()));
@@ -130,42 +129,14 @@ namespace GUILayer
         overlaySet.AddSystem(ToolsRig::MakeLayerForInput(manipulators));
     }
 
-    TechniqueContextWrapper^ LayerControl::GetTechniqueContext()
-    {
-        return _techContextWrapper;
-    }
-
-	void LayerControl::OnEngineShutdown()
-	{
-		_pimpl.reset();
-		delete _techContextWrapper;
-		_techContextWrapper = nullptr;
-		EngineControl::OnEngineShutdown();
-	}
-
     LayerControl::LayerControl(System::Windows::Forms::Control^ control)
         : EngineControl(control)
     {
-        _pimpl.reset(new LayerControlPimpl());
-        _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
-        // _pimpl->_namedResources = std::make_shared<RenderCore::Techniques::AttachmentPool>();
-		// _pimpl->_frameBufferPool = std::make_shared<RenderCore::Techniques::FrameBufferPool>();
-        _techContextWrapper = gcnew TechniqueContextWrapper(_pimpl->_globalTechniqueContext);
-        _pimpl->_activePaint = false;
+        _activePaint = false;
     }
 
     LayerControl::~LayerControl() 
     {
-		_pimpl.reset();
-        delete _techContextWrapper;
-		_techContextWrapper = nullptr;
-    }
-
-    LayerControl::!LayerControl()
-    {
-		if (_pimpl.get()) {
-			System::Diagnostics::Debug::Assert(false, "Non deterministic delete of LayerControl");
-		}
     }
 }
 

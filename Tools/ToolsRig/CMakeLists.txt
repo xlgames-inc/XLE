@@ -19,6 +19,9 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
 		#TerrainShadowOp.cpp
 		VisualisationGeo.cpp
 		VisualisationUtils.cpp
+		../EntityInterface/EntityInterface.cpp
+		../EntityInterface/GameObjects.cpp
+		../EntityInterface/RetainedEntities.cpp
 		)
 	xle_configure_library(ToolsRig-${metal_name})
 	target_link_libraries(ToolsRig-${metal_name} PRIVATE RenderCoreTechniques-${metal_name})

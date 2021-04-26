@@ -7,6 +7,7 @@
 #include "GameObjects.h"
 #include "RetainedEntities.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/OutputStreamFormatter.h"
 #include "../../Utility/Conversion.h"
 
 namespace EntityInterface
@@ -23,7 +24,7 @@ namespace EntityInterface
             const RetainedEntities& entities)
     {
         auto name = Conversion::Convert<std::basic_string<CharType>>(entities.GetTypeName(obj._type));
-        auto eleId = formatter.BeginElement(AsPointer(name.cbegin()), AsPointer(name.cend()));
+        auto eleId = formatter.BeginKeyedElement(name);
         if (!obj._children.empty()) formatter.NewLine();    // properties can continue on the same line, but only if we don't have children
         obj._properties.SerializeWithCharType<CharType>(formatter);
 

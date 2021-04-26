@@ -13,7 +13,6 @@
 #include "../../Math/Transformations.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/AssetServices.h"
-#include "../../ConsoleRig/LogStartup.h"
 #include "../../ConsoleRig/GlobalServices.h"
 
 using namespace Sce::Atf;
@@ -235,21 +234,12 @@ namespace XLEBridgeUtils
     LoggingRedirect::!LoggingRedirect() {}
 
 
-	ConsoleRig::AttachablePtr<::ConsoleRig::GlobalServices> s_attachRef;
-	ConsoleRig::AttachablePtr<::Assets::Services> s_attachRef1;
-
     void Utils::AttachLibrary(GUILayer::EngineDevice^ device)
     {
-		ConsoleRig::CrossModule::SetInstance(*device->GetNative().GetCrossModule());
-		s_attachRef = ConsoleRig::GetAttachablePtr<::ConsoleRig::GlobalServices>();
-		s_attachRef1 = ConsoleRig::GetAttachablePtr<::Assets::Services>();
     }
 
     void Utils::DetachLibrary(GUILayer::EngineDevice^ device)
     {
-		s_attachRef1.reset();
-		s_attachRef.reset();
-		ConsoleRig::CrossModule::ReleaseInstance();
     }
 
 }

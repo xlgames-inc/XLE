@@ -111,7 +111,7 @@ namespace ToolsRig
 			}
 		}
 
-		DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex, uint64_t materialGuid) const
+		DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex, uint64_t materialGuid) const override
 		{
 			auto* r = TryActualize();
 			if (r) {
@@ -123,7 +123,7 @@ namespace ToolsRig
 				return { {}, {} };
 			}
 		}
-		std::pair<Float3, Float3> GetBoundingBox() const 
+		std::pair<Float3, Float3> GetBoundingBox() const override
 		{
 			auto* r = TryActualize();
 			if (!r)
@@ -131,7 +131,7 @@ namespace ToolsRig
 			return r->_renderer->GetModelScaffold()->GetStaticBoundingBox(); 
 		}
 
-		std::shared_ptr<IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<IPreDrawDelegate>& delegate)
+		std::shared_ptr<IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<IPreDrawDelegate>& delegate) override
 		{
 			auto oldDelegate = delegate;
 			std::swap(_preDrawDelegate, oldDelegate);
@@ -141,7 +141,7 @@ namespace ToolsRig
 		void RenderSkeleton(
 			RenderCore::IThreadContext& context, 
 			RenderCore::Techniques::ParsingContext& parserContext, 
-			bool drawBoneNames) const
+			bool drawBoneNames) const override
 		{
 			auto* r = TryActualize();
 			if (!r) return;
@@ -181,7 +181,7 @@ namespace ToolsRig
 			}
 		}
 
-		void BindAnimationState(const std::shared_ptr<VisAnimationState>& animState)
+		void BindAnimationState(const std::shared_ptr<VisAnimationState>& animState) override
 		{
 			_animationState = animState;
 			// If it previously actualized
@@ -189,19 +189,19 @@ namespace ToolsRig
 				_actualized->BindAnimState(*_animationState);
 		}
 
-		bool HasActiveAnimation() const
+		bool HasActiveAnimation() const override
 		{
 			auto* r = TryActualize();
 			if (!r) return false;
 			return r->_animationScaffold && _animationState && _animationState->_state == VisAnimationState::State::Playing;
 		}
 
-		::Assets::AssetState GetAssetState() const
+		::Assets::AssetState GetAssetState() const override
 		{
 			return _rendererStateFuture->GetAssetState();
 		}
 
-		std::optional<::Assets::AssetState> StallWhilePending(std::chrono::milliseconds timeout) const
+		std::optional<::Assets::AssetState> StallWhilePending(std::chrono::milliseconds timeout) const override
 		{
 			return _rendererStateFuture->StallWhilePending(timeout);
 		}

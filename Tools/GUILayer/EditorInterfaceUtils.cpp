@@ -7,8 +7,6 @@
 #include "EditorInterfaceUtils.h"
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
-#include "LevelEditorScene.h"
-#include "TerrainLayer.h"
 #include "GUILayerUtil.h"
 #include "MathLayer.h"
 #include "MarshalString.h"
@@ -16,7 +14,6 @@
 #include "../EntityInterface/EntityInterface.h"
 #include "../EntityInterface/EnvironmentSettings.h"
 #include "../ToolsRig/VisualisationUtils.h"
-#include "../ToolsRig/TerrainConversion.h"
 #include "../../PlatformRig/BasicSceneParser.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/Terrain.h"
@@ -27,7 +24,6 @@
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Math/Transformations.h"
-#include "../ToolsRig/PlacementsManipulators.h"
 
 using namespace System;
 using namespace System::Collections::Generic;
@@ -58,9 +54,13 @@ namespace GUILayer
 
     void ObjectSet::DoFixup(SceneEngine::PlacementsEditor& placements)
     {
+#if defined(GUILAYER_SCENEENGINE)
         placements.PerformGUIDFixup(
             AsPointer(_nativePlacements->begin()),
             AsPointer(_nativePlacements->end()));
+#else
+        assert(0);
+#endif
     }
         
     void ObjectSet::DoFixup(PlacementsEditorWrapper^ placements)
@@ -98,6 +98,7 @@ namespace GUILayer
             return temp.release();
         }
 
+#if defined(GUILAYER_SCENEENGINE)
         static System::Collections::Generic::ICollection<HitRecord>^
             RayIntersection(
                 CameraDescWrapper^ camera,
@@ -472,11 +473,12 @@ namespace GUILayer
                 clix::marshalString<clix::E_UTF8>(uberSurfaceDir).c_str(), 
                 coverageId, nativeProgress.get());
         }
-
+#endif
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if defined(GUILAYER_SCENEENGINE)
     IEnumerable<String^>^ EnvironmentSettingsSet::Names::get()
     {
         auto result = gcnew List<String^>();
@@ -509,6 +511,7 @@ namespace GUILayer
     }
 
     EnvironmentSettingsSet::~EnvironmentSettingsSet() {}
+#endif
 }
 
 

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "../Utility/IteratorUtils.h"
+#include "../Utility/StringUtils.h"
 #include <memory>
 #include <functional>
 #include <vector>
@@ -62,6 +63,7 @@ namespace Assets
 		// It's so the tool knows what model formats are available to load (for example)
 		virtual void RegisterExtensions(RegisteredCompilerId associatedCompiler, const std::string& commaSeparatedExtensions) = 0;
 		virtual std::vector<std::pair<std::string, std::string>> GetExtensionsForTargetCode(TargetCode typeCode) = 0;
+		virtual std::vector<uint64_t> GetTargetCodesForExtension(StringSection<>) = 0;
 
 		//
 

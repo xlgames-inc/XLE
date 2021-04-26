@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../../RenderCore/Techniques/SimpleModelRenderer.h"
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../OSServices/FileSystemMonitor.h"
@@ -20,6 +19,7 @@ namespace RenderCore { namespace Techniques {
 	class ITechniqueDelegate;
 	class IPipelineAcceleratorPool;
     class IImmediateDrawables;
+    class IPreDrawDelegate;
 }}
 namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
 namespace SceneEngine { class LightDesc; class GlobalLightingDesc; }

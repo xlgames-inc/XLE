@@ -15,6 +15,7 @@
 #include "../../RenderCore/Techniques/Apparatuses.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/Services.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Init.h"
 #include "../../Assets/IFileSystem.h"
@@ -54,7 +55,6 @@ namespace GUILayer
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    BufferUploads::IManager*		NativeEngineDevice::GetBufferUploads()		{ return _primaryResourcesApparatus->_bufferUploads.get(); }
     RenderCore::IThreadContext*		NativeEngineDevice::GetImmediateContext()	{ return _renderDevice->GetImmediateContext().get(); }
 
     const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& NativeEngineDevice::GetMainPipelineAcceleratorPool()
@@ -65,6 +65,16 @@ namespace GUILayer
     const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& NativeEngineDevice::GetImmediateDrawables()
     {
         return _immediateDrawingApparatus->_immediateDrawables;
+    }
+
+    const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& NativeEngineDevice::GetTechniqueContext()
+    {
+        return _drawingApparatus->_techniqueContext;
+    }
+
+    void NativeEngineDevice::ResetFrameBufferPool()
+    {
+        _frameRenderingApparatus->_frameBufferPool->Reset();
     }
 
     NativeEngineDevice::NativeEngineDevice()
@@ -86,6 +96,8 @@ namespace GUILayer
         _immediateDrawingApparatus = std::make_shared<RenderCore::Techniques::ImmediateDrawingApparatus>(_drawingApparatus);
         _primaryResourcesApparatus = std::make_shared<RenderCore::Techniques::PrimaryResourcesApparatus>(_renderDevice);
         _frameRenderingApparatus = std::make_shared<RenderCore::Techniques::FrameRenderingApparatus>(_renderDevice);
+        _drawingApparatus->_techniqueContext->_frameBufferPool = _frameRenderingApparatus->_frameBufferPool;
+        _drawingApparatus->_techniqueContext->_attachmentPool = _frameRenderingApparatus->_attachmentPool;
         _previewSceneRegistry = ToolsRig::CreatePreviewSceneRegistry();
 
         ::ConsoleRig::GlobalServices::GetInstance().LoadDefaultPlugins();

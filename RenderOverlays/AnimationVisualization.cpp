@@ -3,6 +3,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "AnimationVisualization.h"
+
+#if 0 
+
 #include "OverlayContext.h"
 #include "../RenderCore/Assets/SkeletonScaffoldInternal.h"
 #include "../RenderCore/IThreadContext.h"
@@ -219,3 +222,33 @@ namespace RenderOverlays
 		RenderSkeleton(context, parserContext, skeleton, skeleton.GetDefaultParameters(), localToWorld, drawBoneNames);
 	}
 }
+
+#else
+
+namespace RenderOverlays
+{
+	using namespace RenderCore;
+
+	void    RenderSkeleton(
+        IThreadContext& context, 
+        Techniques::ParsingContext& parserContext, 
+		const RenderCore::Assets::SkeletonMachine& skeleton,
+		const RenderCore::Assets::TransformationParameterSet& params,
+		const Float4x4& localToWorld, 
+		bool drawBoneNames)
+    {
+		assert(0);
+	}
+
+	void    RenderSkeleton(
+        IThreadContext& context, 
+        Techniques::ParsingContext& parserContext, 
+		const RenderCore::Assets::SkeletonMachine& skeleton,
+		const Float4x4& localToWorld,
+		bool drawBoneNames)
+	{
+		assert(0);
+	}
+}
+
+#endif

@@ -9,6 +9,7 @@
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/CompileAndAsyncManager.h"
+#include "../../../Assets/IntermediateCompilers.h"
 #include "../../../OSServices/Log.h"
 #include "../../../Utility/Streams/PathUtils.h"
 #include "../../../Utility/Conversion.h"
@@ -196,7 +197,7 @@ namespace XLEBridgeUtils
 
 			// figure out what types we can compile this into
 			auto temp = naturalNameSplitter.FileAndExtension().Cast<char>();
-			auto types = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers().GetTypesForAsset(&temp, 1);
+			auto types = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers().GetTargetCodesForExtension(temp);
 			result.Types = 0u;
 			for (auto t:types) {
 				if (t == RenderCore::Assets::ModelScaffold::CompileProcessType) {

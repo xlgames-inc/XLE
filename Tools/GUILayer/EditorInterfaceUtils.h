@@ -38,6 +38,7 @@ namespace GUILayer
 
     using EnvSettingsVector = std::vector<std::pair<std::string, PlatformRig::EnvironmentSettings>>;
 
+#if defined(GUILAYER_SCENEENGINE)
     ref class EditorSceneManager;
 
     public ref class EnvironmentSettingsSet
@@ -52,6 +53,7 @@ namespace GUILayer
         EnvironmentSettingsSet(EditorSceneManager^ scene);
         ~EnvironmentSettingsSet();
     };
+#endif
 
 	public ref class CameraDescWrapper
     {

@@ -21,8 +21,8 @@ namespace RenderCore { namespace Techniques
     class ImmediateDrawingApparatus;
     class PrimaryResourcesApparatus;
     class FrameRenderingApparatus;
+    class TechniqueContext;
 }}
-namespace BufferUploads { class IManager; }
 
 namespace GUILayer
 {
@@ -30,7 +30,6 @@ namespace GUILayer
     {
     public:
         const std::shared_ptr<RenderCore::IDevice>&        GetRenderDevice() { return _renderDevice; }
-        BufferUploads::IManager*    GetBufferUploads();
         ::Assets::Services*         GetAssetServices() { return _assetServices.get(); }
         RenderCore::IThreadContext* GetImmediateContext();
         ConsoleRig::GlobalServices* GetGlobalServices() { return _services.get(); }
@@ -38,6 +37,9 @@ namespace GUILayer
 
 		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& GetMainPipelineAcceleratorPool();
         const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& GetImmediateDrawables();
+        const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& GetTechniqueContext();
+
+        void ResetFrameBufferPool();
 
         NativeEngineDevice();
         ~NativeEngineDevice();

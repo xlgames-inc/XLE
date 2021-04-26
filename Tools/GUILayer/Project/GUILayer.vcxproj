@@ -110,7 +110,38 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">
     <Link>
       <AssemblyDebug>true</AssemblyDebug>
-      <AdditionalDependencies>dxguid.lib;cfgmgr32.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>dxguid.lib;cfgmgr32.lib;shlwapi.lib;imagehlp.lib;
+		  $(SolutionDir)\..\build\Debug\ToolsRig\ToolsRig-$(GfxConfiguration).lib;
+		  $(SolutionDir)\..\build\Debug\PlatformRig\PlatformRig-$(GfxConfiguration).lib;
+		  $(SolutionDir)\..\build\Debug\RenderOverlays\RenderOverlays-$(GfxConfiguration).lib;
+		  $(SolutionDir)\..\build\Debug\RenderCoreLightingEngine\RenderCoreLightingEngine-$(GfxConfiguration).lib;
+		  $(SolutionDir)\..\build\Debug\RenderCoreTechniques\RenderCoreTechniques-$(GfxConfiguration).lib;
+		  $(SolutionDir)\..\build\Debug\RenderCoreMetal\RenderCoreMetalVulkan\RenderCore_$(GfxConfiguration).lib;
+		  $(SolutionDir)\..\build\Debug\BufferUploads\BufferUploads-$(GfxConfiguration).lib;
+		  $(SolutionDir)\..\build\Debug\RenderCoreAssets\RenderCoreAssets.lib;
+		  $(SolutionDir)\..\build\Debug\RenderCore\RenderCore.lib;
+		  $(SolutionDir)\..\build\Debug\ShaderParser\ShaderParser.lib;
+		  $(SolutionDir)\..\build\Debug\ConsoleRig\ConsoleRig.lib;
+		  $(SolutionDir)\..\build\Debug\Assets\Assets.lib;
+		  $(SolutionDir)\..\build\Debug\Math\Math.lib;
+		  $(SolutionDir)\..\build\Debug\OSServices\OSServices.lib;
+		  $(SolutionDir)\..\build\Debug\Utility\Utility.lib;
+		  $(SolutionDir)\..\build\Debug\ForeignMisc\ForeignMisc.lib;
+		  $(SolutionDir)\..\build\Debug\bin\CMake\DirectXTex.lib;
+		  $(SolutionDir)\..\build\Debug\freetype\freetyped.lib;
+		  $(SolutionDir)\..\Foreign\HLSLCC\lib64\Debug\libHLSLcc.lib;
+		  $(VULKAN_SDK)\Lib\vulkan-1.lib;
+		  $(VULKAN_SDK)\Lib\glslangd.lib;
+		  $(VULKAN_SDK)\Lib\GenericCodeGend.lib;
+		  $(VULKAN_SDK)\Lib\MachineIndependentd.lib;
+		  $(VULKAN_SDK)\Lib\OGLCompilerd.lib;
+		  $(VULKAN_SDK)\Lib\OSDependentd.lib;
+		  $(VULKAN_SDK)\Lib\SPIRVd.lib;
+		  $(VULKAN_SDK)\Lib\SPIRV-Toolsd.lib;
+		  $(VULKAN_SDK)\Lib\SPIRV-Tools-optd.lib;
+		  $(VULKAN_SDK)\Lib\SPIRV-Tools-reduced.lib;
+		  $(VULKAN_SDK)\Lib\SPIRV-Tools-sharedd.lib;
+		  %(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
       <PreprocessorDefinitions>COMPILING_GUILAYER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -160,12 +191,16 @@
     </ClCompile>
     <ClCompile Include="..\ManipulatorUtils.cpp" />
     <ClCompile Include="..\VisSettingsLayer.cpp" />
-    <ClCompile Include="..\NativeManipulators.cpp" />
+    <ClCompile Include="..\NativeManipulators.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\NodeGraph.cpp" />
     <ClCompile Include="..\PreviewRenderManager.cpp" />
     <ClCompile Include="..\ShaderFragment.cpp" />
     <ClCompile Include="..\ShaderGenerator.cpp" />
-    <ClCompile Include="..\SimpleRenderingContext.cpp" />
+    <ClCompile Include="..\SimpleRenderingContext.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\ManipulatorsLayer.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
     </ClCompile>
@@ -204,7 +239,9 @@
     <ClInclude Include="..\ManipulatorsLayer.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\NativeManipulators.h" />
+    <ClInclude Include="..\NativeManipulators.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="..\NodeGraph.h" />
     <ClInclude Include="..\ShaderGenerator.h" />
     <ClInclude Include="..\TerrainLayer.h">

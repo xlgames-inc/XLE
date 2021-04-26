@@ -24,7 +24,7 @@ namespace EntityInterface
         auto typeHint = prop._isString ? ImpliedTyping::TypeHint::String : ImpliedTyping::TypeHint::None;
 
         const auto& propertyName = type._properties[prop._prop-1];
-		ImpliedTyping::TypeDesc typeDesc((ImpliedTyping::TypeCat)prop._elementType, (uint16)prop._arrayCount, typeHint);
+		ImpliedTyping::TypeDesc typeDesc{(ImpliedTyping::TypeCat)prop._elementType, (uint16)prop._arrayCount, typeHint};
         dest._properties.SetParameter(
             MakeStringSection(propertyName).Cast<utf8>(), prop._src, 
             typeDesc);
@@ -563,7 +563,8 @@ namespace EntityInterface
     static Identifier DeserializeEntity(
         InputStreamFormatter<utf8>& formatter,
         IEntityInterface& interf,
-        DocumentId docId)
+        DocumentId docId,
+        StringSection<> objType)
     {
         using Blob = InputStreamFormatter<utf8>::Blob;
         using Section = InputStreamFormatter<utf8>::InteriorSection;
@@ -571,9 +572,6 @@ namespace EntityInterface
         utf8 tempBuffer[256];
         
         auto beginLoc = formatter.GetLocation();
-        Section objType = { nullptr, nullptr };
-        if (!formatter.TryBeginElement(objType))
-            Throw(FormatException("Error in begin element in entity file", formatter.GetLocation()));
 
         XlCopyNString(tempBuffer, objType._start, objType._end - objType._start);
         auto typeId = interf.GetTypeId((const char*)tempBuffer);
@@ -584,80 +582,70 @@ namespace EntityInterface
 
         std::vector<Identifier> children;
 
-        for (;;) {
-            switch (formatter.PeekNext()) {
-            case Blob::BeginElement:
-                {
-                    auto child = DeserializeEntity(formatter, interf, docId);
-                    if (child.Object())
-                        children.push_back(child);
+        StringSection<> name;
+        while (formatter.TryKeyedItem(name)) {
+            auto name = RequireKeyedItem(formatter);
+            auto next = formatter.PeekNext();
+            if (next == Blob::BeginElement) {
+                RequireBeginElement(formatter);
+                auto child = DeserializeEntity(formatter, interf, docId, name);
+                if (child.Object())
+                    children.push_back(child);
+                RequireEndElement(formatter);
+            } else {
+                auto value = RequireValue(formatter);
+
+                    // parse the value and add it as a property initializer
+                char intermediateBuffer[64];
+                auto type = ImpliedTyping::ParseFullMatch(
+                    value,
+                    intermediateBuffer, dimof(intermediateBuffer));
+
+                size_t bufferOffset = initsBuffer.size();
+                
+                if (type._type == ImpliedTyping::TypeCat::Void) {
+                    type._type = ImpliedTyping::TypeCat::UInt8;
+                    type._arrayCount = uint16(value._end - value._start);
+                    type._typeHint = ImpliedTyping::TypeHint::String;
+                    initsBuffer.insert(initsBuffer.end(), value._start, value._end);
+                } else {
+                    auto size = std::min(type.GetSize(), (unsigned)sizeof(intermediateBuffer));
+                    initsBuffer.insert(initsBuffer.end(), intermediateBuffer, PtrAdd(intermediateBuffer, size));
                 }
-                break;
+        
+                XlCopyNString(tempBuffer, name._start, name._end - name._start);
+                auto id = interf.GetPropertyId(typeId, (const char*)tempBuffer);
 
-            case Blob::AttributeName:
-                {
-                    Section name, value;
-                    if (!formatter.TryAttribute(name, value))
-                        Throw(FormatException("Error in begin element in entity file", formatter.GetLocation()));
+                PropertyInitializer i;
+                i._prop = id;
+                i._elementType = unsigned(type._type);
+                i._arrayCount = type._arrayCount;
+                i._src = { (void*)bufferOffset, (void*)initsBuffer.size() };		// note -- temporarily storing the offset here, because we convert to a pointer in just below before calling CreateObject
+                i._isString = type._typeHint == ImpliedTyping::TypeHint::String;
 
-                        // parse the value and add it as a property initializer
-                    char intermediateBuffer[64];
-                    auto type = ImpliedTyping::ParseFullMatch(
-                        value,
-                        intermediateBuffer, dimof(intermediateBuffer));
-
-                    size_t bufferOffset = initsBuffer.size();
-                    
-                    if (type._type == ImpliedTyping::TypeCat::Void) {
-                        type._type = ImpliedTyping::TypeCat::UInt8;
-                        type._arrayCount = uint16(value._end - value._start);
-                        type._typeHint = ImpliedTyping::TypeHint::String;
-                        initsBuffer.insert(initsBuffer.end(), value._start, value._end);
-                    } else {
-                        auto size = std::min(type.GetSize(), (unsigned)sizeof(intermediateBuffer));
-                        initsBuffer.insert(initsBuffer.end(), intermediateBuffer, PtrAdd(intermediateBuffer, size));
-                    }
-               
-                    XlCopyNString(tempBuffer, name._start, name._end - name._start);
-                    auto id = interf.GetPropertyId(typeId, (const char*)tempBuffer);
-
-                    PropertyInitializer i;
-                    i._prop = id;
-                    i._elementType = unsigned(type._type);
-                    i._arrayCount = type._arrayCount;
-					i._src = { (void*)bufferOffset, (void*)initsBuffer.size() };		// note -- temporarily storing the offset here, because we convert to a pointer in just below before calling CreateObject
-                    i._isString = type._typeHint == ImpliedTyping::TypeHint::String;
-
-                    inits.push_back(i);
-                }
-                break;
-
-            case Blob::EndElement:
-            default:
-                if (!formatter.TryEndElement())
-                    Throw(FormatException("Expecting end element in entity deserialisation", formatter.GetLocation()));
-
-                if (typeId != ~ObjectTypeId(0x0)) {
-					for (auto&i : inits)
-						i._src = { PtrAdd(AsPointer(initsBuffer.cbegin()), size_t(i._src.first)), PtrAdd(AsPointer(initsBuffer.cbegin()), size_t(i._src.second)) };
-
-                    auto id = interf.AssignObjectId(docId, typeId);
-                    Identifier identifier(docId, id, typeId);
-                    if (!interf.CreateObject(identifier, AsPointer(inits.cbegin()), inits.size()))
-                        Throw(FormatException("Error while creating object in entity deserialisation", beginLoc));
-
-                    for (const auto&c:children)
-                        interf.SetParent(c, identifier, 0, -1);
-
-                    typeId = ~ObjectTypeId(0x0);
-                    initsBuffer.clear();
-
-                    return identifier;
-                }
-
-                return Identifier();
+                inits.push_back(i);
             }
+        };
+
+        if (typeId != ~ObjectTypeId(0x0)) {
+            for (auto&i : inits)
+                i._src = { PtrAdd(AsPointer(initsBuffer.cbegin()), size_t(i._src.first)), PtrAdd(AsPointer(initsBuffer.cbegin()), size_t(i._src.second)) };
+
+            auto id = interf.AssignObjectId(docId, typeId);
+            Identifier identifier(docId, id, typeId);
+            if (!interf.CreateObject(identifier, AsPointer(inits.cbegin()), inits.size()))
+                Throw(FormatException("Error while creating object in entity deserialisation", beginLoc));
+
+            for (const auto&c:children)
+                interf.SetParent(c, identifier, 0, -1);
+
+            typeId = ~ObjectTypeId(0x0);
+            initsBuffer.clear();
+
+            return identifier;
         }
+
+        return Identifier();
     }
 
     void Deserialize(
@@ -669,18 +657,11 @@ namespace EntityInterface
 
             // Parse the input file, and send the result to the given entity interface
             // we expect only a list of entities in the root (no attributes)
-        using Blob = InputStreamFormatter<utf8>::Blob;
-        for (;;) {
-            switch (formatter.PeekNext()) {
-            case Blob::BeginElement:
-                DeserializeEntity(formatter, interf, docId);
-                break;
-
-            case Blob::None: return; // end of file
-
-            default:
-                Throw(FormatException("Unexpected blob while deserializing entities", formatter.GetLocation()));
-            }
+        StringSection<> name;
+        while (formatter.TryKeyedItem(name)) {
+            RequireBeginElement(formatter);
+            DeserializeEntity(formatter, interf, docId, name);
+            RequireEndElement(formatter);
         }
     }
 

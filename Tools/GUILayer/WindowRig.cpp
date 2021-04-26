@@ -63,6 +63,11 @@ namespace GUILayer
         }
     }
 
+    PlatformRig::OverlaySystemSet& WindowRig::GetMainOverlaySystemSet()
+    {
+        return *_mainOverlaySystemSet;
+    }
+
     WindowRig::WindowRig(RenderCore::IDevice& device, const void* platformWindowHandle)
     {
         ::RECT clientRect;
@@ -74,6 +79,9 @@ namespace GUILayer
 				unsigned(clientRect.right - clientRect.left), unsigned(clientRect.bottom - clientRect.top)});
         std::shared_ptr<RenderCore::Techniques::SubFrameEvents> subFrameEvents;
         _frameRig = std::make_shared<PlatformRig::FrameRig>(subFrameEvents); // (not "main" frame rig by default)
+
+        _mainOverlaySystemSet = std::make_shared<PlatformRig::OverlaySystemSet>();
+        _frameRig->SetMainOverlaySystem(_mainOverlaySystemSet);
 
         /*{
             auto overlaySwitch = std::make_shared<PlatformRig::OverlaySystemSwitch>();

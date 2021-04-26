@@ -42,7 +42,7 @@ namespace XLEBridgeUtils
         static void AttachLibrary(GUILayer::EngineDevice^ device);
         static void DetachLibrary(GUILayer::EngineDevice^ device);
 
-        static property GUILayer::EditorSceneManager^ GlobalSceneManager;
+        // static property GUILayer::EditorSceneManager^ GlobalSceneManager;
     };
 
     public ref class DomChangeInspector

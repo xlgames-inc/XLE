@@ -116,7 +116,7 @@ namespace Sample
                 // ------- Render ----------------------------------------
             RenderCore::Techniques::ParsingContext parserContext(*sampleGlobals._drawingApparatus->_techniqueContext);
             auto frameResult = frameRig.ExecuteFrame(
-                sampleGlobals._windowApparatus->_immediateContext, sampleGlobals._windowApparatus->_presentationChain.get(), 
+                *sampleGlobals._windowApparatus->_immediateContext, sampleGlobals._windowApparatus->_presentationChain.get(), 
                 parserContext, &cpuProfiler);
 
                 // ------- Update ----------------------------------------
