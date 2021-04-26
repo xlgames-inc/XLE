@@ -57,8 +57,9 @@ namespace RenderCore { namespace LightingEngine
 
 	class SceneLightingDesc;
 	class LightDesc;
-	CB_Ambient MakeAmbientUniforms(const SceneLightingDesc& desc);
-	CB_RangeFog MakeRangeFogUniforms(const SceneLightingDesc& desc);
+	class EnvironmentalLightingDesc;
+	CB_Ambient MakeAmbientUniforms(const EnvironmentalLightingDesc& desc);
+	CB_RangeFog MakeRangeFogUniforms(const EnvironmentalLightingDesc& desc);
 	CB_Light MakeLightUniforms(const LightDesc& light);
 	CB_Light MakeBlankLightDesc();
 	CB_VolumeFog MakeBlankVolumeFogDesc();

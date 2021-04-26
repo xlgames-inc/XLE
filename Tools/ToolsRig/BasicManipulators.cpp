@@ -22,7 +22,7 @@ namespace ToolsRig
         bool OnInputEvent(
             const PlatformRig::InputSnapshot& evnt, 
             const SceneEngine::IntersectionTestContext& hitTestContext,
-            const SceneEngine::IntersectionTestScene* hitTestScene);
+            const SceneEngine::IIntersectionScene* hitTestScene);
         void Render(
             RenderCore::IThreadContext& context, 
             RenderCore::Techniques::ParsingContext& parserContext);
@@ -51,7 +51,7 @@ namespace ToolsRig
     bool CameraMovementManipulator::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt, 
         const SceneEngine::IntersectionTestContext& hitTestContext,
-        const SceneEngine::IntersectionTestScene* hitTestScene)
+        const SceneEngine::IIntersectionScene* hitTestScene)
     {
             //  This is a simple camera manipulator
             //  It should operate when the middle mouse button is down.
@@ -235,7 +235,7 @@ namespace ToolsRig
         }
     }
 
-	void	ManipulatorStack::Set(const std::shared_ptr<SceneEngine::IntersectionTestScene>& intersectionScene)
+	void	ManipulatorStack::Set(const std::shared_ptr<SceneEngine::IIntersectionScene>& intersectionScene)
 	{
 		_intersectionScene = intersectionScene;
 	}

@@ -10,7 +10,7 @@
 #include "../../SceneEngine/SceneParser.h"
 #include <memory>
 
-namespace SceneEngine { class ILightingParserDelegate; }
+namespace SceneEngine { class ILightingStateDelegate; }
 namespace RenderCore { namespace Techniques { class IPipelineAcceleratorPool; }}
 
 namespace Sample
@@ -30,7 +30,7 @@ namespace Sample
 	};
 
 
-	class SampleLightingDelegate : public SceneEngine::ILightingParserDelegate
+	class SampleLightingDelegate : public SceneEngine::ILightingStateDelegate
 	{
 	public:
         unsigned GetShadowProjectionCount() const override;

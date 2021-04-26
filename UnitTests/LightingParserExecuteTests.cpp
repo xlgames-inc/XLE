@@ -11,10 +11,10 @@
 #include "../RenderCore/Techniques/CompiledShaderPatchCollection.h"
 #include "../RenderCore/Techniques/Services.h"
 #include "../RenderCore/Assets/MaterialScaffold.h"
-#include "../SceneEngine/SceneParser.h"
+#include "../SceneEngine/IScene.h"
 #include "../SceneEngine/LightingParser.h"
 #include "../SceneEngine/LightingParserContext.h"
-#include "../PlatformRig/BasicSceneParser.h"
+#include "../SceneEngine/BasicLightingStateDelegate.h"
 #include "../Tools/ToolsRig/VisualisationGeo.h"
 #include "../Assets/AssetServices.h"
 #include "../Assets/IFileSystem.h"
@@ -218,8 +218,8 @@ namespace UnitTests
 				Float3(0.f, 1.f, 0.f),
 				2.0f * Float3(-1.f, 0.5f, 0.f));
 
-			PlatformRig::BasicLightingParserDelegate lightingParserDelegate(
-				::Assets::AutoConstructAsset<PlatformRig::EnvironmentSettings>("ut-data/envsettings.dat"));
+			SceneEngine::BasicLightingStateDelegate lightingParserDelegate(
+				::Assets::AutoConstructAsset<SceneEngine::EnvironmentSettings>("ut-data/envsettings.dat"));
 
 			{
 				auto threadContext = _device->GetImmediateContext();

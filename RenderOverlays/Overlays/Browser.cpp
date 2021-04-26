@@ -509,7 +509,7 @@ namespace Overlays
 		(void)metalContext;
 
 		assert(0); // broken in lighting parser refactoring. Needs a bit of restructing in the way ToolsRig::CreateModelScene works
-				// with SceneEngine::IScene & SceneEngine::ILightingParserDelegate
+				// with SceneEngine::IScene & SceneEngine::ILightingStateDelegate
 
         /*auto sceneParser = ToolsRig::CreateModelScene(model);
         Techniques::TechniqueContext techniqueContext;

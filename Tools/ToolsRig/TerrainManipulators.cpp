@@ -301,7 +301,7 @@ namespace ToolsRig
         virtual bool    OnInputEvent(
             const PlatformRig::InputSnapshot& evnt, 
             const SceneEngine::IntersectionTestContext& hitTestContext,
-            const SceneEngine::IntersectionTestScene* hitTestScene);
+            const SceneEngine::IIntersectionScene* hitTestScene);
         virtual void    Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
         virtual const char* GetName() const { return "Fine Tune"; }
@@ -327,7 +327,7 @@ namespace ToolsRig
     bool FineTuneManipulator::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt, 
         const SceneEngine::IntersectionTestContext& hitTestContext,
-        const SceneEngine::IntersectionTestScene* hitTestScene)
+        const SceneEngine::IIntersectionScene* hitTestScene)
     {
 		if (!hitTestScene) return false;
 

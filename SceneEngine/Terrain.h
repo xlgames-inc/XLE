@@ -23,7 +23,7 @@ namespace SceneEngine
     class CoverageUberSurfaceInterface;
     class ITerrainFormat;
     class ISurfaceHeightsProvider;
-	class ILightingParserDelegate;
+	class ILightingStateDelegate;
     
     class TerrainConfig;
     class TerrainCoordinateSystem;
@@ -43,7 +43,7 @@ namespace SceneEngine
         void Render(
             RenderCore::IThreadContext& context,
             RenderCore::Techniques::ParsingContext& parserContext,
-			const ILightingParserDelegate* lightingParserDelegate,
+			const ILightingStateDelegate* lightingParserDelegate,
             PreparedScene& preparedPackets,
             unsigned techniqueIndex);
 

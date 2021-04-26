@@ -20,7 +20,7 @@ namespace SceneEngine
     class MetricsBox;
     class PreparedDMShadowFrustum;
     class PreparedRTShadowFrustum;
-	class ILightingParserDelegate;
+	class ILightingStateDelegate;
     class ILightingParserPlugin;
 	class SceneTechniqueDesc;
 	class PreparedScene;
@@ -41,7 +41,7 @@ namespace SceneEngine
     class LightingParserContext
     {
     public:
-		const ILightingParserDelegate*	_delegate = nullptr;
+		const ILightingStateDelegate*	_delegate = nullptr;
 		PreparedScene*				_preparedScene = nullptr;
 		unsigned					_sampleCount = 0;
 

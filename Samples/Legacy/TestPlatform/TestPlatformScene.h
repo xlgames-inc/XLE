@@ -52,7 +52,7 @@ namespace Sample
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
 
-        const PlatformRig::EnvironmentSettings& GetEnvSettings() const;
+        const SceneEngine::EnvironmentSettings& GetEnvSettings() const;
     };
 
 }

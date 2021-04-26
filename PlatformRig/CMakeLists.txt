@@ -2,7 +2,6 @@
 foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
 
     set(Src
-        BasicSceneParser.cpp
         CameraManager.cpp
         DebugHotKeys.cpp
         FrameRig.cpp
@@ -16,7 +15,6 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         DebugScreensOverlay.cpp)
     set(Headers 
         AllocationProfiler.h
-        BasicSceneParser.h
         CameraManager.h
         DebugHotKeys.h
         FrameRig.h
@@ -56,10 +54,13 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         DebuggingDisplays/TestDisplays.h)
 
     set(MiniSceneEngineSrc
-        ../SceneEngine/LightingParser.cpp
+        ../SceneEngine/BasicLightingStateDelegate.cpp
         ../SceneEngine/LightInternal.cpp
-        ../SceneEngine/PreparedScene.cpp
-        ../SceneEngine/RenderStepUtils.cpp)
+        ../SceneEngine/ShadowConfiguration.cpp
+        ../SceneEngine/ExecuteScene.cpp
+        #../SceneEngine/PreparedScene.cpp
+        #../SceneEngine/RenderStepUtils.cpp
+        )
 
     if (WIN32)
         set(WinSrc WinAPI/AllocationProfiler.cpp WinAPI/InputTranslator.cpp WinAPI/OverlappedWindow.cpp WinAPI/RunLoop_WinAPI.cpp)

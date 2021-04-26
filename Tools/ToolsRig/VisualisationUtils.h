@@ -20,7 +20,9 @@ namespace RenderCore { namespace Techniques {
 	class IPipelineAcceleratorPool;
     class IImmediateDrawables;
     class IPreDrawDelegate;
+    class LightingEngineApparatus;
 }}
+namespace RenderCore { namespace LightingEngine { class LightingEngineApparatus; }}
 namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
 namespace SceneEngine { class LightDesc; class GlobalLightingDesc; }
 namespace RenderOverlays { class IOverlayContext; }
@@ -153,7 +155,8 @@ namespace ToolsRig
 
         SimpleSceneLayer(
             const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-            const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables);
+            const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables,
+            const std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus>& lightingEngineApparatus);
         ~SimpleSceneLayer();
     protected:
         class Pimpl;

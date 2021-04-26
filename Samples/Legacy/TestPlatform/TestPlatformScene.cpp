@@ -29,7 +29,7 @@ namespace Sample
     {
     public:
         std::shared_ptr<ToolsRig::VisCameraSettings> _camera;
-        PlatformRig::EnvironmentSettings _envSettings;
+        SceneEngine::EnvironmentSettings _envSettings;
 
         float _time;
     };
@@ -198,7 +198,7 @@ namespace Sample
     float TestPlatformSceneParser::GetTimeValue() const {  return _pimpl->_time; }
     std::shared_ptr<ToolsRig::VisCameraSettings> TestPlatformSceneParser::GetCameraPtr() { return _pimpl->_camera; }
     void TestPlatformSceneParser::Update(float deltaTime) { _pimpl->_time += deltaTime;  }
-    const PlatformRig::EnvironmentSettings& TestPlatformSceneParser::GetEnvSettings() const { return _pimpl->_envSettings; }
+    const SceneEngine::EnvironmentSettings& TestPlatformSceneParser::GetEnvSettings() const { return _pimpl->_envSettings; }
 
     TestPlatformSceneParser::TestPlatformSceneParser()
     {

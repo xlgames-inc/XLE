@@ -150,7 +150,7 @@ namespace GUILayer
 		_patchCollection.reset();
 	}
 
-	IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(const std::shared_ptr<SceneEngine::IntersectionTestScene>& scene)
+	IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(const std::shared_ptr<SceneEngine::IIntersectionScene>& scene)
 	{
 		_scene = std::move(scene);
 	}
@@ -159,9 +159,9 @@ namespace GUILayer
         const std::shared_ptr<SceneEngine::TerrainManager>& terrainManager,
         const std::shared_ptr<SceneEngine::PlacementCellSet>& placements,
         const std::shared_ptr<SceneEngine::PlacementsEditor>& placementsEditor,
-        std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionTester>> extraTesters)
+        std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionScene>> extraTesters)
     {
-		_scene = std::make_shared<SceneEngine::IntersectionTestScene>(
+		_scene = std::make_shared<SceneEngine::IIntersectionScene>(
             terrainManager, 
             placements, placementsEditor, extraTesters);
     }
@@ -176,7 +176,7 @@ namespace GUILayer
         System::Diagnostics::Debug::Assert(false, "IntersectionTestSceneWrapper finalizer used");
     }
 
-	SceneEngine::IntersectionTestScene& IntersectionTestSceneWrapper::GetNative()
+	SceneEngine::IIntersectionScene& IntersectionTestSceneWrapper::GetNative()
 	{
 		return *_scene.get();
 	}

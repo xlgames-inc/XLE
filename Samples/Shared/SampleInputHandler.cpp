@@ -27,7 +27,7 @@ namespace Sample
             SceneEngine::IntersectionTestScene intersectionTestScene(_terrain);
             auto intersection = intersectionTestScene.UnderCursor(
                 *_intersectionTestContext.get(), evnt._mousePosition);
-            if (intersection._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
+            if (intersection._type == SceneEngine::IntersectionTestResult::Type::Terrain) {
                 _playerCharacter->SetLocalToWorld(AsFloat4x4(intersection._worldSpaceCollision));
                 return true;
             }

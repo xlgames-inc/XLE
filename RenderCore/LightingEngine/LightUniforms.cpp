@@ -8,7 +8,7 @@
 
 namespace RenderCore { namespace LightingEngine
 {
-    CB_Ambient MakeAmbientUniforms(const SceneLightingDesc& desc)
+    CB_Ambient MakeAmbientUniforms(const EnvironmentalLightingDesc& desc)
     {
         return CB_Ambient 
             { 
@@ -16,7 +16,7 @@ namespace RenderCore { namespace LightingEngine
             };
     }
 
-    CB_RangeFog MakeRangeFogUniforms(const SceneLightingDesc& desc)
+    CB_RangeFog MakeRangeFogUniforms(const EnvironmentalLightingDesc& desc)
     {
         if (desc._doRangeFog)
             return CB_RangeFog { desc._rangeFogInscatter, desc._rangeFogThickness };
@@ -58,8 +58,8 @@ namespace RenderCore { namespace LightingEngine
     CB_BasicEnvironment MakeBasicEnvironmentUniforms(const SceneLightingDesc& globalDesc)
     {
         CB_BasicEnvironment result;
-        result._ambient = MakeAmbientUniforms(globalDesc);
-        result._rangeFog = MakeRangeFogUniforms(globalDesc);
+        result._ambient = MakeAmbientUniforms(globalDesc._env);
+        result._rangeFog = MakeRangeFogUniforms(globalDesc._env);
         result._volumeFog = MakeBlankVolumeFogDesc();
 
         auto lightCount = globalDesc._lights.size();

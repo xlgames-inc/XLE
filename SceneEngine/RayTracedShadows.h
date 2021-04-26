@@ -18,7 +18,7 @@ namespace SceneEngine
     class PreparedRTShadowFrustum;
     class PreparedScene;
 	class LightingParserContext;
-	class ILightingParserDelegate;
+	class ILightingStateDelegate;
 	class MainTargets;
 
 	class ViewDelegate_Shadow;

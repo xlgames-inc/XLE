@@ -31,7 +31,46 @@
 
 namespace SceneEngine
 {
-    
+
+    /// <summary>Resolves ray and box intersections for tools</summary>
+    /// This object can calculate intersections of basic primitives against
+    /// the scene. This is intended for tools to perform interactive operations
+    /// (like selecting objects in the scene).
+    /// Note that much of the intersection math is performed on the GPU. This means
+    /// that any intersection operation will probably involve a GPU synchronisation.
+    /// This isn't intended to be used at runtime in a game, because it may cause
+    /// frame-rate hitches. But for tools, it should not be an issue.
+    class IntersectionTestScene
+    {
+    public:
+        IntersectionTestResult FirstRayIntersection(
+            const IntersectionTestContext& context,
+            std::pair<Float3, Float3> worldSpaceRay,
+            IntersectionTestResult::Type::BitField filter = ~IntersectionTestResult::Type::BitField(0)) const;
+
+        std::vector<IntersectionTestResult> FrustumIntersection(
+            const IntersectionTestContext& context,
+            const Float4x4& worldToProjection,
+            IntersectionTestResult::Type::BitTypeField filter = ~IntersectionTestResult::Type::BitField(0)) const;
+
+        IntersectionTestResult UnderCursor(
+            const IntersectionTestContext& context,
+            Int2 cursorPosition,
+            IntersectionTestResult::Type::BitField filter = ~IntersectionTestResult::Type::BitField(0)) const;
+
+        const std::shared_ptr<TerrainManager>& GetTerrain() const { return _terrainManager; }
+
+        IntersectionTestScene(
+            std::shared_ptr<TerrainManager> terrainManager = nullptr,
+            std::shared_ptr<PlacementCellSet> placements = nullptr,
+            std::shared_ptr<PlacementsEditor> placementsEditor = nullptr);
+        ~IntersectionTestScene();
+    protected:
+        std::shared_ptr<TerrainManager> _terrainManager;
+        std::shared_ptr<PlacementCellSet> _placements;
+        std::shared_ptr<PlacementsEditor> _placementsEditor;
+        std::vector<std::shared_ptr<IIntersectionScene>> _extraTesters;
+    };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -324,7 +363,7 @@ namespace SceneEngine
         std::shared_ptr<TerrainManager> terrainManager,
         std::shared_ptr<PlacementCellSet> placements,
         std::shared_ptr<PlacementsEditor> placementsEditor,
-        std::initializer_list<std::shared_ptr<IIntersectionTester>> extraTesters)
+        std::initializer_list<std::shared_ptr<IIntersectionScene>> extraTesters)
     : _terrainManager(std::move(terrainManager))
     , _placements(std::move(placements))
     , _placementsEditor(std::move(placementsEditor))
@@ -338,7 +377,7 @@ namespace SceneEngine
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
     
-    IIntersectionTester::~IIntersectionTester() {}
+    IIntersectionScene::~IIntersectionScene() {}
     
     static Float4x4 CalculateWorldToProjection(const RenderCore::Techniques::CameraDesc& sceneCamera, float viewportAspect)
     {

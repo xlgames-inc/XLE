@@ -221,9 +221,9 @@ namespace Assets
 			return str.str();
 		}
 
-		uint64_t ArchivableHash() const
+		uint64_t ArchivableHash(uint64_t seed = DefaultSeed64) const
 		{ 
-			return _hashFn(_variantPack, DefaultSeed64);
+			return _hashFn(_variantPack, seed);
 		}
 
 		template<typename Type>

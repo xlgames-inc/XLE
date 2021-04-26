@@ -11,7 +11,7 @@
 
 namespace PlatformRig { class InputSnapshot; class IInputListener; }
 namespace RenderOverlays { class IOverlayContext; namespace DebuggingDisplay { class InterfaceState; struct Layout; class Interactables; class DebugScreensSystem; }; class Font; }
-namespace SceneEngine { class TerrainManager; class IntersectionTestScene; }
+namespace SceneEngine { class TerrainManager; }
 namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class ParsingContext; class TechniqueContext; }}
 
@@ -44,7 +44,7 @@ namespace ToolsRig
         unsigned _activeManipulatorIndex;
 
         std::shared_ptr<SceneEngine::TerrainManager>            _terrainManager;
-        std::shared_ptr<SceneEngine::IntersectionTestScene>     _intersectionTestScene;
+        std::shared_ptr<SceneEngine::IIntersectionScene>        _intersectionTestScene;
 		std::shared_ptr<VisCameraSettings>						_camera;
 		std::shared_ptr<RenderCore::Techniques::TechniqueContext>	_techniqueContext;
 

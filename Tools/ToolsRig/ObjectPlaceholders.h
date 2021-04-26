@@ -12,7 +12,7 @@
 #include <string>
 
 namespace RenderCore { namespace Techniques { class ParsingContext; class DrawablesPacket; class IPipelineAcceleratorPool; } }
-// namespace SceneEngine { class IIntersectionTester; }
+// namespace SceneEngine { class IIntersectionScene; }
 
 namespace EntityInterface { class RetainedEntities; }
 
@@ -25,7 +25,7 @@ namespace ToolsRig
 
         void AddAnnotation(EntityInterface::ObjectTypeId typeId, const std::string& geoType);
 
-        // std::shared_ptr<SceneEngine::IIntersectionTester> CreateIntersectionTester();
+        // std::shared_ptr<SceneEngine::IIntersectionScene> CreateIntersectionTester();
 
         ObjectPlaceholders(
 			const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,

@@ -12,12 +12,11 @@
 namespace RenderCore { namespace Techniques { class TechniqueContext; class ITechniqueDelegate; } }
 namespace SceneEngine 
 {
-    class IntersectionTestScene; 
     class TerrainManager;
     class PlacementsEditor;
     class PlacementsRenderer;
     class PlacementCellSet;
-    class IIntersectionTester;
+    class IIntersectionScene;
 }
 
 namespace ConsoleRig { class IProgress; }
@@ -93,16 +92,16 @@ namespace GUILayer
 	public ref class IntersectionTestSceneWrapper
 	{
 	public:
-		clix::shared_ptr<SceneEngine::IntersectionTestScene> _scene;
+		clix::shared_ptr<SceneEngine::IIntersectionScene> _scene;
 
-		SceneEngine::IntersectionTestScene& GetNative();
+		SceneEngine::IIntersectionScene& GetNative();
 		IntersectionTestSceneWrapper(
-			const std::shared_ptr<SceneEngine::IntersectionTestScene>& scene);
+			const std::shared_ptr<SceneEngine::IIntersectionScene>& scene);
         IntersectionTestSceneWrapper(
             const std::shared_ptr<SceneEngine::TerrainManager>& terrainManager,
             const std::shared_ptr<SceneEngine::PlacementCellSet>& placements,
             const std::shared_ptr<SceneEngine::PlacementsEditor>& placementsEditor,
-            std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionTester>> extraTesters);
+            std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionScene>> extraTesters);
         ~IntersectionTestSceneWrapper();
         !IntersectionTestSceneWrapper();
 	};

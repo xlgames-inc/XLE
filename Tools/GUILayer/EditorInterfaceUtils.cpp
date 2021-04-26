@@ -14,7 +14,7 @@
 #include "../EntityInterface/EntityInterface.h"
 #include "../EntityInterface/EnvironmentSettings.h"
 #include "../ToolsRig/VisualisationUtils.h"
-#include "../../PlatformRig/BasicSceneParser.h"
+#include "../../SceneEngine/BasicLightingStateDelegate.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/PlacementsManager.h"
@@ -129,7 +129,7 @@ namespace GUILayer
 
                         // hack -- for placement objects, we must strip off the top 32 bits
                         //          from the object id.
-                    if (firstResult._type == SceneEngine::IntersectionTestScene::Type::Placement) {
+                    if (firstResult._type == SceneEngine::IntersectionTestResult::Type::Placement) {
                         record->_object &= 0x00000000ffffffffull;
                     }
 
@@ -177,7 +177,7 @@ namespace GUILayer
 
                             // hack -- for placement objects, we must strip off the top 32 bits
                             //          from the object id.
-                        if (i._type == SceneEngine::IntersectionTestScene::Type::Placement) {
+                        if (i._type == SceneEngine::IntersectionTestResult::Type::Placement) {
                             record->_object &= 0x00000000ffffffffull;
                         }
                     
@@ -236,8 +236,8 @@ namespace GUILayer
 			};
             auto test = testScene->_scene->UnderCursor(
                 testContext, UInt2(ptx, pty),
-                SceneEngine::IntersectionTestScene::Type::Terrain);
-            if (test._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
+                SceneEngine::IntersectionTestResult::Type::Terrain);
+            if (test._type == SceneEngine::IntersectionTestResult::Type::Terrain) {
                 intersection = AsVector3(test._worldSpaceCollision);
                 return true;
             }
@@ -493,7 +493,7 @@ namespace GUILayer
             std::make_pair(std::string("Default"), PlatformRig::DefaultEnvironmentSettings()));
     }
 
-    const PlatformRig::EnvironmentSettings& EnvironmentSettingsSet::GetSettings(String^ name)
+    const SceneEngine::EnvironmentSettings& EnvironmentSettingsSet::GetSettings(String^ name)
     {
         auto nativeName = clix::marshalString<clix::E_UTF8>(name);
         for (auto i=_settings->cbegin(); i!=_settings->cend(); ++i)
@@ -501,7 +501,7 @@ namespace GUILayer
                 return i->second;
         if (!_settings->empty()) return (*_settings)[0].second;
 
-        return *(const PlatformRig::EnvironmentSettings*)nullptr;
+        return *(const SceneEngine::EnvironmentSettings*)nullptr;
     }
 
     EnvironmentSettingsSet::EnvironmentSettingsSet(EditorSceneManager^ scene)

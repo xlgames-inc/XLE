@@ -15,7 +15,7 @@
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/ManipulatorsUtil.h"
 #include "../ToolsRig/ManipulatorsRender.h"
-#include "../../PlatformRig/BasicSceneParser.h"     // (PlatformRig::EnvironmentSettings destructor)
+#include "../../SceneEngine/BasicLightingStateDelegate.h"     // (SceneEngine::EnvironmentSettings destructor)
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../FixedFunctionModel/PreboundShaders.h"
 #include "../../RenderOverlays/HighlightEffects.h"

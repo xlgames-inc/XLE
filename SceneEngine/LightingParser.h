@@ -38,7 +38,7 @@ namespace SceneEngine
 {
 	class LightingParserContext;
     class IScene;
-	class ILightingParserDelegate;
+	class ILightingStateDelegate;
 	class ILightingParserPlugin;
 	class IRenderStep;
 
@@ -97,7 +97,7 @@ namespace SceneEngine
 		const RenderCore::IResourcePtr& renderTarget,
 		RenderCore::Techniques::ParsingContext& parserContext,
 		const CompiledSceneTechnique& technique,
-		const ILightingParserDelegate& lightingDelegate,
+		const ILightingStateDelegate& lightingDelegate,
 		IScene& scene,
         const RenderCore::Techniques::CameraDesc& camera);
 
@@ -109,34 +109,12 @@ namespace SceneEngine
 	std::shared_ptr<::Assets::IAsyncMarker> PreparePipelines(
 		RenderCore::IThreadContext& threadContext,
 		const CompiledSceneTechnique& technique,
-		const ILightingParserDelegate& lightingDelegate,
+		const ILightingStateDelegate& lightingDelegate,
 		IScene& scene);
 
         ///////////////////////////////////////////////////////////////////////////
-
-	class ToneMapSettings;
+        
 	class MainTargets;
-
-	class ILightingParserDelegate
-	{
-	public:
-        using ProjectionDesc    = RenderCore::Techniques::ProjectionDesc;
-        using ShadowProjIndex   = unsigned;
-        using LightIndex        = unsigned;
-
-        virtual ShadowProjIndex GetShadowProjectionCount() const = 0;
-        virtual auto            GetShadowProjectionDesc(ShadowProjIndex index, const ProjectionDesc& mainSceneProj) const
-            -> RenderCore::LightingEngine::ShadowProjectionDesc = 0;
-
-        virtual LightIndex  GetLightCount() const = 0;
-        virtual auto        GetLightDesc(LightIndex index) const -> const RenderCore::LightingEngine::LightDesc& = 0;
-        virtual auto        GetSceneLightingDesc() const -> RenderCore::LightingEngine::SceneLightingDesc = 0;
-        virtual auto        GetToneMapSettings() const -> ToneMapSettings = 0;
-
-        virtual float       GetTimeValue() const = 0;
-
-		virtual ~ILightingParserDelegate();
-    };
 
 		///////////////////////////////////////////////////////////////////////////
 

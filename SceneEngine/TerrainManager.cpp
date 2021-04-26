@@ -704,7 +704,7 @@ namespace SceneEngine
     void TerrainManager::Render(
         IThreadContext& context, 
         Techniques::ParsingContext& parserContext, 
-		const ILightingParserDelegate* lightingParserDelegate,
+		const ILightingStateDelegate* lightingParserDelegate,
         PreparedScene& preparedPackets,
         unsigned techniqueIndex)
     {

@@ -92,7 +92,7 @@ namespace Overlays
         return false;
     }
 
-    ShadowFrustumDebugger::ShadowFrustumDebugger(std::shared_ptr<SceneEngine::ILightingParserDelegate> scene)
+    ShadowFrustumDebugger::ShadowFrustumDebugger(std::shared_ptr<SceneEngine::ILightingStateDelegate> scene)
     : _scene(std::move(scene))
     {}
 

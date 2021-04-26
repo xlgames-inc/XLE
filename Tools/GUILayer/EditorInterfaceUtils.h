@@ -7,7 +7,7 @@
 #pragma once
 
 #include "CLIXAutoPtr.h"
-#include "../../PlatformRig/BasicSceneParser.h"
+#include "../../SceneEngine/BasicLightingStateDelegate.h"
 #include "../../Core/Types.h"
 #include <vector>
 #include <utility>
@@ -36,7 +36,7 @@ namespace GUILayer
         ~ObjectSet();
     };
 
-    using EnvSettingsVector = std::vector<std::pair<std::string, PlatformRig::EnvironmentSettings>>;
+    using EnvSettingsVector = std::vector<std::pair<std::string, SceneEngine::EnvironmentSettings>>;
 
 #if defined(GUILAYER_SCENEENGINE)
     ref class EditorSceneManager;
@@ -48,7 +48,7 @@ namespace GUILayer
         property System::Collections::Generic::IEnumerable<System::String^>^ Names { System::Collections::Generic::IEnumerable<System::String^>^ get(); }
 
         void AddDefault();
-        const PlatformRig::EnvironmentSettings& GetSettings(System::String^ name);
+        const SceneEngine::EnvironmentSettings& GetSettings(System::String^ name);
 
         EnvironmentSettingsSet(EditorSceneManager^ scene);
         ~EnvironmentSettingsSet();

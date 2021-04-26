@@ -10,7 +10,7 @@
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../ToolsRig/DivergentAsset.h"
-#include "../../SceneEngine/SceneParser.h"
+#include "../../SceneEngine/IScene.h"
 #include "../../RenderCore/Techniques/RenderStateResolver.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/RawMaterial.h"

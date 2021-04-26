@@ -14,6 +14,7 @@
 #include "../Techniques/PipelineAccelerator.h"
 #include "../Techniques/ParsingContext.h"		// likewise could remove when shifting the forward delegate 
 #include "../Techniques/DrawableDelegates.h"
+#include "../Techniques/Techniques.h"
 #include "../FrameBufferDesc.h"
 #include "../../Assets/AssetFutureContinuation.h"
 
@@ -311,12 +312,14 @@ namespace RenderCore { namespace LightingEngine
 		IThreadContext& threadContext,
 		Techniques::ParsingContext& parsingContext,
 		Techniques::IPipelineAcceleratorPool& pipelineAcceleratorPool,
-		Techniques::AttachmentPool& attachmentPool,
-		Techniques::FrameBufferPool& frameBufferPool,
 		const SceneLightingDesc& lightingDesc,
 		CompiledLightingTechnique& compiledTechnique)
 	{
-		_iterator = std::make_unique<LightingTechniqueIterator>(threadContext, parsingContext, pipelineAcceleratorPool, attachmentPool, frameBufferPool, compiledTechnique, lightingDesc);
+		_iterator = std::make_unique<LightingTechniqueIterator>(
+			threadContext, parsingContext, pipelineAcceleratorPool,
+			*parsingContext.GetTechniqueContext()._attachmentPool,
+			*parsingContext.GetTechniqueContext()._frameBufferPool,
+			compiledTechnique, lightingDesc);
 	}
 
 	LightingTechniqueInstance::~LightingTechniqueInstance() {}

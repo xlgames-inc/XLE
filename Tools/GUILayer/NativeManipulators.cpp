@@ -18,7 +18,7 @@
 #include "../PlatformRig/InputListener.h"
 #include "../SceneEngine/IntersectionTest.h"
 #include "../../RenderCore/IDevice.h"
-#include "../../PlatformRig/BasicSceneParser.h"
+#include "../../SceneEngine/BasicLightingStateDelegate.h"
 #include <msclr/auto_handle.h>
 
 using namespace System;

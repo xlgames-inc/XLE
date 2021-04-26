@@ -22,7 +22,7 @@
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
-#include "../../SceneEngine/SceneParser.h"
+#include "../../SceneEngine/IScene.h"
 #include "../../Utility/StringFormat.h"
 #include <iomanip>
 

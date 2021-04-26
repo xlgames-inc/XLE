@@ -12,12 +12,14 @@
 //#include "../../SceneEngine/RenderStep.h"
 #include "../../SceneEngine/RayVsModel.h"
 #include "../../SceneEngine/IntersectionTest.h"
-#include "../../PlatformRig/BasicSceneParser.h"
+#include "../../SceneEngine/BasicLightingStateDelegate.h"
 //#include "../../PlatformRig/Screenshot.h"
+#include "../../PlatformRig/OverlappedWindow.h"	// (for GetOSRunLoop())
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderOverlays/HighlightEffects.h"
 #include "../../RenderOverlays/Font.h"
+#include "../../RenderCore/LightingEngine/LightingEngine.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
@@ -112,8 +114,8 @@ namespace ToolsRig
     public:
 		std::shared_ptr<SceneEngine::IScene> _scene;
 
-		std::shared_ptr<PlatformRig::EnvironmentSettings> _envSettings;
-		::Assets::FuturePtr<PlatformRig::EnvironmentSettings> _envSettingsFuture;
+		std::shared_ptr<SceneEngine::BasicLightingStateDelegate> _envSettings;
+		::Assets::FuturePtr<SceneEngine::BasicLightingStateDelegate> _envSettingsFuture;
 		
 		std::string _envSettingsErrorMessage;
 		unsigned _loadingIndicatorCounter = 0;
@@ -126,10 +128,11 @@ namespace ToolsRig
 
 		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
 		std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> _immediateDrawables;
+		std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus> _lightingApparatus;
 		std::shared_ptr<::Assets::IAsyncMarker> _pendingPipelines;
 
-		std::vector<std::shared_ptr<SceneEngine::ILightingParserPlugin>> _lightingPlugins;
-		std::vector<std::shared_ptr<SceneEngine::IRenderStep>> _renderSteps;
+		// std::vector<std::shared_ptr<SceneEngine::ILightingParserPlugin>> _lightingPlugins;
+		// std::vector<std::shared_ptr<SceneEngine::IRenderStep>> _renderSteps;
     };
 
 	static ::Assets::AssetState GetAsyncSceneState(SceneEngine::IScene& scene)
@@ -209,8 +212,6 @@ namespace ToolsRig
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
-		assert(0);		// \todo -- switch to LightingEngine based lighting resolve 
-#if 0
         using namespace SceneEngine;
 
 		if (_pimpl->_preparingEnvSettings) {
@@ -228,19 +229,11 @@ namespace ToolsRig
 			}
 		}
 
-		auto compiledTechnique = SceneEngine::CreateCompiledSceneTechnique(
-			{
-				MakeIteratorRange(_pimpl->_renderSteps),
-				MakeIteratorRange(_pimpl->_lightingPlugins)
-			},
-			_pimpl->_pipelineAccelerators,
-			RenderCore::AsAttachmentDesc(renderTarget->GetDesc()));
+		auto compiledTechnique = RenderCore::LightingEngine::CreateForwardLightingTechnique(_pimpl->_pipelineAccelerators, _pimpl->_lightingApparatus);
 
-		PlatformRig::BasicLightingParserDelegate lightingParserDelegate(_pimpl->_envSettings);
+		// working attachment --> RenderCore::AsAttachmentDesc(renderTarget->GetDesc()));
 
-		static float time = 0.f;
-		time += 1.0f / 60.f;
-		lightingParserDelegate.SetTimeValue(time);
+		// _pimpl->_envSettings is our SceneEngine::BasicLightingStateDelegate
 
 		if (_pimpl->_preparingScene && !_pimpl->_preparingEnvSettings) {
 			auto stillPending = GetAsyncSceneState(*_pimpl->_scene) == ::Assets::AssetState::Pending;
@@ -250,7 +243,7 @@ namespace ToolsRig
 
 				_pimpl->_preparingPipelineAccelerators = true;
 				_pimpl->_pendingPipelines = SceneEngine::PreparePipelines(
-					threadContext, *compiledTechnique, lightingParserDelegate, *_pimpl->_scene);
+					threadContext, *compiledTechnique, *_pimpl->_envSettings, *_pimpl->_scene);
 			}
 		}
 
@@ -262,24 +255,33 @@ namespace ToolsRig
 		}
 
 		if (!_pimpl->_preparingEnvSettings && !_pimpl->_preparingScene && !_pimpl->_preparingPipelineAccelerators) {
-			auto& screenshot = Tweakable("Screenshot", 0);
-			if (screenshot) {
-				PlatformRig::TiledScreenshot(
-					threadContext, parserContext,
-					*_pimpl->_scene, AsCameraDesc(*_pimpl->_camera),
-					*compiledTechnique, UInt2(screenshot, screenshot));
-				screenshot = 0;
-			}
-
+			
+			/*
 			auto lightingParserContext = LightingParser_ExecuteScene(
 				threadContext, renderTarget, parserContext, 
 				*compiledTechnique, lightingParserDelegate,
 				*_pimpl->_scene, AsCameraDesc(*_pimpl->_camera));
+			*/
+
+			{
+				auto lightingIterator = BeginLightingTechnique(
+					threadContext, parserContext, *_pimpl->_pipelineAccelerators,
+					IteratorRange<const RenderCore::Techniques::PreregisteredAttachment*>{},
+					*_pimpl->_envSettings, *compiledTechnique);
+
+				for (;;) {
+					auto next = lightingIterator.GetNextStep();
+					if (next._type == RenderCore::LightingEngine::StepType::None || next._type == RenderCore::LightingEngine::StepType::Abort) break;
+					assert(next._type == RenderCore::LightingEngine::StepType::ParseScene);
+					assert(next._pkt);
+					_pimpl->_scene->ExecuteScene(threadContext, SceneEngine::SceneView{}, next._batch, *next._pkt);
+				}
+			}
 
 			// Draw debugging overlays -- 
 			{
-				auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
-				SceneEngine::LightingParser_Overlays(threadContext, parserContext, lightingParserContext);
+				// auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
+				// SceneEngine::LightingParser_Overlays(threadContext, parserContext, lightingParserContext);
 			}
 		} else {
 			// Draw a loading indicator, 
@@ -300,12 +302,11 @@ namespace ToolsRig
 				// SceneEngine::DrawString(threadContext, RenderOverlays::GetDefaultFont(), _pimpl->_envSettingsErrorMessage);
 			}
 		}
-#endif
     }
 
     void SimpleSceneLayer::Set(const VisEnvSettings& envSettings)
     {
-		_pimpl->_envSettingsFuture = std::make_shared<::Assets::AssetFuture<PlatformRig::EnvironmentSettings>>("VisualizationEnvironment");
+		_pimpl->_envSettingsFuture = std::make_shared<::Assets::AssetFuture<SceneEngine::BasicLightingStateDelegate>>("VisualizationEnvironment");
 		::Assets::AutoConstructToFuture(*_pimpl->_envSettingsFuture, envSettings._envConfigFile);
 		_pimpl->_preparingEnvSettings = true;
     }
@@ -357,12 +358,14 @@ namespace ToolsRig
 	
     SimpleSceneLayer::SimpleSceneLayer(
 		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-		const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables)
+		const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables,
+		const std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus>& lightingEngineApparatus)
     {
         _pimpl = std::make_unique<Pimpl>();
 		_pimpl->_camera = std::make_shared<VisCameraSettings>();
 		_pimpl->_pipelineAccelerators = pipelineAccelerators;
 		_pimpl->_immediateDrawables = immediateDrawables;
+		_pimpl->_lightingApparatus = lightingEngineApparatus;
 
 #if 0
 		_pimpl->_lightingPlugins.push_back(std::make_shared<SceneEngine::LightingParserStandardPlugin>());
@@ -374,6 +377,7 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 	static SceneEngine::LightingModel AsLightingModel(VisEnvSettings::LightingType lightingType)
 	{
 		switch (lightingType) {
@@ -386,6 +390,7 @@ namespace ToolsRig
 			return SceneEngine::LightingModel::Direct;
 		}
 	}
+#endif
 
 	std::pair<DrawPreviewResult, std::string> DrawPreview(
         RenderCore::IThreadContext& context,
@@ -401,9 +406,9 @@ namespace ToolsRig
 #if 0
 		try
         {
-			auto future = ::Assets::MakeAsset<PlatformRig::EnvironmentSettings>(envSettings._envConfigFile);
+			auto future = ::Assets::MakeAsset<SceneEngine::EnvironmentSettings>(envSettings._envConfigFile);
 			future->StallWhilePending();
-			PlatformRig::BasicLightingParserDelegate lightingParserDelegate(future->Actualize());
+			SceneEngine::BasicLightingStateDelegate lightingParserDelegate(future->Actualize());
 
 			auto renderSteps = SceneEngine::CreateStandardRenderSteps(AsLightingModel(envSettings._lightingType));
 			if (renderStep) {		// if we've got a custom render step, override the default
@@ -760,7 +765,7 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static SceneEngine::IIntersectionTester::Result FirstRayIntersection(
+	static SceneEngine::IntersectionTestResult FirstRayIntersection(
 		RenderCore::IThreadContext& threadContext,
 		const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext,
 		RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
@@ -791,8 +796,8 @@ namespace ToolsRig
         if (!results.empty()) {
             const auto& r = results[0];
 
-            SceneEngine::IIntersectionTester::Result result;
-            result._type = SceneEngine::IntersectionTestScene::Type::Extra;
+            SceneEngine::IntersectionTestResult result;
+            result._type = SceneEngine::IntersectionTestResult::Type::Extra;
             result._worldSpaceCollision = 
                 worldSpaceRay.first + r._intersectionDepth * Normalize(worldSpaceRay.second - worldSpaceRay.first);
             result._distance = r._intersectionDepth;

@@ -39,12 +39,12 @@ namespace SceneEngine
         bool        _hasSpecularIBL;
     };
 
-	class ILightingParserDelegate;
+	class ILightingStateDelegate;
 
     LightResolveResourcesRes LightingParser_BindLightResolveResources( 
         RenderCore::Metal::DeviceContext& context,
 		RenderCore::Techniques::ParsingContext& parserContext,
-        const ILightingParserDelegate& delegate);
+        const ILightingStateDelegate& delegate);
 
 	void LightingParser_SetGlobalTransform(
         RenderCore::IThreadContext& context, 

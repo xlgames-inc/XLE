@@ -175,12 +175,10 @@ namespace RenderCore { namespace LightingEngine
 	};
 
 	enum class SkyTextureType { HemiCube, Cube, Equirectangular, HemiEquirectangular };
-	class SceneLightingDesc
+	
+	class EnvironmentalLightingDesc
 	{
 	public:
-		std::vector<LightDesc> _lights;
-		std::vector<ShadowProjectionDesc> _shadowProjections;
-
 		std::string   _skyTexture;   ///< use "<texturename>_*" when using a half cube style sky texture. The system will fill in "_*" with appropriate characters	
 		SkyTextureType _skyTextureType;
 
@@ -201,6 +199,14 @@ namespace RenderCore { namespace LightingEngine
 		float   _atmosBlurStdDev = 1.3f;
 		float   _atmosBlurStart = 1000.f;
 		float   _atmosBlurEnd = 1500.f;
+	};
+
+	class SceneLightingDesc
+	{
+	public:
+		std::vector<LightDesc> _lights;
+		std::vector<ShadowProjectionDesc> _shadowProjections;
+		EnvironmentalLightingDesc _env;
 	};
 
 	inline LightDesc::LightDesc()

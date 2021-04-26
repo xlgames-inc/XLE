@@ -225,6 +225,8 @@ namespace UnitTests
 		techniqueContext->_drawablesSharedResources = RenderCore::Techniques::CreateDrawablesSharedResources();
 		auto commonResources = std::make_shared<RenderCore::Techniques::CommonResourceBox>(*testHelper->_device);
 		techniqueContext->_systemUniformsDelegate = std::make_shared<RenderCore::Techniques::SystemUniformsDelegate>(*testHelper->_device, *commonResources);
+		techniqueContext->_attachmentPool = std::make_shared<Techniques::AttachmentPool>(testHelper->_device);
+		techniqueContext->_frameBufferPool = std::make_shared<Techniques::FrameBufferPool>();
 
 		DrawableWriter drawableWriter(*testHelper, *pipelineAcceleratorPool);
 
@@ -237,14 +239,11 @@ namespace UnitTests
 
 			RenderCore::Techniques::CameraDesc camera;
 			camera._cameraToWorld = MakeCameraToWorld(Float3{1.0f, 0.0f, 0.0f}, Float3{0.0f, 1.0f, 0.0f}, Float3{-5.0f, 0.f, 0.f});
-
-			Techniques::AttachmentPool attachmentPool(testHelper->_device);
-			Techniques::FrameBufferPool frameBufferPool;
 			
 			Techniques::ParsingContext parsingContext{*techniqueContext};
 			parsingContext.GetProjectionDesc() = BuildProjectionDesc(camera, UInt2{targetDesc._textureDesc._width, targetDesc._textureDesc._height});
 			RenderCore::LightingEngine::LightingTechniqueInstance lightingIterator(
-				*threadContext, parsingContext, *pipelineAcceleratorPool, attachmentPool, frameBufferPool, lightingDesc, *lightingTechnique);
+				*threadContext, parsingContext, *pipelineAcceleratorPool, lightingDesc, *lightingTechnique);
 
 			for (;;) {
 				auto next = lightingIterator.GetNextStep();

@@ -13,7 +13,7 @@
 #include "../../RenderCore/Techniques/SimpleModelDeform.h"
 #include "../../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../../RenderOverlays/AnimationVisualization.h"
-#include "../../SceneEngine/SceneParser.h"
+#include "../../SceneEngine/IScene.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetFuture.h"
 #include "../../Assets/AssetFutureContinuation.h"
@@ -56,7 +56,9 @@ namespace ToolsRig
     public:
 		virtual void ExecuteScene(
             RenderCore::IThreadContext& threadContext,
-			SceneEngine::SceneExecuteContext& executeContext) const override
+			const SceneEngine::SceneView& view,
+			RenderCore::Techniques::BatchFilter batch,
+			RenderCore::Techniques::DrawablesPacket& destinationPkt) const override
 		{
 			auto* r = TryActualize();
 			if (!r) {
@@ -102,13 +104,10 @@ namespace ToolsRig
 			}
 			r->_renderer->GenerateDeformBuffer(threadContext);
 
-			for (unsigned v=0; v<executeContext.GetViews().size(); ++v) {
-				RenderCore::Techniques::DrawablesPacket* pkts[unsigned(RenderCore::Techniques::BatchFilter::Max)];
-				for (unsigned c=0; c<unsigned(RenderCore::Techniques::BatchFilter::Max); ++c)
-					pkts[c] = executeContext.GetDrawablesPacket(v, RenderCore::Techniques::BatchFilter(c));
-
-				r->_renderer->BuildDrawables(MakeIteratorRange(pkts), Identity<Float4x4>(), _preDrawDelegate);
-			}
+			RenderCore::Techniques::DrawablesPacket* pkts[unsigned(RenderCore::Techniques::BatchFilter::Max)];
+			XlZeroMemory(pkts);
+			pkts[(unsigned)batch] = &destinationPkt;
+			r->_renderer->BuildDrawables(MakeIteratorRange(pkts), Identity<Float4x4>(), _preDrawDelegate);
 		}
 
 		DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex, uint64_t materialGuid) const override

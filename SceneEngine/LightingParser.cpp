@@ -275,7 +275,7 @@ namespace SceneEngine
     static LightingParserContext LightingParser_SetupContext(
         RenderCore::IThreadContext& context, 
 		RenderCore::Techniques::ParsingContext& parsingContext,
-        const ILightingParserDelegate& delegate,
+        const ILightingStateDelegate& delegate,
 		const CompiledSceneTechnique& technique,
         unsigned samplingPassIndex = 0, unsigned samplingPassCount = 1);
 
@@ -284,7 +284,7 @@ namespace SceneEngine
 		const RenderCore::IResourcePtr& renderTarget,
         Techniques::ParsingContext& parsingContext,
 		const CompiledSceneTechnique& technique,
-		const ILightingParserDelegate& lightingDelegate,
+		const ILightingStateDelegate& lightingDelegate,
         IScene& scene,
         const RenderCore::Techniques::CameraDesc& camera)
     {
@@ -431,7 +431,7 @@ namespace SceneEngine
 	std::shared_ptr<::Assets::IAsyncMarker> PreparePipelines(
 		RenderCore::IThreadContext& threadContext,
 		const CompiledSceneTechnique& technique,
-		const ILightingParserDelegate& lightingDelegate,
+		const ILightingStateDelegate& lightingDelegate,
 		IScene& scene)
 	{
 		SceneExecuteContext executeContext;
@@ -553,7 +553,7 @@ namespace SceneEngine
 	static LightingParserContext LightingParser_SetupContext(
         RenderCore::IThreadContext& context, 
 		RenderCore::Techniques::ParsingContext& parsingContext,
-        const ILightingParserDelegate& delegate,
+        const ILightingStateDelegate& delegate,
 		const CompiledSceneTechnique& technique,
         unsigned samplingPassIndex, unsigned samplingPassCount)
     {
@@ -750,7 +750,7 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     IScene::~IScene() {}
-	ILightingParserDelegate::~ILightingParserDelegate() {}
+	ILightingStateDelegate::~ILightingStateDelegate() {}
 	IViewDelegate::~IViewDelegate() {}
 	std::shared_ptr<IViewDelegate> IRenderStep::CreateViewDelegate() { return nullptr; }
 	IRenderStep::~IRenderStep() {}

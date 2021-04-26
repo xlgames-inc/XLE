@@ -44,7 +44,7 @@ namespace ToolsRig
         virtual bool    OnInputEvent(
             const PlatformRig::InputSnapshot& evnt, 
             const SceneEngine::IntersectionTestContext& hitTestContext,
-            const SceneEngine::IntersectionTestScene* hitTestScene);
+            const SceneEngine::IIntersectionScene* hitTestScene);
         virtual void    Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
         virtual void    PerformAction(const Float3& worldSpacePosition, float size, float strength) = 0;
@@ -72,7 +72,7 @@ namespace ToolsRig
         virtual bool    OnInputEvent(
             const PlatformRig::InputSnapshot& evnt, 
             const SceneEngine::IntersectionTestContext& hitTestContext,
-            const SceneEngine::IntersectionTestScene* hitTestScene);
+            const SceneEngine::IIntersectionScene* hitTestScene);
         virtual void    Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
         virtual void    PerformAction(const Float3& anchor0, const Float3& anchor1) = 0;

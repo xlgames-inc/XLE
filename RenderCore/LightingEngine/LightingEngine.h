@@ -34,8 +34,6 @@ namespace RenderCore { namespace LightingEngine
 			IThreadContext&,
 			Techniques::ParsingContext&,
 			Techniques::IPipelineAcceleratorPool&,
-			Techniques::AttachmentPool&,
-			Techniques::FrameBufferPool&,
 			const SceneLightingDesc&,
 			CompiledLightingTechnique&);
 		~LightingTechniqueInstance();

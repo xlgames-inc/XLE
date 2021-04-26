@@ -50,7 +50,7 @@ namespace ToolsRig
         PlacementsWidgets(
             const std::shared_ptr<SceneEngine::PlacementsEditor>& editor, 
             const std::shared_ptr<SceneEngine::PlacementsRenderer>& renderer, 
-            const std::shared_ptr<SceneEngine::IntersectionTestScene>& intersectionTestScene,
+            const std::shared_ptr<SceneEngine::IIntersectionScene>& intersectionTestScene,
 			const std::shared_ptr<VisCameraSettings>& camera,
 			const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext);
         ~PlacementsWidgets();
@@ -61,7 +61,7 @@ namespace ToolsRig
         std::shared_ptr<ModelBrowser>       _browser;
         std::shared_ptr<VisCameraSettings> _camera;
 		std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
-        std::shared_ptr<SceneEngine::IntersectionTestScene> _intersectionTestScene;
+        std::shared_ptr<SceneEngine::IIntersectionScene> _intersectionTestScene;
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
         bool            _browserActive;
         std::string     _selectedModel;
@@ -87,7 +87,7 @@ namespace ToolsRig
         bool OnInputEvent(
             const PlatformRig::InputSnapshot& evnt,
             const SceneEngine::IntersectionTestContext& hitTestContext,
-            const SceneEngine::IntersectionTestScene* hitTestScene);
+            const SceneEngine::IIntersectionScene* hitTestScene);
         void Render(
             RenderCore::IThreadContext& context,
             RenderCore::Techniques::ParsingContext& parserContext);
@@ -120,7 +120,7 @@ namespace ToolsRig
             Float3  _parameter;
             Axis    _axisRestriction;
             Coord2  _cursorStart;
-            SceneEngine::IntersectionTestScene::Result _anchorTerrainIntersection;
+            SceneEngine::IIntersectionScene::Result _anchorTerrainIntersection;
             char    _typeInBuffer[4];
 
             SubOperation() : _type(None), _parameter(0.f, 0.f, 0.f), _axisRestriction(NoAxis), _cursorStart(0, 0) { _typeInBuffer[0] = '\0'; }
@@ -132,12 +132,12 @@ namespace ToolsRig
         Float3 _anchorPoint;
 
         SceneEngine::PlacementsEditor::ObjTransDef TransformObject(
-            const SceneEngine::IntersectionTestScene& hitTestScene,
+            const SceneEngine::IIntersectionScene& hitTestScene,
             const SceneEngine::PlacementsEditor::ObjTransDef& inputObj);
     };
 
     SceneEngine::PlacementsEditor::ObjTransDef SelectAndEdit::TransformObject(
-        const SceneEngine::IntersectionTestScene& hitTestScene,
+        const SceneEngine::IIntersectionScene& hitTestScene,
         const SceneEngine::PlacementsEditor::ObjTransDef& inputObj)
     {
         Float4x4 transform;
@@ -189,7 +189,7 @@ namespace ToolsRig
     bool SelectAndEdit::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt,
         const SceneEngine::IntersectionTestContext& hitTestContext,
-        const SceneEngine::IntersectionTestScene* hitTestScene)
+        const SceneEngine::IIntersectionScene* hitTestScene)
     {
 		if (!hitTestScene) return false;
 
@@ -225,7 +225,7 @@ namespace ToolsRig
 
                 if (newSubOp == SubOperation::MoveAcrossTerrainSurface) {
                     _activeSubop._anchorTerrainIntersection = hitTestScene->UnderCursor(
-                        hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestScene::Type::Terrain);
+                        hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestResult::Type::Terrain);
                 }
             }
 
@@ -358,9 +358,9 @@ namespace ToolsRig
                             //  We want to find an intersection point with the terrain, and then 
                             //  compare the XY coordinates of that to the anchor point
 
-                        auto collision = hitTestScene->UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestScene::Type::Terrain);
-                        if (collision._type == SceneEngine::IntersectionTestScene::Type::Terrain
-                            && _activeSubop._anchorTerrainIntersection._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
+                        auto collision = hitTestScene->UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestResult::Type::Terrain);
+                        if (collision._type == SceneEngine::IntersectionTestResult::Type::Terrain
+                            && _activeSubop._anchorTerrainIntersection._type == SceneEngine::IntersectionTestResult::Type::Terrain) {
                             _activeSubop._parameter = Float3(
                                 collision._worldSpaceCollision[0] - _anchorPoint[0],
                                 collision._worldSpaceCollision[1] - _anchorPoint[1],
@@ -401,7 +401,7 @@ namespace ToolsRig
                 
                 SceneEngine::PlacementGUID firstHit(0,0);
                 auto hitTestResult = hitTestScene->FirstRayIntersection(hitTestContext, worldSpaceRay);
-                if (hitTestResult._type == SceneEngine::IntersectionTestScene::Type::Placement) {
+                if (hitTestResult._type == SceneEngine::IntersectionTestResult::Type::Placement) {
                     firstHit = hitTestResult._objectGuid;
                 }
 
@@ -463,7 +463,7 @@ namespace ToolsRig
                 
                 SceneEngine::PlacementGUID firstHit(0,0);
                 auto hitTestResult = hitTestScene->FirstRayIntersection(hitTestContext, worldSpaceRay);
-                if (hitTestResult._type == SceneEngine::IntersectionTestScene::Type::Placement) {
+                if (hitTestResult._type == SceneEngine::IntersectionTestResult::Type::Placement) {
                     auto tempTrans = _editor->Transaction_Begin(&hitTestResult._objectGuid, &hitTestResult._objectGuid + 1);
                     if (tempTrans->GetObjectCount() == 1) {
                         _manInterface->SelectModel(tempTrans->GetObject(0)._model.c_str(), tempTrans->GetObject(0)._model.c_str());
@@ -594,7 +594,7 @@ namespace ToolsRig
         bool OnInputEvent(
             const PlatformRig::InputSnapshot& evnt,
             const SceneEngine::IntersectionTestContext& hitTestContext,
-            const SceneEngine::IntersectionTestScene* hitTestScene);
+            const SceneEngine::IIntersectionScene* hitTestScene);
         void Render(
             RenderCore::IThreadContext& context,
             RenderCore::Techniques::ParsingContext& parserContext);
@@ -669,7 +669,7 @@ namespace ToolsRig
     bool PlaceSingle::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt,
         const SceneEngine::IntersectionTestContext& hitTestContext,
-        const SceneEngine::IntersectionTestScene* hitTestScene)
+        const SceneEngine::IIntersectionScene* hitTestScene)
     {
         //  If we get a click on the terrain, then we should perform 
             //  whatever placement operation is required (eg, creating new placements)
@@ -685,8 +685,8 @@ namespace ToolsRig
         if (_rendersSinceHitTest > 0 && hitTestScene) {
             _rendersSinceHitTest = 0;
 
-            auto test = hitTestScene->UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestScene::Type::Terrain);
-            if (test._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
+            auto test = hitTestScene->UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestResult::Type::Terrain);
+            if (test._type == SceneEngine::IntersectionTestResult::Type::Terrain) {
 
                     //  This is a spawn event. We should add a new item of the selected model
                     //  at the point clicked.
@@ -778,7 +778,7 @@ namespace ToolsRig
         bool OnInputEvent(
             const PlatformRig::InputSnapshot& evnt,
             const SceneEngine::IntersectionTestContext& hitTestContext,
-            const SceneEngine::IntersectionTestScene* hitTestScene);
+            const SceneEngine::IIntersectionScene* hitTestScene);
         void Render(
             RenderCore::IThreadContext& context,
             RenderCore::Techniques::ParsingContext& parserContext);
@@ -807,14 +807,14 @@ namespace ToolsRig
         bool _hasHoverPoint;
 
         void PerformScatter(
-            const SceneEngine::IntersectionTestScene& hitTestScene,
+            const SceneEngine::IIntersectionScene& hitTestScene,
             const Float3& centre, const char modelName[], const char materialName[]);
     };
 
     bool ScatterPlacements::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt,
         const SceneEngine::IntersectionTestContext& hitTestContext,
-        const SceneEngine::IntersectionTestScene* hitTestScene)
+        const SceneEngine::IIntersectionScene* hitTestScene)
     {
             //  If we get a click on the terrain, then we should perform 
             //  whatever placement operation is required (eg, creating new placements)
@@ -824,14 +824,14 @@ namespace ToolsRig
 
 		if (!hitTestScene) return false;
 
-        auto test = hitTestScene->UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestScene::Type::Terrain);
+        auto test = hitTestScene->UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestResult::Type::Terrain);
         _hoverPoint = test._worldSpaceCollision;
-        _hasHoverPoint = test._type == SceneEngine::IntersectionTestScene::Type::Terrain;
+        _hasHoverPoint = test._type == SceneEngine::IntersectionTestResult::Type::Terrain;
 
         const Millisecond spawnTimeOut = 200;
         auto now = Millisecond_Now();
         if (evnt.IsHeld_LButton()) {
-            if (test._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
+            if (test._type == SceneEngine::IntersectionTestResult::Type::Terrain) {
                 auto selectedModel = _manInterface->GetSelectedModel();
                 auto selectedMaterial = _manInterface->GetSelectedMaterial();
                 if (now >= (_spawnTimer + spawnTimeOut) && !selectedModel.empty() && !selectedMaterial.empty()) {
@@ -1118,7 +1118,7 @@ namespace ToolsRig
         std::vector<SceneEngine::PlacementGUID>& _toBeDeleted,
         std::vector<Float3>& _spawnPositions,
         SceneEngine::PlacementsEditor& editor,
-        const SceneEngine::IntersectionTestScene& hitTestScene,
+        const SceneEngine::IIntersectionScene& hitTestScene,
         const char* const* modelName, unsigned modelCount,
         const Float3& centre, float radius, float density)
     {
@@ -1219,7 +1219,7 @@ namespace ToolsRig
     }
 
     void ScatterPlacements::PerformScatter(
-        const SceneEngine::IntersectionTestScene& hitTestScene,
+        const SceneEngine::IIntersectionScene& hitTestScene,
         const Float3& centre, const char modelName[], const char materialName[])
     {
         std::vector<SceneEngine::PlacementGUID> toBeDeleted;
@@ -1547,7 +1547,7 @@ namespace ToolsRig
     PlacementsWidgets::PlacementsWidgets(
         const std::shared_ptr<SceneEngine::PlacementsEditor>& editor, 
         const std::shared_ptr<SceneEngine::PlacementsRenderer>& renderer, 
-        const std::shared_ptr<SceneEngine::IntersectionTestScene>& intersectionTestScene,
+        const std::shared_ptr<SceneEngine::IIntersectionScene>& intersectionTestScene,
 		const std::shared_ptr<VisCameraSettings>& camera,
 		const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext)
     {
@@ -1584,7 +1584,7 @@ namespace ToolsRig
         std::shared_ptr<SceneEngine::PlacementsEditor>  _editor;
         std::shared_ptr<DebugScreensSystem>             _screens;
         std::shared_ptr<PlacementsWidgets>              _placementsDispl;
-        std::shared_ptr<SceneEngine::IntersectionTestScene>     _intersectionTestScene;
+        std::shared_ptr<SceneEngine::IIntersectionScene>     _intersectionTestScene;
     };
 
     void PlacementsManipulatorsManager::RenderWidgets(
@@ -1618,7 +1618,7 @@ namespace ToolsRig
         pimpl->_screens = std::make_shared<DebugScreensSystem>();
         pimpl->_placementsManager = placementsManager;
         pimpl->_editor = pimpl->_placementsManager->CreateEditor(placementCellSet);
-        pimpl->_intersectionTestScene = std::make_shared<SceneEngine::IntersectionTestScene>(
+        pimpl->_intersectionTestScene = std::make_shared<SceneEngine::IIntersectionScene>(
             terrainManager, placementCellSet, pimpl->_editor);
         pimpl->_placementsDispl = std::make_shared<PlacementsWidgets>(
             pimpl->_editor, placementsManager->GetRenderer(),

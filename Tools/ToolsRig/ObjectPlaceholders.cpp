@@ -537,7 +537,7 @@ namespace ToolsRig
     }
 
 #if 0
-    class ObjectPlaceholders::IntersectionTester : public SceneEngine::IIntersectionTester
+    class ObjectPlaceholders::IntersectionTester : public SceneEngine::IIntersectionScene
     {
     public:
         Result FirstRayIntersection(
@@ -555,10 +555,10 @@ namespace ToolsRig
         std::shared_ptr<ObjectPlaceholders> _placeHolders;
     };
 
-	static SceneEngine::IIntersectionTester::Result AsResult(const Float3& worldSpaceCollision, const RetainedEntity& o)
+	static SceneEngine::IntersectionTestResult AsResult(const Float3& worldSpaceCollision, const RetainedEntity& o)
 	{
-		SceneEngine::IIntersectionTester::Result result;
-		result._type = SceneEngine::IntersectionTestScene::Type::Extra;
+		SceneEngine::IntersectionTestResult result;
+		result._type = SceneEngine::IntersectionTestResult::Type::Extra;
 		result._worldSpaceCollision = worldSpaceCollision;
 		result._distance = 0.f;
 		result._objectGuid = std::make_pair(o._doc, o._id);
@@ -645,7 +645,7 @@ namespace ToolsRig
 
     ObjectPlaceholders::IntersectionTester::~IntersectionTester() {}
 
-    std::shared_ptr<SceneEngine::IIntersectionTester> ObjectPlaceholders::CreateIntersectionTester()
+    std::shared_ptr<SceneEngine::IIntersectionScene> ObjectPlaceholders::CreateIntersectionTester()
     {
         return std::make_shared<IntersectionTester>(shared_from_this());
     }

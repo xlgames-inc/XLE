@@ -26,13 +26,13 @@ namespace EntityInterface
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    PlatformRig::EnvironmentSettings
+    SceneEngine::EnvironmentSettings
         BuildEnvironmentSettings(
             const RetainedEntities& flexGobInterface,
             const RetainedEntity& obj);
 
     using EnvSettingsVector = 
-        std::vector<std::pair<std::string, PlatformRig::EnvironmentSettings>>;
+        std::vector<std::pair<std::string, SceneEngine::EnvironmentSettings>>;
     EnvSettingsVector BuildEnvironmentSettings(
         const RetainedEntities& flexGobInterface);
 

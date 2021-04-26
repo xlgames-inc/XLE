@@ -8,7 +8,7 @@
 
 #include "../DebuggingDisplay.h"
 
-namespace SceneEngine { class ILightingParserDelegate; }
+namespace SceneEngine { class ILightingStateDelegate; }
 
 namespace Overlays
 {
@@ -23,10 +23,10 @@ namespace Overlays
                         Interactables& interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input);
 
-        ShadowFrustumDebugger(std::shared_ptr<SceneEngine::ILightingParserDelegate> scene);
+        ShadowFrustumDebugger(std::shared_ptr<SceneEngine::ILightingStateDelegate> scene);
         ~ShadowFrustumDebugger();
     protected:
-        std::shared_ptr<SceneEngine::ILightingParserDelegate> _scene;
+        std::shared_ptr<SceneEngine::ILightingStateDelegate> _scene;
     };
 }
 

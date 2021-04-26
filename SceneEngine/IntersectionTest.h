@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -12,15 +10,54 @@
 #include "../Math/Vector.h"
 #include <memory>
 
-namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class CameraDesc; class TechniqueContext; class IPipelineAcceleratorPool; }}
 namespace RenderCore { class PresentationChainDesc; }
 
 namespace SceneEngine
 {
-    class TerrainManager;
-    class PlacementsEditor;
-    class PlacementCellSet;
+    class IntersectionTestContext;
+
+    class IntersectionTestResult
+    {
+    public:
+        struct Type 
+        {
+            enum Enum 
+            {
+                Terrain = 1<<0, 
+                Placement = 1<<1,
+
+                Extra = 1<<6
+            };
+            typedef unsigned BitField;
+        };
+        
+        Type::Enum						_type = Type::Enum(0);
+        Float3							_worldSpaceCollision;
+        std::pair<uint64_t, uint64_t>   _objectGuid = {0ull, 0ull};
+        float							_distance = std::numeric_limits<float>::max();
+        unsigned						_drawCallIndex = ~0u;
+        uint64_t						_materialGuid = 0;
+        ::Assets::rstring				_materialName;
+        ::Assets::rstring				_modelName;
+    };
+
+    class IIntersectionScene
+    {
+    public:
+        virtual IntersectionTestResult FirstRayIntersection(
+            const IntersectionTestContext& context,
+            std::pair<Float3, Float3> worldSpaceRay,
+            IntersectionTestResult::Type::BitField filter = ~IntersectionTestResult::Type::BitField(0)) const = 0;
+
+        virtual void FrustumIntersection(
+            std::vector<IntersectionTestResult>& results,
+            const IntersectionTestContext& context,
+            const Float4x4& worldToProjection,
+            IntersectionTestResult::Type::BitField filter = ~IntersectionTestResult::Type::BitField(0)) const = 0;
+
+        virtual ~IIntersectionScene() = default;
+    };
 
     /// <summary>Context for doing ray & box intersection test<summary>
     /// This context is intended for performing ray intersections for tools.
@@ -48,92 +85,4 @@ namespace SceneEngine
 		std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
 		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
     };
-
-    class IIntersectionTester;
-
-    /// <summary>Resolves ray and box intersections for tools</summary>
-    /// This object can calculate intersections of basic primitives against
-    /// the scene. This is intended for tools to perform interactive operations
-    /// (like selecting objects in the scene).
-    /// Note that much of the intersection math is performed on the GPU. This means
-    /// that any intersection operation will probably involve a GPU synchronisation.
-    /// This isn't intended to be used at runtime in a game, because it may cause
-    /// frame-rate hitches. But for tools, it should not be an issue.
-    class IntersectionTestScene
-    {
-    public:
-        struct Type 
-        {
-            enum Enum 
-            {
-                Terrain = 1<<0, 
-                Placement = 1<<1,
-
-                Extra = 1<<6
-            };
-            typedef unsigned BitField;
-        };
-        
-        class Result
-        {
-        public:
-            Type::Enum						_type = Type::Enum(0);
-            Float3							_worldSpaceCollision;
-			std::pair<uint64_t, uint64_t>   _objectGuid = {0ull, 0ull};
-            float							_distance = std::numeric_limits<float>::max();
-            unsigned						_drawCallIndex = ~0u;
-            uint64_t						_materialGuid = 0;
-            ::Assets::rstring				_materialName;
-            ::Assets::rstring				_modelName;
-        };
-
-        Result FirstRayIntersection(
-            const IntersectionTestContext& context,
-            std::pair<Float3, Float3> worldSpaceRay,
-            Type::BitField filter = ~Type::BitField(0)) const;
-
-        std::vector<Result> FrustumIntersection(
-            const IntersectionTestContext& context,
-            const Float4x4& worldToProjection,
-            Type::BitField filter = ~Type::BitField(0)) const;
-
-        Result UnderCursor(
-            const IntersectionTestContext& context,
-            Int2 cursorPosition,
-            Type::BitField filter = ~Type::BitField(0)) const;
-
-        const std::shared_ptr<TerrainManager>& GetTerrain() const { return _terrainManager; }
-
-        IntersectionTestScene(
-            std::shared_ptr<TerrainManager> terrainManager = nullptr,
-            std::shared_ptr<PlacementCellSet> placements = nullptr,
-            std::shared_ptr<PlacementsEditor> placementsEditor = nullptr,
-            std::initializer_list<std::shared_ptr<IIntersectionTester>> extraTesters = std::initializer_list<std::shared_ptr<IIntersectionTester>>());
-        ~IntersectionTestScene();
-    protected:
-        std::shared_ptr<TerrainManager> _terrainManager;
-        std::shared_ptr<PlacementCellSet> _placements;
-        std::shared_ptr<PlacementsEditor> _placementsEditor;
-        std::vector<std::shared_ptr<IIntersectionTester>> _extraTesters;
-    };
-
-    /// <summary>Resolves ray and box intersections for tools</summary>
-    /// Interface class for extending IntersectionTestScene to support intersections
-    /// against other types of objects.
-    class IIntersectionTester
-    {
-    public:
-        using Result = IntersectionTestScene::Result;
-        virtual Result FirstRayIntersection(
-            const IntersectionTestContext& context,
-            std::pair<Float3, Float3> worldSpaceRay) const = 0;
-
-        virtual void FrustumIntersection(
-            std::vector<Result>& results,
-            const IntersectionTestContext& context,
-            const Float4x4& worldToProjection) const = 0;
-
-        virtual ~IIntersectionTester();
-    };
 }
-

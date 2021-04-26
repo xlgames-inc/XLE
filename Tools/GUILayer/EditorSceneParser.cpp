@@ -17,7 +17,7 @@
 #include "../ToolsRig/VisualisationUtils.h"     // for AsCameraDesc
 #include "../ToolsRig/ManipulatorsRender.h"
 #include "../ToolsRig/ObjectPlaceholders.h"
-#include "../../PlatformRig/BasicSceneParser.h"
+#include "../../SceneEngine/BasicLightingStateDelegate.h"
 #include "../../PlatformRig/Screenshot.h"
 
 #include "../../SceneEngine/LightingParser.h"
@@ -123,7 +123,7 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class EditorLightingParserDelegate : public PlatformRig::BasicLightingParserDelegate
+	class EditorLightingParserDelegate : public SceneEngine::BasicLightingStateDelegate
 	{
 	public:
 		float GetTimeValue() const;
@@ -167,7 +167,7 @@ namespace GUILayer
     }
 
 	EditorLightingParserDelegate::EditorLightingParserDelegate(const std::shared_ptr<EditorScene>& editorScene)
-	: BasicLightingParserDelegate(std::make_shared<PlatformRig::EnvironmentSettings>(PlatformRig::DefaultEnvironmentSettings()))
+	: BasicLightingStateDelegate(std::make_shared<SceneEngine::EnvironmentSettings>(PlatformRig::DefaultEnvironmentSettings()))
 	, _editorScene(editorScene)
 	{
 	}

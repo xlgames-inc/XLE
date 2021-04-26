@@ -10,7 +10,7 @@
 #include <memory>
 #include <stdint.h>
 
-namespace SceneEngine { class IntersectionTestScene; }
+namespace SceneEngine { class IIntersectionScene; }
 namespace RenderCore { namespace Techniques { class TechniqueContext; class IPipelineAcceleratorPool; } }
 
 namespace ToolsRig
@@ -29,7 +29,7 @@ namespace ToolsRig
         bool    OnInputEvent(const PlatformRig::InputContext& context, const PlatformRig::InputSnapshot& evnt);
         void    Register(uint64_t id, std::shared_ptr<ToolsRig::IManipulator> manipulator);
 
-		void	Set(const std::shared_ptr<SceneEngine::IntersectionTestScene>& intersectionScene);
+		void	Set(const std::shared_ptr<SceneEngine::IIntersectionScene>& intersectionScene);
 
         static const uint64_t CameraManipulator = 256;
 
@@ -45,7 +45,7 @@ namespace ToolsRig
         std::shared_ptr<VisCameraSettings> _camera;
 		std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
 		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAcceleratorPool;
-		std::shared_ptr<SceneEngine::IntersectionTestScene> _intersectionScene;
+		std::shared_ptr<SceneEngine::IIntersectionScene> _intersectionScene;
     };
 
 }

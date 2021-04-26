@@ -10,23 +10,11 @@
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 
 namespace RenderCore { class IThreadContext; }
-namespace RenderCore { namespace Techniques { class ProjectionDesc; class ParsingContext; class DrawablesPacket; enum class BatchFilter; } }
+namespace RenderCore { namespace Techniques { class ParsingContext; class DrawablesPacket; enum class BatchFilter; } }
 
 namespace SceneEngine
 {
     class PreparedScene;
-
-#pragma warning(push)
-#pragma warning(disable:4324) //  'SceneEngine::SceneView': structure was padded due to alignment specifier
-	class SceneView
-	{
-	public:
-		enum class Type { Normal, Shadow, Other };
-		Type _type = SceneView::Type::Normal;
-		RenderCore::Techniques::ProjectionDesc _projection;
-	};
-#pragma warning(pop)
-
 	class IViewDelegate;
 
 	class SceneExecuteContext
@@ -49,24 +37,6 @@ namespace SceneEngine
 
 		std::vector<SceneView> _views;
 	};
-
-    class IScene
-    {
-    public:
-        virtual void ExecuteScene(
-            RenderCore::IThreadContext& threadContext,
-			SceneExecuteContext& executeContext) const = 0;
-
-		virtual ~IScene();
-	};
-
-	void ExecuteSceneRaw(
-		RenderCore::IThreadContext& threadContext,
-		RenderCore::Techniques::ParsingContext& parserContext,
-		const RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
-		const RenderCore::Techniques::SequencerContext& sequencerTechnique,
-		const SceneView& view,
-		IScene& scene);
 
 }
 

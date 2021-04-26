@@ -595,7 +595,7 @@ namespace SceneEngine
 
     void RenderOceanSurface(RenderCore::Metal::DeviceContext* context, 
                             Techniques::ParsingContext& parserContext,
-							const ILightingParserDelegate& lightingParserContext,
+							const ILightingStateDelegate& lightingParserContext,
                             const DeepOceanSimSettings& oceanSettings, 
                             const OceanLightingSettings& oceanLightingSettings,
                             DeepOceanSim& fftBuffer, ShallowWaterSim* shallowWater, 
@@ -788,7 +788,7 @@ namespace SceneEngine
 
     void Ocean_Execute( RenderCore::IThreadContext& threadContext,
 						Techniques::ParsingContext& parserContext,
-						const ILightingParserDelegate& lightingParserContext,
+						const ILightingStateDelegate& lightingParserContext,
                         const DeepOceanSimSettings& settings,
                         const OceanLightingSettings& lightingSettings,
                         const ShaderResourceView& depthBufferSRV)

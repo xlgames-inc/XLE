@@ -12,7 +12,7 @@
 #include "../../SceneEngine/DeepOceanSim.h"
 #include "../../SceneEngine/VolumetricFog.h"
 #include "../../SceneEngine/ShallowSurface.h"
-#include "../../PlatformRig/BasicSceneParser.h"
+#include "../../SceneEngine/BasicLightingStateDelegate.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -69,7 +69,7 @@ namespace EntityInterface
         static const auto AttachedLight = ParameterBox::MakeParameterNameHash("Light");
     }
 
-    PlatformRig::EnvironmentSettings
+    SceneEngine::EnvironmentSettings
         BuildEnvironmentSettings(
             const RetainedEntities& flexGobInterface,
             const RetainedEntity& obj)
@@ -189,7 +189,7 @@ namespace EntityInterface
             // so we first need to convert them into native format, and then 
             // we'll write those settings to a basic text file.
             // There are two ways to handle this:
-            //      1) convert from the flex gob objects into PlatformRig::EnvironmentSettings
+            //      1) convert from the flex gob objects into SceneEngine::EnvironmentSettings
             //          and then serialise from there
             //      2) just get the parameter boxes in the flex gob objects, and write
             //          them out

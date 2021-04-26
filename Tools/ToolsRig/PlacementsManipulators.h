@@ -24,7 +24,6 @@ namespace SceneEngine
     class PlacementsEditor;
     class PlacementCellSet;
     typedef std::pair<uint64, uint64> PlacementGUID;
-    class IntersectionTestScene;
 }
 
 namespace ToolsRig
@@ -85,7 +84,7 @@ namespace ToolsRig
         std::vector<SceneEngine::PlacementGUID>& _toBeDeleted,
         std::vector<Float3>& _spawnPositions,
         SceneEngine::PlacementsEditor& editor,
-        const SceneEngine::IntersectionTestScene& hitTestScene,
+        const SceneEngine::IIntersectionScene& hitTestScene,
         const char* const* modelNames, unsigned modelCount,
         const Float3& centre, float radius, float density);
 }

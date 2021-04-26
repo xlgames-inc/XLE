@@ -4,7 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "BasicSceneParser.h"
+#include "BasicLightingStateDelegate.h"
+#include "ShadowConfiguration.h"
 #include "../../RenderCore/LightingEngine/LightDesc.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetFutureContinuation.h"
@@ -19,74 +20,61 @@
  
 // #include "../../SceneEngine/LightingParserStandardPlugin.h"     // (for stubbing out)
 
-namespace PlatformRig
+namespace SceneEngine
 {
-    using namespace SceneEngine;
-
-    unsigned BasicLightingParserDelegate::GetShadowProjectionCount() const 
+    unsigned BasicLightingStateDelegate::GetShadowProjectionCount() const 
     { 
         return (unsigned)GetEnvSettings()._shadowProj.size(); 
     }
 
-    auto BasicLightingParserDelegate::GetShadowProjectionDesc(
+    auto BasicLightingStateDelegate::GetShadowProjectionDesc(
         unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
         -> RenderCore::LightingEngine::ShadowProjectionDesc
     {
-        return PlatformRig::CalculateDefaultShadowCascades(
+        return CalculateDefaultShadowCascades(
             GetEnvSettings()._shadowProj[index]._light, 
             GetEnvSettings()._shadowProj[index]._lightId,
             mainSceneProjectionDesc,
             GetEnvSettings()._shadowProj[index]._shadowFrustumSettings);
     }
 
-    unsigned BasicLightingParserDelegate::GetLightCount() const 
+    unsigned BasicLightingStateDelegate::GetLightCount() const 
     { 
         return (unsigned)GetEnvSettings()._lights.size(); 
     }
 
-    auto BasicLightingParserDelegate::GetLightDesc(unsigned index) const -> const RenderCore::LightingEngine::LightDesc&
+    auto BasicLightingStateDelegate::GetLightDesc(unsigned index) const -> const RenderCore::LightingEngine::LightDesc&
     {
         return GetEnvSettings()._lights[index];
     }
 
-    auto BasicLightingParserDelegate::GetSceneLightingDesc() const -> RenderCore::LightingEngine::SceneLightingDesc
+    auto BasicLightingStateDelegate::GetEnvironmentalLightingDesc() const -> RenderCore::LightingEngine::EnvironmentalLightingDesc
     {
-        return GetEnvSettings()._sceneLightingDesc;
+        return GetEnvSettings()._environmentalLightingDesc;
     }
 
-    ToneMapSettings BasicLightingParserDelegate::GetToneMapSettings() const
+    ToneMapSettings BasicLightingStateDelegate::GetToneMapSettings() const
     {
         return GetEnvSettings()._toneMapSettings;
     }
 
-	float		BasicLightingParserDelegate::GetTimeValue() const
-	{
-		return _timeValue;
-	}
-
-	void		BasicLightingParserDelegate::SetTimeValue(float newValue)
-	{
-		_timeValue = newValue;
-	}
-
-	void BasicLightingParserDelegate::ConstructToFuture(
-		::Assets::AssetFuture<BasicLightingParserDelegate>& future,
+	void BasicLightingStateDelegate::ConstructToFuture(
+		::Assets::AssetFuture<BasicLightingStateDelegate>& future,
 		StringSection<::Assets::ResChar> envSettingFileName)
 	{
 		auto envSettingsFuture = ::Assets::MakeAsset<EnvironmentSettings>(envSettingFileName);
 		::Assets::WhenAll(envSettingsFuture).ThenConstructToFuture(future);
 	}
 
-	BasicLightingParserDelegate::BasicLightingParserDelegate(
+	BasicLightingStateDelegate::BasicLightingStateDelegate(
 		const std::shared_ptr<EnvironmentSettings>& envSettings)
 	: _envSettings(envSettings)
-	, _timeValue(0.f)
 	{
 	}
 
-	BasicLightingParserDelegate::~BasicLightingParserDelegate() {}
+	BasicLightingStateDelegate::~BasicLightingStateDelegate() {}
 
-	const EnvironmentSettings&  BasicLightingParserDelegate::GetEnvSettings() const
+	const EnvironmentSettings&  BasicLightingStateDelegate::GetEnvSettings() const
 	{
 		return *_envSettings;
 	}
@@ -107,9 +95,9 @@ namespace PlatformRig
         return light;
     }
 
-    RenderCore::LightingEngine::SceneLightingDesc DefaultSceneLightingDesc()
+    RenderCore::LightingEngine::EnvironmentalLightingDesc DefaultEnvironmentalLightingDesc()
     {
-        RenderCore::LightingEngine::SceneLightingDesc result;
+        RenderCore::LightingEngine::EnvironmentalLightingDesc result;
         result._ambientLight = Float3(0.f, 0.f, 0.f);
         result._skyTexture = "xleres/defaultresources/sky/samplesky2.dds";
         result._diffuseIBL = "xleres/defaultresources/sky/samplesky2_diffuse.dds";
@@ -123,12 +111,12 @@ namespace PlatformRig
     EnvironmentSettings DefaultEnvironmentSettings()
     {
         EnvironmentSettings result;
-        result._sceneLightingDesc = DefaultSceneLightingDesc();
+        result._environmentalLightingDesc = DefaultEnvironmentalLightingDesc();
 
         auto defLight = DefaultDominantLight();
         result._lights.push_back(defLight);
 
-        auto frustumSettings = PlatformRig::DefaultShadowFrustumSettings();
+        auto frustumSettings = DefaultShadowFrustumSettings();
         result._shadowProj.push_back(EnvironmentSettings::ShadowProj { defLight, 0, frustumSettings });
 
         if (constant_expression<false>::result()) {
@@ -171,7 +159,7 @@ namespace PlatformRig
             (float)(packedColor & 0xff) / 255.f);
     }
 
-    RenderCore::LightingEngine::SceneLightingDesc MakeSceneLightingDesc(const ParameterBox& props)
+    RenderCore::LightingEngine::EnvironmentalLightingDesc MakeEnvironmentalLightingDesc(const ParameterBox& props)
     {
         static const auto ambientHash = ParamHash("AmbientLight");
         static const auto ambientBrightnessHash = ParamHash("AmbientBrightness");
@@ -197,7 +185,7 @@ namespace PlatformRig
 
             ////////////////////////////////////////////////////////////
 
-        RenderCore::LightingEngine::SceneLightingDesc result;
+        RenderCore::LightingEngine::EnvironmentalLightingDesc result;
         result._ambientLight = props.GetParameter(ambientBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(ambientHash, ~0x0u));
         result._skyReflectionScale = props.GetParameter(skyReflectionScaleHash, result._skyReflectionScale);
         result._skyReflectionBlurriness = props.GetParameter(skyReflectionBlurriness, result._skyReflectionBlurriness);
@@ -318,7 +306,7 @@ namespace PlatformRig
     {
         using namespace SceneEngine;
 
-        _sceneLightingDesc = DefaultSceneLightingDesc();
+        _environmentalLightingDesc = DefaultEnvironmentalLightingDesc();
 
         std::vector<std::pair<uint64, DefaultShadowFrustumSettings>> shadowSettings;
         std::vector<uint64> lightNames;
@@ -335,7 +323,7 @@ namespace PlatformRig
                     RequireBeginElement(formatter);
 
                     if (XlEqString(name, EntityTypeName::AmbientSettings)) {
-                        _sceneLightingDesc = MakeSceneLightingDesc(ParameterBox(formatter));
+                        _environmentalLightingDesc = MakeEnvironmentalLightingDesc(ParameterBox(formatter));
                     } else if (XlEqString(name, EntityTypeName::ToneMapSettings)) {
                         AccessorDeserialize(formatter, _toneMapSettings);
                     } else if (XlEqString(name, EntityTypeName::DirectionalLight) || XlEqString(name, EntityTypeName::AreaLight)) {
@@ -368,7 +356,7 @@ namespace PlatformRig
                             hashName = Hash64(paramValue.value());
 
                         shadowSettings.push_back(
-                            std::make_pair(hashName, CreateFromParameters<PlatformRig::DefaultShadowFrustumSettings>(params)));
+                            std::make_pair(hashName, CreateFromParameters<DefaultShadowFrustumSettings>(params)));
 
                         uint64 frustumLink = 0;
                         paramValue = params.GetParameterAsString(Attribute::Name);
@@ -420,10 +408,10 @@ namespace PlatformRig
     EnvironmentSettings::EnvironmentSettings() {}
     EnvironmentSettings::~EnvironmentSettings() {}
 
-    /*std::vector<std::pair<std::string, PlatformRig::EnvironmentSettings>> 
+    /*std::vector<std::pair<std::string, SceneEngine::EnvironmentSettings>> 
         DeserializeEnvSettings(InputStreamFormatter<utf8>& formatter)
     {
-        std::vector<std::pair<std::string, PlatformRig::EnvironmentSettings>> result;
+        std::vector<std::pair<std::string, SceneEngine::EnvironmentSettings>> result;
         for (;;) {
             switch(formatter.PeekNext()) {
             case InputStreamFormatter<utf8>::Blob::BeginElement:
@@ -557,44 +545,10 @@ namespace SceneEngine
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::vector<std::shared_ptr<IRenderStep>> CreateStandardRenderSteps(LightingModel lightingModel)
+    /*std::vector<std::shared_ptr<IRenderStep>> CreateStandardRenderSteps(LightingModel lightingModel)
     {
         return {};
-    }
-
-    auto IntersectionTestScene::FirstRayIntersection(
-        const IntersectionTestContext& context,
-        std::pair<Float3, Float3> worldSpaceRay,
-        Type::BitField filter) const -> Result
-    {
-        return {};
-    }
-
-    auto IntersectionTestScene::FrustumIntersection(
-        const IntersectionTestContext& context,
-        const Float4x4& worldToProjection,
-        Type::BitField filter) const -> std::vector<Result>
-    {
-        return {};
-    }
-
-    auto IntersectionTestScene::UnderCursor(
-        const IntersectionTestContext& context,
-        Int2 cursorPosition, Type::BitField filter) const -> Result
-    {
-        return {};
-    }
-
-    IntersectionTestScene::IntersectionTestScene(
-        std::shared_ptr<TerrainManager> terrainManager,
-        std::shared_ptr<PlacementCellSet> placements,
-        std::shared_ptr<PlacementsEditor> placementsEditor,
-        std::initializer_list<std::shared_ptr<IIntersectionTester>> extraTesters)
-    {
-    }
-
-    IntersectionTestScene::~IntersectionTestScene()
-    {}
+    }*/
 
     std::pair<Float3, Float3> IntersectionTestContext::CalculateWorldSpaceRay(Int2 screenCoord) const
     {

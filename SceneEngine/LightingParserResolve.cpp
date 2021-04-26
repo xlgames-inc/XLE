@@ -201,7 +201,7 @@ namespace SceneEngine
     LightResolveResourcesRes LightingParser_BindLightResolveResources( 
         Metal::DeviceContext& context,
         Techniques::ParsingContext& parsingContext,
-		const ILightingParserDelegate& delegate)
+		const ILightingStateDelegate& delegate)
     {
             // bind resources and constants that are required for lighting resolve operations
             // these are needed in both deferred and forward shading modes... But they are

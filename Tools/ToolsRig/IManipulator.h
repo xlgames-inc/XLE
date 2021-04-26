@@ -12,7 +12,7 @@
 namespace SceneEngine 
 {
     class IntersectionTestContext;
-    class IntersectionTestScene;
+    class IIntersectionScene;
 }
 
 namespace PlatformRig { class InputSnapshot; }
@@ -27,7 +27,7 @@ namespace ToolsRig
         virtual bool OnInputEvent(
             const PlatformRig::InputSnapshot& evnt, 
 			const SceneEngine::IntersectionTestContext& hitTestContext,
-            const SceneEngine::IntersectionTestScene* hitTestScene) = 0;
+            const SceneEngine::IIntersectionScene* hitTestScene) = 0;
         virtual void Render(
             RenderCore::IThreadContext& context, 
             RenderCore::Techniques::ParsingContext& parserContext) = 0;

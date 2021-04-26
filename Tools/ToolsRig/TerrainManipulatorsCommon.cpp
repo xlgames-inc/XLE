@@ -22,11 +22,11 @@ static unsigned FrameRenderCount;
 namespace ToolsRig
 {
     std::pair<Float3, bool> FindTerrainIntersection(
-        const SceneEngine::IntersectionTestContext& context, const SceneEngine::IntersectionTestScene& scene,
+        const SceneEngine::IntersectionTestContext& context, const SceneEngine::IIntersectionScene& scene,
         const Int2 screenCoords)
     {
-        auto result = scene.UnderCursor(context, screenCoords, SceneEngine::IntersectionTestScene::Type::Terrain);
-        if (result._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
+        auto result = scene.UnderCursor(context, screenCoords, SceneEngine::IntersectionTestResult::Type::Terrain);
+        if (result._type == SceneEngine::IntersectionTestResult::Type::Terrain) {
             return std::make_pair(result._worldSpaceCollision, true);
         }
         return std::make_pair(Float3(0.f, 0.f, 0.f), false);
@@ -116,7 +116,7 @@ namespace ToolsRig
     bool    CommonManipulator::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt, 
         const SceneEngine::IntersectionTestContext& hitTestContext,
-        const SceneEngine::IntersectionTestScene* hitTestScene)
+        const SceneEngine::IIntersectionScene* hitTestScene)
     {
         const bool shiftHeld = evnt.IsHeld(PlatformRig::KeyId_Make("shift"));
         if (evnt._wheelDelta) {
@@ -194,7 +194,7 @@ namespace ToolsRig
     bool    RectangleManipulator::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt, 
         const SceneEngine::IntersectionTestContext& hitTestContext,
-        const SceneEngine::IntersectionTestScene* hitTestScene)
+        const SceneEngine::IIntersectionScene* hitTestScene)
     {
         Int2 mousePosition(evnt._mousePosition[0], evnt._mousePosition[1]);
 

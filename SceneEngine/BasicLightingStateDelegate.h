@@ -6,11 +6,12 @@
 
 #pragma once
 
-#include "PlatformRigUtil.h"
+#include "ShadowConfiguration.h"
+#include "IScene.h"
 #include "../RenderCore/LightingEngine/LightDesc.h"
-#include "../SceneEngine/LightingParser.h"
-#include "../SceneEngine/SceneParser.h"
 #include "../SceneEngine/Tonemap.h"
+#include "../Assets/DepVal.h"
+#include "../Assets/AssetsCore.h"
 #if 0
 #include "../SceneEngine/VolumetricFog.h"
 #include "../SceneEngine/Ocean.h"
@@ -23,7 +24,7 @@ namespace Utility
 }
 namespace Assets { class DirectorySearchRules; }
 
-namespace PlatformRig
+namespace SceneEngine
 {
     /// <summary>Describes a lighting environment</summary>
     /// This contains all of the settings and properties required
@@ -34,8 +35,8 @@ namespace PlatformRig
     {
     public:
         std::vector<RenderCore::LightingEngine::LightDesc> _lights;
-        RenderCore::LightingEngine::SceneLightingDesc _sceneLightingDesc;
-        SceneEngine::ToneMapSettings _toneMapSettings;
+        RenderCore::LightingEngine::EnvironmentalLightingDesc _environmentalLightingDesc;
+        ToneMapSettings _toneMapSettings;
 
         class ShadowProj
         {
@@ -47,9 +48,9 @@ namespace PlatformRig
         std::vector<ShadowProj> _shadowProj;
 
 #if 0
-        SceneEngine::VolumetricFogConfig::Renderer _volFogRenderer;
-        SceneEngine::OceanLightingSettings _oceanLighting;
-        SceneEngine::DeepOceanSimSettings _deepOceanSim;
+        VolumetricFogConfig::Renderer _volFogRenderer;
+        OceanLightingSettings _oceanLighting;
+        DeepOceanSimSettings _deepOceanSim;
 #endif
         
         EnvironmentSettings();
@@ -65,11 +66,11 @@ namespace PlatformRig
 		::Assets::DependencyValidation _depVal;
     };
 
-    /// <summary>Simple & partial implementation of the ILightingParserDelegate interface<summary>
+    /// <summary>Simple & partial implementation of the ILightingStateDelegate interface<summary>
     /// This provides implementations of the basic lighting related interfaces of
     /// ISceneParser that will hook into an EnvironmentSettings object.
     /// Derived classes should implement the accessor GetEnvSettings().
-    class BasicLightingParserDelegate : public SceneEngine::ILightingParserDelegate
+    class BasicLightingStateDelegate : public ILightingStateDelegate
     {
     public:
         unsigned    GetShadowProjectionCount() const;
@@ -80,18 +81,15 @@ namespace PlatformRig
 
         unsigned    GetLightCount() const;
         auto        GetLightDesc(unsigned index) const -> const RenderCore::LightingEngine::LightDesc&;
-        auto        GetSceneLightingDesc() const -> RenderCore::LightingEngine::SceneLightingDesc;
-        auto        GetToneMapSettings() const -> SceneEngine::ToneMapSettings;
+        auto        GetEnvironmentalLightingDesc() const -> RenderCore::LightingEngine::EnvironmentalLightingDesc;
+        auto        GetToneMapSettings() const -> ToneMapSettings;
 
-		float		GetTimeValue() const;
-		void		SetTimeValue(float newValue);
-
-		BasicLightingParserDelegate(
+		BasicLightingStateDelegate(
 			const std::shared_ptr<EnvironmentSettings>& envSettings);
-		~BasicLightingParserDelegate();
+		~BasicLightingStateDelegate();
 
 		static void ConstructToFuture(
-			::Assets::AssetFuture<BasicLightingParserDelegate>& future,
+			::Assets::AssetFuture<BasicLightingStateDelegate>& future,
 			StringSection<::Assets::ResChar> envSettingFileName);
 
 		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _envSettings->GetDependencyValidation(); }
@@ -99,11 +97,10 @@ namespace PlatformRig
     protected:
         const EnvironmentSettings&  GetEnvSettings() const;
 		std::shared_ptr<EnvironmentSettings>	_envSettings;
-		float									_timeValue;
     };
 
-    RenderCore::LightingEngine::LightDesc           DefaultDominantLight();
-    RenderCore::LightingEngine::SceneLightingDesc  DefaultSceneLightingDesc();
-    EnvironmentSettings                             DefaultEnvironmentSettings();
+    RenderCore::LightingEngine::LightDesc                   DefaultDominantLight();
+    RenderCore::LightingEngine::EnvironmentalLightingDesc   DefaultEnvironmentalLightingDesc();
+    EnvironmentSettings                                     DefaultEnvironmentSettings();
 }
 

@@ -12,7 +12,7 @@
 namespace SceneEngine 
 { 
     class IntersectionTestContext;
-    class IntersectionTestScene;
+    class IIntersectionScene;
 }
 namespace RenderCore { namespace Techniques { class CameraDesc; class ParsingContext; } }
 
@@ -45,7 +45,7 @@ namespace ToolsRig
     }
 
     std::pair<Float3, bool> FindTerrainIntersection(
-        const SceneEngine::IntersectionTestContext& context, const SceneEngine::IntersectionTestScene& scene,
+        const SceneEngine::IntersectionTestContext& context, const SceneEngine::IIntersectionScene& scene,
         const Int2 screenCoords);
 
     inline Float2 RoundDownToInteger(Float2 input) { return Float2(XlFloor(input[0] + 0.5f), XlFloor(input[1] + 0.5f)); }

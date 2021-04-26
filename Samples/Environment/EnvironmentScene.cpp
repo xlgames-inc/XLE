@@ -53,7 +53,7 @@ namespace Sample
         std::shared_ptr<RenderCore::Techniques::CameraDesc> _cameraDesc;
         std::shared_ptr<RenderCore::Assets::ModelCache>     _modelCache;
         std::shared_ptr<SceneEngine::DynamicImposters>      _imposters;
-        PlatformRig::EnvironmentSettings                    _envSettings;
+        SceneEngine::EnvironmentSettings                    _envSettings;
 
         ::Assets::DependencyValidation     _terrainCfgVal;
         ::Assets::DependencyValidation     _terrainTexturesCfgVal;
@@ -282,7 +282,7 @@ namespace Sample
         return _pimpl->_imposters;
     }
 
-    const PlatformRig::EnvironmentSettings& EnvironmentSceneParser::GetEnvSettings() const 
+    const SceneEngine::EnvironmentSettings& EnvironmentSceneParser::GetEnvSettings() const 
     { 
         return _pimpl->_envSettings; 
     }
@@ -334,7 +334,7 @@ namespace Sample
         if (!_pimpl->_environmentCfgVal || _pimpl->_environmentCfgVal.GetValidationIndex() != 0) {
             TRY
             {
-                auto envSettings = ::Assets::AutoConstructAsset<PlatformRig::EnvironmentSettings>(MakeStringSection(_pimpl->MakeCfgName(EnvironmentCfg)));
+                auto envSettings = ::Assets::AutoConstructAsset<SceneEngine::EnvironmentSettings>(MakeStringSection(_pimpl->MakeCfgName(EnvironmentCfg)));
                 _pimpl->_envSettings = *envSettings;
                 _pimpl->_environmentCfgVal = envSettings->GetDependencyValidation();
             } CATCH(...) {

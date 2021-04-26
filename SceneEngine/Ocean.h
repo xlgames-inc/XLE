@@ -17,14 +17,14 @@ namespace SceneEngine
 {
     class DeepOceanSimSettings;
     class OceanLightingSettings;
-	class ILightingParserDelegate;
+	class ILightingStateDelegate;
 
     /// Entry point for ocean rendering
     /// Draws the surface of the ocean, according to the given settings.
     void Ocean_Execute(
         RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parserContext,
-        const ILightingParserDelegate& lightingPaserContext,
+        const ILightingStateDelegate& lightingPaserContext,
         const DeepOceanSimSettings& settings,
         const OceanLightingSettings& lightingSettings,
         const RenderCore::Metal::ShaderResourceView& depthBufferSRV);

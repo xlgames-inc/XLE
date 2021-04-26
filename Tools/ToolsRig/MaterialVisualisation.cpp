@@ -10,7 +10,7 @@
 
 #include "../ShaderParser/ShaderPatcher.h"
 
-#include "../../SceneEngine/SceneParser.h"
+#include "../../SceneEngine/IScene.h"
 
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
@@ -21,6 +21,7 @@
 #include "../../RenderCore/Techniques/CommonUtils.h"
 #include "../../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../../RenderCore/Techniques/DescriptorSetAccelerator.h"
+#include "../../RenderCore/Techniques/Drawables.h"
 #include "../../RenderCore/Metal/Shader.h" // (for CreateLowLevelShaderCompiler)
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Assets/ShaderPatchCollection.h"
@@ -103,14 +104,16 @@ namespace ToolsRig
     class MaterialVisualizationScene : public SceneEngine::IScene, public IVisContent, public ::Assets::IAsyncMarker, public IPatchCollectionVisualizationScene
     {
     public:
-        void Draw(  IThreadContext& threadContext, 
-                    SceneEngine::SceneExecuteContext& executeContext,
-                    IteratorRange<Techniques::DrawablesPacket** const> pkts) const
+        virtual void ExecuteScene(
+            RenderCore::IThreadContext& threadContext,
+			const SceneEngine::SceneView& view,
+			RenderCore::Techniques::BatchFilter batch,
+			RenderCore::Techniques::DrawablesPacket& pkt) const override
         {
+			if (batch != RenderCore::Techniques::BatchFilter::General) return;
+
 			auto usi = std::make_shared<UniformsStreamInterface>();
 			usi->BindImmediateData(0, Techniques::ObjectCB::LocalTransform);
-
-			auto& pkt = *pkts[unsigned(RenderCore::Techniques::BatchFilter::General)];
 
 			auto pipeline = _pipelineFuture->Actualize();
 
@@ -165,30 +168,17 @@ namespace ToolsRig
             }
         }
 
-		virtual void ExecuteScene(
-            RenderCore::IThreadContext& threadContext,
-			SceneEngine::SceneExecuteContext& executeContext) const
-		{
-			for (unsigned v=0; v<executeContext.GetViews().size(); ++v) {
-				RenderCore::Techniques::DrawablesPacket* pkts[unsigned(RenderCore::Techniques::BatchFilter::Max)];
-				for (unsigned c=0; c<unsigned(RenderCore::Techniques::BatchFilter::Max); ++c)
-					pkts[c] = executeContext.GetDrawablesPacket(v, RenderCore::Techniques::BatchFilter(c));
-
-				Draw(threadContext, executeContext, MakeIteratorRange(pkts));
-			}
-		}
-
-		std::pair<Float3, Float3> GetBoundingBox() const  { return { Float3{-1.0f, 1.0f, 1.0f}, Float3{1.0f, 1.0f, 1.0f} }; }
-		DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex, uint64_t materialGuid) const { return { {}, {} }; }
-		std::shared_ptr<RenderCore::Techniques::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<RenderCore::Techniques::IPreDrawDelegate>& delegate) { return nullptr; }
+		std::pair<Float3, Float3> GetBoundingBox() const override { return { Float3{-1.0f, 1.0f, 1.0f}, Float3{1.0f, 1.0f, 1.0f} }; }
+		DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex, uint64_t materialGuid) const override { return { {}, {} }; }
+		std::shared_ptr<RenderCore::Techniques::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<RenderCore::Techniques::IPreDrawDelegate>& delegate) override { return nullptr; }
 		void RenderSkeleton(
 			RenderCore::IThreadContext& context, 
 			RenderCore::Techniques::ParsingContext& parserContext, 
-			bool drawBoneNames) const {}
-		void BindAnimationState(const std::shared_ptr<VisAnimationState>& animState) {}
-		bool HasActiveAnimation() const { return false; }
+			bool drawBoneNames) const override {}
+		void BindAnimationState(const std::shared_ptr<VisAnimationState>& animState) override {}
+		bool HasActiveAnimation() const override { return false; }
 
-		void SetPatchCollection(const PatchCollectionFuture& patchCollectionFuture)
+		void SetPatchCollection(const PatchCollectionFuture& patchCollectionFuture) override
 		{
 			assert(0);
 #if 0
@@ -236,14 +226,14 @@ namespace ToolsRig
 			_material = material;
 		}
 
-		::Assets::AssetState GetAssetState() const
+		::Assets::AssetState GetAssetState() const override
 		{
 			if (!_pipelineFuture)
 				return ::Assets::AssetState::Ready;
 			return _pipelineFuture->GetAssetState();
 		}
 
-		std::optional<::Assets::AssetState>   StallWhilePending(std::chrono::milliseconds timeout) const
+		std::optional<::Assets::AssetState>   StallWhilePending(std::chrono::milliseconds timeout) const override
 		{
 			if (!_pipelineFuture)
 				return ::Assets::AssetState::Ready;

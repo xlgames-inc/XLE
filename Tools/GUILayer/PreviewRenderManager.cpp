@@ -13,7 +13,7 @@
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/VisualisationUtils.h"
 
-#include "../../SceneEngine/SceneParser.h"
+#include "../../SceneEngine/IScene.h"
 // #include "../../SceneEngine/RenderStep.h"
 
 #include "../../RenderCore/Techniques/Techniques.h"
