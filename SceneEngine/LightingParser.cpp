@@ -12,7 +12,7 @@
 #include "RenderStep.h"
 #include "RenderStep_PrepareShadows.h"
 // #include "RenderStep_ResolveHDR.h"
-// #include "LightInternal.h"
+#include "LightInternal.h"
 #include "PreparedScene.h"
 
 #include "../RenderCore/Techniques/PipelineAccelerator.h"
@@ -230,7 +230,7 @@ namespace SceneEngine
 		_shadowGenFrameBufferPool = std::make_shared<RenderCore::Techniques::FrameBufferPool>();
 		if (!techniqueDesc._shadowGenerators.empty()) {
 			for (const auto&shdGen:techniqueDesc._shadowGenerators) {
-				auto hash = Hash(shdGen);
+				auto hash = RenderCore::LightingEngine::Hash64(shdGen);
 				_shadowGenerators.emplace_back(hash, CreateCompiledShadowGenerator(shdGen, _pipelineAccelerators));
 			}
 			std::sort(
@@ -358,16 +358,18 @@ namespace SceneEngine
 					assert(proj._projections._mode == proj._shadowGeneratorDesc._projectionMode);
 					assert(proj._projections._useNearProj == proj._shadowGeneratorDesc._enableNearCascade);
 
-					auto generatorHash = Hash(proj._shadowGeneratorDesc);
+					auto generatorHash = RenderCore::LightingEngine::Hash64(proj._shadowGeneratorDesc);
 					auto existing = LowerBound(technique._shadowGenerators, generatorHash);
 					if (existing != technique._shadowGenerators.end() && existing->first == generatorHash) {
-						existing->second->ExecutePrepare(threadContext, parsingContext, lightingParserContext, shadowDelegate, *technique._shadowGenFrameBufferPool, *technique._shadowGenAttachmentPool);
+						assert(0);
+						// existing->second->ExecutePrepare(threadContext, parsingContext, lightingParserContext, shadowDelegate, *technique._shadowGenFrameBufferPool, *technique._shadowGenAttachmentPool);
 					} else {
 						Log(Warning) << "Building temporary CompiledShadowGenerator because one was not configured before hand" << std::endl;
 						auto compiledShadowGenerator = CreateCompiledShadowGenerator(
 							proj._shadowGeneratorDesc,
 							technique._pipelineAccelerators);
-						compiledShadowGenerator->ExecutePrepare(threadContext, parsingContext, lightingParserContext, shadowDelegate, *technique._shadowGenFrameBufferPool, *technique._shadowGenAttachmentPool);
+						assert(0);
+						// compiledShadowGenerator->ExecutePrepare(threadContext, parsingContext, lightingParserContext, shadowDelegate, *technique._shadowGenFrameBufferPool, *technique._shadowGenAttachmentPool);
 					}
 					
 				CATCH_ASSETS_END(parsingContext)

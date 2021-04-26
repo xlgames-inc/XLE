@@ -55,13 +55,19 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         DebuggingDisplays/PlacementsDisplay.h
         DebuggingDisplays/TestDisplays.h)
 
+    set(MiniSceneEngineSrc
+        ../SceneEngine/LightingParser.cpp
+        ../SceneEngine/LightInternal.cpp
+        ../SceneEngine/PreparedScene.cpp
+        ../SceneEngine/RenderStepUtils.cpp)
+
     if (WIN32)
         set(WinSrc WinAPI/AllocationProfiler.cpp WinAPI/InputTranslator.cpp WinAPI/OverlappedWindow.cpp WinAPI/RunLoop_WinAPI.cpp)
         set(WinHeaders WinAPI/RunLoop_WinAPI.h)
     endif()
 
-    add_library(PlatformRig-${metal_name} STATIC ${Src} ${WinSrc} ${Headers} ${WinHeaders} ${DebuggingDisplaysSrc} ${DebuggingDisplaysHeaders})
+    add_library(PlatformRig-${metal_name} STATIC ${Src} ${WinSrc} ${Headers} ${WinHeaders} ${DebuggingDisplaysSrc} ${DebuggingDisplaysHeaders}  ${MiniSceneEngineSrc})
     xle_configure_library(PlatformRig-${metal_name})
-    target_link_libraries(PlatformRig-${metal_name} PRIVATE RenderCoreTechniques-${metal_name})
+    target_link_libraries(PlatformRig-${metal_name} PRIVATE RenderCoreLightingEngine-${metal_name} RenderCoreTechniques-${metal_name})
 
 endforeach()

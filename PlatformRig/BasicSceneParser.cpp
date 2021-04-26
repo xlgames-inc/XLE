@@ -444,13 +444,15 @@ namespace PlatformRig
     }*/
 }
 
-#if 0
+#if 1
 
 #include "../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../RenderCore/Techniques/Drawables.h"
 #include "../RenderCore/Techniques/Apparatuses.h"
+#include "../RenderCore/Techniques/CommonBindings.h"
 #include "../SceneEngine/RenderStep_PrepareShadows.h"
 #include "../SceneEngine/RenderStepUtils.h"
+#include "../SceneEngine/LightInternal.h"
 #include "../Utility/Meta/AccessorSerialize.h"
 #include "../Utility/Meta/ClassAccessors.h"
 
@@ -467,7 +469,7 @@ namespace SceneEngine
 	{
 	}
 
-    ViewDelegate_Shadow::ViewDelegate_Shadow(ShadowProjectionDesc shadowProjection)
+    ViewDelegate_Shadow::ViewDelegate_Shadow(RenderCore::LightingEngine::ShadowProjectionDesc shadowProjection)
 	: _shadowProj(shadowProjection)
 	{
 	}
@@ -476,7 +478,7 @@ namespace SceneEngine
 	{
 	}
 
-    std::shared_ptr<ICompiledShadowGenerator> CreateCompiledShadowGenerator(const ShadowGeneratorDesc&, const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>&)
+    std::shared_ptr<ICompiledShadowGenerator> CreateCompiledShadowGenerator(const RenderCore::LightingEngine::ShadowGeneratorDesc&, const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>&)
 	{
 		return nullptr;
 	}
@@ -514,7 +516,7 @@ namespace SceneEngine
 		assert(viewDelegate);
 		auto& executedScene = *checked_cast<BasicViewDelegate*>(viewDelegate);
         RenderCore::Techniques::SequencerContext sequencerContext;
-        sequencerContext._sequencerConfig = rpi.GetSequencerConfig();
+        sequencerContext._sequencerConfig = const_cast<RenderCore::Techniques::SequencerConfig*>(rpi.GetSequencerConfig());
 		ExecuteDrawables(
             threadContext, parsingContext, 
             pipelineAccelerators,
@@ -558,18 +560,6 @@ namespace SceneEngine
     {
         return {};
     }
-
-    void LightingParserStandardPlugin::OnPreScenePrepare(
-        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&) const {}
-    void LightingParserStandardPlugin::OnLightingResolvePrepare(
-        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&,  LightingParserContext& parserContext,
-        LightingResolveContext& resolveContext) const {}
-    void LightingParserStandardPlugin::OnPostSceneRender(
-        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext& parserContext, 
-        RenderCore::Techniques::BatchFilter filter, unsigned techniqueIndex) const {}
-    void LightingParserStandardPlugin::InitBasicLightEnvironment(
-        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-        ShaderLightDesc::BasicEnvironment& env) const {}
 }
 
 #endif

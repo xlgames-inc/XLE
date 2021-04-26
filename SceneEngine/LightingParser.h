@@ -27,6 +27,7 @@ namespace RenderCore { namespace LightingEngine
     class LightDesc;
     class SceneLightingDesc;
     class ShadowProjectionDesc;
+    class ShadowGeneratorDesc;
 }}
 
 namespace RenderCore { class IThreadContext; class AttachmentDesc; }
@@ -40,7 +41,6 @@ namespace SceneEngine
 	class ILightingParserDelegate;
 	class ILightingParserPlugin;
 	class IRenderStep;
-	class ShadowGeneratorDesc;
 
     namespace ShaderLightDesc { class BasicEnvironment; }
 
@@ -52,7 +52,7 @@ namespace SceneEngine
     public:
 		IteratorRange<const std::shared_ptr<IRenderStep>*> _renderSteps = {};
 		IteratorRange<const std::shared_ptr<ILightingParserPlugin>*> _lightingPlugins = {};
-		std::vector<ShadowGeneratorDesc> _shadowGenerators = {};
+		std::vector<RenderCore::LightingEngine::ShadowGeneratorDesc> _shadowGenerators = {};
 		RenderCore::TextureSamples _sampling = RenderCore::TextureSamples::Create();
     };
 

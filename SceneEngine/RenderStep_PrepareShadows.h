@@ -5,6 +5,7 @@
 #pragma once
 
 #include "RenderStep.h"
+#include "../RenderCore/LightingEngine/LightDesc.h"
 
 namespace RenderCore { namespace Techniques { class IPipelineAcceleratorPool; }}
 
@@ -32,11 +33,11 @@ namespace SceneEngine
 	{
 	public:
 		RenderCore::Techniques::DrawablesPacket _general;
-		ShadowProjectionDesc _shadowProj;
+		RenderCore::LightingEngine::ShadowProjectionDesc _shadowProj;
 
 		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(RenderCore::Techniques::BatchFilter batch) override;
 		void Reset() override;
-		ViewDelegate_Shadow(ShadowProjectionDesc shadowProjection);
+		ViewDelegate_Shadow(RenderCore::LightingEngine::ShadowProjectionDesc shadowProjection);
 		~ViewDelegate_Shadow();
 	};
 }

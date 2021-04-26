@@ -5,9 +5,9 @@
 #pragma once
 
 #include "SceneParser.h"
-#include "LightDesc.h"
 #include "../RenderCore/Techniques/Drawables.h"
 #include "../RenderCore/Techniques/RenderPass.h"
+#include "../RenderCore/LightingEngine/RenderStepFragments.h"
 #include <memory>
 
 
@@ -22,6 +22,8 @@ namespace SceneEngine
 	};
 
 	class LightingParserContext;
+	using RenderStepFragmentInterface = RenderCore::LightingEngine::RenderStepFragmentInterface;
+	using RenderStepFragmentInstance = RenderCore::LightingEngine::RenderStepFragmentInstance;
 
 	class IRenderStep
 	{

@@ -6,29 +6,16 @@
 
 #pragma once
 
-#include "LightDesc.h"
+#include "../RenderCore/LightingEngine/LightDesc.h"
+#include "../RenderCore/LightingEngine/ShadowUniforms.h"
 #include "../Core/Types.h"
 
 namespace RenderCore { class SharedPkt; class IResource; class IResourceView; class IThreadContext; }
-namespace RenderCore { namespace Techniques { class ParsingContext; }}
+namespace RenderCore { namespace Techniques { class ParsingContext; class IPipelineAcceleratorPool; }}
 
 namespace SceneEngine
 {
-
-    /// <summary>Prepared "Ray Traced" shadow frustum</summary>
-    class PreparedRTShadowFrustum : public PreparedShadowFrustum
-    {
-    public:
-        SRV _listHeadSRV;
-        SRV _linkedListsSRV;
-        SRV _trianglesSRV;
-
-        bool IsReady() const;
-
-        PreparedRTShadowFrustum();
-        PreparedRTShadowFrustum(PreparedRTShadowFrustum&& moveFrom) never_throws;
-        PreparedRTShadowFrustum& operator=(PreparedRTShadowFrustum&& moveFrom) never_throws;
-    };
+    using namespace RenderCore::LightingEngine;
 
     void BuildShadowConstantBuffers(
         CB_ArbitraryShadowProjection& arbitraryCBSource,
@@ -45,6 +32,9 @@ namespace SceneEngine
         const CB_OrthoShadowProjection& orthoCB,
         const Float4x4& cameraToWorld,
         const Float4x4& cameraToProjection);
+
+    class ICompiledShadowGenerator;
+    std::shared_ptr<ICompiledShadowGenerator> CreateCompiledShadowGenerator(const ShadowGeneratorDesc&, const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>&);
 
 #if 0
     void BindShadowsForForwardResolve(

@@ -49,12 +49,11 @@ namespace SceneEngine
         const RenderCore::Techniques::ProjectionDesc& projDesc)
     {
         parserContext.GetProjectionDesc() = projDesc;
-		parserContext.GetSystemUniformsDelegate().SetGlobalTransform(BuildGlobalTransformConstants(projDesc));
     }
 
 	RenderCore::Techniques::SequencerContext MakeSequencerContext(
 		RenderCore::Techniques::ParsingContext& parserContext,
-		const RenderCore::Techniques::SequencerConfig& sequencerConfig,
+		RenderCore::Techniques::SequencerConfig& sequencerConfig,
 		unsigned techniqueIndex)
 	{
 		RenderCore::Techniques::SequencerContext result;

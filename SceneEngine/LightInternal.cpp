@@ -5,8 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "LightInternal.h"
-#include "LightDesc.h"
-// #include "SceneEngineUtils.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
@@ -18,34 +16,6 @@
 
 namespace SceneEngine
 {
-
-
-
-    bool PreparedRTShadowFrustum::IsReady() const
-    {
-        assert(0);
-        return false;
-        // return _listHeadSRV.IsGood() && _linkedListsSRV.IsGood() && _trianglesSRV.IsGood();
-    }
-
-    PreparedRTShadowFrustum::PreparedRTShadowFrustum() {}
-
-    PreparedRTShadowFrustum::PreparedRTShadowFrustum(PreparedRTShadowFrustum&& moveFrom) never_throws
-    : PreparedShadowFrustum(std::move(moveFrom))
-    , _listHeadSRV(std::move(moveFrom._listHeadSRV))
-    , _linkedListsSRV(std::move(moveFrom._linkedListsSRV))
-    , _trianglesSRV(std::move(moveFrom._trianglesSRV))
-    {
-    }
-
-    PreparedRTShadowFrustum& PreparedRTShadowFrustum::operator=(PreparedRTShadowFrustum&& moveFrom) never_throws
-    {
-        PreparedShadowFrustum::operator=(std::move(moveFrom));
-        _listHeadSRV = std::move(moveFrom._listHeadSRV);
-        _linkedListsSRV = std::move(moveFrom._linkedListsSRV);
-        _trianglesSRV = std::move(moveFrom._trianglesSRV);
-        return *this;
-    }
 
     RenderCore::SharedPkt BuildScreenToShadowConstants(
         unsigned frustumCount,
