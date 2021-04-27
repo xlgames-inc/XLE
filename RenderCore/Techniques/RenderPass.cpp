@@ -554,7 +554,6 @@ namespace RenderCore { namespace Techniques
         };
         std::vector<SemanticAttachment>    _semanticAttachments;
 
-        FrameBufferProperties       _props;
         ViewPool                    _srvPool;
         std::shared_ptr<IDevice>    _device;
 
@@ -782,7 +781,7 @@ namespace RenderCore { namespace Techniques
         }
 
         AttachmentDesc::Flags::BitField relevantFlags = ~0u;
-        if (_pimpl->_props._samples._sampleCount <= 1)
+        if (fbDesc.GetProperties()._samples._sampleCount <= 1)
             relevantFlags &= ~AttachmentDesc::Flags::Multisampled;
 
         std::vector<BindFlag::BitField> attachmentBindFlags(fbDesc.GetAttachments().size(), 0);
@@ -795,6 +794,8 @@ namespace RenderCore { namespace Techniques
                 // \todo -- shader resource or input attachment bind flag here?
 				attachmentBindFlags[spDesc.GetDepthStencil()._resourceName] |= BindFlag::ShaderResource;
         }
+        for (unsigned c=0; c<fbDesc.GetAttachments().size(); ++c)
+            attachmentBindFlags[c] |= fbDesc.GetAttachments()[c]._desc._bindFlagsForFinalLayout;
 
         std::vector<AttachmentName> result;
         auto bindFlagI = attachmentBindFlags.begin();
@@ -831,7 +832,7 @@ namespace RenderCore { namespace Techniques
             // If we haven't found a match yet, we must treat the request as a temporary buffer
             // We will go through and either find an existing buffer or create a new one
             for (unsigned q=0; q<_pimpl->_attachments.size(); ++q) {
-                if (MatchRequest(requestDesc, *bindFlagI, _pimpl->_attachments[q]._desc, _pimpl->_props) && q < consumed.size() && !consumed[q]) {
+                if (MatchRequest(requestDesc, *bindFlagI, _pimpl->_attachments[q]._desc, fbDesc.GetProperties()) && q < consumed.size() && !consumed[q]) {
                     consumed[q] = true;
                     result.push_back(q);
                     foundMatch = true;
@@ -986,7 +987,6 @@ namespace RenderCore { namespace Techniques
     AttachmentPool::AttachmentPool(const std::shared_ptr<IDevice>& device)
     {
         _pimpl = std::make_unique<Pimpl>();
-        _pimpl->_props = {0u, 0u, TextureSamples::Create()};
         _pimpl->_device = device;
     }
 
