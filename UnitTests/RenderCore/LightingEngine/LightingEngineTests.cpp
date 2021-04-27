@@ -211,14 +211,23 @@ namespace UnitTests
 		auto techniqueSharedResources = RenderCore::Techniques::CreateTechniqueSharedResources(*testHelper->_device);
 		auto techDelBox = std::make_shared<LightingEngine::SharedTechniqueDelegateBox>(techniqueSharedResources);
 
-		auto lightingTechnique = LightingEngine::CreateForwardLightingTechnique(testHelper->_device, pipelineAcceleratorPool, techDelBox);
-		(void)lightingTechnique;
-
-		auto threadContext = testHelper->_device->GetImmediateContext();
 		auto targetDesc = CreateDesc(
 			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(256, 256, RenderCore::Format::R8G8B8A8_UNORM),
 			"temporary-out");
+		RenderCore::Techniques::PreregisteredAttachment preregisteredAttachments[] {
+			RenderCore::Techniques::PreregisteredAttachment {
+				RenderCore::Techniques::AttachmentSemantics::ColorLDR,
+				RenderCore::AsAttachmentDesc(targetDesc),
+				RenderCore::Techniques::PreregisteredAttachment::State::Uninitialized
+			}
+		};
+		RenderCore::FrameBufferProperties fbProps { targetDesc._textureDesc._width, targetDesc._textureDesc._height };
+
+		auto lightingTechnique = LightingEngine::CreateForwardLightingTechnique(testHelper->_device, pipelineAcceleratorPool, techDelBox, MakeIteratorRange(preregisteredAttachments), fbProps);
+		(void)lightingTechnique;
+
+		auto threadContext = testHelper->_device->GetImmediateContext();
 		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 
 		auto techniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();

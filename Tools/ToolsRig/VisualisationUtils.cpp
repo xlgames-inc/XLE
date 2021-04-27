@@ -222,9 +222,19 @@ namespace ToolsRig
 			}
 		}
 
-		auto compiledTechnique = RenderCore::LightingEngine::CreateForwardLightingTechnique(_pimpl->_pipelineAccelerators, _pimpl->_lightingApparatus);
+		auto targetDesc = renderTarget->GetDesc();
+		RenderCore::Techniques::PreregisteredAttachment preregisteredAttachments[] {
+			RenderCore::Techniques::PreregisteredAttachment {
+				RenderCore::Techniques::AttachmentSemantics::ColorLDR,
+				RenderCore::AsAttachmentDesc(targetDesc),
+				RenderCore::Techniques::PreregisteredAttachment::State::Uninitialized
+			}
+		};
+		RenderCore::FrameBufferProperties fbProps { targetDesc._textureDesc._width, targetDesc._textureDesc._height };
 
-		// working attachment --> RenderCore::AsAttachmentDesc(renderTarget->GetDesc()));
+		auto compiledTechnique = RenderCore::LightingEngine::CreateForwardLightingTechnique(
+			_pimpl->_pipelineAccelerators, _pimpl->_lightingApparatus,
+			MakeIteratorRange(preregisteredAttachments), fbProps);
 
 		// _pimpl->_envSettings is our SceneEngine::BasicLightingStateDelegate
 
@@ -248,7 +258,15 @@ namespace ToolsRig
 		}
 
 		if (!_pimpl->_preparingEnvSettings && !_pimpl->_preparingScene && !_pimpl->_preparingPipelineAccelerators) {
+
+			auto cam = AsCameraDesc(*_pimpl->_camera);
+			SceneEngine::SceneView sceneView {
+				SceneEngine::SceneView::Type::Normal,
+				RenderCore::Techniques::BuildProjectionDesc(cam, {targetDesc._textureDesc._width, targetDesc._textureDesc._height})
+			};
 			
+			parserContext.GetTechniqueContext()._attachmentPool->Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget);
+			parserContext.GetProjectionDesc() = sceneView._projection;
 			{
 				auto lightingIterator = SceneEngine::BeginLightingTechnique(
 					threadContext, parserContext, *_pimpl->_pipelineAccelerators,
@@ -263,6 +281,7 @@ namespace ToolsRig
 					_pimpl->_scene->ExecuteScene(threadContext, SceneEngine::SceneView{}, next._batch, *next._pkt);
 				}
 			}
+			parserContext.GetTechniqueContext()._attachmentPool->Unbind(*renderTarget);
 
 			// Draw debugging overlays -- 
 			{

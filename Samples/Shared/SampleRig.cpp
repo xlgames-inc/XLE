@@ -137,6 +137,7 @@ namespace Sample
             //  Before we go too far, though, let's log a list of active assets.
         Log(Verbose) << "Starting shutdown" << std::endl;
         RenderCore::Metal::DeviceContext::PrepareForDestruction(sampleGlobals._renderDevice.get(), sampleGlobals._windowApparatus->_presentationChain.get());
+        ConsoleRig::ResourceBoxes_Shutdown();
         ::Assets::Services::GetAssetSets().Clear();
         ::ConsoleRig::GlobalServices::GetInstance().UnloadDefaultPlugins();
         ::Assets::MainFileSystem::GetMountingTree()->Unmount(rawosmnt2);

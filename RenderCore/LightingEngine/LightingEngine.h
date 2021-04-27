@@ -6,8 +6,8 @@
 
 #include "../Techniques/Drawables.h"		// for Techniques::BatchFilter
 
-namespace RenderCore { class IDevice; class IThreadContext; }
-namespace RenderCore { namespace Techniques { class ParsingContext; class AttachmentPool; class FrameBufferPool; } }
+namespace RenderCore { class IDevice; class IThreadContext; class FrameBufferProperties; }
+namespace RenderCore { namespace Techniques { class ParsingContext; class AttachmentPool; class FrameBufferPool; class PreregisteredAttachment; } }
 
 namespace RenderCore { namespace LightingEngine
 {
@@ -43,10 +43,14 @@ namespace RenderCore { namespace LightingEngine
 
 	std::shared_ptr<CompiledLightingTechnique> CreateForwardLightingTechnique(
 		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-		const std::shared_ptr<LightingEngineApparatus>& apparatus);
+		const std::shared_ptr<LightingEngineApparatus>& apparatus,
+		IteratorRange<const Techniques::PreregisteredAttachment*> preregisteredAttachments,
+		const FrameBufferProperties& fbProps);
 
 	std::shared_ptr<CompiledLightingTechnique> CreateForwardLightingTechnique(
 		const std::shared_ptr<IDevice>& device,
 		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-		const std::shared_ptr<SharedTechniqueDelegateBox>& techDelBox);
+		const std::shared_ptr<SharedTechniqueDelegateBox>& techDelBox,
+		IteratorRange<const Techniques::PreregisteredAttachment*> preregisteredAttachments,
+		const FrameBufferProperties& fbProps);
 }}

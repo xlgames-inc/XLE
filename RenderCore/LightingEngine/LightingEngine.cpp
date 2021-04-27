@@ -25,6 +25,10 @@
 #include "../../Assets/IAsyncMarker.h"
 #include "../../OSServices/Log.h"
 
+// For post-render-pass blitting
+#include "../Metal/Resource.h"
+#include "../Metal/DeviceContext.h"
+
 namespace RenderCore { namespace LightingEngine
 {
 	class LightingTechniqueIterator;
@@ -34,12 +38,14 @@ namespace RenderCore { namespace LightingEngine
 	public:
 		struct Step
 		{
-			enum class Type { ParseScene, ExecuteFunction, ExecuteDrawables, BeginRenderPassInstance, EndRenderPassInstance, NextRenderPassStep, None };
+			enum class Type { ParseScene, ExecuteFunction, ExecuteDrawables, BeginRenderPassInstance, EndRenderPassInstance, NextRenderPassStep, PostRPBlit, None };
 			Type _type = Type::None;
 			Techniques::BatchFilter _batch = Techniques::BatchFilter::Max;
 			std::shared_ptr<Techniques::SequencerConfig> _sequencerConfig;
 			std::shared_ptr<Techniques::IShaderResourceDelegate> _shaderResourceDelegate;
 			FrameBufferDesc _fbDesc;
+			unsigned _blitSrc = ~0u;
+			uint64_t _blitDst = ~0ull;
 
 			using FnSig = void(LightingTechniqueIterator&);
 			std::function<FnSig> _function;
@@ -94,6 +100,42 @@ namespace RenderCore { namespace LightingEngine
 		_steps.emplace_back(std::move(newStep));
 	}
 
+	struct FragmentLinkResults
+	{
+		struct ExtraCopyStep
+		{
+			AttachmentName _src;
+			uint64_t _systemSemanticDst;
+		};
+		std::vector<ExtraCopyStep> _extraCopySteps;
+	};
+
+	static FragmentLinkResults LinkFragmentOutputsToSystemAttachments(
+		RenderCore::Techniques::MergeFragmentsResult& merged,
+		IteratorRange<RenderCore::Techniques::PreregisteredAttachment*> systemAttachments)
+	{
+		// Attempt to link our framebuffer fragment to the attachments in system attachments
+		// For the operation to be meaningful, it must write to at least one system attachment
+		// But if we write to nothing, we need to add an extra copy step to ensure that something
+		// get output
+		if (systemAttachments.empty() || merged._outputAttachments.empty()) return {};
+		for (const auto& a:merged._outputAttachments) {
+			auto i = std::find_if(systemAttachments.begin(), systemAttachments.end(), [semantic = a.first](const auto& c){ return c._semantic == semantic; });
+			if (i != systemAttachments.end())
+				return {};		// we're ok, we've written to something
+		}
+
+		// Try to match something to the first system attachment
+		FragmentLinkResults result;
+		FragmentLinkResults::ExtraCopyStep copyStep;
+		copyStep._src = merged._outputAttachments[0].second;
+		copyStep._systemSemanticDst = systemAttachments[0]._semantic;
+		result._extraCopySteps.push_back(copyStep);
+		merged._mergedFragment._attachments[copyStep._src]._desc._bindFlagsForFinalLayout |= BindFlag::TransferSrc;
+		systemAttachments[0]._state = RenderCore::Techniques::PreregisteredAttachment::State::Initialized;
+		return result;
+	}
+
 	void CompiledLightingTechnique::Push(RenderStepFragmentInterface&& fragments)
 	{
 		// Generate a FrameBufferDesc from the input
@@ -102,29 +144,19 @@ namespace RenderCore { namespace LightingEngine
 			MakeIteratorRange(_workingAttachments),
 			MakeIteratorRange(&fragments.GetFrameBufferDescFragment(), &fragments.GetFrameBufferDescFragment()+1),
 			dimensionsForCompatibilityTests);
-		auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment), _fbProps);
+
+		auto linkResults = LinkFragmentOutputsToSystemAttachments(merged, MakeIteratorRange(_workingAttachments));
+
+		#if defined(_DEBUG)
+			Log(Warning) << "Merged fragment in lighting technique:" << std::endl << merged._log << std::endl;
+			if (RenderCore::Techniques::CanBeSimplified(merged._mergedFragment, _workingAttachments))
+				Log(Warning) << "Detected a frame buffer fragment which be simplified while building lighting technique. This usually means one or more of the attachments can be reused, thereby reducing the total number of attachments required." << std::endl;
+		#endif
 
 		// Update _workingAttachments
-		_workingAttachments.reserve(merged._outputAttachments.size());
-		for (const auto&o:merged._outputAttachments) {
-			auto i = std::find_if(
-				_workingAttachments.begin(), _workingAttachments.end(),
-				[&o](const Techniques::PreregisteredAttachment& p) { return p._semantic == o.first; });
-			if (i != _workingAttachments.end()) {
-				assert(merged._mergedFragment._attachments[o.second]._outputSemanticBinding == o.first);
-				i->_desc = merged._mergedFragment._attachments[o.second]._desc;
-				i->_state = i->_stencilState = Techniques::PreregisteredAttachment::State::Initialized;
-			} else {
-				assert(merged._mergedFragment._attachments[o.second]._outputSemanticBinding == o.first);
-				_workingAttachments.push_back(
-					Techniques::PreregisteredAttachment { 
-						o.first,
-						merged._mergedFragment._attachments[o.second]._desc,
-						Techniques::PreregisteredAttachment::State::Initialized,
-						Techniques::PreregisteredAttachment::State::Initialized
-					});
-			}
-		}
+		RenderCore::Techniques::MergeInOutputs(_workingAttachments, merged._mergedFragment);
+
+		auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment), _fbProps);
 
 		// Generate commands for walking through the render pass
 		Step beginStep;
@@ -150,6 +182,14 @@ namespace RenderCore { namespace LightingEngine
 		}
 
 		_steps.push_back({Step::Type::EndRenderPassInstance});
+
+		for (const auto&step:linkResults._extraCopySteps) {
+			Step blitStep;
+			blitStep._type = Step::Type::PostRPBlit;
+			blitStep._blitSrc = step._src;
+			blitStep._blitDst = step._systemSemanticDst;
+			_steps.push_back(blitStep);
+		}
 	}
 
 	CompiledLightingTechnique::CompiledLightingTechnique(
@@ -174,7 +214,7 @@ namespace RenderCore { namespace LightingEngine
 		Techniques::AttachmentPool* _attachmentPool = nullptr;
 		Techniques::FrameBufferPool* _frameBufferPool = nullptr;
 		const CompiledLightingTechnique* _compiledTechnique = nullptr;
-		const SceneLightingDesc* _sceneLightingDesc = nullptr;
+		SceneLightingDesc _sceneLightingDesc;
 
 		void PushFollowingStep(std::function<CompiledLightingTechnique::Step::FnSig>&& fn)
 		{
@@ -221,7 +261,7 @@ namespace RenderCore { namespace LightingEngine
 		, _attachmentPool(&attachmentPool)
 		, _frameBufferPool(&frameBufferPool)
 		, _compiledTechnique(&compiledTechnique)
-		, _sceneLightingDesc(&sceneLightingDesc)
+		, _sceneLightingDesc(sceneLightingDesc)
 		{
 			_steps = compiledTechnique._steps;
 			_stepIterator = _steps.begin();
@@ -292,11 +332,22 @@ namespace RenderCore { namespace LightingEngine
 				break;
 
 			case CompiledLightingTechnique::Step::Type::EndRenderPassInstance:
-				_iterator->_rpi = {};
+				_iterator->_rpi.End();
 				break;
 
 			case CompiledLightingTechnique::Step::Type::NextRenderPassStep:
 				_iterator->_rpi.NextSubpass();
+				break;
+
+			case CompiledLightingTechnique::Step::Type::PostRPBlit:
+				{
+					auto* src = _iterator->_rpi.GetResourceForAttachmentName(next->_blitSrc).get();
+					auto* dst = _iterator->_attachmentPool->GetBoundResource(next->_blitDst).get();
+					assert(src && dst);
+					auto& metalContext = *Metal::DeviceContext::Get(*_iterator->_threadContext);
+					auto blitEncoder = metalContext.BeginBlitEncoder();
+					blitEncoder.Copy(*dst, *src);
+				}
 				break;
 
 			case CompiledLightingTechnique::Step::Type::None:
@@ -305,6 +356,7 @@ namespace RenderCore { namespace LightingEngine
 			}
 		}
 
+		_iterator->_rpi = {};		// ensure we release everything at the very end
 		return Step { StepType::None };
 	}
 
@@ -333,7 +385,7 @@ namespace RenderCore { namespace LightingEngine
 		std::shared_ptr<ICompiledShadowPreparer> _shadowPreparer;
 		std::shared_ptr<Techniques::FrameBufferPool> _shadowGenFrameBufferPool;
 		std::shared_ptr<Techniques::AttachmentPool> _shadowGenAttachmentPool;
-		SceneLightingDesc _sceneLightDesc;
+		const SceneLightingDesc* _sceneLightDesc;
 
 		class UniformsDelegate : public Techniques::IShaderResourceDelegate
 		{
@@ -343,7 +395,7 @@ namespace RenderCore { namespace LightingEngine
 			{
 				assert(idx==0);
 				assert(dst.size() == sizeof(CB_BasicEnvironment));
-				*(CB_BasicEnvironment*)dst.begin() = MakeBasicEnvironmentUniforms(_captures->_sceneLightDesc);
+				*(CB_BasicEnvironment*)dst.begin() = MakeBasicEnvironmentUniforms(*_captures->_sceneLightDesc);
 			}
 
 			size_t GetImmediateDataSize(Techniques::ParsingContext& context, const void* objectContext, unsigned idx) override
@@ -397,7 +449,8 @@ namespace RenderCore { namespace LightingEngine
 		bool precisionTargets)
 	{
 		AttachmentDesc lightResolveAttachmentDesc =
-			{	(!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
+			{	// (!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
+				Format::B8G8R8A8_UNORM_SRGB,		// hack; while skipping tone mapping
 				1.f, 1.f, 0u,
 				AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::OutputRelativeDimensions };
 
@@ -429,26 +482,21 @@ namespace RenderCore { namespace LightingEngine
 
 	std::shared_ptr<CompiledLightingTechnique> CreateForwardLightingTechnique(
 		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-		const std::shared_ptr<LightingEngineApparatus>& apparatus)
+		const std::shared_ptr<LightingEngineApparatus>& apparatus,
+		IteratorRange<const Techniques::PreregisteredAttachment*> preregisteredAttachments,
+		const FrameBufferProperties& fbProps)
 	{
-		return CreateForwardLightingTechnique(apparatus->_device, pipelineAccelerators, apparatus->_sharedDelegates);
+		return CreateForwardLightingTechnique(apparatus->_device, pipelineAccelerators, apparatus->_sharedDelegates, preregisteredAttachments, fbProps);
 	}
 
 	std::shared_ptr<CompiledLightingTechnique> CreateForwardLightingTechnique(
 		const std::shared_ptr<IDevice>& device,
 		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-		const std::shared_ptr<SharedTechniqueDelegateBox>& techDelBox)
+		const std::shared_ptr<SharedTechniqueDelegateBox>& techDelBox,
+		IteratorRange<const Techniques::PreregisteredAttachment*> preregisteredAttachments,
+		const FrameBufferProperties& fbProps)
 	{
-		std::vector<Techniques::PreregisteredAttachment> predefinedAttachments = {
-			Techniques::PreregisteredAttachment { 
-				Techniques::AttachmentSemantics::ColorLDR,
-				AttachmentDesc { Format::R8G8B8A8_UNORM, 256, 256 },
-				Techniques::PreregisteredAttachment::State::Uninitialized
-			}
-		};
-		FrameBufferProperties fbProps { 256, 256 };
-
-		auto lightingTechnique = std::make_shared<CompiledLightingTechnique>(pipelineAccelerators, fbProps, MakeIteratorRange(predefinedAttachments));
+		auto lightingTechnique = std::make_shared<CompiledLightingTechnique>(pipelineAccelerators, fbProps, preregisteredAttachments);
 		auto captures = std::make_shared<ForwardLightingCaptures>();
 		captures->_shadowGenAttachmentPool = std::make_shared<Techniques::AttachmentPool>(device);
 		captures->_shadowGenFrameBufferPool = std::make_shared<Techniques::FrameBufferPool>();
@@ -457,7 +505,7 @@ namespace RenderCore { namespace LightingEngine
 		// Reset captures
 		lightingTechnique->Push(
 			[captures](LightingTechniqueIterator& iterator) {
-				captures->_sceneLightDesc = *iterator._sceneLightingDesc;
+				captures->_sceneLightDesc = &iterator._sceneLightingDesc;
 				iterator._parsingContext->AddShaderResourceDelegate(captures->_uniformsDelegate);
 			});
 
@@ -466,7 +514,7 @@ namespace RenderCore { namespace LightingEngine
 		captures->_shadowPreparer = CreateCompiledShadowPreparer(defaultShadowGenerator, pipelineAccelerators, techDelBox);
 		lightingTechnique->Push(
 			[captures](LightingTechniqueIterator& iterator) {
-				const auto& lightingDesc = *iterator._sceneLightingDesc;
+				const auto& lightingDesc = iterator._sceneLightingDesc;
 
 				captures->_preparedDMShadows.reserve(lightingDesc._shadowProjections.size());
 				for (unsigned c=0; c<lightingDesc._shadowProjections.size(); ++c)

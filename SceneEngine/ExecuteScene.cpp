@@ -8,6 +8,7 @@
 #include "../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/RenderPass.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 
 namespace SceneEngine
 {
@@ -32,9 +33,17 @@ namespace SceneEngine
 		SceneEngine::ILightingStateDelegate& lightingState,
 		RenderCore::LightingEngine::CompiledLightingTechnique& compiledTechnique)
 	{
+		RenderCore::LightingEngine::SceneLightingDesc lightingDesc;
+		lightingDesc._env = lightingState.GetEnvironmentalLightingDesc();
+		auto lightCount = lightingState.GetLightCount();
+		auto shadowProjCount = lightingState.GetShadowProjectionCount();
+		lightingDesc._lights.reserve(lightCount);
+		lightingDesc._shadowProjections.reserve(shadowProjCount);
+		for (unsigned c=0; c<lightCount; ++c) lightingDesc._lights.push_back(lightingState.GetLightDesc(c));
+		for (unsigned c=0; c<shadowProjCount; ++c) lightingDesc._shadowProjections.push_back(lightingState.GetShadowProjectionDesc(c, parsingContext.GetProjectionDesc()));
 		return RenderCore::LightingEngine::LightingTechniqueInstance{
 			threadContext, parsingContext, pipelineAccelerators,
-			RenderCore::LightingEngine::SceneLightingDesc{}, compiledTechnique};
+			lightingDesc, compiledTechnique};
 	}
 
 	std::shared_ptr<::Assets::IAsyncMarker> PrepareResources(
