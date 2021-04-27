@@ -15,6 +15,7 @@
 namespace RenderCore { namespace Metal_Vulkan
 {
 	class DeviceContext;
+    class ExtensionFunctions;
 
 	class IAsyncTracker
 	{
@@ -139,12 +140,16 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		void SetDefaultDestroyer(const std::shared_ptr<IDestructionQueue>&);
 
+        ExtensionFunctions& GetExtensionFunctions() { return *_extensionFunctions; }
+
         #if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
             void ForgetResource(uint64_t resourceGuid) const;
             mutable std::vector<uint64_t> _resourcesVisibleToQueue;
         #endif
 
-		ObjectFactory(VkPhysicalDevice physDev, VulkanSharedPtr<VkDevice> device);
+		ObjectFactory(
+            VkPhysicalDevice physDev, VulkanSharedPtr<VkDevice> device, 
+            std::shared_ptr<ExtensionFunctions> extensionFunctions);
 		ObjectFactory();
 		~ObjectFactory();
 
@@ -157,12 +162,13 @@ namespace RenderCore { namespace Metal_Vulkan
 	private:
         VkPhysicalDevice            _physDev;
 		VulkanSharedPtr<VkDevice>   _device;
-
+        
 		std::shared_ptr<IDestructionQueue> _immediateDestruction; 
 		std::shared_ptr<IDestructionQueue> _destruction;
 
         std::unique_ptr<VkPhysicalDeviceMemoryProperties> _memProps;
         std::unique_ptr<VkPhysicalDeviceProperties> _physDevProperties;
+        std::shared_ptr<ExtensionFunctions> _extensionFunctions;
 	};
 
 	ObjectFactory& GetObjectFactory(IDevice& device);

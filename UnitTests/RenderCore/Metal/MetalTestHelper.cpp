@@ -277,6 +277,24 @@ namespace UnitTests
 		Metal::CompleteInitialization(*Metal::DeviceContext::Get(threadContext), {_pimpl->_mainTarget.get()});
 	}
 
+	UnitTestFBHelper::UnitTestFBHelper(
+		RenderCore::IDevice& device,
+		RenderCore::IThreadContext& threadContext)
+	{
+		// This constructs a frame buffer with 1 subpass, but no attachments
+		// It's useful for stream output cases
+		using namespace RenderCore;
+		_pimpl = std::make_unique<UnitTestFBHelper::Pimpl>();
+
+		SubpassDesc mainSubpass;
+		mainSubpass.SetName("stream-output-subpass");
+		_pimpl->_fbDesc = FrameBufferDesc { {}, std::vector<SubpassDesc>{ mainSubpass } };
+		_pimpl->_fb = std::make_shared<RenderCore::Metal::FrameBuffer>(
+			Metal::GetObjectFactory(device),
+			_pimpl->_fbDesc,
+			*_pimpl);
+	}
+
 	UnitTestFBHelper::~UnitTestFBHelper()
 	{
 	}

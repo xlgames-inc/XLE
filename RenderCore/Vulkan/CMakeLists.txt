@@ -5,6 +5,7 @@ set(Src
 	Metal/CompiledShaderByteCode.cpp
 	Metal/DescriptorSet.cpp
 	Metal/DeviceContext.cpp
+	Metal/ExtensionFunctions.cpp
 	Metal/Format.cpp
 	Metal/FrameBuffer.cpp
 	Metal/InputLayout.cpp

@@ -14,6 +14,7 @@
 #include "Metal/PipelineLayout.h"
 #include "Metal/Shader.h"
 #include "Metal/State.h"
+#include "Metal/ExtensionFunctions.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../OSServices/Log.h"
 #include "../../ConsoleRig/AttachablePtr.h"
@@ -784,7 +785,8 @@ namespace RenderCore { namespace ImplVulkan
         if (!_underlying) {
 			_physDev = SelectPhysicalDeviceForRendering(_instance.get(), surface);
 			_underlying = CreateUnderlyingDevice(_physDev);
-			_objectFactory = Metal_Vulkan::ObjectFactory(_physDev._dev, _underlying);
+			auto extensionFunctions = std::make_shared<Metal_Vulkan::ExtensionFunctions>(_instance.get());
+			_objectFactory = Metal_Vulkan::ObjectFactory(_physDev._dev, _underlying, extensionFunctions);
 
 			// Set up the object factory with a default destroyer that tracks the current
 			// GPU frame progress

@@ -288,16 +288,19 @@ namespace RenderCore { namespace Metal_Vulkan
 		GraphicsEncoder_ProgressivePipeline();
 		~GraphicsEncoder_ProgressivePipeline();
 	protected:
+		enum class Type { Normal, StreamOutput };
 		GraphicsEncoder_ProgressivePipeline(
 			const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout,
 			const std::shared_ptr<VulkanEncoderSharedState>& sharedState,
 			ObjectFactory& objectFactory,
-			GlobalPools& globalPools);
+			GlobalPools& globalPools,
+			Type type = Type::Normal);
 	
 		bool 		BindGraphicsPipeline();
 		std::shared_ptr<GraphicsPipeline>	_currentGraphicsPipeline;
 		ObjectFactory*						_factory;
 		GlobalPools*                        _globalPools;
+		Type								_type;
 		void LogPipeline();
 
 		friend class DeviceContext;
@@ -374,6 +377,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		GraphicsEncoder_Optimized BeginGraphicsEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
 		GraphicsEncoder_ProgressivePipeline BeginGraphicsEncoder_ProgressivePipeline(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
 		ComputeEncoder_ProgressivePipeline BeginComputeEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
+		GraphicsEncoder_ProgressivePipeline BeginStreamOutputEncoder_ProgressivePipeline(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout, IteratorRange<const VertexBufferView*> outputBuffers);
 		BlitEncoder BeginBlitEncoder();
 
 		void Clear(const IResourceView& renderTarget, const VectorPattern<float,4>& clearColour);

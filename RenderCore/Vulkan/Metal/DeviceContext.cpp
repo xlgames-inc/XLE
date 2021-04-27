@@ -13,6 +13,7 @@
 #include "Pools.h"
 #include "PipelineLayout.h"
 #include "ShaderReflection.h"
+#include "ExtensionFunctions.h"
 #include "../IDeviceVulkan.h"
 #include "../../Format.h"
 #include "../../BufferView.h"
@@ -136,6 +137,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkBuffer buffers[s_maxBoundVBs];
 		VkDeviceSize offsets[s_maxBoundVBs];
 		// auto count = (unsigned)std::min(std::min(vertexBuffers.size(), dimof(buffers)), _vbBindingDescriptions.size());
+		assert(vbViews.size() < s_maxBoundVBs);
 		for (unsigned c=0; c<vbViews.size(); ++c) {
 			offsets[c] = vbViews[c]._offset;
 			assert(const_cast<IResource*>(vbViews[c]._resource)->QueryInterface(typeid(Resource).hash_code()));
@@ -597,8 +599,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		_currentGraphicsPipeline = std::move(moveFrom._currentGraphicsPipeline);
 		_factory = moveFrom._factory;
 		_globalPools = moveFrom._globalPools;
+		_type = moveFrom._type;
 		moveFrom._factory = nullptr;
 		moveFrom._globalPools = nullptr;
+		moveFrom._type = Type::Normal;
 	}
 
 	GraphicsEncoder_ProgressivePipeline& GraphicsEncoder_ProgressivePipeline::operator=(GraphicsEncoder_ProgressivePipeline&& moveFrom)
@@ -608,8 +612,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		_currentGraphicsPipeline = std::move(moveFrom._currentGraphicsPipeline);
 		_factory = moveFrom._factory;
 		_globalPools = moveFrom._globalPools;
+		_type = moveFrom._type;
 		moveFrom._factory = nullptr;
 		moveFrom._globalPools = nullptr;
+		moveFrom._type = Type::Normal;
 		return *this;
 	}
 
@@ -617,11 +623,14 @@ namespace RenderCore { namespace Metal_Vulkan
 		const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout,
 		const std::shared_ptr<VulkanEncoderSharedState>& sharedState,
 		ObjectFactory& objectFactory,
-		GlobalPools& globalPools)
+		GlobalPools& globalPools,
+		Type type)
 	: GraphicsEncoder(pipelineLayout, sharedState)
 	, _factory(&objectFactory)
 	, _globalPools(&globalPools)
+	, _type(type)
 	{
+		assert(_sharedState);
 		_sharedState->_currentEncoderType = VulkanEncoderSharedState::EncoderType::ProgressiveGraphics;
 	}
 
@@ -629,10 +638,18 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		_factory = nullptr;
 		_globalPools = nullptr;
+		_type = Type::Normal;
 	}
 
 	GraphicsEncoder_ProgressivePipeline::~GraphicsEncoder_ProgressivePipeline()
-	{}
+	{
+		if (_type == Type::StreamOutput && _sharedState) {
+			assert(GetObjectFactory().GetExtensionFunctions()._endTransformFeedback);
+			(*GetObjectFactory().GetExtensionFunctions()._endTransformFeedback)(
+				_sharedState->_commandList.GetUnderlying().get(),
+				0, 0, nullptr, nullptr);
+		}
+	}
 
 	GraphicsEncoder_Optimized::GraphicsEncoder_Optimized(GraphicsEncoder_Optimized&& moveFrom)
 	: GraphicsEncoder(std::move(moveFrom))
@@ -705,10 +722,45 @@ namespace RenderCore { namespace Metal_Vulkan
 		return GraphicsEncoder_ProgressivePipeline { checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout), _sharedState, *_factory, *_globalPools };
 	}
 
+	GraphicsEncoder_ProgressivePipeline DeviceContext::BeginStreamOutputEncoder_ProgressivePipeline(
+		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
+		IteratorRange<const VertexBufferView*> outputBuffers)
+	{
+		if (_sharedState->_inBltPass)
+			Throw(::Exceptions::BasicLabel("Attempting to begin a stream output encoder while a blt pass is in progress"));
+		if (outputBuffers.empty())
+			Throw(::Exceptions::BasicLabel("No stream output buffers provided to BeginStreamOutputEncoder_ProgressivePipeline"));
+
+		if (!_factory->GetExtensionFunctions()._beginTransformFeedback)
+			Throw(::Exceptions::BasicLabel("Stream output extension not supported on this platform"));
+
+		assert(_factory->GetExtensionFunctions()._beginTransformFeedback);
+		assert(_factory->GetExtensionFunctions()._bindTransformFeedbackBuffers);
+
+		VkDeviceSize offsets[outputBuffers.size()];
+		VkBuffer buffers[outputBuffers.size()];
+		for (unsigned c=0; c<outputBuffers.size(); ++c) {
+			offsets[c] = outputBuffers[c]._offset;
+			assert(const_cast<IResource*>(outputBuffers[c]._resource)->QueryInterface(typeid(Resource).hash_code()));
+			buffers[c] = checked_cast<const Resource*>(outputBuffers[c]._resource)->GetBuffer();
+		}
+
+		(*_factory->GetExtensionFunctions()._bindTransformFeedbackBuffers)(
+			GetActiveCommandList().GetUnderlying().get(),
+			0, outputBuffers.size(), 
+			buffers, offsets, nullptr);
+
+		(*_factory->GetExtensionFunctions()._beginTransformFeedback)(
+			GetActiveCommandList().GetUnderlying().get(),
+			0, 0, nullptr, nullptr);
+
+		return GraphicsEncoder_ProgressivePipeline { checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout), _sharedState, *_factory, *_globalPools, GraphicsEncoder_ProgressivePipeline::Type::StreamOutput };
+	}
+
 	ComputeEncoder_ProgressivePipeline DeviceContext::BeginComputeEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
 	{
 		if (_sharedState->_renderPass)
-			Throw(::Exceptions::BasicLabel("Attempting to begin a compute encoder while another render pass is in progress"));
+			Throw(::Exceptions::BasicLabel("Attempting to begin a compute encoder while a render pass is in progress"));
 		if (_sharedState->_inBltPass)
 			Throw(::Exceptions::BasicLabel("Attempting to begin a compute encoder while a blt pass is in progress"));
 		return ComputeEncoder_ProgressivePipeline { checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout), _sharedState, *_factory, *_globalPools };

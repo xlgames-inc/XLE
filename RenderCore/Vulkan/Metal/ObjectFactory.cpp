@@ -6,6 +6,7 @@
 
 #include "ObjectFactory.h"
 #include "Resource.h"
+#include "ExtensionFunctions.h"
 #include "IncludeVulkan.h"
 #include "../../../OSServices/Log.h"
 #include "../../../Core/Prefix.h"
@@ -426,6 +427,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	, _immediateDestruction(std::move(moveFrom._immediateDestruction))
     , _memProps(std::move(moveFrom._memProps))
     , _physDevProperties(std::move(moveFrom._physDevProperties))
+    , _extensionFunctions(std::move(moveFrom._extensionFunctions))
     {}
 
 	ObjectFactory& ObjectFactory::operator=(ObjectFactory&& moveFrom) never_throws
@@ -436,11 +438,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		_immediateDestruction = std::move(moveFrom._immediateDestruction);
         _memProps = std::move(moveFrom._memProps);
         _physDevProperties = std::move(moveFrom._physDevProperties);
+        _extensionFunctions = std::move(moveFrom._extensionFunctions);
         return *this;
     }
 
-    ObjectFactory::ObjectFactory(VkPhysicalDevice physDev, VulkanSharedPtr<VkDevice> device)
-    : _physDev(physDev), _device(device)
+    ObjectFactory::ObjectFactory(VkPhysicalDevice physDev, VulkanSharedPtr<VkDevice> device, std::shared_ptr<ExtensionFunctions> extensionFunctions)
+    : _physDev(physDev), _device(device), _extensionFunctions(extensionFunctions)
     {
         _memProps = std::make_unique<VkPhysicalDeviceMemoryProperties>(VkPhysicalDeviceMemoryProperties{});
         vkGetPhysicalDeviceMemoryProperties(physDev, _memProps.get());

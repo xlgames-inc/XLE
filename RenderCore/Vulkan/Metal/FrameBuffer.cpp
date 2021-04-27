@@ -616,6 +616,14 @@ namespace RenderCore { namespace Metal_Vulkan
 			_retainedViews.push_back(std::move(rtv));
         }
 
+		if (rawViewCount == 0 && maxDims._width == 0 && maxDims._height == 0) {
+			// It's valid to create a frame buffer with no attachments (eg, for stream output)
+			// We still need width & height in these cases, though
+			// This will effect the default viewport/scissor when using stream output -- but otherwise
+			// it might be ot ok to just use arbitrary values?
+			maxDims._width = maxDims._height = 256;
+		}
+
         VkFramebufferCreateInfo fb_info = {};
         fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fb_info.pNext = nullptr;

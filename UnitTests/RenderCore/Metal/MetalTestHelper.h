@@ -13,7 +13,7 @@
 #include <memory>
 #include <map>
 
-namespace RenderCore { class IDevice; class IThreadContext; class DescriptorSetSignature; class FrameBufferDesc; }
+namespace RenderCore { class IDevice; class IThreadContext; class DescriptorSetSignature; class FrameBufferDesc; class StreamOutputInitializers; }
 namespace UnitTests
 {
     class MetalTestHelper
@@ -66,6 +66,9 @@ namespace UnitTests
             RenderCore::IThreadContext& threadContext,
             const RenderCore::ResourceDesc& mainTargetDesc,
             RenderCore::LoadStore beginLoadStore = RenderCore::LoadStore::Clear);
+        UnitTestFBHelper(
+            RenderCore::IDevice& device,
+            RenderCore::IThreadContext& threadContext);
         ~UnitTestFBHelper();
 
         class IRenderPassToken
