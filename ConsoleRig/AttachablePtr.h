@@ -48,6 +48,8 @@ namespace ConsoleRig
 				std::function<void(const std::shared_ptr<void>&)>&& attachModuleFn,
 				std::function<void(const std::shared_ptr<void>&)>&& detachModuleFn);
 
+			void EnsureRegistered();
+
 			InfraModuleManager(InfraModuleManager&&) = delete;
 			InfraModuleManager& operator=(InfraModuleManager&& moveFrom) = delete;
 
@@ -170,6 +172,7 @@ namespace ConsoleRig
 	public:
 		VariantFunctions _services;
 
+		void EnsureReady();
 		void Shutdown();
 		static CrossModule& GetInstance();
 	private:
@@ -254,7 +257,6 @@ namespace ConsoleRig
 	template<typename Obj>
 		void AttachablePtr<Obj>::ManagerShuttingDown()
 	{
-		_managerRegistry = ~0u;
 		_internalPointer = nullptr;
 	}
 

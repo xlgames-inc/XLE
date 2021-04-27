@@ -197,6 +197,7 @@ namespace ConsoleRig
         _pimpl->_pollingThread = std::make_shared<OSServices::PollingThread>();
 		_pimpl->_cfg = cfg;
 
+        CrossModule::GetInstance().EnsureReady();   // if we called CrossModule::GetInstance().Shutdown() previously, we can balance it with this
         MainRig_Startup(cfg);
 
         if (!_pimpl->_depValSys)

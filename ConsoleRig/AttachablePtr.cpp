@@ -168,15 +168,16 @@ namespace ConsoleRig
 		{
 			for (const auto&ptr:_pimpl->_registeredPointers)
 				ptr.second._ptr->ManagerShuttingDown();
-			_pimpl->_registeredPointers.clear();
-			for (const auto&type:_pimpl->_registeredTypes)
-				if ((type.second._localStrongReferenceCounts + type.second._localWeakReferenceCounts) != 0 && type.second._currentValue && type.second._detachModuleFn)
-					type.second._detachModuleFn(type.second._currentValue);
-			_pimpl->_registeredTypes.clear();
 			if (_pimpl->_crossModuleRegistration != ~0u) {
 				CrossModule::GetInstance().Deregister(_pimpl->_crossModuleRegistration);
 				_pimpl->_crossModuleRegistration = ~0u;
 			}
+		}
+
+		void InfraModuleManager::EnsureRegistered()
+		{
+			if (_pimpl->_crossModuleRegistration == ~0u)
+				_pimpl->_crossModuleRegistration = CrossModule::GetInstance().Register(this);
 		}
 
 		InfraModuleManager::InfraModuleManager()
@@ -272,6 +273,11 @@ namespace ConsoleRig
 		assert(i != _pimpl->_moduleSpecificManagers.end());
 		if (i != _pimpl->_moduleSpecificManagers.end())
 			_pimpl->_moduleSpecificManagers.erase(i);
+	}
+
+	void CrossModule::EnsureReady()
+	{
+		Internal::InfraModuleManager::GetInstance().EnsureRegistered();
 	}
 
 	void CrossModule::Shutdown()
