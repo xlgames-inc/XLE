@@ -4,6 +4,7 @@
 
 #include "Drawables.h"
 #include "DrawableDelegates.h"
+#include "DrawablesInternal.h"
 #include "Techniques.h"
 #include "TechniqueUtils.h"
 #include "ParsingContext.h"
@@ -85,7 +86,7 @@ namespace RenderCore { namespace Techniques
 
 	static DescriptorSetSignature AsDescriptorSetSignature(const RenderCore::Assets::PredefinedDescriptorSetLayout& layout);
 
-	static void Draw(
+	void Draw(
 		RenderCore::Metal::DeviceContext& metalContext,
         RenderCore::Metal::GraphicsEncoder_Optimized& encoder,
 		ParsingContext& parserContext,

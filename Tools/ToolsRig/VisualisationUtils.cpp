@@ -126,9 +126,6 @@ namespace ToolsRig
 		std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> _immediateDrawables;
 		std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus> _lightingApparatus;
 		std::shared_ptr<::Assets::IAsyncMarker> _pendingPipelines;
-
-		// std::vector<std::shared_ptr<SceneEngine::ILightingParserPlugin>> _lightingPlugins;
-		// std::vector<std::shared_ptr<SceneEngine::IRenderStep>> _renderSteps;
     };
 
 	static ::Assets::AssetState GetAsyncSceneState(SceneEngine::IScene& scene)
@@ -252,13 +249,6 @@ namespace ToolsRig
 
 		if (!_pimpl->_preparingEnvSettings && !_pimpl->_preparingScene && !_pimpl->_preparingPipelineAccelerators) {
 			
-			/*
-			auto lightingParserContext = LightingParser_ExecuteScene(
-				threadContext, renderTarget, parserContext, 
-				*compiledTechnique, lightingParserDelegate,
-				*_pimpl->_scene, AsCameraDesc(*_pimpl->_camera));
-			*/
-
 			{
 				auto lightingIterator = SceneEngine::BeginLightingTechnique(
 					threadContext, parserContext, *_pimpl->_pipelineAccelerators,
@@ -580,7 +570,7 @@ namespace ToolsRig
 					SceneEngine::ExecuteSceneRaw(
 						threadContext, parserContext, *_pimpl->_pipelineAccelerators,
 						sequencerTechnique,
-						sceneView,
+						sceneView, RenderCore::Techniques::BatchFilter::General,
 						*_pimpl->_scene);
 				CATCH_ASSETS_END(parserContext)
 			}
@@ -592,7 +582,7 @@ namespace ToolsRig
 					SceneEngine::ExecuteSceneRaw(
 						threadContext, parserContext, *_pimpl->_pipelineAccelerators,
 						sequencerTechnique,
-						sceneView,
+						sceneView, RenderCore::Techniques::BatchFilter::General,
 						*_pimpl->_scene);
 				CATCH_ASSETS_END(parserContext)
 			}
@@ -620,7 +610,7 @@ namespace ToolsRig
 					SceneEngine::ExecuteSceneRaw(
 						threadContext, parserContext, *_pimpl->_pipelineAccelerators,
 						sequencerTechnique,
-						sceneView,
+						sceneView, RenderCore::Techniques::BatchFilter::General,
 						*_pimpl->_scene);
 				CATCH_ASSETS_END(parserContext)
 				if (visContent)
@@ -759,23 +749,16 @@ namespace ToolsRig
 		using namespace RenderCore;
 
 		Techniques::ParsingContext parserContext { techniqueContext };
+
+		RenderCore::Techniques::DrawablesPacket pkt;
+        scene.ExecuteScene(threadContext, {SceneEngine::SceneView::Type::Other}, RenderCore::Techniques::BatchFilter::General, pkt);
 		
 		SceneEngine::ModelIntersectionStateContext stateContext {
             SceneEngine::ModelIntersectionStateContext::RayTest,
-            threadContext, parserContext };
+            threadContext, pipelineAccelerators };
         stateContext.SetRay(worldSpaceRay);
+		stateContext.ExecuteDrawables(parserContext, pipelineAccelerators, pkt);
 		
-		CATCH_ASSETS_BEGIN
-		
-			auto sequencerTechnique = stateContext.MakeRayTestSequencerTechnique();
-			SceneEngine::ExecuteSceneRaw(
-				threadContext, parserContext, pipelineAccelerators,
-				sequencerTechnique,
-				{SceneEngine::SceneView::Type::Other},
-				scene);
-
-		CATCH_ASSETS_END(parserContext)	// we can get pending/invalid assets here, which we can suppress
-
         auto results = stateContext.GetResults();
         if (!results.empty()) {
             const auto& r = results[0];
@@ -867,8 +850,6 @@ namespace ToolsRig
 			const PlatformRig::InputContext& context,
 			PlatformRig::Coord2 mousePosition)
 		{
-			assert(0);	// not updated
-#if 0
             auto worldSpaceRay = SceneEngine::IntersectionTestContext::CalculateWorldSpaceRay(
 				AsCameraDesc(*_camera), mousePosition, context._viewMins, context._viewMaxs);
 
@@ -891,7 +872,6 @@ namespace ToolsRig
 					}
 				}
 			}
-#endif
         }
 
 		void Set(const std::shared_ptr<SceneEngine::IScene>& scene) { _scene = scene; }

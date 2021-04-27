@@ -5,12 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "RayVsModel.h"
-#include "SceneEngineUtils.h"
-#include "LightingParser.h"
-#include "LightingParserContext.h"
-#include "MetalStubs.h"
-#include "RenderStepUtils.h"
-#include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
 #include "../RenderCore/Metal/QueryPool.h"
@@ -26,11 +20,10 @@
 #include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../RenderCore/Techniques/PipelineAccelerator.h"
-#include "../RenderCore/Assets/Services.h"
-#include "../FixedFunctionModel/PreboundShaders.h"
-#include "../BufferUploads/IBufferUploads.h"
-#include "../BufferUploads/DataPacket.h"
-#include "../BufferUploads/ResourceLocator.h"
+#include "../RenderCore/Techniques/Drawables.h"
+#include "../RenderCore/Techniques/DrawablesInternal.h"
+#include "../RenderCore/Techniques/Services.h"
+#include "../RenderCore/Techniques/CommonUtils.h"
 #include "../Assets/Assets.h"
 #include "../Assets/DepVal.h"
 #include "../Math/Transformations.h"
@@ -42,7 +35,7 @@ namespace SceneEngine
     using namespace RenderCore;
 
 	static std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> CreateTechniqueDelegate(
-		const std::shared_ptr<RenderCore::Techniques::TechniqueSetFile>& techniqueSet,
+		const ::Assets::FuturePtr<RenderCore::Techniques::TechniqueSetFile>& techniqueSet,
 		const std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources>& sharedResources);
 
 	class RayDefinitionUniformDelegate : public Techniques::IUniformBufferDelegate
@@ -50,31 +43,23 @@ namespace SceneEngine
 	public:
 		struct Buffer
         {
-            Float3 _rayStart;
-            float _rayLength;
-            Float3 _rayDirection;
-            unsigned _dummy;
+            Float3 _rayStart = Zero<Float3>();
+            float _rayLength = 0.f;
+            Float3 _rayDirection = Zero<Float3>();
+            unsigned _dummy = 0;
+			Float4x4 _frustum = Identity<Float4x4>();
         };
 		Buffer _data = {};
 
-		virtual ConstantBufferView WriteBuffer(Techniques::ParsingContext& context, const void*) { return MakeSubFramePkt(_data); }
+		virtual void WriteImmediateData(Techniques::ParsingContext& context, const void* objectContext, IteratorRange<void*> dst) override
+		{ 
+			assert(dst.size() == sizeof(_data));
+			std::memcpy(dst.begin(), &_data, sizeof(_data));
+		}
+		virtual size_t GetSize() override { return sizeof(_data); };
 		static const uint64_t s_binding;
 	};
 	const uint64_t RayDefinitionUniformDelegate::s_binding = Hash64("RayDefinition");
-
-	class FrustumDefinitionUniformDelegate : public Techniques::IUniformBufferDelegate
-	{
-	public:
-		struct Buffer
-        {
-            Float4x4 _frustum;
-        };
-		Buffer _data = {};
-
-		virtual ConstantBufferView WriteBuffer(Techniques::ParsingContext& context, const void*) { return MakeSubFramePkt(_data); }
-		static const uint64_t s_binding;
-	};
-	const uint64_t FrustumDefinitionUniformDelegate::s_binding = Hash64("IntersectionFrustumDefinition");
 
     class ModelIntersectionStateContext::Pimpl
     {
@@ -84,7 +69,10 @@ namespace SceneEngine
 		bool _pendingUnbind = false;
 
 		Techniques::RenderPassInstance _rpi;
+		Metal::GraphicsEncoder_Optimized _encoder;
 		unsigned _queryId = ~0u;
+
+		TestType _testType;
 
 		std::shared_ptr<Techniques::SequencerConfig> _sequencerConfig;
     };
@@ -106,7 +94,6 @@ namespace SceneEngine
 		std::unique_ptr<RenderCore::Metal::QueryPool> _streamOutputQueryPool;
 
 		std::shared_ptr<RayDefinitionUniformDelegate> _rayDefinition;
-		std::shared_ptr<FrustumDefinitionUniformDelegate> _frustumDefinition;
 		Techniques::AttachmentPool _dummyAttachmentPool;
 		Techniques::FrameBufferPool _frameBufferPool;
 
@@ -114,8 +101,9 @@ namespace SceneEngine
     };
 
     ModelIntersectionResources::ModelIntersectionResources(const Desc& desc)
+	: _dummyAttachmentPool(RenderCore::Techniques::Services::GetDevicePtr())
     {
-        auto& device = RenderCore::Assets::Services::GetDevice();
+        auto& device = RenderCore::Techniques::Services::GetDevice();
 
         LinearBufferDesc lbDesc;
         lbDesc._structureByteSize = desc._elementSize;
@@ -135,7 +123,6 @@ namespace SceneEngine
 			Metal::QueryPool::QueryType::StreamOutput_Stream0, 4);
 
 		_rayDefinition = std::make_shared<RayDefinitionUniformDelegate>();
-		_frustumDefinition = std::make_shared<FrustumDefinitionUniformDelegate>();
     }
 	
 #if GFXAPI_TARGET == GFXAPI_VULKAN
@@ -195,13 +182,11 @@ namespace SceneEngine
             // to will appear zeroed out.
 		if (_pimpl->_queryId != ~0u)
 			_pimpl->_res->_streamOutputQueryPool->End(metalContext, _pimpl->_queryId);
-		MetalStubs::UnbindSO(metalContext);
 
-		_pimpl->_rpi = Techniques::RenderPassInstance {};
-		#if GFXAPI_TARGET == GFXAPI_VULKAN
-			metalContext.QueueCommandList(*_pimpl->_threadContext->GetDevice());
-		#endif
+		_pimpl->_encoder = {};
+		_pimpl->_rpi = {};
 		_pimpl->_pendingUnbind = false;
+		_pimpl->_threadContext->CommitCommands(CommitCommandsFlags::WaitForCompletion);		// unfortunately we need a synchronize here
 
 		unsigned hitEventsWritten = 0;
 		if (_pimpl->_queryId != ~0u) {
@@ -212,30 +197,13 @@ namespace SceneEngine
 		}
 
 		if (hitEventsWritten!=0) {
-			auto& cpuAccessRes = Metal::AsResource(*_pimpl->_res->_cpuAccessBuffer);
-			auto& soRes = Metal::AsResource(*_pimpl->_res->_streamOutputBuffer);
-
-			#if GFXAPI_TARGET == GFXAPI_VULKAN
-				metalContext.BeginCommandList();
-				BufferBarrier0(metalContext, soRes);
-				Metal::Copy(metalContext, cpuAccessRes, soRes);
-				BufferBarrier1(metalContext, soRes);
-				metalContext.QueueCommandList(*_pimpl->_threadContext->GetDevice(), Metal::DeviceContext::QueueCommandListFlags::Stall);
-			#else
-				Metal::Copy(metalContext, cpuAccessRes, soRes);
-			#endif
-
-			{
-				using namespace BufferUploads;
-				auto& uploads = SceneEngine::GetBufferUploads();
-				auto readback = uploads.Resource_ReadBack(IResourcePtr(_pimpl->_res->_cpuAccessBuffer));
-				// auto readback = uploads.Resource_ReadBack(IResourcePtr(_pimpl->_res->_streamOutputBuffer));
-				if (readback && readback->GetData()) {
-					const auto* mappedData = (const ResultEntry*)readback->GetData();
-					result.reserve(std::min(hitEventsWritten, s_maxResultCount));
-					for (unsigned c=0; c<std::min(hitEventsWritten, s_maxResultCount); ++c)
-						result.push_back(mappedData[c]);
-				}
+			// note -- we may not have to readback the entire buffer here, if we use the hitEventsWritten value
+			auto readback = _pimpl->_res->_streamOutputBuffer->ReadBackSynchronized(*_pimpl->_threadContext);
+			if (!readback.empty()) {
+				const auto* mappedData = (const ResultEntry*)readback.data();
+				result.reserve(std::min(std::min(hitEventsWritten, unsigned(readback.size() / sizeof(ResultEntry))), s_maxResultCount));
+				for (unsigned c=0; c<std::min(hitEventsWritten, s_maxResultCount); ++c)
+					result.push_back(mappedData[c]);
 			}
 
 			std::sort(result.begin(), result.end(), &ResultEntry::CompareDepth);
@@ -247,29 +215,20 @@ namespace SceneEngine
     void ModelIntersectionStateContext::SetRay(const std::pair<Float3, Float3> worldSpaceRay)
     {
         float rayLength = Magnitude(worldSpaceRay.second - worldSpaceRay.first);
-		_pimpl->_res->_rayDefinition->_data =
-			RayDefinitionUniformDelegate::Buffer {
-				worldSpaceRay.first, rayLength,
-				(worldSpaceRay.second - worldSpaceRay.first) / rayLength, 0
-			};
+		_pimpl->_res->_rayDefinition->_data._rayStart = worldSpaceRay.first;
+		_pimpl->_res->_rayDefinition->_data._rayLength = rayLength;
+		_pimpl->_res->_rayDefinition->_data._rayDirection = (worldSpaceRay.second - worldSpaceRay.first) / rayLength;
     }
 
     void ModelIntersectionStateContext::SetFrustum(const Float4x4& frustum)
     {
-		_pimpl->_res->_frustumDefinition->_data = 
-			FrustumDefinitionUniformDelegate::Buffer { frustum };
+		_pimpl->_res->_rayDefinition->_data._frustum = frustum;
     }
 
 	Techniques::SequencerContext ModelIntersectionStateContext::MakeRayTestSequencerTechnique()
 	{
 		Techniques::SequencerContext sequencer;
 		sequencer._sequencerConfig = _pimpl->_sequencerConfig.get();
-
-		auto& techUSI = Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
-		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)
-			sequencer._sequencerUniforms.emplace_back(std::make_pair(techUSI._cbBindings[c]._hashName, std::make_shared<Techniques::GlobalCBDelegate>(c)));
-
-		sequencer._sequencerUniforms.push_back({FrustumDefinitionUniformDelegate::s_binding, _pimpl->_res->_frustumDefinition});
 		sequencer._sequencerUniforms.push_back({RayDefinitionUniformDelegate::s_binding, _pimpl->_res->_rayDefinition});
 		return sequencer;
 	}
@@ -278,43 +237,96 @@ namespace SceneEngine
 	{
 	public:
 		FrameBufferDesc _fbDesc;
-		std::shared_ptr<RenderCore::Techniques::TechniqueSetFile> _techniqueSetFile;
 		std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources> _techniqueSharedResources;
 		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _forwardIllumDelegate;
+		::Assets::DependencyValidation _depVal;
 
-		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _techniqueSetFile->GetDependencyValidation(); }
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
 		struct Desc {};
 		ModelIntersectionTechniqueBox(const Desc& desc)
 		{
-			_techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
-			_techniqueSharedResources = std::make_shared<RenderCore::Techniques::TechniqueSharedResources>();
-			_forwardIllumDelegate = CreateTechniqueDelegate(_techniqueSetFile, _techniqueSharedResources);
+			auto& device = RenderCore::Techniques::Services::GetDevice();
+			auto techniqueSetFile = ::Assets::MakeAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
+			_techniqueSharedResources = RenderCore::Techniques::CreateTechniqueSharedResources(device);
+			_forwardIllumDelegate = CreateTechniqueDelegate(techniqueSetFile, _techniqueSharedResources);
 
 			std::vector<SubpassDesc> subpasses;
 			subpasses.emplace_back(SubpassDesc{});
-			_fbDesc  = FrameBufferDesc { {}, std::move(subpasses) };
+			_fbDesc = FrameBufferDesc { {}, std::move(subpasses) };
+			_depVal = techniqueSetFile->GetDependencyValidation();
 		}
 	};
 
     ModelIntersectionStateContext::ModelIntersectionStateContext(
         TestType testType,
         RenderCore::IThreadContext& threadContext,
-        Techniques::ParsingContext& parsingContext,
-        const Techniques::CameraDesc* cameraForLOD)
+		Techniques::IPipelineAcceleratorPool& pipelineAcceleratorPool)
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_threadContext = &threadContext;
 
-        parsingContext.GetSubframeShaderSelectors().SetParameter(
-            (const utf8*)"INTERSECTION_TEST", unsigned(testType));
-
         auto& metalContext = *Metal::DeviceContext::Get(threadContext);
-
-		#if GFXAPI_TARGET == GFXAPI_VULKAN
-			metalContext.BeginCommandList();
-		#endif
 		_pimpl->_pendingUnbind = true;
+        _pimpl->_res = &ConsoleRig::FindCachedBox<ModelIntersectionResources>(
+            ModelIntersectionResources::Desc(sizeof(ResultEntry), s_maxResultCount));
+
+		    // We're doing the intersection test in the geometry shader. This means
+            // we have to setup a projection transform to avoid removing any potential
+            // intersection results during screen-edge clipping.
+            // Also, if we want to know the triangle pts and barycentric coordinates,
+            // we need to make sure that no clipping occurs.
+            // The easiest way to prevent clipping would be use a projection matrix that
+            // would transform all points into a single point in the center of the view
+            // frustum.
+        // Viewport newViewport(0.f, 0.f, float(255.f), float(255.f), 0.f, 1.f);
+        // metalContext.Bind(MakeIteratorRange(&newViewport, &newViewport+1), {});
+
+		auto& box = ConsoleRig::FindCachedBoxDep2<ModelIntersectionTechniqueBox>();
+		_pimpl->_rpi = Techniques::RenderPassInstance {
+			threadContext,
+			box._fbDesc,
+			_pimpl->_res->_frameBufferPool, _pimpl->_res->_dummyAttachmentPool };
+
+		VertexBufferView sov { _pimpl->_res->_streamOutputBuffer.get() };
+		_pimpl->_encoder = metalContext.BeginStreamOutputEncoder(
+			pipelineAcceleratorPool.GetPipelineLayout(), MakeIteratorRange(&sov, &sov+1));
+		_pimpl->_queryId = _pimpl->_res->_streamOutputQueryPool->Begin(metalContext);
+
+		_pimpl->_sequencerConfig = pipelineAcceleratorPool.CreateSequencerConfig(
+			box._forwardIllumDelegate,
+			{}, box._fbDesc);
+
+		_pimpl->_testType = testType;
+    }
+
+    ModelIntersectionStateContext::~ModelIntersectionStateContext()
+    {
+		auto& metalContext = *Metal::DeviceContext::Get(*_pimpl->_threadContext);
+
+		_pimpl->_rpi = Techniques::RenderPassInstance {};
+		if (_pimpl->_pendingUnbind) {
+			if (_pimpl->_queryId != ~0u)
+				_pimpl->_res->_streamOutputQueryPool->End(metalContext, _pimpl->_queryId);
+			_pimpl->_encoder = {};
+			_pimpl->_rpi = {};
+		}
+
+		if (_pimpl->_queryId != ~0u) {
+			Metal::QueryPool::QueryResult_StreamOutput out;
+			_pimpl->_res->_streamOutputQueryPool->GetResults_Stall(metalContext, _pimpl->_queryId, MakeOpaqueIteratorRange(out));
+			_pimpl->_queryId = ~0u;
+		}
+    }
+
+	void ModelIntersectionStateContext::ExecuteDrawables(
+		Techniques::ParsingContext& parsingContext, 
+		const RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators, 
+		RenderCore::Techniques::DrawablesPacket& drawablePkt,
+		const Techniques::CameraDesc* cameraForLOD)
+	{
+		assert(_pimpl->_pendingUnbind);		// we must not have queried the results yet
+		auto& context = *_pimpl->_threadContext;
 
             // The camera settings can affect the LOD that objects a rendered with.
             // So, in some cases we need to initialise the camera to the same state
@@ -329,64 +341,25 @@ namespace SceneEngine
             0.f, 0.f, 0.f, 0.5f,
             0.f, 0.f, 0.f, 1.f);
 		projDesc._worldToProjection = Combine(InvertOrthonormalTransform(projDesc._cameraToWorld), projDesc._cameraToProjection);
-        LightingParser_SetGlobalTransform(threadContext, parsingContext, projDesc);
+		parsingContext.GetProjectionDesc() = projDesc;
 
-        _pimpl->_res = &ConsoleRig::FindCachedBox<ModelIntersectionResources>(
-            ModelIntersectionResources::Desc(sizeof(ResultEntry), s_maxResultCount));
+		parsingContext.GetSubframeShaderSelectors().SetParameter("INTERSECTION_TEST", unsigned(_pimpl->_testType));
 
-		    // We're doing the intersection test in the geometry shader. This means
-            // we have to setup a projection transform to avoid removing any potential
-            // intersection results during screen-edge clipping.
-            // Also, if we want to know the triangle pts and barycentric coordinates,
-            // we need to make sure that no clipping occurs.
-            // The easiest way to prevent clipping would be use a projection matrix that
-            // would transform all points into a single point in the center of the view
-            // frustum.
-        Metal::ViewportDesc newViewport(0.f, 0.f, float(255.f), float(255.f), 0.f, 1.f);
-        metalContext.Bind(newViewport);
-
-		_pimpl->_rpi = Techniques::RenderPassInstance {
-			threadContext,
-			FrameBufferDesc::s_empty,
-			_pimpl->_res->_frameBufferPool, _pimpl->_res->_dummyAttachmentPool };
-
-        MetalStubs::BindSO(metalContext, *_pimpl->_res->_streamOutputBuffer);
-		_pimpl->_queryId = _pimpl->_res->_streamOutputQueryPool->Begin(metalContext);
-
-		#if GFXAPI_TARGET != GFXAPI_VULKAN
-			auto& commonRes = Techniques::CommonResources();
-			metalContext.GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(commonRes._defaultSampler));
-		#endif
-
-		auto& box = ConsoleRig::FindCachedBoxDep2<ModelIntersectionTechniqueBox>();
-		_pimpl->_sequencerConfig = parsingContext._pipelineAcceleratorPool->CreateSequencerConfig(
-			box._forwardIllumDelegate,
-			{}, box._fbDesc);
-
-		// metalContext.Bind(_pimpl->_res->_dds);
-		// metalContext.Bind(_pimpl->_res->_rs);
-    }
-
-    ModelIntersectionStateContext::~ModelIntersectionStateContext()
-    {
-		auto& metalContext = *Metal::DeviceContext::Get(*_pimpl->_threadContext);
-
-		_pimpl->_rpi = Techniques::RenderPassInstance {};
-		if (_pimpl->_pendingUnbind) {
-			MetalStubs::UnbindSO(metalContext);
-			if (_pimpl->_queryId != ~0u)
-				_pimpl->_res->_streamOutputQueryPool->End(metalContext, _pimpl->_queryId);
-			#if GFXAPI_TARGET == GFXAPI_VULKAN
-				metalContext.QueueCommandList(*_pimpl->_threadContext->GetDevice());
-			#endif
+		using namespace RenderCore::Techniques;
+		IResourcePtr temporaryVB, temporaryIB;
+		if (!drawablePkt.GetStorage(DrawablesPacket::Storage::VB).empty()) {
+			temporaryVB = CreateStaticVertexBuffer(*context.GetDevice(), drawablePkt.GetStorage(DrawablesPacket::Storage::VB));
+		}
+		if (!drawablePkt.GetStorage(DrawablesPacket::Storage::IB).empty()) {
+			temporaryIB = CreateStaticIndexBuffer(*context.GetDevice(), drawablePkt.GetStorage(DrawablesPacket::Storage::IB));
 		}
 
-		if (_pimpl->_queryId != ~0u) {
-			Metal::QueryPool::QueryResult_StreamOutput out;
-			_pimpl->_res->_streamOutputQueryPool->GetResults_Stall(metalContext, _pimpl->_queryId, MakeOpaqueIteratorRange(out));
-			_pimpl->_queryId = ~0u;
-		}
-    }
+		auto& metalContext = *Metal::DeviceContext::Get(context);
+		auto sequencerTechnique = MakeRayTestSequencerTechnique();
+		RenderCore::Techniques::Draw(metalContext, _pimpl->_encoder, parsingContext, pipelineAccelerators, sequencerTechnique, drawablePkt, temporaryVB, temporaryIB);
+
+		parsingContext.GetSubframeShaderSelectors().RemoveParameter("INTERSECTION_TEST");
+	}
 
 	static const InputElementDesc s_soEles[] = {
         InputElementDesc("POINT",               0, Format::R32G32B32A32_FLOAT),
@@ -398,7 +371,7 @@ namespace SceneEngine
     static const unsigned s_soStrides[] = { sizeof(ModelIntersectionStateContext::ResultEntry) };
 
 	static std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> CreateTechniqueDelegate(
-		const std::shared_ptr<RenderCore::Techniques::TechniqueSetFile>& techniqueSet,
+		const ::Assets::FuturePtr<RenderCore::Techniques::TechniqueSetFile>& techniqueSet,
 		const std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources>& sharedResources)
 	{
 		return RenderCore::Techniques::CreateTechniqueDelegate_RayTest(

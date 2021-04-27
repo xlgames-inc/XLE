@@ -17,6 +17,8 @@ namespace RenderCore { namespace Techniques
     class TechniqueContext; class CameraDesc;
 	class ParsingContext;
 	class SequencerContext;
+    class IPipelineAcceleratorPool;
+    class DrawablesPacket;
 }}
 
 namespace SceneEngine
@@ -41,6 +43,11 @@ namespace SceneEngine
         std::vector<ResultEntry> GetResults();
         void SetRay(const std::pair<Float3, Float3> worldSpaceRay);
         void SetFrustum(const Float4x4& frustum);
+        void ExecuteDrawables(
+            RenderCore::Techniques::ParsingContext& parsingContext, 
+            const RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators, 
+            RenderCore::Techniques::DrawablesPacket& drawablePkt,
+            const RenderCore::Techniques::CameraDesc* cameraForLOD = nullptr);
 
 		RenderCore::Techniques::SequencerContext MakeRayTestSequencerTechnique();
 
@@ -49,8 +56,7 @@ namespace SceneEngine
         ModelIntersectionStateContext(
             TestType testType,
             RenderCore::IThreadContext& threadContext,
-            RenderCore::Techniques::ParsingContext& parsingContext,
-            const RenderCore::Techniques::CameraDesc* cameraForLOD = nullptr);
+            RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAcceleratorPool);
         ~ModelIntersectionStateContext();
 
     protected:

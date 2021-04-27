@@ -76,12 +76,6 @@ namespace UnitTests
 				LinearBufferDesc::Create(1024, 1024),
 				"soBuffer"));
 
-		auto cpuAccessBuffer = testHelper->_device->CreateResource(
-			CreateDesc(
-				BindFlag::TransferDst, CPUAccess::Read, 0,
-				LinearBufferDesc::Create(1024, 1024),
-				"cpuAccessBuffer"));
-
 		const InputElementDesc soEles[] = { InputElementDesc("POINT", 0, Format::R32G32B32A32_FLOAT) };
 		const unsigned soStrides[] = { (unsigned)sizeof(Float4) };
 		
@@ -119,17 +113,22 @@ namespace UnitTests
 
 		{
 			UnitTestFBHelper dummyFBHelper(*testHelper->_device, *threadContext);
+
+			Metal::GraphicsPipelineBuilder pipelineBuilder;
+			pipelineBuilder.SetRenderPassConfiguration(dummyFBHelper.GetDesc(), 0);
+			pipelineBuilder.Bind(inputLayout, Topology::TriangleList);
+			pipelineBuilder.Bind(shaderProgram);
+			auto pipeline = pipelineBuilder.CreatePipeline(Metal::GetObjectFactory());
+
 			auto rpi = dummyFBHelper.BeginRenderPass(*threadContext);
 
 			VertexBufferView sov { soBuffer.get() };
-			Metal::GraphicsEncoder_ProgressivePipeline encoder = metalContext.BeginStreamOutputEncoder_ProgressivePipeline(
+			auto encoder = metalContext.BeginStreamOutputEncoder(
 				testHelper->_pipelineLayout, MakeIteratorRange(&sov, &sov+1));
 
 			VertexBufferView vbv { vertexBuffer.get() };
-			encoder.Bind(inputLayout, Topology::TriangleList);
 			encoder.Bind(MakeIteratorRange(&vbv, &vbv+1), {});
-			encoder.Bind(shaderProgram);
-			encoder.Draw(dimof(inputVertices));
+			encoder.Draw(*pipeline, dimof(inputVertices));
 		}
 
 		auto readbackBuffer = soBuffer->ReadBackSynchronized(*threadContext);

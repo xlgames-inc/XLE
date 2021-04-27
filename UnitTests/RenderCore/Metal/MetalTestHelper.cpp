@@ -540,6 +540,9 @@ namespace UnitTests
 		result->AppendEntry(
 			RegisterType::ConstantBuffer, RegisterQualifier::None,
 			Entry{4, 7, Hash64("Material"), 1, 0, 3});
+		result->AppendEntry(
+			RegisterType::Sampler, RegisterQualifier::None,
+			Entry{7, 8, Hash64("Material"), 1, 12, 13});
 		return result;
 	}
 }

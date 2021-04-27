@@ -8,6 +8,7 @@
 #include "CommonResources.h"
 #include "ShaderVariationSet.h"
 #include "../FrameBufferDesc.h"
+#include "../Format.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/ObjectFactory.h"
@@ -121,10 +122,25 @@ namespace RenderCore { namespace Techniques
 		}
 	};
 
+	static std::string BuildSODefinesString(IteratorRange<const RenderCore::InputElementDesc*> desc)
+	{
+		std::stringstream str;
+		str << "SO_OFFSETS=";
+		bool first = true;
+		for (const auto&e:desc) {
+			if (!first) str << ",";
+			first = false;
+			assert(e._alignedByteOffset != ~0x0u);		// we should have called NormalizeInputAssembly before hand
+			str << Hash64(e._semanticName) + e._semanticIndex << "," << e._alignedByteOffset;
+		}
+		return str.str();
+	}
+
 	static ::Assets::FuturePtr<CompiledShaderByteCode_InstantiateShaderGraph> MakeByteCodeFuture(
 		ShaderStage stage, StringSection<> initializer, const std::string& definesTable,
 		const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection,
-		IteratorRange<const uint64_t*> patchExpansions)
+		IteratorRange<const uint64_t*> patchExpansions,
+		StreamOutputInitializers so)
 	{
 		assert(!initializer.IsEmpty());
 
@@ -151,15 +167,22 @@ namespace RenderCore { namespace Techniques
 
 		std::vector<uint64_t> patchExpansionsCopy(patchExpansions.begin(), patchExpansions.end());
 
+		auto adjustedDefinesTable = definesTable;
+		if (stage == ShaderStage::Geometry && !so._outputElements.empty()) {
+			if (!definesTable.empty()) adjustedDefinesTable += ";";
+			adjustedDefinesTable += BuildSODefinesString(so._outputElements);
+		}
+
 		return ::Assets::MakeAsset<CompiledShaderByteCode_InstantiateShaderGraph>(
-			MakeStringSection(temp), definesTable, patchCollection, patchExpansionsCopy);
+			MakeStringSection(temp), adjustedDefinesTable, patchCollection, patchExpansionsCopy);
 	}
 
 	static ::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderProgram(
 		const ITechniqueDelegate::GraphicsPipelineDesc& pipelineDesc,
 		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
 		const std::shared_ptr<CompiledShaderPatchCollection>& compiledPatchCollection,
-		IteratorRange<const UniqueShaderVariationSet::FilteredSelectorSet*> filteredSelectors)
+		IteratorRange<const UniqueShaderVariationSet::FilteredSelectorSet*> filteredSelectors,
+		StreamOutputInitializers so)
 	{
 		::Assets::FuturePtr<CompiledShaderByteCode_InstantiateShaderGraph> byteCodeFuture[3];
 
@@ -172,12 +195,16 @@ namespace RenderCore { namespace Techniques
 				pipelineDesc._shaders[c],
 				filteredSelectors[c]._selectors,
 				compiledPatchCollection,
-				pipelineDesc._patchExpansions);
+				pipelineDesc._patchExpansions,
+				so);
 		}
 
+		if (!byteCodeFuture[(unsigned)ShaderStage::Vertex])
+			Throw(std::runtime_error("Missing vertex shader stage while building shader program"));
+
 		auto result = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>("");
-		if (!byteCodeFuture[(unsigned)ShaderStage::Geometry]) {
-			::Assets::WhenAll(byteCodeFuture[0], byteCodeFuture[1]).ThenConstructToFuture<Metal::ShaderProgram>(
+		if (byteCodeFuture[(unsigned)ShaderStage::Pixel] && !byteCodeFuture[(unsigned)ShaderStage::Geometry]) {
+			::Assets::WhenAll(byteCodeFuture[(unsigned)ShaderStage::Vertex], byteCodeFuture[(unsigned)ShaderStage::Pixel]).ThenConstructToFuture<Metal::ShaderProgram>(
 				*result,
 				[pipelineLayout](
 					const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& vsCode, 
@@ -186,19 +213,35 @@ namespace RenderCore { namespace Techniques
 						Metal::GetObjectFactory(),
 						pipelineLayout, *vsCode, *psCode);
 				});
-		} else {
-			// Odd ordering here intentional (because of idx of ShaderStage::Geometry)
-			::Assets::WhenAll(byteCodeFuture[0], byteCodeFuture[2], byteCodeFuture[1]).ThenConstructToFuture<Metal::ShaderProgram>(
+		} else if (byteCodeFuture[(unsigned)ShaderStage::Pixel] && byteCodeFuture[(unsigned)ShaderStage::Geometry]) {
+			auto soElements = pipelineDesc._soElements;
+			auto soBufferStrides = pipelineDesc._soBufferStrides;
+			::Assets::WhenAll(byteCodeFuture[(unsigned)ShaderStage::Vertex], byteCodeFuture[(unsigned)ShaderStage::Pixel], byteCodeFuture[(unsigned)ShaderStage::Geometry]).ThenConstructToFuture<Metal::ShaderProgram>(
 				*result,
-				[pipelineLayout](
+				[pipelineLayout, soElements, soBufferStrides](
 					const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& vsCode, 
-					const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& gsCode,
-					const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& psCode) {
+					const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& psCode,
+					const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& gsCode) {
 					return std::make_shared<Metal::ShaderProgram>(
 						Metal::GetObjectFactory(),
-						pipelineLayout, *vsCode, *gsCode, *psCode);
+						pipelineLayout, *vsCode, *gsCode, *psCode,
+						StreamOutputInitializers{soElements, soBufferStrides});
 				});
-		}
+		} else if (!byteCodeFuture[(unsigned)ShaderStage::Pixel] && byteCodeFuture[(unsigned)ShaderStage::Geometry]) {
+			auto soElements = pipelineDesc._soElements;
+			auto soBufferStrides = pipelineDesc._soBufferStrides;
+			::Assets::WhenAll(byteCodeFuture[(unsigned)ShaderStage::Vertex], byteCodeFuture[(unsigned)ShaderStage::Geometry]).ThenConstructToFuture<Metal::ShaderProgram>(
+				*result,
+				[pipelineLayout, soElements, soBufferStrides](
+					const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& vsCode, 
+					const std::shared_ptr<CompiledShaderByteCode_InstantiateShaderGraph>& gsCode) {
+					return std::make_shared<Metal::ShaderProgram>(
+						Metal::GetObjectFactory(),
+						pipelineLayout, *vsCode, *gsCode, CompiledShaderByteCode{},
+						StreamOutputInitializers{soElements, soBufferStrides});
+				});
+		} else
+			Throw(std::runtime_error("Missing shader stages while building shader program"));
 		return result;
 	}
 
@@ -253,16 +296,20 @@ namespace RenderCore { namespace Techniques
 				[](	::Assets::AssetFuture<GraphicsPipelineDescWithFilteringRules>& resultFuture,
 					const std::shared_ptr<ITechniqueDelegate::GraphicsPipelineDesc>& pipelineDesc) {
 
-					auto vsfn = MakeFileNameSplitter(pipelineDesc->_shaders[(unsigned)ShaderStage::Vertex]).AllExceptParameters();
-					auto psfn = MakeFileNameSplitter(pipelineDesc->_shaders[(unsigned)ShaderStage::Pixel]).AllExceptParameters();
+					::Assets::FuturePtr<ShaderSourceParser::SelectorFilteringRules> filteringFuture[3];
+					for (unsigned c=0; c<3; ++c) {
+						auto fn = MakeFileNameSplitter(pipelineDesc->_shaders[c]).AllExceptParameters();
+						if (!fn.IsEmpty())
+							filteringFuture[c] = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(fn);
+					}
 
-					auto vsFilteringFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(vsfn);
-					auto psFilteringFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(psfn);
+					if (!filteringFuture[(unsigned)ShaderStage::Vertex])
+						Throw(std::runtime_error("Missing vertex shader stage while building filtering rules"));
 
-					if (pipelineDesc->_shaders[(unsigned)ShaderStage::Geometry].empty()) {
+					if (filteringFuture[(unsigned)ShaderStage::Pixel] && !filteringFuture[(unsigned)ShaderStage::Geometry]) {
 
 						if (pipelineDesc->_selectorPreconfigurationFile.empty()) {
-							::Assets::WhenAll(vsFilteringFuture, psFilteringFuture).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
+							::Assets::WhenAll(filteringFuture[(unsigned)ShaderStage::Vertex], filteringFuture[(unsigned)ShaderStage::Pixel]).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
 								resultFuture,
 								[pipelineDesc](
 									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
@@ -276,7 +323,7 @@ namespace RenderCore { namespace Techniques
 								});
 						} else {
 							auto preconfigurationFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorPreconfiguration>(pipelineDesc->_selectorPreconfigurationFile);
-							::Assets::WhenAll(vsFilteringFuture, psFilteringFuture, preconfigurationFuture).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
+							::Assets::WhenAll(filteringFuture[(unsigned)ShaderStage::Vertex], filteringFuture[(unsigned)ShaderStage::Pixel], preconfigurationFuture).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
 								resultFuture,
 								[pipelineDesc](
 									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
@@ -292,13 +339,10 @@ namespace RenderCore { namespace Techniques
 								});
 						}
 
-					} else {
-
-						auto gsfn = MakeFileNameSplitter(pipelineDesc->_shaders[(unsigned)ShaderStage::Geometry]).AllExceptParameters();
-						auto gsFilteringFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorFilteringRules>(gsfn);
+					} else if (filteringFuture[(unsigned)ShaderStage::Pixel] && filteringFuture[(unsigned)ShaderStage::Geometry]) {
 
 						if (pipelineDesc->_selectorPreconfigurationFile.empty()) {
-							::Assets::WhenAll(vsFilteringFuture, psFilteringFuture, gsFilteringFuture).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
+							::Assets::WhenAll(filteringFuture[(unsigned)ShaderStage::Vertex], filteringFuture[(unsigned)ShaderStage::Pixel], filteringFuture[(unsigned)ShaderStage::Geometry]).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
 								resultFuture,
 								[pipelineDesc](
 									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
@@ -314,7 +358,7 @@ namespace RenderCore { namespace Techniques
 								});
 						} else {
 							auto preconfigurationFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorPreconfiguration>(pipelineDesc->_selectorPreconfigurationFile);
-							::Assets::WhenAll(vsFilteringFuture, psFilteringFuture, gsFilteringFuture, preconfigurationFuture).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
+							::Assets::WhenAll(filteringFuture[(unsigned)ShaderStage::Vertex], filteringFuture[(unsigned)ShaderStage::Pixel], filteringFuture[(unsigned)ShaderStage::Geometry], preconfigurationFuture).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
 								resultFuture,
 								[pipelineDesc](
 									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
@@ -332,7 +376,41 @@ namespace RenderCore { namespace Techniques
 								});
 						}
 
-					}
+					} else if (!filteringFuture[(unsigned)ShaderStage::Pixel] && filteringFuture[(unsigned)ShaderStage::Geometry]) {
+
+						if (pipelineDesc->_selectorPreconfigurationFile.empty()) {
+							::Assets::WhenAll(filteringFuture[(unsigned)ShaderStage::Vertex], filteringFuture[(unsigned)ShaderStage::Geometry]).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
+								resultFuture,
+								[pipelineDesc](
+									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
+									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& gsFiltering) {
+									
+									auto finalObject = std::make_shared<GraphicsPipelineDescWithFilteringRules>();
+									finalObject->_pipelineDesc = pipelineDesc;
+									finalObject->_automaticFiltering[(unsigned)ShaderStage::Vertex] = vsFiltering;
+									finalObject->_automaticFiltering[(unsigned)ShaderStage::Geometry] = gsFiltering;
+									return finalObject;
+								});
+						} else {
+							auto preconfigurationFuture = ::Assets::MakeAsset<ShaderSourceParser::SelectorPreconfiguration>(pipelineDesc->_selectorPreconfigurationFile);
+							::Assets::WhenAll(filteringFuture[(unsigned)ShaderStage::Vertex], filteringFuture[(unsigned)ShaderStage::Geometry], preconfigurationFuture).ThenConstructToFuture<GraphicsPipelineDescWithFilteringRules>(
+								resultFuture,
+								[pipelineDesc](
+									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& vsFiltering,
+									const std::shared_ptr<ShaderSourceParser::SelectorFilteringRules>& gsFiltering,
+									const std::shared_ptr<ShaderSourceParser::SelectorPreconfiguration>& preconfiguration) {
+									
+									auto finalObject = std::make_shared<GraphicsPipelineDescWithFilteringRules>();
+									finalObject->_pipelineDesc = pipelineDesc;
+									finalObject->_automaticFiltering[(unsigned)ShaderStage::Vertex] = vsFiltering;
+									finalObject->_automaticFiltering[(unsigned)ShaderStage::Geometry] = gsFiltering;
+									finalObject->_preconfiguration = preconfiguration;
+									return finalObject;
+								});
+						}
+
+					} else
+						Throw(std::runtime_error("Missing shader stages while building filtering rules"));
 
 				});
 			return result;
@@ -429,7 +507,11 @@ namespace RenderCore { namespace Techniques
 						if (pipelineDescWithFiltering->_preconfiguration)
 							configurationDepVal.RegisterDependency(pipelineDescWithFiltering->_preconfiguration->GetDependencyValidation());
 
-						auto shaderProgram = MakeShaderProgram(*pipelineDesc, pipelineLayout, compiledPatchCollection, MakeIteratorRange(filteredSelectors));
+						StreamOutputInitializers so;
+						so._outputElements = MakeIteratorRange(pipelineDesc->_soElements);
+						so._outputBufferStrides = MakeIteratorRange(pipelineDesc->_soBufferStrides);
+
+						auto shaderProgram = MakeShaderProgram(*pipelineDesc, pipelineLayout, compiledPatchCollection, MakeIteratorRange(filteredSelectors), so);
 						std::string vsd, psd, gsd;
 						#if defined(_DEBUG)
 							vsd = MakeShaderDescription(ShaderStage::Vertex, *pipelineDesc, pipelineLayout, compiledPatchCollection, filteredSelectors[(unsigned)ShaderStage::Vertex]);

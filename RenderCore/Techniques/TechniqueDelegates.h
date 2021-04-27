@@ -31,6 +31,9 @@ namespace RenderCore { namespace Techniques
 			DepthStencilDesc					_depthStencil;
 			RasterizationDesc					_rasterization;
 
+			std::vector<RenderCore::InputElementDesc> _soElements;
+			std::vector<unsigned> _soBufferStrides;
+
 			::Assets::DependencyValidation _depVal;
 			const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 		};
@@ -75,7 +78,7 @@ namespace RenderCore { namespace Techniques
         CullMode cullMode = CullMode::Back);
 
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_RayTest(
-		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const ::Assets::FuturePtr<TechniqueSetFile>& techniqueSet,
 		const std::shared_ptr<TechniqueSharedResources>& sharedResources,
 		const StreamOutputInitializers& soInit);
 

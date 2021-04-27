@@ -58,8 +58,8 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         ../SceneEngine/LightInternal.cpp
         ../SceneEngine/ShadowConfiguration.cpp
         ../SceneEngine/ExecuteScene.cpp
-        #../SceneEngine/PreparedScene.cpp
-        #../SceneEngine/RenderStepUtils.cpp
+        ../SceneEngine/RayVsModel.cpp
+        ../SceneEngine/IntersectionTest.cpp
         )
 
     if (WIN32)

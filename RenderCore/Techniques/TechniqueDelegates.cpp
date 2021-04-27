@@ -620,83 +620,111 @@ namespace RenderCore { namespace Techniques
 		return std::make_shared<TechniqueDelegate_DepthOnly>(techniqueSet, sharedResources, singleSidedBias, doubleSidedBias, cullMode, true);
 	}
 
-#if 0
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class TechniqueDelegate_RayTest : public TechniqueDelegate_Base
+	class TechniqueDelegate_RayTest : public ITechniqueDelegate
 	{
 	public:
-		GraphicsPipelineDesc Resolve(
-			const std::shared_ptr<CompiledShaderPatchCollection>& shaderPatches,
-			IteratorRange<const ParameterBox**> selectors,
+		struct TechniqueFileHelper
+		{
+		public:
+			std::shared_ptr<TechniqueSetFile> _techniqueSet;
+			TechniqueEntry _noPatches;
+			TechniqueEntry _earlyRejectionSrc;
+			TechniqueEntry _vsNoPatchesSrc;
+			TechniqueEntry _vsDeformVertexSrc;
+
+			const ::Assets::DependencyValidation& GetDependencyValidation() const { return _techniqueSet->GetDependencyValidation(); }
+
+			TechniqueFileHelper(const std::shared_ptr<TechniqueSetFile>& techniqueSet)
+			: _techniqueSet(techniqueSet)
+			{
+				const auto noPatchesHash = Hash64("RayTest_NoPatches");
+				const auto earlyRejectionHash = Hash64("RayTest_EarlyRejection");
+				const auto vsNoPatchesHash = Hash64("VS_NoPatches");
+				const auto vsDeformVertexHash = Hash64("VS_DeformVertex");
+				auto* noPatchesSrc = _techniqueSet->FindEntry(noPatchesHash);
+				auto* earlyRejectionSrc = _techniqueSet->FindEntry(earlyRejectionHash);
+				auto* vsNoPatchesSrc = _techniqueSet->FindEntry(vsNoPatchesHash);
+				auto* vsDeformVertexSrc = _techniqueSet->FindEntry(vsDeformVertexHash);
+				if (!noPatchesSrc || !earlyRejectionSrc || !vsNoPatchesSrc || !vsDeformVertexSrc) {
+					Throw(std::runtime_error("Could not construct technique delegate because required configurations were not found"));
+				}
+
+				_noPatches = *noPatchesSrc;
+				_earlyRejectionSrc = *earlyRejectionSrc;
+				_vsNoPatchesSrc = *vsNoPatchesSrc;
+				_vsDeformVertexSrc = *vsDeformVertexSrc;
+			}
+		};
+
+		::Assets::FuturePtr<GraphicsPipelineDesc> Resolve(
+			const CompiledShaderPatchCollection::Interface& shaderPatches,
 			const RenderCore::Assets::RenderStateSet& stateSet) override
 		{
-			std::vector<uint64_t> patchExpansions;
-			const TechniqueEntry* psTechEntry = &_noPatches;
-			if (shaderPatches->GetInterface().HasPatchType(s_earlyRejectionTest)) {
-				psTechEntry = &_earlyRejectionSrc;
-				patchExpansions.insert(patchExpansions.end(), s_patchExp_earlyRejection, &s_patchExp_perPixel[dimof(s_patchExp_earlyRejection)]);
-			}
+			auto result = std::make_shared<::Assets::AssetFuture<GraphicsPipelineDesc>>("from-forward-delegate");
 
-			const TechniqueEntry* vsTechEntry = &_vsNoPatchesSrc;
-			if (shaderPatches->GetInterface().HasPatchType(s_deformVertex)) {
-				vsTechEntry = &_vsDeformVertexSrc;
-				patchExpansions.push_back(s_deformVertex);
-			}
+			auto nascentDesc = std::make_shared<GraphicsPipelineDesc>();
+			nascentDesc->_depthStencil = CommonResourceBox::s_dsDisable;
 
-			TechniqueEntry mergedTechEntry = *vsTechEntry;
-			mergedTechEntry.MergeIn(*psTechEntry);
+			nascentDesc->_soElements = _soElements;
+			nascentDesc->_soBufferStrides = _soStrides;
 
-			GraphicsPipelineDesc result;
-			result._shaderProgram = ResolveVariation(shaderPatches, selectors, mergedTechEntry, MakeIteratorRange(patchExpansions));
-			result._depthStencil = CommonResources()._dsDisable;
-			// result._rasterization = CommonResources()._rsDisable;
+			bool hasEarlyRejectionTest = shaderPatches.HasPatchType(s_earlyRejectionTest);
+			bool hasDeformVertex = shaderPatches.HasPatchType(s_deformVertex);
+
+			::Assets::WhenAll(_techniqueFileHelper).ThenConstructToFuture<GraphicsPipelineDesc>(
+				*result,
+				[nascentDesc, hasEarlyRejectionTest, hasDeformVertex](const std::shared_ptr<TechniqueFileHelper>& techniqueFileHelper) {
+					std::vector<uint64_t> patchExpansions;
+					const TechniqueEntry* psTechEntry = &techniqueFileHelper->_noPatches;
+					if (hasEarlyRejectionTest) {
+						psTechEntry = &techniqueFileHelper->_earlyRejectionSrc;
+						patchExpansions.insert(patchExpansions.end(), s_patchExp_earlyRejection, &s_patchExp_perPixel[dimof(s_patchExp_earlyRejection)]);
+					}
+
+					const TechniqueEntry* vsTechEntry = &techniqueFileHelper->_vsNoPatchesSrc;
+					if (hasDeformVertex) {
+						vsTechEntry = &techniqueFileHelper->_vsDeformVertexSrc;
+						patchExpansions.push_back(s_deformVertex);
+					}
+
+					TechniqueEntry mergedTechEntry = *vsTechEntry;
+					mergedTechEntry.MergeIn(*psTechEntry);
+
+					PrepareShadersFromTechniqueEntry(nascentDesc, mergedTechEntry);
+					return nascentDesc;
+				});			
 			return result;
 		}
 
 		TechniqueDelegate_RayTest(
-			const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+			const ::Assets::FuturePtr<TechniqueSetFile>& techniqueSet,
 			const std::shared_ptr<TechniqueSharedResources>& sharedResources,
 			const StreamOutputInitializers& soInit)
-		: _techniqueSet(techniqueSet)
 		{
 			_sharedResources = sharedResources;
-			_soElements = std::vector<InputElementDesc>(soInit._outputElements.begin(), soInit._outputElements.end());
+			
+			_techniqueFileHelper = std::make_shared<::Assets::AssetFuture<TechniqueFileHelper>>("");
+			::Assets::WhenAll(techniqueSet).ThenConstructToFuture<TechniqueFileHelper>(*_techniqueFileHelper);
+
+			_soElements = NormalizeInputAssembly(soInit._outputElements);
 			_soStrides = std::vector<unsigned>(soInit._outputBufferStrides.begin(), soInit._outputBufferStrides.end());
-
-			const auto noPatchesHash = Hash64("RayTest_NoPatches");
-			const auto earlyRejectionHash = Hash64("RayTest_EarlyRejection");
-			const auto vsNoPatchesHash = Hash64("VS_NoPatches");
-			const auto vsDeformVertexHash = Hash64("VS_DeformVertex");
-			auto* noPatchesSrc = _techniqueSet->FindEntry(noPatchesHash);
-			auto* earlyRejectionSrc = _techniqueSet->FindEntry(earlyRejectionHash);
-			auto* vsNoPatchesSrc = _techniqueSet->FindEntry(vsNoPatchesHash);
-			auto* vsDeformVertexSrc = _techniqueSet->FindEntry(vsDeformVertexHash);
-			if (!noPatchesSrc || !earlyRejectionSrc || !vsNoPatchesSrc || !vsDeformVertexSrc) {
-				Throw(std::runtime_error("Could not construct technique delegate because required configurations were not found"));
-			}
-
-			_noPatches = *noPatchesSrc;
-			_earlyRejectionSrc = *earlyRejectionSrc;
-			_vsNoPatchesSrc = *vsNoPatchesSrc;
-			_vsDeformVertexSrc = *vsDeformVertexSrc;
 		}
 	private:
-		std::shared_ptr<TechniqueSetFile> _techniqueSet;
-		TechniqueEntry _noPatches;
-		TechniqueEntry _earlyRejectionSrc;
-		TechniqueEntry _vsNoPatchesSrc;
-		TechniqueEntry _vsDeformVertexSrc;
+		::Assets::FuturePtr<TechniqueFileHelper> _techniqueFileHelper;
+		std::shared_ptr<TechniqueSharedResources> _sharedResources;
+		std::vector<InputElementDesc> _soElements;
+		std::vector<unsigned> _soStrides;
 	};
 
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_RayTest(
-		const std::shared_ptr<TechniqueSetFile>& techniqueSet,
+		const ::Assets::FuturePtr<TechniqueSetFile>& techniqueSet,
 		const std::shared_ptr<TechniqueSharedResources>& sharedResources,
 		const StreamOutputInitializers& soInit)
 	{
 		return std::make_shared<TechniqueDelegate_RayTest>(techniqueSet, sharedResources, soInit);
 	}
-#endif
 
 	ITechniqueDelegate::~ITechniqueDelegate() {}
 

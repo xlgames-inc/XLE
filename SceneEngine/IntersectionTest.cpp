@@ -5,6 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "IntersectionTest.h"
+
+#if 0
 #include "RayVsModel.h"
 #include "LightingParser.h"
 #include "Terrain.h"
@@ -12,8 +14,8 @@
 #include "SceneParser.h"
 #include "LightingParserContext.h"
 #include "RenderStep.h"
+#endif
 
-#include "../BufferUploads/DataPacket.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/RenderUtils.h"
@@ -31,6 +33,8 @@
 
 namespace SceneEngine
 {
+
+#if 0
 
     /// <summary>Resolves ray and box intersections for tools</summary>
     /// This object can calculate intersections of basic primitives against
@@ -384,11 +388,10 @@ namespace SceneEngine
         assert(0);
         return nullptr;
     }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
-    IIntersectionScene::~IIntersectionScene() {}
-    
+        
     static Float4x4 CalculateWorldToProjection(const RenderCore::Techniques::CameraDesc& sceneCamera, float viewportAspect)
     {
         auto projectionMatrix = RenderCore::Techniques::Projection(sceneCamera, viewportAspect);

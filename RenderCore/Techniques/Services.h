@@ -26,6 +26,7 @@ namespace RenderCore { namespace Techniques
 		static BufferUploads::IManager& GetBufferUploads() { return *GetInstance()._bufferUploads; }
 		static DeformOperationFactory& GetDeformOperationFactory() { assert(GetInstance()._deformOpsFactory); return *GetInstance()._deformOpsFactory; }
 		static RenderCore::IDevice& GetDevice() { return *GetInstance()._device; }
+		static std::shared_ptr<RenderCore::IDevice> GetDevicePtr() { return GetInstance()._device; }
 
 		/////////////////////////////
 		//   T E X T U R E   L O A D E R S

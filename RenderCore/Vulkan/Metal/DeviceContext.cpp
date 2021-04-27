@@ -530,9 +530,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	GraphicsEncoder::GraphicsEncoder(
 		const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout,
-		const std::shared_ptr<VulkanEncoderSharedState>& sharedState)
+		const std::shared_ptr<VulkanEncoderSharedState>& sharedState,
+		Type type)
 	: _pipelineLayout(pipelineLayout)
 	, _sharedState(sharedState)
+	, _type(type)
 	{
 		if (_sharedState) {
 			assert(_sharedState->_currentEncoder == nullptr && _sharedState->_currentEncoderType == VulkanEncoderSharedState::EncoderType::None);
@@ -559,6 +561,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	GraphicsEncoder::~GraphicsEncoder()
 	{
+		if (_type == Type::StreamOutput && _sharedState) {
+			assert(GetObjectFactory().GetExtensionFunctions()._endTransformFeedback);
+			(*GetObjectFactory().GetExtensionFunctions()._endTransformFeedback)(
+				_sharedState->_commandList.GetUnderlying().get(),
+				0, 0, nullptr, nullptr);
+		}
+
 		if (_sharedState) {
 			assert(_sharedState->_currentEncoder == this);
 			_sharedState->_currentEncoder = nullptr;
@@ -573,11 +582,21 @@ namespace RenderCore { namespace Metal_Vulkan
 			_sharedState = std::move(moveFrom._sharedState);
 			_sharedState->_currentEncoder = this;
 		}
+		_pipelineLayout = std::move(moveFrom._pipelineLayout);
+		_type = moveFrom._type;
+		moveFrom._type = Type::Normal;
 	}
 
 	GraphicsEncoder& GraphicsEncoder::operator=(GraphicsEncoder&& moveFrom)
 	{
 		if (_sharedState) {
+			if (_type == Type::StreamOutput) {
+				assert(GetObjectFactory().GetExtensionFunctions()._endTransformFeedback);
+				(*GetObjectFactory().GetExtensionFunctions()._endTransformFeedback)(
+					_sharedState->_commandList.GetUnderlying().get(),
+					0, 0, nullptr, nullptr);
+			}
+			
 			assert(_sharedState->_currentEncoder == this);
 			_sharedState->_currentEncoder = nullptr;
 			_sharedState->_currentEncoderType = VulkanEncoderSharedState::EncoderType::None;
@@ -589,6 +608,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			_sharedState = std::move(moveFrom._sharedState);
 			_sharedState->_currentEncoder = this;
 		}
+		_pipelineLayout = std::move(moveFrom._pipelineLayout);
+		_type = moveFrom._type;
+		moveFrom._type = Type::Normal;
 		return *this;
 	}
 
@@ -599,10 +621,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		_currentGraphicsPipeline = std::move(moveFrom._currentGraphicsPipeline);
 		_factory = moveFrom._factory;
 		_globalPools = moveFrom._globalPools;
-		_type = moveFrom._type;
 		moveFrom._factory = nullptr;
 		moveFrom._globalPools = nullptr;
-		moveFrom._type = Type::Normal;
 	}
 
 	GraphicsEncoder_ProgressivePipeline& GraphicsEncoder_ProgressivePipeline::operator=(GraphicsEncoder_ProgressivePipeline&& moveFrom)
@@ -612,10 +632,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		_currentGraphicsPipeline = std::move(moveFrom._currentGraphicsPipeline);
 		_factory = moveFrom._factory;
 		_globalPools = moveFrom._globalPools;
-		_type = moveFrom._type;
 		moveFrom._factory = nullptr;
 		moveFrom._globalPools = nullptr;
-		moveFrom._type = Type::Normal;
 		return *this;
 	}
 
@@ -625,10 +643,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		ObjectFactory& objectFactory,
 		GlobalPools& globalPools,
 		Type type)
-	: GraphicsEncoder(pipelineLayout, sharedState)
+	: GraphicsEncoder(pipelineLayout, sharedState, type)
 	, _factory(&objectFactory)
 	, _globalPools(&globalPools)
-	, _type(type)
 	{
 		assert(_sharedState);
 		_sharedState->_currentEncoderType = VulkanEncoderSharedState::EncoderType::ProgressiveGraphics;
@@ -643,12 +660,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	GraphicsEncoder_ProgressivePipeline::~GraphicsEncoder_ProgressivePipeline()
 	{
-		if (_type == Type::StreamOutput && _sharedState) {
-			assert(GetObjectFactory().GetExtensionFunctions()._endTransformFeedback);
-			(*GetObjectFactory().GetExtensionFunctions()._endTransformFeedback)(
-				_sharedState->_commandList.GetUnderlying().get(),
-				0, 0, nullptr, nullptr);
-		}
 	}
 
 	GraphicsEncoder_Optimized::GraphicsEncoder_Optimized(GraphicsEncoder_Optimized&& moveFrom)
@@ -666,8 +677,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	GraphicsEncoder_Optimized::GraphicsEncoder_Optimized(
 		const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout,
-		const std::shared_ptr<VulkanEncoderSharedState>& sharedState)
-	: GraphicsEncoder(pipelineLayout, sharedState)
+		const std::shared_ptr<VulkanEncoderSharedState>& sharedState,
+		Type type)
+	: GraphicsEncoder(pipelineLayout, sharedState, type)
 	{}
 	GraphicsEncoder_Optimized::~GraphicsEncoder_Optimized()
 	{}
@@ -722,14 +734,14 @@ namespace RenderCore { namespace Metal_Vulkan
 		return GraphicsEncoder_ProgressivePipeline { checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout), _sharedState, *_factory, *_globalPools };
 	}
 
-	GraphicsEncoder_ProgressivePipeline DeviceContext::BeginStreamOutputEncoder_ProgressivePipeline(
+	GraphicsEncoder_Optimized DeviceContext::BeginStreamOutputEncoder(
 		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
 		IteratorRange<const VertexBufferView*> outputBuffers)
 	{
 		if (_sharedState->_inBltPass)
 			Throw(::Exceptions::BasicLabel("Attempting to begin a stream output encoder while a blt pass is in progress"));
 		if (outputBuffers.empty())
-			Throw(::Exceptions::BasicLabel("No stream output buffers provided to BeginStreamOutputEncoder_ProgressivePipeline"));
+			Throw(::Exceptions::BasicLabel("No stream output buffers provided to BeginStreamOutputEncoder"));
 
 		if (!_factory->GetExtensionFunctions()._beginTransformFeedback)
 			Throw(::Exceptions::BasicLabel("Stream output extension not supported on this platform"));
@@ -754,7 +766,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			GetActiveCommandList().GetUnderlying().get(),
 			0, 0, nullptr, nullptr);
 
-		return GraphicsEncoder_ProgressivePipeline { checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout), _sharedState, *_factory, *_globalPools, GraphicsEncoder_ProgressivePipeline::Type::StreamOutput };
+		return GraphicsEncoder_Optimized { checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout), _sharedState, GraphicsEncoder::Type::StreamOutput };
 	}
 
 	ComputeEncoder_ProgressivePipeline DeviceContext::BeginComputeEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)

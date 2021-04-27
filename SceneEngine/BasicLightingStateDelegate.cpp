@@ -448,28 +448,6 @@ namespace SceneEngine
 namespace SceneEngine
 {
     ToneMapSettings::ToneMapSettings() {}
-
-    std::pair<Float3, Float3> IntersectionTestContext::CalculateWorldSpaceRay(Int2 screenCoord) const
-    {
-		return {Zero<Float3>(), Zero<Float3>()};
-    }
-
-    std::pair<Float3, Float3> IntersectionTestContext::CalculateWorldSpaceRay(
-        const RenderCore::Techniques::CameraDesc& sceneCamera,
-        Int2 screenCoord, UInt2 viewMins, UInt2 viewMaxs)
-    {
-        return {Zero<Float3>(), Zero<Float3>()};
-    }
-
-    std::shared_ptr<IIntersectionScene> CreateIntersectionTestScene(
-        std::shared_ptr<TerrainManager> terrainManager,
-        std::shared_ptr<PlacementCellSet> placements,
-        std::shared_ptr<PlacementsEditor> placementsEditor,
-        IteratorRange<const std::shared_ptr<SceneEngine::IIntersectionScene>*> extraTesters)
-    {
-        assert(0);
-        return nullptr;
-    }
 }
 
 #endif

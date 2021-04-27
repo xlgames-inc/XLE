@@ -202,7 +202,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	static void AppendErrors(
 		::Assets::Blob& errors,
-		glslang::TShader& shader)
+		glslang::TShader& shader,
+		StringSection<> glslSource,
+		StringSection<> definesTable)
 	{
 		auto infoLog = shader.getInfoLog();
 		auto infoDebugLog = shader.getInfoDebugLog();
@@ -212,6 +214,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		result << infoLog << std::endl;
 		result << "--- Info debug log ---" << std::endl;
 		result << infoDebugLog << std::endl;
+		result << "--- GLSL source ---" << std::endl;
+		result << glslSource << std::endl;
+		result << "--- Defines table ---" << std::endl;
+		result << definesTable << std::endl;
 
 		auto str = result.str();
 		if (!errors) errors = std::make_shared<std::vector<uint8>>();
@@ -272,7 +278,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		auto builtInLimits = CreateTBuiltInResource();
 		if (!shader.parse(&builtInLimits, 100, false, messages)) {
-			AppendErrors(errors, shader);
+			AppendErrors(errors, shader, glslSource, definesTable);
 			return false;
 		}
 
@@ -280,7 +286,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		program.addShader(&shader);
 
 		if (!program.link(messages)) {
-			AppendErrors(errors, shader);
+			AppendErrors(errors, shader, glslSource, definesTable);
 			return false;
 		}
 

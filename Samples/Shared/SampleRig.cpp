@@ -112,6 +112,8 @@ namespace Sample
         techContext->_attachmentPool = sampleGlobals._frameRenderingApparatus->_attachmentPool;
         techContext->_frameBufferPool = sampleGlobals._frameRenderingApparatus->_frameBufferPool;
 
+        RenderCore::Techniques::SetThreadContext(sampleGlobals._windowApparatus->_immediateContext);
+
             //  Finally, we execute the frame loop
         while (PlatformRig::OverlappedWindow::DoMsgPump() != PlatformRig::OverlappedWindow::PumpResult::Terminate) {
                 // ------- Render ----------------------------------------
@@ -126,7 +128,8 @@ namespace Sample
             cpuProfiler.EndFrame();
         }
 
-		sampleOverlay.reset();		// (ensure this gets destroyed before the engine is shutdown)
+		RenderCore::Techniques::SetThreadContext(nullptr);
+        sampleOverlay.reset();		// (ensure this gets destroyed before the engine is shutdown)
 
             //  There are some manual destruction operations we need to perform...
             //  (note that currently some shutdown steps might get skipped if we get 
