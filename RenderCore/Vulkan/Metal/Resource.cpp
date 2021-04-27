@@ -518,49 +518,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	    		vkGetImageMemoryRequirements(factory.GetDevice().get(), _underlyingImage.get(), &mem_reqs);
             }
 
-			// Determine the steady state layout for this resource. If we have only one
-			// usage type selected, we will default to the optimal layout for that usage method.
-			// Otherwise we will fall back to "general"
-			// However, there's an exception for TransferDst; since most textures will have this just to
-			// fill with initial data
-			_steadyStateLayout = Internal::ImageLayout::Undefined;
-			_steadyStateAccessMask = 0;
-			_steadyStateAssociatedStageMask = 0;
-			using lyt = Internal::ImageLayout;
-			if (desc._bindFlags & BindFlag::ShaderResource) {
-				_steadyStateLayout = lyt::ShaderReadOnlyOptimal;
-				_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::ShaderResource)._accessFlags;
-				_steadyStateAssociatedStageMask |= Internal::GetLayoutForBindType(BindFlag::ShaderResource)._pipelineStageFlags;
-			}
-			if (desc._bindFlags & BindFlag::UnorderedAccess) {
-				_steadyStateLayout = lyt::General;
-				_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::UnorderedAccess)._accessFlags;
-				_steadyStateAssociatedStageMask |= Internal::GetLayoutForBindType(BindFlag::UnorderedAccess)._pipelineStageFlags;
-			}
-			if (desc._bindFlags & BindFlag::RenderTarget) {
-				_steadyStateLayout = (_steadyStateLayout == lyt::Undefined) ? lyt::ColorAttachmentOptimal : lyt::General;
-				_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::RenderTarget)._accessFlags;
-				_steadyStateAssociatedStageMask |= Internal::GetLayoutForBindType(BindFlag::RenderTarget)._pipelineStageFlags;
-			}
-			if (desc._bindFlags & BindFlag::DepthStencil) {
-				// Note that DepthStencilReadOnlyOptimal can't be accessed here
-				_steadyStateLayout = (_steadyStateLayout == lyt::Undefined) ? lyt::DepthStencilAttachmentOptimal : lyt::General;
-				_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::DepthStencil)._accessFlags;
-				_steadyStateAssociatedStageMask |= Internal::GetLayoutForBindType(BindFlag::DepthStencil)._pipelineStageFlags;
-			}
-			if (desc._bindFlags & BindFlag::TransferSrc) {
-				_steadyStateLayout = (_steadyStateLayout == lyt::Undefined) ? lyt::TransferSrcOptimal : lyt::General;
-				_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::TransferSrc)._accessFlags;
-				_steadyStateAssociatedStageMask |= Internal::GetLayoutForBindType(BindFlag::TransferSrc)._pipelineStageFlags;
-			}
-			if (desc._bindFlags & BindFlag::TransferDst) {
-				// Note the exception for _steadyStateLayout for TransferDst
-				if (_steadyStateLayout == lyt::Undefined) {
-					_steadyStateLayout = lyt::TransferDstOptimal;
-					_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::TransferDst)._accessFlags;
-					_steadyStateAssociatedStageMask |= Internal::GetLayoutForBindType(BindFlag::TransferDst)._pipelineStageFlags;
-				}
-			}
+			ConfigureDefaultSteadyState(desc._bindFlags);
 
 			// queue transition into our steady-state
 			_pendingInitialization = [](Internal::ResourceInitializationHelper& helper, Resource& res) {
@@ -617,6 +575,53 @@ namespace RenderCore { namespace Metal_Vulkan
 			auto res = vkBindImageMemory(factory.GetDevice().get(), _underlyingImage.get(), _mem.get(), 0);
 			if (res != VK_SUCCESS)
 				Throw(VulkanAPIFailure(res, "Failed while binding an image to device memory"));
+		}
+	}
+
+	void Resource::ConfigureDefaultSteadyState(BindFlag::BitField bindFlags)
+	{
+		// Determine the steady state layout for this resource. If we have only one
+		// usage type selected, we will default to the optimal layout for that usage method.
+		// Otherwise we will fall back to "general"
+		// However, there's an exception for TransferDst; since most textures will have this just to
+		// fill with initial data
+		_steadyStateLayout = Internal::ImageLayout::Undefined;
+		_steadyStateAccessMask = 0;
+		_steadyStateAssociatedStageMask = 0;
+		using lyt = Internal::ImageLayout;
+		if (bindFlags & BindFlag::ShaderResource) {
+			_steadyStateLayout = lyt::ShaderReadOnlyOptimal;
+			_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::ShaderResource)._accessFlags;
+			_steadyStateAssociatedStageMask |= Internal::GetLayoutForBindType(BindFlag::ShaderResource)._pipelineStageFlags;
+		}
+		if (bindFlags & BindFlag::UnorderedAccess) {
+			_steadyStateLayout = lyt::General;
+			_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::UnorderedAccess)._accessFlags;
+			_steadyStateAssociatedStageMask |= Internal::GetLayoutForBindType(BindFlag::UnorderedAccess)._pipelineStageFlags;
+		}
+		if (bindFlags & BindFlag::RenderTarget) {
+			_steadyStateLayout = (_steadyStateLayout == lyt::Undefined) ? lyt::ColorAttachmentOptimal : lyt::General;
+			_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::RenderTarget)._accessFlags;
+			_steadyStateAssociatedStageMask |= Internal::GetLayoutForBindType(BindFlag::RenderTarget)._pipelineStageFlags;
+		}
+		if (bindFlags & BindFlag::DepthStencil) {
+			// Note that DepthStencilReadOnlyOptimal can't be accessed here
+			_steadyStateLayout = (_steadyStateLayout == lyt::Undefined) ? lyt::DepthStencilAttachmentOptimal : lyt::General;
+			_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::DepthStencil)._accessFlags;
+			_steadyStateAssociatedStageMask |= Internal::GetLayoutForBindType(BindFlag::DepthStencil)._pipelineStageFlags;
+		}
+		if (bindFlags & BindFlag::TransferSrc) {
+			_steadyStateLayout = (_steadyStateLayout == lyt::Undefined) ? lyt::TransferSrcOptimal : lyt::General;
+			_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::TransferSrc)._accessFlags;
+			_steadyStateAssociatedStageMask |= Internal::GetLayoutForBindType(BindFlag::TransferSrc)._pipelineStageFlags;
+		}
+		if (bindFlags & BindFlag::TransferDst) {
+			// Note the exception for _steadyStateLayout for TransferDst
+			if (_steadyStateLayout == lyt::Undefined) {
+				_steadyStateLayout = lyt::TransferDstOptimal;
+				_steadyStateAccessMask |= Internal::GetLayoutForBindType(BindFlag::TransferDst)._accessFlags;
+				_steadyStateAssociatedStageMask |= Internal::GetLayoutForBindType(BindFlag::TransferDst)._pipelineStageFlags;
+			}
 		}
 	}
 
@@ -697,6 +702,17 @@ namespace RenderCore { namespace Metal_Vulkan
         //      this is used with the presentation chain images, which are only
         //      released by the vulkan presentation chain itself
         _underlyingImage = VulkanSharedPtr<VkImage>(image, [](const VkImage) {});
+
+		ConfigureDefaultSteadyState(desc._bindFlags);
+		_steadyStateLayout = Internal::ImageLayout::PresentSrc;
+
+		_pendingInitialization = [](Internal::ResourceInitializationHelper& helper, Resource& res) {
+			helper.SetImageLayout(
+				res,
+				Internal::ImageLayout::Undefined, 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+				res._steadyStateLayout, res._steadyStateAccessMask, res._steadyStateAssociatedStageMask);
+			helper.MakeResourceVisible(res.GetGUID());
+		};
     }
 
 	Resource::Resource() : _guid(s_nextResourceGUID++) {}

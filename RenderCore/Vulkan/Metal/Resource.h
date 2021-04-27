@@ -75,6 +75,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		Desc _desc;
 		uint64_t _guid;
+		void ConfigureDefaultSteadyState(BindFlag::BitField);
 	};
 
 	void CompleteInitialization(
