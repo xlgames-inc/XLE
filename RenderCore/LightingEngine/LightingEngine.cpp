@@ -33,19 +33,24 @@ namespace RenderCore { namespace LightingEngine
 {
 	class LightingTechniqueIterator;
 
+	struct FragmentLinkResults
+	{
+		std::vector<std::pair<uint64_t, AttachmentName>> _generatedAttachments;
+		std::vector<uint64_t> _consumedAttachments;
+	};
+
 	class CompiledLightingTechnique
 	{
 	public:
 		struct Step
 		{
-			enum class Type { ParseScene, ExecuteFunction, ExecuteDrawables, BeginRenderPassInstance, EndRenderPassInstance, NextRenderPassStep, PostRPBlit, None };
+			enum class Type { ParseScene, ExecuteFunction, ExecuteDrawables, BeginRenderPassInstance, EndRenderPassInstance, NextRenderPassStep, None };
 			Type _type = Type::None;
 			Techniques::BatchFilter _batch = Techniques::BatchFilter::Max;
 			std::shared_ptr<Techniques::SequencerConfig> _sequencerConfig;
 			std::shared_ptr<Techniques::IShaderResourceDelegate> _shaderResourceDelegate;
 			FrameBufferDesc _fbDesc;
-			unsigned _blitSrc = ~0u;
-			uint64_t _blitDst = ~0ull;
+			FragmentLinkResults _fragmentLinkResults;
 
 			using FnSig = void(LightingTechniqueIterator&);
 			std::function<FnSig> _function;
@@ -100,39 +105,37 @@ namespace RenderCore { namespace LightingEngine
 		_steps.emplace_back(std::move(newStep));
 	}
 
-	struct FragmentLinkResults
-	{
-		struct ExtraCopyStep
-		{
-			AttachmentName _src;
-			uint64_t _systemSemanticDst;
-		};
-		std::vector<ExtraCopyStep> _extraCopySteps;
-	};
-
 	static FragmentLinkResults LinkFragmentOutputsToSystemAttachments(
 		RenderCore::Techniques::MergeFragmentsResult& merged,
 		IteratorRange<RenderCore::Techniques::PreregisteredAttachment*> systemAttachments)
 	{
-		// Attempt to link our framebuffer fragment to the attachments in system attachments
-		// For the operation to be meaningful, it must write to at least one system attachment
-		// But if we write to nothing, we need to add an extra copy step to ensure that something
-		// get output
-		if (systemAttachments.empty() || merged._outputAttachments.empty()) return {};
-		for (const auto& a:merged._outputAttachments) {
-			auto i = std::find_if(systemAttachments.begin(), systemAttachments.end(), [semantic = a.first](const auto& c){ return c._semantic == semantic; });
-			if (i != systemAttachments.end())
-				return {};		// we're ok, we've written to something
-		}
-
-		// Try to match something to the first system attachment
+		// Attachments that are in _outputAttachments, but not in _inputAttachments are considered generated
+		// Attachments that are in _inputAttachments, but not in _outputAttachments are considered consumed
 		FragmentLinkResults result;
-		FragmentLinkResults::ExtraCopyStep copyStep;
-		copyStep._src = merged._outputAttachments[0].second;
-		copyStep._systemSemanticDst = systemAttachments[0]._semantic;
-		result._extraCopySteps.push_back(copyStep);
-		merged._mergedFragment._attachments[copyStep._src]._desc._bindFlagsForFinalLayout |= BindFlag::TransferSrc;
-		systemAttachments[0]._state = RenderCore::Techniques::PreregisteredAttachment::State::Initialized;
+		for (const auto& o:merged._outputAttachments) {
+			auto q = std::find_if(merged._inputAttachments.begin(), merged._inputAttachments.end(), [o](const auto& a) { return a.first == o.first; });
+			if (q != merged._inputAttachments.end()) continue;
+			result._generatedAttachments.push_back(o);
+		}
+		for (const auto& i:merged._inputAttachments) {
+			auto q = std::find_if(merged._outputAttachments.begin(), merged._outputAttachments.end(), [i](const auto& a) { return a.first == i.first; });
+			if (q != merged._outputAttachments.end()) continue;
+			result._consumedAttachments.push_back(i.first);
+		}
+		// If there are system attachments that are no considered initialized, and not written to by the fragment
+		// at all; generate a warning
+		for (const auto& s:systemAttachments) {
+			if (s._state == RenderCore::Techniques::PreregisteredAttachment::State::Initialized) continue;
+			auto i = std::find_if(merged._outputAttachments.begin(), merged._outputAttachments.end(), [s](const auto& a) { return a.first == s._semantic; });
+			if (i != merged._outputAttachments.end()) continue;
+			Log(Warning) << "System attachment with semantic (";
+			auto* dehash = RenderCore::Techniques::AttachmentSemantics::TryDehash(s._semantic);
+			if (dehash) {
+				Log(Warning) << dehash;
+			} else
+				Log(Warning) << "0x" << std::hex << s._semantic << std::dec;
+			Log(Warning) << ") is not written to by merged fragment" << std::endl;
+		}
 		return result;
 	}
 
@@ -181,15 +184,10 @@ namespace RenderCore { namespace LightingEngine
 			_steps.emplace_back(std::move(drawStep));
 		}
 
-		_steps.push_back({Step::Type::EndRenderPassInstance});
-
-		for (const auto&step:linkResults._extraCopySteps) {
-			Step blitStep;
-			blitStep._type = Step::Type::PostRPBlit;
-			blitStep._blitSrc = step._src;
-			blitStep._blitDst = step._systemSemanticDst;
-			_steps.push_back(blitStep);
-		}
+		Step endStep;
+		endStep._type = Step::Type::EndRenderPassInstance;
+		endStep._fragmentLinkResults = std::move(linkResults);
+		_steps.push_back(endStep);
 	}
 
 	CompiledLightingTechnique::CompiledLightingTechnique(
@@ -332,22 +330,21 @@ namespace RenderCore { namespace LightingEngine
 				break;
 
 			case CompiledLightingTechnique::Step::Type::EndRenderPassInstance:
-				_iterator->_rpi.End();
+				{
+					_iterator->_rpi.End();
+					auto& attachmentPool = *_iterator->_attachmentPool;
+					for (auto consumed:next->_fragmentLinkResults._consumedAttachments) {
+						auto* bound = attachmentPool.GetBoundResource(consumed).get();
+						if (bound) attachmentPool.Unbind(*bound);
+					}
+					for (auto generated:next->_fragmentLinkResults._generatedAttachments)
+						attachmentPool.Bind(generated.first, _iterator->_rpi.GetResourceForAttachmentName(generated.second));
+					_iterator->_rpi = {};
+				}
 				break;
 
 			case CompiledLightingTechnique::Step::Type::NextRenderPassStep:
 				_iterator->_rpi.NextSubpass();
-				break;
-
-			case CompiledLightingTechnique::Step::Type::PostRPBlit:
-				{
-					auto* src = _iterator->_rpi.GetResourceForAttachmentName(next->_blitSrc).get();
-					auto* dst = _iterator->_attachmentPool->GetBoundResource(next->_blitDst).get();
-					assert(src && dst);
-					auto& metalContext = *Metal::DeviceContext::Get(*_iterator->_threadContext);
-					auto blitEncoder = metalContext.BeginBlitEncoder();
-					blitEncoder.Copy(*dst, *src);
-				}
 				break;
 
 			case CompiledLightingTechnique::Step::Type::None:
@@ -356,7 +353,6 @@ namespace RenderCore { namespace LightingEngine
 			}
 		}
 
-		_iterator->_rpi = {};		// ensure we release everything at the very end
 		return Step { StepType::None };
 	}
 
@@ -446,11 +442,10 @@ namespace RenderCore { namespace LightingEngine
 	static RenderStepFragmentInterface CreateForwardSceneFragment(
 		std::shared_ptr<Techniques::ITechniqueDelegate> forwardIllumDelegate,
 		std::shared_ptr<Techniques::ITechniqueDelegate> depthOnlyDelegate,
-		bool precisionTargets)
+		bool precisionTargets, bool writeDirectToLDR)
 	{
 		AttachmentDesc lightResolveAttachmentDesc =
-			{	// (!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
-				Format::B8G8R8A8_UNORM_SRGB,		// hack; while skipping tone mapping
+			{	(!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
 				1.f, 1.f, 0u,
 				AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::OutputRelativeDimensions };
 
@@ -459,7 +454,11 @@ namespace RenderCore { namespace LightingEngine
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::OutputRelativeDimensions };
 
 		RenderStepFragmentInterface result(PipelineType::Graphics);
-        auto output = result.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR, lightResolveAttachmentDesc);
+        AttachmentName output;
+		if (!writeDirectToLDR)
+			output = result.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR, lightResolveAttachmentDesc);
+		else
+			output = result.DefineAttachment(Techniques::AttachmentSemantics::ColorLDR);
 		auto depth = result.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth, msDepthDesc);
 
 		SubpassDesc depthOnlySubpass;
@@ -522,10 +521,11 @@ namespace RenderCore { namespace LightingEngine
 			});
 
 		// Draw main scene
+		const bool writeDirectToLDR = true;
 		lightingTechnique->Push(CreateForwardSceneFragment(
 			techDelBox->_forwardIllumDelegate_DisableDepthWrite,
 			techDelBox->_depthOnlyDelegate, 
-			false));
+			false, writeDirectToLDR));
 
 		lightingTechnique->Push(
 			[captures](LightingTechniqueIterator& iterator) {
