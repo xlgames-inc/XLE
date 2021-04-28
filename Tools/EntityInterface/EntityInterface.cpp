@@ -104,7 +104,7 @@ namespace EntityInterface
                 return 1+(ObjectTypeId)(_knownDocumentTypes.size()-1);
             }
         }
-		{
+		if (_defaultType) {
 			auto id = _defaultType->GetDocumentTypeId(name);
             if (id != 0) {
                 KnownType t;

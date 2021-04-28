@@ -801,7 +801,7 @@ namespace RenderCore { namespace Techniques
 				attachmentBindFlags[spDesc.GetDepthStencil()._resourceName] |= BindFlag::DepthStencil;
 			for (const auto& r:spDesc.GetInputs())
                 // \todo -- shader resource or input attachment bind flag here?
-				attachmentBindFlags[spDesc.GetDepthStencil()._resourceName] |= BindFlag::ShaderResource;
+				attachmentBindFlags[r._resourceName] |= BindFlag::ShaderResource;
         }
         for (unsigned c=0; c<fbDesc.GetAttachments().size(); ++c)
             attachmentBindFlags[c] |= fbDesc.GetAttachments()[c]._desc._bindFlagsForFinalLayout;

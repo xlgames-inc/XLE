@@ -243,8 +243,10 @@ namespace ConsoleRig
         assert(s_instance == nullptr);
         s_instance = this;
         MainRig_Attach();
-		if (!_pimpl->_logCfg)
-			_pimpl->_logCfg = std::make_shared<LogCentralConfiguration>(_pimpl->_cfg._logConfigFile);
+        // We can't do this in AttachCurrentModule, because it interacts with other globals (eg, ::Assets::GetDepValSys()), which
+        // may creates requirements for what modules are attached in what order
+		//if (!_pimpl->_logCfg)
+		//	_pimpl->_logCfg = std::make_shared<LogCentralConfiguration>(_pimpl->_cfg._logConfigFile);
     }
 
     void GlobalServices::DetachCurrentModule()

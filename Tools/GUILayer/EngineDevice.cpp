@@ -78,6 +78,11 @@ namespace GUILayer
         return _lightingEngineApparatus;
     }
 
+    const std::shared_ptr<RenderCore::Techniques::ImmediateDrawingApparatus>& NativeEngineDevice::GetImmediateDrawingApparatus()
+    {
+        return _immediateDrawingApparatus;
+    }
+
     void NativeEngineDevice::ResetFrameBufferPool()
     {
         _frameRenderingApparatus->_frameBufferPool->Reset();
@@ -109,10 +114,11 @@ namespace GUILayer
         _lightingEngineApparatus = std::make_shared<RenderCore::LightingEngine::LightingEngineApparatus>(_drawingApparatus);
         _previewSceneRegistry = ToolsRig::CreatePreviewSceneRegistry();
 
-        ::ConsoleRig::GlobalServices::GetInstance().LoadDefaultPlugins();
+        _services->LoadDefaultPlugins();
 
         _divAssets = std::make_unique<ToolsRig::DivergentAssetManager>();
         _creationThreadId = System::Threading::Thread::CurrentThread->ManagedThreadId;
+        RenderCore::Techniques::SetThreadContext(_immediateContext);
 
 		auto osRunLoop = std::make_shared<PlatformRig::OSRunLoop_BasicTimer>((HWND)0);
 		PlatformRig::SetOSRunLoop(osRunLoop);
@@ -125,11 +131,12 @@ namespace GUILayer
 
     NativeEngineDevice::~NativeEngineDevice()
     {
+        RenderCore::Techniques::SetThreadContext(nullptr);
 		if (_messageFilter)
 			System::Windows::Forms::Application::RemoveMessageFilter(_messageFilter.get());
 		PlatformRig::SetOSRunLoop(nullptr);
         // ::Assets::Services::GetAssetSets().Clear();
-		::ConsoleRig::GlobalServices::GetInstance().UnloadDefaultPlugins();
+		_services->UnloadDefaultPlugins();
         ::Assets::MainFileSystem::GetMountingTree()->Unmount(_mountId2);
         ::Assets::MainFileSystem::GetMountingTree()->Unmount(_mountId1);
         ::Assets::MainFileSystem::GetMountingTree()->Unmount(_mountId0);

@@ -176,7 +176,15 @@ namespace ToolsRig
 		return divergentAsset;
 	}
 
+	template<typename AssetType>
+		std::shared_ptr<DivergentAsset<AssetType>> DefaultConstructNewDivergentAsset()
+	{
+		auto originalAsset = std::make_shared<AssetType>();
+		return std::make_shared<DivergentAsset<AssetType>>(originalAsset);
+	}
+
 	template std::shared_ptr<DivergentAsset<RenderCore::Assets::RawMaterial>> CreateDivergentAsset(StringSection<char>);
+	template std::shared_ptr<DivergentAsset<RenderCore::Assets::RawMaterial>> DefaultConstructNewDivergentAsset();
 
 }
 

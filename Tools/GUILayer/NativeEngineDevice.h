@@ -41,6 +41,7 @@ namespace GUILayer
 		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& GetMainPipelineAcceleratorPool();
         const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& GetImmediateDrawables();
         const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& GetTechniqueContext();
+        const std::shared_ptr<RenderCore::Techniques::ImmediateDrawingApparatus>& GetImmediateDrawingApparatus();        
         const std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus>& GetLightingEngineApparatus();
 
         void ResetFrameBufferPool();

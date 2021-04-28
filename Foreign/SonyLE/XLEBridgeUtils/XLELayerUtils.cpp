@@ -233,6 +233,7 @@ namespace XLEBridgeUtils
     LoggingRedirect::~LoggingRedirect() {}
     LoggingRedirect::!LoggingRedirect() {}
 
+    ConsoleRig::WeakAttachablePtr<ConsoleRig::GlobalServices> s_globalServices;
 
     void Utils::AttachLibrary(GUILayer::EngineDevice^ device)
     {

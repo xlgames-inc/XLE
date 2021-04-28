@@ -284,16 +284,16 @@ namespace RenderCore { namespace Metal_Vulkan
 			//		default to just the "general" layout
 			// Otherwise we default to keeping the layout that corresponds to how we where
 			// using it in the render pass
-			if (resourceDesc._bindFlagsForFinalLayout == BindFlag::Enum::ShaderResource) {
+			if (resourceDesc._bindFlagsForFinalLayout == BindFlag::ShaderResource) {
 				desc.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 				desc.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			} else if (resourceDesc._bindFlagsForFinalLayout == BindFlag::Enum::TransferSrc) {
+			} else if (resourceDesc._bindFlagsForFinalLayout == BindFlag::TransferSrc) {
 				desc.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 				desc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-			} else if (resourceDesc._bindFlagsForFinalLayout == BindFlag::Enum::TransferDst) {
+			} else if (resourceDesc._bindFlagsForFinalLayout == BindFlag::TransferDst) {
 				desc.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 				desc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			} else if (resourceDesc._bindFlagsForFinalLayout == BindFlag::Enum::PresentationSrc) {
+			} else if (resourceDesc._bindFlagsForFinalLayout == BindFlag::PresentationSrc) {
 				desc.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 				desc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 			} else if (resourceDesc._bindFlagsForFinalLayout != 0) {

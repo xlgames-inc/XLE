@@ -74,6 +74,12 @@ namespace GUILayer
 		EngineDevice::GetInstance()->GetNative().ResetFrameBufferPool();
 	}
 
+    TechniqueContextWrapper^ LayerControl::GetTechniqueContext()
+    {
+        auto native = GUILayer::EngineDevice::GetInstance()->GetNative().GetTechniqueContext();
+        return gcnew TechniqueContextWrapper { std::move(native) };
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     
     namespace Internal

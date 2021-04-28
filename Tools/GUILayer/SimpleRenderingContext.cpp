@@ -10,7 +10,9 @@
 #include "EditorInterfaceUtils.h"
 #include "GUILayerUtil.h"
 #include "IOverlaySystem.h"
+#if defined(GUILAYER_SCENEENGINE)
 #include "LevelEditorScene.h"
+#endif
 #include "MathLayer.h"
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/ManipulatorsUtil.h"
@@ -94,7 +96,7 @@ namespace GUILayer
         _vfRecord[7]._vertexStride = 2*4;
     }
 
-#if 0
+#if defined(GUILAYER_SCENEENGINE)
     /// <summary>Create and maintain rendering resources for SimpleRenderingContext</summary>
     /// Create & maintain vertex and index buffers. Intended for use when linking to
     /// C# GUI apps.
@@ -157,6 +159,18 @@ namespace GUILayer
         CATCH_ASSETS_END(parsingContext)
         return false;
     }
+#else
+    public ref class RetainedRenderResources
+    {
+    public:
+        uint64  CreateVertexBuffer(void* data, size_t size, unsigned format) { return 0; }
+        uint64  CreateIndexBuffer(void* data, size_t size) { return 0; }
+        bool    DeleteBuffer(uint64 id) { return true; }
+
+        RetainedRenderResources(EngineDevice^ engineDevice) {}
+        ~RetainedRenderResources() {}
+        !RetainedRenderResources() {}
+    };
 #endif
 
     void SimpleRenderingContext::DrawPrimitive(
@@ -167,7 +181,7 @@ namespace GUILayer
         const float color[], const float xform[])
     {
         // \todo -- this should be converted across to using a drawable based system
-#if 0
+#if defined(GUILAYER_SCENEENGINE)
         // We need to bind the technique and technique interface
         //      (including vertex input format)
         // "color" can be passed as a Float4 as the material parameter "MaterialDiffuse"
@@ -194,7 +208,7 @@ namespace GUILayer
         unsigned startVertex,
         const float color[], const float xform[]) 
     {
-#if 0
+#if defined(GUILAYER_SCENEENGINE)
         auto* ibuffer = _retainedRes->GetIndexBuffer(ib);
         auto* vbuffer = _retainedRes->GetVertexBuffer(vb);
         if (!ibuffer || !vbuffer) return;
@@ -212,7 +226,7 @@ namespace GUILayer
 
     void SimpleRenderingContext::InitState(bool depthTest, bool depthWrite)
     {
-#if 0
+#if defined(GUILAYER_SCENEENGINE)
         if (depthWrite) _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadWrite);
         else if (depthTest) _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadOnly);
         else _devContext->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
@@ -224,7 +238,7 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if 0
+#if defined(GUILAYER_SCENEENGINE)
     uint64  RetainedRenderResources::CreateVertexBuffer(void* data, size_t size, unsigned format)
     {
 		auto newBuffer = RenderCore::Techniques::CreateStaticVertexBuffer(*_pimpl->_device, MakeIteratorRange(data, PtrAdd(data, size)));
@@ -306,7 +320,7 @@ namespace GUILayer
 
 ////////////////////////////////////////////////////////////////////////////////////////////////?//
 
-#if 0
+#if defined(GUILAYER_SCENEENGINE)
     public ref class RenderingUtil
     {
     public:

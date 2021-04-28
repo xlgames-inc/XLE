@@ -246,5 +246,8 @@ namespace ToolsRig
 	template<typename AssetType, typename... Params>
 		std::shared_ptr<DivergentAsset<AssetType>> CreateDivergentAsset(Params... params);
 
+	template<typename AssetType>
+		std::shared_ptr<DivergentAsset<AssetType>> DefaultConstructNewDivergentAsset();
+
 }
 

@@ -447,6 +447,7 @@ namespace Assets
 			auto lastNonWhitespace = commaSeparatedExtensions.end();	// set to a sentinel, to distinquish never-set from set-to-first
 			while (i != commaSeparatedExtensions.end() && *i != ',') {
 				if (*i != ' ' && *i != '\t') lastNonWhitespace = i;
+				++i;
 			}
 			if (lastNonWhitespace != commaSeparatedExtensions.end()) {
 				_extensionsAndDelegatesMap.insert({associatedCompiler, std::string{tokenBegin, lastNonWhitespace+1}});
@@ -586,6 +587,8 @@ namespace Assets
 						registrationId._registrationId,
 						MakeIteratorRange(kind._targetCodes),
 						kind._identifierFilter);
+					if (!kind._extensionsForOpenDlg.empty())
+						compilerManager.RegisterExtensions(registrationId._registrationId, kind._extensionsForOpenDlg);
 					opsFromThisLibrary.push_back(registrationId._registrationId);
 				}
 

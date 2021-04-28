@@ -378,6 +378,7 @@ namespace SceneEngine
 
     IntersectionTestScene::~IntersectionTestScene()
     {}
+#endif
 
     std::shared_ptr<IIntersectionScene> CreateIntersectionTestScene(
         std::shared_ptr<TerrainManager> terrainManager,
@@ -388,7 +389,6 @@ namespace SceneEngine
         assert(0);
         return nullptr;
     }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
         

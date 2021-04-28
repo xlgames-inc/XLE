@@ -649,6 +649,12 @@ namespace ToolsRig
     {
         return std::make_shared<IntersectionTester>(shared_from_this());
     }
+#else
+	std::shared_ptr<SceneEngine::IIntersectionScene> ObjectPlaceholders::CreateIntersectionTester()
+    {
+		assert(0);
+        return nullptr;
+    }
 #endif
 
     ObjectPlaceholders::ObjectPlaceholders(

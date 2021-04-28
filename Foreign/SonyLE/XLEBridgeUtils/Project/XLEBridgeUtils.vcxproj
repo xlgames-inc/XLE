@@ -56,9 +56,9 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-	  <Link>
-		  <AdditionalDependencies>imagehlp.lib;$(SolutionDir)\..\build\Debug\ConsoleRig\ConsoleRig.lib;$(SolutionDir)\..\build\Debug\Assets\Assets.lib;$(SolutionDir)\..\build\Debug\Math\Math.lib;$(SolutionDir)\..\build\Debug\OSServices\OSServices.lib;$(SolutionDir)\..\build\Debug\Utility\Utility.lib;$(SolutionDir)\..\build\Debug\ForeignMisc\ForeignMisc.lib;%(AdditionalDependencies)</AdditionalDependencies>
-	  </Link>
+    <Link>
+      <AdditionalDependencies>imagehlp.lib;$(SolutionDir)\..\build\Debug\ConsoleRig\ConsoleRig.lib;$(SolutionDir)\..\build\Debug\Assets\Assets.lib;$(SolutionDir)\..\build\Debug\Math\Math.lib;$(SolutionDir)\..\build\Debug\OSServices\OSServices.lib;$(SolutionDir)\..\build\Debug\Utility\Utility.lib;$(SolutionDir)\..\build\Debug\ForeignMisc\ForeignMisc.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -78,9 +78,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\MaterialLayer.cpp" />
-    <ClCompile Include="..\DesignControlAdapter.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </ClCompile>
+    <ClCompile Include="..\DesignControlAdapter.cpp" />
     <ClCompile Include="..\PropertyDescriptorUtils.cpp" />
     <ClCompile Include="..\ResourceFolderBridge.cpp" />
     <ClCompile Include="..\XLELayerUtils.cpp" />

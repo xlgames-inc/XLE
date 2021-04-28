@@ -20,12 +20,15 @@ namespace GUILayer
     ref class VisCameraSettings;
     ref class VisMouseOver;
     ref class VisResources;
+    ref class TechniqueContextWrapper;
 
     public ref class LayerControl : public EngineControl
     {
     public:
         void AddDefaultCameraHandler(VisCameraSettings^);
         void AddSystem(IOverlaySystem^ overlay);
+
+        TechniqueContextWrapper^ GetTechniqueContext();
 
         LayerControl(System::Windows::Forms::Control^ control);
         ~LayerControl();
