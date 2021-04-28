@@ -26,6 +26,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         DescriptorPool*     _descriptorPool = nullptr;
 		GlobalPools*		_globalPools = nullptr;
+		TemporaryBufferSpace* _temporaryBufferSpace = nullptr;
 
 		struct Binding
 		{
@@ -160,6 +161,34 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
+	void	NumericUniformsInterface::BindConstantBuffers(unsigned startingPoint, IteratorRange<const UniformsStream::ImmediateData*> constantBuffers)
+	{
+		assert(_pimpl);
+
+		VkDescriptorBufferInfo buffers[constantBuffers.size()];
+		for (unsigned c=0; c<constantBuffers.size(); ++c) {
+			if (constantBuffers[c].empty()) continue;
+
+			const auto& binding = _pimpl->_constantBufferRegisters[startingPoint + c];
+			if (binding._slotIndex == ~0u) {
+				Log(Debug) << "Uniform buffer numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+				continue;
+			}
+
+			auto pkt = constantBuffers[c];
+			auto tempSpace = _pimpl->_temporaryBufferSpace->AllocateBuffer(pkt);
+			if (!tempSpace.buffer) {
+				Log(Warning) << "Failed to allocate temporary buffer space in numeric uniforms interface" << std::endl;
+				continue;
+			}
+
+			_pimpl->_descSet[binding._descSetIndex]._builder.Bind(
+				binding._slotIndex, tempSpace
+				VULKAN_VERBOSE_DEBUG_ONLY(, "temporary buffer"));
+			_pimpl->_hasChanges |= _pimpl->_descSet[binding._descSetIndex]._builder.HasChanges();
+        }
+	}
+
     void    NumericUniformsInterface::Bind(unsigned startingPoint, IteratorRange<const VkSampler*> samplers)
     {
 		assert(_pimpl);
@@ -241,6 +270,7 @@ namespace RenderCore { namespace Metal_Vulkan
     NumericUniformsInterface::NumericUniformsInterface(
         const ObjectFactory& factory,
 		const ICompiledPipelineLayout& ipipelineLayout,
+		TemporaryBufferSpace& temporaryBufferSpace,
         const LegacyRegisterBindingDesc& bindings)
     {
 		const auto& pipelineLayout = *checked_cast<const CompiledPipelineLayout*>(&ipipelineLayout);
@@ -248,6 +278,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _pimpl->_globalPools = Internal::VulkanGlobalsTemp::GetInstance()._globalPools;
 		_pimpl->_descriptorPool = &_pimpl->_globalPools->_mainDescriptorPool;
 		_pimpl->_legacyRegisterBindings = bindings;		// we store this only so we can return it from the GetLegacyRegisterBindings() query
+		_pimpl->_temporaryBufferSpace = &temporaryBufferSpace;
 		_pimpl->_hasChanges = false;
         
         Reset();

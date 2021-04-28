@@ -127,35 +127,35 @@ namespace RenderCore { namespace Metal_Vulkan
 		// descriptor.
 		#if defined(VULKAN_VERBOSE_DEBUG)
 			std::string description;
-			if (resourceView.GetResource()) {
-				description = resourceView.GetResource()->GetDesc()._name;
+			if (resourceView.GetVulkanResource()) {
+				description = resourceView.GetVulkanResource()->GetDesc()._name;
 			} else {
 				description = std::string{"ResourceView"};
 			}
 		#endif
 
 		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
-			if (resourceView.GetResource()) ValidateResourceVisibility(*resourceView.GetResource());
+			if (resourceView.GetVulkanResource()) ValidateResourceVisibility(*resourceView.GetVulkanResource());
 		#endif
 
 		assert(descriptorSetBindPoint < _signature.size());
 		auto slotType = _signature[descriptorSetBindPoint]._type;
 		assert(_signature[descriptorSetBindPoint]._count == 1);
 
-		assert(resourceView.GetResource());
+		assert(resourceView.GetVulkanResource());
 		switch (resourceView.GetType()) {
 		case ResourceView::Type::ImageView:
 			assert(resourceView.GetImageView());
 			WriteBinding(
 				descriptorSetBindPoint,
 				AsVkDescriptorType(slotType),
-				VkDescriptorImageInfo { nullptr, resourceView.GetImageView(), (VkImageLayout)Internal::AsVkImageLayout(resourceView.GetResource()->_steadyStateLayout) }, true
+				VkDescriptorImageInfo { nullptr, resourceView.GetImageView(), (VkImageLayout)Internal::AsVkImageLayout(resourceView.GetVulkanResource()->_steadyStateLayout) }, true
 				VULKAN_VERBOSE_DEBUG_ONLY(, description));
 			break;
 
 		case ResourceView::Type::BufferAndRange:
 			{
-				assert(resourceView.GetResource() && resourceView.GetResource()->GetBuffer());
+				assert(resourceView.GetVulkanResource() && resourceView.GetVulkanResource()->GetBuffer());
 				auto range = resourceView.GetBufferRangeOffsetAndSize();
 				uint64_t rangeBegin = range.first, rangeEnd = range.second;
 				if (rangeBegin == 0 && rangeEnd == 0)
@@ -163,7 +163,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				WriteBinding(
 					descriptorSetBindPoint,
 					AsVkDescriptorType(slotType),
-					VkDescriptorBufferInfo { resourceView.GetResource()->GetBuffer(), rangeBegin, rangeEnd }, true
+					VkDescriptorBufferInfo { resourceView.GetVulkanResource()->GetBuffer(), rangeBegin, rangeEnd }, true
 					VULKAN_VERBOSE_DEBUG_ONLY(, description));
 			}
 			break;
@@ -173,7 +173,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			WriteBinding(
 				descriptorSetBindPoint,
 				AsVkDescriptorType(slotType),
-				resourceView.GetBufferView(), false
+				resourceView.GetBufferView(), true
 				VULKAN_VERBOSE_DEBUG_ONLY(, description));
 			break;
 
@@ -284,7 +284,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
 		auto& blankStorageBuffer = AllocateInfo(
 			VkDescriptorBufferInfo {
-				globalPools._dummyResources._blankUavBuffer.GetResource()->GetBuffer(),
+				globalPools._dummyResources._blankUavBuffer.GetVulkanResource()->GetBuffer(),
 				0, VK_WHOLE_SIZE });
 
 		unsigned minBit = xl_ctz8(dummyDescWriteMask);
@@ -719,11 +719,15 @@ namespace RenderCore { namespace Metal_Vulkan
 		ProgressiveDescriptorSetBuilder builder { _layout->GetDescriptorSlots() };
 		for (unsigned c=0; c<binds.size(); ++c) {
 			if (binds[c]._type == DescriptorSetInitializer::BindType::ResourceView) {
-				builder.Bind(c, *checked_cast<const ResourceView*>(uniforms._resourceViews[binds[c]._uniformsStreamIdx]));
+				auto* view = checked_cast<const ResourceView*>(uniforms._resourceViews[binds[c]._uniformsStreamIdx]);
+				builder.Bind(c, *view);
 				writtenMask |= 1ull<<uint64_t(c);
+				_retainedViews.emplace_back(*view);
 			} else if (binds[c]._type == DescriptorSetInitializer::BindType::Sampler) {
-				builder.Bind(c, checked_cast<const SamplerState*>(uniforms._samplers[binds[c]._uniformsStreamIdx])->GetUnderlying());
+				auto* sampler = checked_cast<const SamplerState*>(uniforms._samplers[binds[c]._uniformsStreamIdx]);
+				builder.Bind(c, sampler->GetUnderlying());
 				writtenMask |= 1ull<<uint64_t(c);
+				_retainedSamplers.emplace_back(*sampler);
 			} else if (binds[c]._type == DescriptorSetInitializer::BindType::ImmediateData) {
 				// Only constant buffers are supported for immediate data; partially for consistency
 				// across APIs.

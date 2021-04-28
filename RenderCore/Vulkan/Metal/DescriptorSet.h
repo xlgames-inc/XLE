@@ -23,6 +23,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ResourceView;
 	class GlobalPools;
 	class ObjectFactory;
+	class SamplerState;
 
 	#if defined(VULKAN_VERBOSE_DEBUG)
 		class DescriptorSetDebugInfo
@@ -153,6 +154,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		#if defined(VULKAN_VERBOSE_DEBUG)
 			DescriptorSetDebugInfo _description;
 		#endif
+
+		std::vector<ResourceView> _retainedViews;
+		std::vector<SamplerState> _retainedSamplers;
 	};
 
 }}

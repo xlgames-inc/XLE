@@ -81,6 +81,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			#endif
 
 			void ResetState(const CompiledPipelineLayout&);
+			const ObjectFactory& GetObjectFactory() { return *_factory; }
 
 			DescriptorCollection(
 				const ObjectFactory&    factory, 
@@ -94,6 +95,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		DescriptorCollection	_graphicsDescriptors;
 		DescriptorCollection	_computeDescriptors;
+		TemporaryBufferSpace*	_tempBufferSpace = nullptr;
 
 		void* _currentEncoder = nullptr;
 		enum class EncoderType { None, Graphics, ProgressiveGraphics, ProgressiveCompute };
@@ -103,7 +105,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		VulkanEncoderSharedState(
 			const ObjectFactory&    factory, 
-			GlobalPools&            globalPools);
+			GlobalPools&            globalPools,
+			TemporaryBufferSpace&	tempBufferSpace);
 		~VulkanEncoderSharedState();
 	};
 
@@ -209,6 +212,15 @@ namespace RenderCore { namespace Metal_Vulkan
 				collection._currentlyBoundDesc[index] = description;
 			#endif
 		}
+	}
+
+	NumericUniformsInterface	GraphicsEncoder::BeginNumericUniformsInterface()
+	{
+		return NumericUniformsInterface { 
+			_sharedState->_graphicsDescriptors.GetObjectFactory(),
+			*_pipelineLayout,
+			*_sharedState->_tempBufferSpace,
+			Internal::VulkanGlobalsTemp::GetInstance()._legacyRegisterBindings};
 	}
 
 	void			GraphicsEncoder::PushConstants(VkShaderStageFlags stageFlags, unsigned offset, IteratorRange<const void*> data)
@@ -539,11 +551,11 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	GraphicsEncoder::GraphicsEncoder(
-		const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout,
-		const std::shared_ptr<VulkanEncoderSharedState>& sharedState,
+		std::shared_ptr<CompiledPipelineLayout> pipelineLayout,
+		std::shared_ptr<VulkanEncoderSharedState> sharedState,
 		Type type)
-	: _pipelineLayout(pipelineLayout)
-	, _sharedState(sharedState)
+	: _pipelineLayout(std::move(pipelineLayout))
+	, _sharedState(std::move(sharedState))
 	, _type(type)
 	{
 		if (_sharedState) {
@@ -648,12 +660,12 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	GraphicsEncoder_ProgressivePipeline::GraphicsEncoder_ProgressivePipeline(
-		const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout,
-		const std::shared_ptr<VulkanEncoderSharedState>& sharedState,
+		std::shared_ptr<CompiledPipelineLayout> pipelineLayout,
+		std::shared_ptr<VulkanEncoderSharedState> sharedState,
 		ObjectFactory& objectFactory,
 		GlobalPools& globalPools,
 		Type type)
-	: GraphicsEncoder(pipelineLayout, sharedState, type)
+	: GraphicsEncoder(std::move(pipelineLayout), std::move(sharedState), type)
 	, _factory(&objectFactory)
 	, _globalPools(&globalPools)
 	{
@@ -686,20 +698,21 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	GraphicsEncoder_Optimized::GraphicsEncoder_Optimized(
-		const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout,
-		const std::shared_ptr<VulkanEncoderSharedState>& sharedState,
+		std::shared_ptr<CompiledPipelineLayout> pipelineLayout,
+		std::shared_ptr<VulkanEncoderSharedState> sharedState,
 		Type type)
-	: GraphicsEncoder(pipelineLayout, sharedState, type)
+	: GraphicsEncoder(std::move(pipelineLayout), std::move(sharedState), type)
 	{}
 	GraphicsEncoder_Optimized::~GraphicsEncoder_Optimized()
 	{}
 
 	ComputeEncoder_ProgressivePipeline::ComputeEncoder_ProgressivePipeline(
-		const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout,
-		const std::shared_ptr<VulkanEncoderSharedState>& sharedState,
+		std::shared_ptr<CompiledPipelineLayout> pipelineLayout,
+		std::shared_ptr<VulkanEncoderSharedState> sharedState,
 		ObjectFactory& objectFactory,
 		GlobalPools& globalPools)
-	: _pipelineLayout(pipelineLayout)
+	: _pipelineLayout(std::move(pipelineLayout))
+	, _sharedState(std::move(sharedState))
 	, _factory(&objectFactory)
 	, _globalPools(&globalPools)
 	{
@@ -730,22 +743,22 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
-	GraphicsEncoder_Optimized DeviceContext::BeginGraphicsEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
+	GraphicsEncoder_Optimized DeviceContext::BeginGraphicsEncoder(std::shared_ptr<ICompiledPipelineLayout> pipelineLayout)
 	{
 		if (_sharedState->_inBltPass)
 			Throw(::Exceptions::BasicLabel("Attempting to begin a compute encoder while a blt pass is in progress"));
-		return GraphicsEncoder_Optimized { checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout), _sharedState };
+		return GraphicsEncoder_Optimized { checked_pointer_cast<CompiledPipelineLayout>(std::move(pipelineLayout)), _sharedState };
 	}
 
-	GraphicsEncoder_ProgressivePipeline DeviceContext::BeginGraphicsEncoder_ProgressivePipeline(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
+	GraphicsEncoder_ProgressivePipeline DeviceContext::BeginGraphicsEncoder_ProgressivePipeline(std::shared_ptr<ICompiledPipelineLayout> pipelineLayout)
 	{
 		if (_sharedState->_inBltPass)
 			Throw(::Exceptions::BasicLabel("Attempting to begin a compute encoder while a blt pass is in progress"));
-		return GraphicsEncoder_ProgressivePipeline { checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout), _sharedState, *_factory, *_globalPools };
+		return GraphicsEncoder_ProgressivePipeline { checked_pointer_cast<CompiledPipelineLayout>(std::move(pipelineLayout)), _sharedState, *_factory, *_globalPools };
 	}
 
 	GraphicsEncoder_Optimized DeviceContext::BeginStreamOutputEncoder(
-		const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
+		std::shared_ptr<ICompiledPipelineLayout> pipelineLayout,
 		IteratorRange<const VertexBufferView*> outputBuffers)
 	{
 		if (_sharedState->_inBltPass)
@@ -776,16 +789,16 @@ namespace RenderCore { namespace Metal_Vulkan
 			GetActiveCommandList().GetUnderlying().get(),
 			0, 0, nullptr, nullptr);
 
-		return GraphicsEncoder_Optimized { checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout), _sharedState, GraphicsEncoder::Type::StreamOutput };
+		return GraphicsEncoder_Optimized { checked_pointer_cast<CompiledPipelineLayout>(std::move(pipelineLayout)), _sharedState, GraphicsEncoder::Type::StreamOutput };
 	}
 
-	ComputeEncoder_ProgressivePipeline DeviceContext::BeginComputeEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
+	ComputeEncoder_ProgressivePipeline DeviceContext::BeginComputeEncoder(std::shared_ptr<ICompiledPipelineLayout> pipelineLayout)
 	{
 		if (_sharedState->_renderPass)
 			Throw(::Exceptions::BasicLabel("Attempting to begin a compute encoder while a render pass is in progress"));
 		if (_sharedState->_inBltPass)
 			Throw(::Exceptions::BasicLabel("Attempting to begin a compute encoder while a blt pass is in progress"));
-		return ComputeEncoder_ProgressivePipeline { checked_pointer_cast<CompiledPipelineLayout>(pipelineLayout), _sharedState, *_factory, *_globalPools };
+		return ComputeEncoder_ProgressivePipeline { checked_pointer_cast<CompiledPipelineLayout>(std::move(pipelineLayout)), _sharedState, *_factory, *_globalPools };
 	}
 
 	std::shared_ptr<DeviceContext> DeviceContext::Get(IThreadContext& threadContext)
@@ -810,6 +823,12 @@ namespace RenderCore { namespace Metal_Vulkan
 	VkDevice        DeviceContext::GetUnderlyingDevice()
 	{
 		return _factory->GetDevice().get();
+	}
+
+	TemporaryBufferSpace& DeviceContext::GetTemporaryBufferSpace()
+	{
+		assert(_sharedState->_tempBufferSpace);
+		return *_sharedState->_tempBufferSpace;
 	}
 
 	void		DeviceContext::BeginCommandList()
@@ -969,7 +988,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		// 
 		auto& resView = *checked_cast<const ResourceView*>(&renderTarget);
-		auto& res = *resView.GetResource();
+		auto& res = *resView.GetVulkanResource();
 		if (res.GetImage()) {
 			VkClearColorValue clearValue;
 			clearValue.float32[0] = clearColour[0];
@@ -989,7 +1008,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	void        DeviceContext::Clear(const IResourceView& depthStencil, ClearFilter::BitField clearFilter, float depth, unsigned stencil)
 	{
 		auto& resView = *checked_cast<const ResourceView*>(&depthStencil);
-		auto& res = *resView.GetResource();
+		auto& res = *resView.GetVulkanResource();
 		if (res.GetImage()) {
 			VkClearDepthStencilValue clearValue;
 			clearValue.depth = depth;
@@ -1093,9 +1112,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	: _cmdPool(&cmdPool), _cmdBufferType(cmdBufferType)
 	, _factory(&factory)
 	, _globalPools(&globalPools)
-	, _tempBufferSpace(&tempBufferSpace)
 	{
-		_sharedState = std::make_shared<VulkanEncoderSharedState>(*_factory, *_globalPools);
+		_sharedState = std::make_shared<VulkanEncoderSharedState>(*_factory, *_globalPools, tempBufferSpace);
 
 		auto& globals = Internal::VulkanGlobalsTemp::GetInstance();
 		globals._globalPools = &globalPools;
@@ -1111,9 +1129,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	VulkanEncoderSharedState::VulkanEncoderSharedState(
 		const ObjectFactory&    factory, 
-		GlobalPools&            globalPools)
+		GlobalPools&            globalPools,
+		TemporaryBufferSpace&	tempBufferSpace)
 	: _graphicsDescriptors(factory, globalPools, 4)
 	, _computeDescriptors(factory, globalPools, 4)
+	, _tempBufferSpace(&tempBufferSpace)	
 	{
 		_renderPass = nullptr;
 		_renderPassSubpass = 0u;

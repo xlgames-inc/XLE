@@ -241,6 +241,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	};
 
 	class VulkanEncoderSharedState;
+	class NumericUniformsInterface;
 
 	class GraphicsEncoder
 	{
@@ -250,6 +251,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		void		SetStencilRef(unsigned frontFaceStencilRef, unsigned backFaceStencilRef);
 		void 		Bind(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects);
 
+		const std::shared_ptr<CompiledPipelineLayout>& GetPipelineLayout() { return _pipelineLayout; }
+
+		NumericUniformsInterface	BeginNumericUniformsInterface();
+
 		// --------------- Vulkan specific interface --------------- 
 		void		BindDescriptorSet(unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo&& description));
 		void		PushConstants(VkShaderStageFlags stageFlags, unsigned offset, IteratorRange<const void*> data);
@@ -257,8 +262,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	protected:
 		enum class Type { Normal, StreamOutput };
 		GraphicsEncoder(
-			const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout = nullptr,
-			const std::shared_ptr<VulkanEncoderSharedState>& sharedState = nullptr,
+			std::shared_ptr<CompiledPipelineLayout> pipelineLayout = nullptr,
+			std::shared_ptr<VulkanEncoderSharedState> sharedState = nullptr,
 			Type type = Type::Normal);
 		~GraphicsEncoder();
 		GraphicsEncoder(GraphicsEncoder&&);		// (hide these to avoid slicing in derived types)
@@ -294,8 +299,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		~GraphicsEncoder_ProgressivePipeline();
 	protected:
 		GraphicsEncoder_ProgressivePipeline(
-			const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout,
-			const std::shared_ptr<VulkanEncoderSharedState>& sharedState,
+			std::shared_ptr<CompiledPipelineLayout> pipelineLayout,
+			std::shared_ptr<VulkanEncoderSharedState> sharedState,
 			ObjectFactory& objectFactory,
 			GlobalPools& globalPools,
 			Type type = Type::Normal);
@@ -325,8 +330,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		~GraphicsEncoder_Optimized();
 	protected:
 		GraphicsEncoder_Optimized(
-			const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout,
-			const std::shared_ptr<VulkanEncoderSharedState>& sharedState,
+			std::shared_ptr<CompiledPipelineLayout> pipelineLayout,
+			std::shared_ptr<VulkanEncoderSharedState> sharedState,
 			Type type = Type::Normal);
 
 		void LogPipeline(const GraphicsPipeline& pipeline);
@@ -356,8 +361,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		void LogPipeline();
 
 		ComputeEncoder_ProgressivePipeline(
-			const std::shared_ptr<CompiledPipelineLayout>& pipelineLayout,
-			const std::shared_ptr<VulkanEncoderSharedState>& sharedState,
+			std::shared_ptr<CompiledPipelineLayout> pipelineLayout,
+			std::shared_ptr<VulkanEncoderSharedState> sharedState,
 			ObjectFactory& objectFactory,
 			GlobalPools& globalPools);
 
@@ -378,10 +383,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		void EndRenderPass();
 		unsigned GetCurrentSubpassIndex() const;
 
-		GraphicsEncoder_Optimized BeginGraphicsEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
-		GraphicsEncoder_ProgressivePipeline BeginGraphicsEncoder_ProgressivePipeline(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
-		ComputeEncoder_ProgressivePipeline BeginComputeEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
-		GraphicsEncoder_Optimized BeginStreamOutputEncoder(const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout, IteratorRange<const VertexBufferView*> outputBuffers);
+		GraphicsEncoder_Optimized BeginGraphicsEncoder(std::shared_ptr<ICompiledPipelineLayout> pipelineLayout);
+		GraphicsEncoder_ProgressivePipeline BeginGraphicsEncoder_ProgressivePipeline(std::shared_ptr<ICompiledPipelineLayout> pipelineLayout);
+		ComputeEncoder_ProgressivePipeline BeginComputeEncoder(std::shared_ptr<ICompiledPipelineLayout> pipelineLayout);
+		GraphicsEncoder_Optimized BeginStreamOutputEncoder(std::shared_ptr<ICompiledPipelineLayout> pipelineLayout, IteratorRange<const VertexBufferView*> outputBuffers);
 		BlitEncoder BeginBlitEncoder();
 
 		void Clear(const IResourceView& renderTarget, const VectorPattern<float,4>& clearColour);
@@ -405,7 +410,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		GlobalPools&    GetGlobalPools();
 		VkDevice        GetUnderlyingDevice();
 		ObjectFactory&	GetFactory() const				{ return *_factory; }
-		TemporaryBufferSpace& GetTemporaryBufferSpace()		{ return *_tempBufferSpace; }
+		TemporaryBufferSpace& GetTemporaryBufferSpace();
 
 		void BeginRenderPass(
 			const FrameBuffer& fb,
@@ -444,8 +449,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		CommandPool*                        _cmdPool;
 		CommandBufferType					_cmdBufferType;
-
-		TemporaryBufferSpace*				_tempBufferSpace;
 
 		friend class BlitEncoder;
 		void EndBlitEncoder();

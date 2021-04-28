@@ -192,6 +192,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ResourceView;
 	class ObjectFactory;
 	class DescriptorSetDebugInfo;
+	class TemporaryBufferSpace;
 
 	/// <summary>Bind uniforms at numeric binding points</summary>
 	class NumericUniformsInterface
@@ -203,6 +204,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		void    Bind(unsigned startingPoint, IteratorRange<const IResourceView*const*> resources);
 		void    Bind(unsigned startingPoint, IteratorRange<const ConstantBufferView*> uniformBuffers);
+		void	BindConstantBuffers(unsigned startingPoint, IteratorRange<const UniformsStream::ImmediateData*> uniformBuffers);
 
 		void Reset();
 		bool HasChanges() const;
@@ -214,6 +216,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		NumericUniformsInterface(
 			const ObjectFactory& factory,
 			const ICompiledPipelineLayout& pipelineLayout,
+			TemporaryBufferSpace& temporaryBufferSpace,
 			const LegacyRegisterBindingDesc& bindings);
 		NumericUniformsInterface();
 		~NumericUniformsInterface();

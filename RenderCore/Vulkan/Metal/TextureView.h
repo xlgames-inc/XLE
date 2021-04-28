@@ -37,11 +37,13 @@ namespace RenderCore { namespace Metal_Vulkan
         ResourceView();
         ~ResourceView();
 
-		const std::shared_ptr<Resource>&	GetResource() const { return _resource; }
+		std::shared_ptr<IResource>	        GetResource() const override { return _resource; }
         VkImageView							GetImageView() const { return _imageView.get(); }
         VkBufferView						GetBufferView() const { return _bufferView.get(); }
         std::pair<unsigned, unsigned>       GetBufferRangeOffsetAndSize() const { return _bufferRange; }
         const VkImageSubresourceRange&      GetImageSubresourceRange() const { return (VkImageSubresourceRange&)_imageSubresourceRange; }
+
+        Resource* GetVulkanResource() const { return _resource.get(); }
 
         enum class Type { ImageView, BufferView, BufferAndRange };
         Type GetType() const { return _type; }

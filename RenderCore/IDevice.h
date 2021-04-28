@@ -189,6 +189,7 @@ namespace RenderCore
     class IResourceView
     {
     public:
+        virtual std::shared_ptr<IResource> GetResource() const = 0;
         virtual ~IResourceView();
     };
     

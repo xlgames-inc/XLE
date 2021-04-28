@@ -26,6 +26,26 @@ namespace RenderCore
 		IteratorRange<const ISampler*const*> _samplers = {};
 	};
 
+	class ImmediateDataStream
+	{
+	public:
+		std::vector<UniformsStream::ImmediateData> _immediateDatas;
+		operator UniformsStream()
+		{
+			return UniformsStream { {}, _immediateDatas, {} };
+		}
+
+		ImmediateDataStream(IteratorRange<const void*> b0);
+		ImmediateDataStream(IteratorRange<const void*> b0, IteratorRange<const void*> b1);
+		ImmediateDataStream(IteratorRange<const void*> b0, IteratorRange<const void*> b1, IteratorRange<const void*> b2);
+		ImmediateDataStream(IteratorRange<const void*> b0, IteratorRange<const void*> b1, IteratorRange<const void*> b2, IteratorRange<const void*> b3);
+
+		template<typename T0> ImmediateDataStream(const T0& b0);
+		template<typename T0, typename T1> ImmediateDataStream(const T0& b0, const T1& b1);
+		template<typename T0, typename T1, typename T2> ImmediateDataStream(const T0& b0, const T1& b1, const T2& b2);
+		template<typename T0, typename T1, typename T2, typename T3> ImmediateDataStream(const T0& b0, const T1& b1, const T2& b2, const T3& b3);
+	};
+
 	class ConstantBufferElementDesc
 	{
 	public:
@@ -185,4 +205,9 @@ namespace RenderCore
 		std::vector<Entry> _srvRegisters_boundToBuffer;
 		std::vector<Entry> _uavRegisters_boundToBuffer;
 	};
+
+	template<typename T0> ImmediateDataStream::ImmediateDataStream(const T0& b0) : ImmediateDataStream(MakeOpaqueIteratorRange(b0)) {}
+	template<typename T0, typename T1> ImmediateDataStream::ImmediateDataStream(const T0& b0, const T1& b1) : ImmediateDataStream(MakeOpaqueIteratorRange(b0), MakeOpaqueIteratorRange(b1)) {}
+	template<typename T0, typename T1, typename T2> ImmediateDataStream::ImmediateDataStream(const T0& b0, const T1& b1, const T2& b2) : ImmediateDataStream(MakeOpaqueIteratorRange(b0), MakeOpaqueIteratorRange(b1), MakeOpaqueIteratorRange(b2)) {}
+	template<typename T0, typename T1, typename T2, typename T3> ImmediateDataStream::ImmediateDataStream(const T0& b0, const T1& b1, const T2& b2, const T3& b3) : ImmediateDataStream(MakeOpaqueIteratorRange(b0), MakeOpaqueIteratorRange(b1), MakeOpaqueIteratorRange(b2), MakeOpaqueIteratorRange(b3)) {}
 }

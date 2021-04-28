@@ -462,10 +462,7 @@ namespace UnitTests
 			auto shaderProgram = testHelper->MakeShaderProgram(vsText_FullViewport, psText_LegacyBindings);
 			encoder.Bind(shaderProgram);
 
-			Metal::NumericUniformsInterface numericInterface(
-				Metal::GetObjectFactory(),
-				*testHelper->_pipelineLayout,
-				*testHelper->_defaultLegacyBindings);
+			auto numericInterface = encoder.BeginNumericUniformsInterface();
 
 			auto tv0 = tex0->CreateTextureView(BindFlag::UnorderedAccess);
 			auto tv1 = tex1->CreateTextureView(BindFlag::UnorderedAccess);

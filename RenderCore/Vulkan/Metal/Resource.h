@@ -53,6 +53,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkBuffer GetBuffer() const          { return _underlyingBuffer.get(); }
 
 		const VulkanSharedPtr<VkImage>& ShareImage() const { return _underlyingImage; }
+		const VulkanSharedPtr<VkBuffer>& ShareBuffer() const { return _underlyingBuffer; }
+		const VulkanSharedPtr<VkDeviceMemory>& ShareDeviceMemory() const { return _mem; }
 
 		Resource(
 			const ObjectFactory& factory, const Desc& desc,

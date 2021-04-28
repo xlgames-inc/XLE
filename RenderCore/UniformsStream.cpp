@@ -13,6 +13,18 @@
 
 namespace RenderCore 
 {
+	ImmediateDataStream::ImmediateDataStream(IteratorRange<const void*> b0)
+	: _immediateDatas({b0})
+	{}
+	ImmediateDataStream::ImmediateDataStream(IteratorRange<const void*> b0, IteratorRange<const void*> b1)
+	: _immediateDatas({b0, b1})
+	{}
+	ImmediateDataStream::ImmediateDataStream(IteratorRange<const void*> b0, IteratorRange<const void*> b2, IteratorRange<const void*> b1)
+	: _immediateDatas({b0, b1, b2})
+	{}
+	ImmediateDataStream::ImmediateDataStream(IteratorRange<const void*> b0, IteratorRange<const void*> b1, IteratorRange<const void*> b2, IteratorRange<const void*> b3)
+	: _immediateDatas({b0, b1, b2, b3})
+	{}
 
 	void UniformsStreamInterface::BindResourceView(unsigned slot, uint64_t hashName, IteratorRange<const ConstantBufferElementDesc*> cbElements)
 	{
