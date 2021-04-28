@@ -18,7 +18,7 @@ namespace RenderCore { namespace Techniques {
 	class CameraDesc; class TechniqueContext; class Technique; 
 	class ITechniqueDelegate;
 	class IPipelineAcceleratorPool;
-    class IImmediateDrawables;
+    class ImmediateDrawingApparatus;
     class IPreDrawDelegate;
     class LightingEngineApparatus;
 }}
@@ -154,8 +154,7 @@ namespace ToolsRig
 		virtual OverlayState GetOverlayState() const override;
 
         SimpleSceneLayer(
-            const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-            const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables,
+            const std::shared_ptr<RenderCore::Techniques::ImmediateDrawingApparatus>& immediateDrawingApparatus,
             const std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus>& lightingEngineApparatus);
         ~SimpleSceneLayer();
     protected:
@@ -180,8 +179,7 @@ namespace ToolsRig
 		const VisOverlaySettings& GetOverlaySettings() const;
 
         VisualisationOverlay(
-            const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-            const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables,
+            const std::shared_ptr<RenderCore::Techniques::ImmediateDrawingApparatus>& immediateDrawingApparatus,
 			const VisOverlaySettings& overlaySettings,
             std::shared_ptr<VisMouseOver> mouseOver);
         ~VisualisationOverlay();

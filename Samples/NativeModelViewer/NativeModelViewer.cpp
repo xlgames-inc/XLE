@@ -50,13 +50,11 @@ namespace Sample
 	void NativeModelViewerOverlay::OnStartup(const SampleGlobals& globals)
 	{
 		auto pipelineAccelerators = globals._drawingApparatus->_pipelineAccelerators;
-		auto immediateDrawables = globals._immediateDrawingApparatus->_immediateDrawables;
 		auto lightingEngineApparatus = std::make_shared<RenderCore::LightingEngine::LightingEngineApparatus>(globals._drawingApparatus);
 		auto techniqueContext = globals._drawingApparatus->_techniqueContext;
 
 		auto modelLayer = std::make_shared<ToolsRig::SimpleSceneLayer>(
-			pipelineAccelerators,
-			immediateDrawables,
+			globals._immediateDrawingApparatus,
 			lightingEngineApparatus);
 
 		ToolsRig::ModelVisSettings visSettings {};
@@ -73,7 +71,7 @@ namespace Sample
 		overlaySettings._drawWireframe = false;
 
 		auto visOverlay = std::make_shared<ToolsRig::VisualisationOverlay>(
-			pipelineAccelerators, immediateDrawables,
+			globals._immediateDrawingApparatus,
 			overlaySettings, mouseOver);
 		visOverlay->Set(scene);
 		visOverlay->Set(modelLayer->GetCamera());

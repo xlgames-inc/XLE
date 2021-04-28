@@ -411,6 +411,7 @@ namespace RenderOverlays
 		RenderCore::Techniques::IImmediateDrawables& immediateDrawables)
 	: _immediateDrawables(&immediateDrawables)
 	, _threadContext(&threadContext)
+	, _fontRenderingManager(nullptr)
 	{
 	}
 

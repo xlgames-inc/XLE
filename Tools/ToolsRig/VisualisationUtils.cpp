@@ -27,6 +27,8 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/SimpleModelRenderer.h"
+#include "../../RenderCore/Techniques/Apparatuses.h"
+#include "../../RenderCore/Techniques/ImmediateDrawables.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -124,6 +126,7 @@ namespace ToolsRig
 
 		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
 		std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> _immediateDrawables;
+		std::shared_ptr<RenderOverlays::FontRenderingManager> _fontRenderingManager;
 		std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus> _lightingApparatus;
 		std::shared_ptr<::Assets::IAsyncMarker> _pendingPipelines;
     };
@@ -223,6 +226,8 @@ namespace ToolsRig
 		}
 
 		auto targetDesc = renderTarget->GetDesc();
+		UInt2 viewportDims { targetDesc._textureDesc._width, targetDesc._textureDesc._height };
+
 		RenderCore::Techniques::PreregisteredAttachment preregisteredAttachments[] {
 			RenderCore::Techniques::PreregisteredAttachment {
 				RenderCore::Techniques::AttachmentSemantics::ColorLDR,
@@ -290,14 +295,15 @@ namespace ToolsRig
 			}
 		} else {
 			// Draw a loading indicator, 
-			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext, RenderCore::LoadStore::Clear);
 			using namespace RenderOverlays::DebuggingDisplay;
-			RenderOverlays::ImmediateOverlayContext overlays(threadContext, *_pimpl->_immediateDrawables);
+			RenderOverlays::ImmediateOverlayContext overlays(threadContext, *_pimpl->_immediateDrawables, *_pimpl->_fontRenderingManager);
 			overlays.CaptureState();
-			auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
 			Rect rect { Coord2{0, 0}, Coord2(viewportDims[0], viewportDims[1]) };
 			RenderLoadingIndicator(overlays, rect, _pimpl->_loadingIndicatorCounter++);
 			overlays.ReleaseState();
+
+			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext, RenderCore::LoadStore::Clear);
+			_pimpl->_immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi.GetFrameBufferDesc(), 0, viewportDims);
 		}
 
 		if (!_pimpl->_envSettingsErrorMessage.empty()) {
@@ -362,14 +368,14 @@ namespace ToolsRig
 	}
 	
     SimpleSceneLayer::SimpleSceneLayer(
-		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-		const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables,
+		const std::shared_ptr<RenderCore::Techniques::ImmediateDrawingApparatus>& immediateDrawingApparatus,
 		const std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus>& lightingEngineApparatus)
     {
         _pimpl = std::make_unique<Pimpl>();
 		_pimpl->_camera = std::make_shared<VisCameraSettings>();
-		_pimpl->_pipelineAccelerators = pipelineAccelerators;
-		_pimpl->_immediateDrawables = immediateDrawables;
+		_pimpl->_pipelineAccelerators = immediateDrawingApparatus->_mainDrawingApparatus->_pipelineAccelerators;
+		_pimpl->_immediateDrawables = immediateDrawingApparatus->_immediateDrawables;
+		_pimpl->_fontRenderingManager = immediateDrawingApparatus->_fontRenderingManager;
 		_pimpl->_lightingApparatus = lightingEngineApparatus;
     }
 
@@ -463,21 +469,9 @@ namespace ToolsRig
 			const RenderCore::Techniques::Drawable&,
 			uint64_t materialGuid, unsigned drawCallIdx) override
 		{
-			using namespace RenderCore;
-			assert(0);
-			// metalContext.Bind(_dss, drawCallIdx+1);
+			drawContext.SetStencilRef(drawCallIdx+1, drawCallIdx+1);
 			return true;
 		}
-
-		StencilRefDelegate()
-		: _dss{
-			RenderCore::CompareOp::LessEqual, true, true,
-			0xff, 0xff, 0x0,
-			RenderCore::StencilDesc::AlwaysWrite,
-			RenderCore::StencilDesc::NoEffect}
-		{}
-	private:
-		RenderCore::DepthStencilDesc _dss;
 	};
 
     class VisualisationOverlay::Pimpl
@@ -489,6 +483,7 @@ namespace ToolsRig
 		std::shared_ptr<VisAnimationState> _animState;
 		std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
 		std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> _immediateDrawables;
+		std::shared_ptr<RenderOverlays::FontRenderingManager> _fontRenderingManager;
 
 		std::shared_ptr<SceneEngine::IScene> _scene;
 
@@ -540,11 +535,14 @@ namespace ToolsRig
 
 		if (!_pimpl->_scene || !_pimpl->_cameraSettings || GetAsyncSceneState(*_pimpl->_scene) == ::Assets::AssetState::Pending) return;
 
+		auto colorLDRDesc = renderTarget->GetDesc();
+		UInt2 viewportDims { colorLDRDesc._textureDesc._width, colorLDRDesc._textureDesc._height };
+
 		RenderCore::Techniques::SequencerContext sequencerTechnique;
 		auto cam = AsCameraDesc(*_pimpl->_cameraSettings);
 		SceneEngine::SceneView sceneView {
 			SceneEngine::SceneView::Type::Normal,
-			Techniques::BuildProjectionDesc(cam, UInt2(threadContext.GetStateDesc()._viewportDimensions[0], threadContext.GetStateDesc()._viewportDimensions[1])),
+			Techniques::BuildProjectionDesc(cam, viewportDims),
 		};
 
 		bool doColorByMaterial = 
@@ -552,16 +550,17 @@ namespace ToolsRig
 			|| (_pimpl->_settings._colourByMaterial == 2 && _pimpl->_mouseOver->_hasMouseOver);
 
 		if (_pimpl->_settings._drawWireframe || _pimpl->_settings._drawNormals || _pimpl->_settings._skeletonMode || doColorByMaterial) {
-			AttachmentDesc colorLDRDesc = AsAttachmentDesc(renderTarget->GetDesc());
+			
 			std::vector<FrameBufferDesc::Attachment> attachments {
-				{ Techniques::AttachmentSemantics::ColorLDR, colorLDRDesc },
+				{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(colorLDRDesc) },
 				{ Techniques::AttachmentSemantics::MultisampleDepth, Format::D24_UNORM_S8_UINT }
 			};
 			SubpassDesc mainPass;
 			mainPass.SetName("VisualisationOverlay");
 			mainPass.AppendOutput(0);
 			mainPass.SetDepthStencil(1, LoadStore::Retain_ClearStencil);		// ensure stencil is cleared (but ok to keep depth)
-			FrameBufferDesc fbDesc{ std::move(attachments), std::vector<SubpassDesc>{mainPass} };
+			RenderCore::FrameBufferProperties fbProps { colorLDRDesc._textureDesc._width, colorLDRDesc._textureDesc._height };
+			FrameBufferDesc fbDesc{ std::move(attachments), std::vector<SubpassDesc>{mainPass}, fbProps };
 			Techniques::RenderPassInstance rpi {
 				threadContext, fbDesc, 
 				*parserContext.GetTechniqueContext()._frameBufferPool,
@@ -574,36 +573,33 @@ namespace ToolsRig
 				RenderCore::Techniques::CreateTechniqueDelegateLegacy(
 					Techniques::TechniqueIndex::VisNormals, {}, {}, {});
 
-			DepthStencilDesc ds;
-			ds._stencilEnable = true;
-			ds._stencilWriteMask = 0xff;
-			ds._frontFaceStencil = StencilDesc::AlwaysWrite;
+			DepthStencilDesc ds {
+				RenderCore::CompareOp::LessEqual, true, true,
+				0xff, 0xff,
+				RenderCore::StencilDesc::AlwaysWrite,
+				RenderCore::StencilDesc::NoEffect };
 			static auto primeStencilBuffer =
 				RenderCore::Techniques::CreateTechniqueDelegateLegacy(
 					Techniques::TechniqueIndex::DepthOnly, {}, {}, ds);
 
 			if (_pimpl->_settings._drawWireframe) {
-				CATCH_ASSETS_BEGIN
-					auto sequencerConfig = _pimpl->_pipelineAccelerators->CreateSequencerConfig(visWireframeDelegate, ParameterBox{}, fbDesc);
-					sequencerTechnique._sequencerConfig = sequencerConfig.get();
-					SceneEngine::ExecuteSceneRaw(
-						threadContext, parserContext, *_pimpl->_pipelineAccelerators,
-						sequencerTechnique,
-						sceneView, RenderCore::Techniques::BatchFilter::General,
-						*_pimpl->_scene);
-				CATCH_ASSETS_END(parserContext)
+				auto sequencerConfig = _pimpl->_pipelineAccelerators->CreateSequencerConfig(visWireframeDelegate, ParameterBox{}, fbDesc);
+				sequencerTechnique._sequencerConfig = sequencerConfig.get();
+				SceneEngine::ExecuteSceneRaw(
+					threadContext, parserContext, *_pimpl->_pipelineAccelerators,
+					sequencerTechnique,
+					sceneView, RenderCore::Techniques::BatchFilter::General,
+					*_pimpl->_scene);
 			}
 
 			if (_pimpl->_settings._drawNormals) {
-				CATCH_ASSETS_BEGIN
-					auto sequencerConfig = _pimpl->_pipelineAccelerators->CreateSequencerConfig(visNormals, ParameterBox{}, fbDesc);
-					sequencerTechnique._sequencerConfig = sequencerConfig.get();
-					SceneEngine::ExecuteSceneRaw(
-						threadContext, parserContext, *_pimpl->_pipelineAccelerators,
-						sequencerTechnique,
-						sceneView, RenderCore::Techniques::BatchFilter::General,
-						*_pimpl->_scene);
-				CATCH_ASSETS_END(parserContext)
+				auto sequencerConfig = _pimpl->_pipelineAccelerators->CreateSequencerConfig(visNormals, ParameterBox{}, fbDesc);
+				sequencerTechnique._sequencerConfig = sequencerConfig.get();
+				SceneEngine::ExecuteSceneRaw(
+					threadContext, parserContext, *_pimpl->_pipelineAccelerators,
+					sequencerTechnique,
+					sceneView, RenderCore::Techniques::BatchFilter::General,
+					*_pimpl->_scene);
 			}
 
 			if (_pimpl->_settings._skeletonMode) {
@@ -622,16 +618,14 @@ namespace ToolsRig
 				std::shared_ptr<RenderCore::Techniques::IPreDrawDelegate> oldDelegate;
 				if (visContent)
 					oldDelegate = visContent->SetPreDrawDelegate(_pimpl->_stencilPrimeDelegate);
-				CATCH_ASSETS_BEGIN
-					// Prime the stencil buffer with draw call indices
-					auto sequencerCfg = _pimpl->_pipelineAccelerators->CreateSequencerConfig(primeStencilBuffer, ParameterBox{}, fbDesc);
-					sequencerTechnique._sequencerConfig = sequencerCfg.get();
-					SceneEngine::ExecuteSceneRaw(
-						threadContext, parserContext, *_pimpl->_pipelineAccelerators,
-						sequencerTechnique,
-						sceneView, RenderCore::Techniques::BatchFilter::General,
-						*_pimpl->_scene);
-				CATCH_ASSETS_END(parserContext)
+				// Prime the stencil buffer with draw call indices
+				auto sequencerCfg = _pimpl->_pipelineAccelerators->CreateSequencerConfig(primeStencilBuffer, ParameterBox{}, fbDesc);
+				sequencerTechnique._sequencerConfig = sequencerCfg.get();
+				SceneEngine::ExecuteSceneRaw(
+					threadContext, parserContext, *_pimpl->_pipelineAccelerators,
+					sequencerTechnique,
+					sceneView, RenderCore::Techniques::BatchFilter::General,
+					*_pimpl->_scene);
 				if (visContent)
 					visContent->SetPreDrawDelegate(oldDelegate);
 			}
@@ -641,8 +635,6 @@ namespace ToolsRig
             //  Draw an overlay over the scene, 
             //  containing debugging / profiling information
         if (doColorByMaterial) {
-
-			assert(0);	// not updated
 #if 0
 			CATCH_ASSETS_BEGIN
                 RenderOverlays::HighlightByStencilSettings settings;
@@ -672,14 +664,15 @@ namespace ToolsRig
 			CATCH_ASSETS_BEGIN
 
 				{
-					auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
 					using namespace RenderOverlays::DebuggingDisplay;
-					RenderOverlays::ImmediateOverlayContext overlays(threadContext, *_pimpl->_immediateDrawables);
+					RenderOverlays::ImmediateOverlayContext overlays(threadContext, *_pimpl->_immediateDrawables, *_pimpl->_fontRenderingManager);
 					overlays.CaptureState();
-					auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
 					Rect rect { Coord2{0, 0}, Coord2(viewportDims[0], viewportDims[1]) };
 					RenderTrackingOverlay(overlays, rect, *_pimpl->_mouseOver, *_pimpl->_scene);
 					overlays.ReleaseState();
+
+					auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
+					_pimpl->_immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi.GetFrameBufferDesc(), 0, viewportDims);
 				}
 
 			CATCH_ASSETS_END(parserContext)
@@ -742,14 +735,14 @@ namespace ToolsRig
 	}
 
     VisualisationOverlay::VisualisationOverlay(
-		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-		const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& immediateDrawables,
+		const std::shared_ptr<RenderCore::Techniques::ImmediateDrawingApparatus>& immediateDrawingApparatus,
 		const VisOverlaySettings& overlaySettings,
         std::shared_ptr<VisMouseOver> mouseOver)
     {
         _pimpl = std::make_unique<Pimpl>();
-		_pimpl->_pipelineAccelerators = pipelineAccelerators;
-		_pimpl->_immediateDrawables = immediateDrawables;
+		_pimpl->_pipelineAccelerators = immediateDrawingApparatus->_mainDrawingApparatus->_pipelineAccelerators;
+		_pimpl->_immediateDrawables = immediateDrawingApparatus->_immediateDrawables;
+		_pimpl->_fontRenderingManager = immediateDrawingApparatus->_fontRenderingManager;
         _pimpl->_settings = overlaySettings;
         _pimpl->_mouseOver = std::move(mouseOver);
     }

@@ -55,7 +55,7 @@ namespace RenderCore
             };
             using BitField = unsigned;
         };
-        Flags::BitField _flags = 0u;
+        Flags::BitField _flags = Flags::OutputRelativeDimensions;
         BindFlag::BitField _bindFlagsForFinalLayout = 0u;  ///< we use this to select the optimal final layout of the resource. This is how the resource is left post-renderpass (for example, for presentation targets)
 
         uint64_t CalculateHash() const;
