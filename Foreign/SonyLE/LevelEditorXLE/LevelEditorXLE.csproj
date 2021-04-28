@@ -60,8 +60,6 @@
     <Compile Include="AssetMan\AssetProperties.cs" />
     <Compile Include="AssetMan\IExportable.cs" />
     <Compile Include="Camera\XLECamera.cs" />
-    <Compile Include="Environment\EnvUtility.cs" />
-    <Compile Include="Environment\XLEEnvAdapter.cs" />
     <Compile Include="Game\GameExtensions.cs" />
     <Compile Include="Manipulators\ExtraEditCommands.cs" />
     <Compile Include="Manipulators\RandomizeTransformsForm.cs">
@@ -78,9 +76,6 @@
     </Compile>
     <Compile Include="Markers\TriMeshMarker.cs" />
     <Compile Include="Materials\PickMaterialManipulator.cs" />
-    <Compile Include="Placements\Converter.cs" />
-    <Compile Include="Placements\PlacementManipulator.cs" />
-    <Compile Include="Placements\ScatterPlaceManipulator.cs" />
     <Compile Include="PropertyEditing\EnumUITypeEditor.cs" />
     <Compile Include="Services\Commands.cs" />
     <Compile Include="Services\CustomXml.cs" />
@@ -97,40 +92,9 @@
     <Compile Include="Manipulators\XLENativeManipControls.Designer.cs">
       <DependentUpon>XLENativeManipControls.cs</DependentUpon>
     </Compile>
-    <Compile Include="Placements\PlacementsConfig.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Placements\PlacementsConfig.Designer.cs">
-      <DependentUpon>PlacementsConfig.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Placements\XLEPlacement.cs" />
-    <Compile Include="Placements\XLEPlacementsCellRef.cs" />
-    <Compile Include="Placements\XLEPlacementsDocument.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Schema\Schema.cs" />
     <Compile Include="Services\Utils.cs" />
-    <Compile Include="Terrain\TerrainContextControls.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Terrain\TerrainContextControls.Designer.cs">
-      <DependentUpon>TerrainContextControls.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Terrain\TerrainCoverageConfig.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Terrain\TerrainCoverageConfig.Designer.cs">
-      <DependentUpon>TerrainCoverageConfig.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Terrain\TerrainManipulator.cs" />
-    <Compile Include="Terrain\TerrainMaterial.cs" />
-    <Compile Include="Terrain\VegetationSpawnGob.cs" />
-    <Compile Include="Terrain\XLETerrainGob.cs" />
-    <Compile Include="Terrain\TerrainConfig.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Terrain\TerrainConfig.Designer.cs">
-      <DependentUpon>TerrainConfig.cs</DependentUpon>
-    </Compile>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Manipulators\RandomizeTransformsForm.resx">
@@ -141,18 +105,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Manipulators\XLEScatterPlaceControls.resx">
       <DependentUpon>XLEScatterPlaceControls.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Placements\PlacementsConfig.resx">
-      <DependentUpon>PlacementsConfig.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Terrain\TerrainContextControls.resx">
-      <DependentUpon>TerrainContextControls.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Terrain\TerrainCoverageConfig.resx">
-      <DependentUpon>TerrainCoverageConfig.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Terrain\TerrainConfig.resx">
-      <DependentUpon>TerrainConfig.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>

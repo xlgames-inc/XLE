@@ -14,15 +14,17 @@ using Sce.Atf.Applications;
 using Sce.Atf.Dom;
 
 using LevelEditorCore;
+#if GUILAYER_SCENEENGINE
 using LevelEditorXLE.Environment;
 using LevelEditorXLE.Placements;
+#endif
 using LevelEditorXLE.Extensions;
 
 namespace LevelEditorXLE.Game
 {
     class GameExtensions : DomNodeAdapter, IHierarchical, ICommandClient, IContextMenuCommandProvider
     {
-        #region IHierachical
+#region IHierachical
         public bool CanAddChild(object child)
         {
             if (child.Is<IGameObject>() || child.Is<IGameObjectFolder>()) return false;
@@ -37,18 +39,24 @@ namespace LevelEditorXLE.Game
                 }
             }
 
+#if GUILAYER_SCENEENGINE
             return  PlacementsFolder.CanAddChild(child)
                 |   EnvSettingsFolder.CanAddChild(child);
+#else
+            return false;
+#endif
         }
         public bool AddChild(object child)
         {
             if (child.Is<IGameObject>() || child.Is<IGameObjectFolder>()) return false;
 
+#if GUILAYER_SCENEENGINE
             if (EnvSettingsFolder.AddChild(child))
                 return true;
 
             if (PlacementsFolder.AddChild(child))
                 return true;
+#endif
 
             var domNode = child.As<DomNode>();
             if (domNode != null)
@@ -71,8 +79,9 @@ namespace LevelEditorXLE.Game
 
             return false;
         }
-        #endregion
+#endregion
 
+#if GUILAYER_SCENEENGINE
         public XLEEnvSettingsFolder EnvSettingsFolder
         {
             get
@@ -101,7 +110,7 @@ namespace LevelEditorXLE.Game
         {
             get { return DomNode.GetChild(Schema.xleGameType.terrainChild).As<Terrain.XLETerrainGob>(); }
         }
-
+#endif
         public Uri ExportDirectory
         {
             get 
@@ -123,12 +132,14 @@ namespace LevelEditorXLE.Game
             get { return XLEBridgeUtils.Utils.GlobalSceneManager; }
         }
 
+#if GUILAYER_SCENEENGINE
         public GUILayer.TerrainManipulatorContext TerrainManipulatorContext
         {
             get { return m_terrainManipulatorContext; }
         }
+#endif
 
-        #region Context Menu Commands
+#region Context Menu Commands
         bool ICommandClient.CanDoCommand(object commandTag)
         {
             if (commandTag is Command)
@@ -154,6 +165,7 @@ namespace LevelEditorXLE.Game
 
             switch ((Command)commandTag)
             {
+#if GUILAYER_SCENEENGINE
                 case Command.CreateTerrain:
                     {
                         if (DomNode.GetChild(Schema.xleGameType.terrainChild) == null)
@@ -183,6 +195,7 @@ namespace LevelEditorXLE.Game
                             XLEEnvSettings.Create(envFolder.GetNameForNewChild()));
                         break;
                     }
+#endif
 
                 case Command.CreateTriMeshMarker:
                     {
@@ -212,14 +225,16 @@ namespace LevelEditorXLE.Game
             foreach (Command command in System.Enum.GetValues(typeof(Command)))
                 yield return command;
         }
-        #endregion
+#endregion
 
+#if GUILAYER_SCENEENGINE
         private GUILayer.TerrainManipulatorContext m_terrainManipulatorContext = new GUILayer.TerrainManipulatorContext();
+#endif
     }
 
     class XLEGameObjectsFolder : DomNodeAdapter, IExportable
     {
-        #region IExportable
+#region IExportable
         public Uri ExportTarget
         {
             get
@@ -244,6 +259,6 @@ namespace LevelEditorXLE.Game
                     this.GetSceneManager().ExportGameObjects(0)));
             return result;
         }
-        #endregion
+#endregion
     }
 }

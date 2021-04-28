@@ -84,8 +84,6 @@ namespace RenderingInterop
         private static GUILayer.EntityLayer s_entityInterface;
         private static XLEBridgeUtils.LoggingRedirect s_loggingRedirect;
 
-        private static System.Windows.Forms.Timer s_foregroundUpdateTimer;
-
         /// <summary>
         /// init game engine 
         /// call it one time during startup on the UI thread.</summary>        
@@ -97,7 +95,6 @@ namespace RenderingInterop
             {
                 GUILayer.EngineDevice.SetDefaultWorkingDirectory();
                 s_engineDevice = new GUILayer.EngineDevice();
-                s_engineDevice.AttachDefaultCompilers();
                 s_retainedRenderResources = new GUILayer.RetainedRenderResources(s_engineDevice);
                 s_underlyingScene = new GUILayer.EditorSceneManager();
                 Util3D.Init();
@@ -145,22 +142,11 @@ namespace RenderingInterop
 
                 XLEBridgeUtils.Utils.AttachLibrary(s_engineDevice);
                 s_loggingRedirect = new XLEBridgeUtils.LoggingRedirect();
-
-                s_foregroundUpdateTimer = new System.Windows.Forms.Timer();
-                s_foregroundUpdateTimer.Tick += s_foregroundUpdateTimer_Elapsed;
-                s_foregroundUpdateTimer.Interval = 32;
-                s_foregroundUpdateTimer.Start();
             }
             catch (Exception e)
             {
                 CriticalError = "Error while initialising engine device: " + e.Message;
             }
-        }
-
-        static void s_foregroundUpdateTimer_Elapsed(object myObject, EventArgs myEventArgs)
-        {
-            if (s_engineDevice!=null)
-                s_engineDevice.ForegroundUpdate();
         }
 
         public static bool IsInError { get { return CriticalError.Length > 0; } }
@@ -187,9 +173,6 @@ namespace RenderingInterop
                     keyValue.Value.TypeId);
             }
             s_idToDomNode.Clear();
-            s_foregroundUpdateTimer.Stop();
-            s_foregroundUpdateTimer.Dispose();
-            s_foregroundUpdateTimer = null;
 
             s_loggingRedirect.Dispose();
             s_loggingRedirect = null;

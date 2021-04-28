@@ -52,10 +52,12 @@ namespace LevelEditorXLE.Materials
                 m_highlightMaterialGUID = pick[0].materialGuid;
                 m_highlight.Add(pick[0].documentId, pick[0].instanceId);
 
+#if GUILAYER_SCENEENGINE
                 using (var placements = nativeVC.SceneManager.GetPlacementsEditor())
                 {
                     m_highlight.DoFixup(placements);
                 }
+#endif
             }
 
             return ManipulatorPickResult.ImmediateBeginDrag;
@@ -99,6 +101,7 @@ namespace LevelEditorXLE.Materials
             var context = opaqueContext as GUILayer.SimpleRenderingContext;
             if (context == null) return;
 
+#if GUILAYER_SCENEENGINE
             var sceneManager = nativeVC.SceneManager;
             using (var placements = sceneManager.GetPlacementsEditor())
             {
@@ -109,6 +112,7 @@ namespace LevelEditorXLE.Materials
                         null, m_highlightMaterialGUID);
                 }
             }
+#endif
         }
 
         public ManipulatorInfo ManipulatorInfo

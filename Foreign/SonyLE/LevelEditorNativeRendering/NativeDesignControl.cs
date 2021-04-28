@@ -242,6 +242,7 @@ namespace RenderingInterop
                         {
                             using (var intersectionScene = GameEngine.GetEditorSceneManager().GetIntersectionScene())
                             {
+#if GUILAYER_SCENEENGINE
                                 float terrainHeight;
                                 GUILayer.Vector3 terrainNormal;
                                 if (GUILayer.EditorInterfaceUtils.GetTerrainHeightAndNormal(
@@ -252,6 +253,7 @@ namespace RenderingInterop
                                         gameObject.Rotation, new Vec3F(terrainNormal.X, terrainNormal.Y, terrainNormal.Z),
                                         Sce.Atf.Rendering.Dom.AxisSystemType.ZIsUp);
                                 }
+#endif
                             }
                         }
                     }
@@ -497,12 +499,12 @@ namespace RenderingInterop
         private string m_pendingCaption;
 
 
-        #region IViewContext members
+#region IViewContext members
         Size GUILayer.IViewContext.ViewportSize { get { return base.Size; } }
         GUILayer.CameraDescWrapper GUILayer.IViewContext.Camera { get { return Utils.AsCameraDesc(base.Camera); } }
         GUILayer.EditorSceneManager GUILayer.IViewContext.SceneManager { get { return Adapter.SceneManager; } }
         GUILayer.TechniqueContextWrapper GUILayer.IViewContext.TechniqueContext { get { return Adapter.TechniqueContext; } }
         GUILayer.EngineDevice GUILayer.IViewContext.EngineDevice { get { return Adapter.EngineDevice; } }
-        #endregion
+#endregion
     }
 }

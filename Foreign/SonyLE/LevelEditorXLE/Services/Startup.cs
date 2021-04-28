@@ -13,6 +13,7 @@ namespace LevelEditorXLE
     {
         public static void InitializeAdapters()
         {
+#if GUILAYER_SCENEENGINE
             Schema.placementsCellReferenceType.Type.Define(new ExtensionInfo<Placements.PlacementsCellRef>());
             Schema.placementsFolderType.Type.Define(new ExtensionInfo<Placements.PlacementsFolder>());
             Schema.placementsDocumentType.Type.Define(new ExtensionInfo<Placements.XLEPlacementDocument>());
@@ -29,6 +30,7 @@ namespace LevelEditorXLE
             Schema.envObjectType.Type.Define(new ExtensionInfo<Environment.XLEEnvObject>());
             Schema.vegetationSpawnConfigType.Type.Define(new ExtensionInfo<Terrain.VegetationSpawnConfigGob>());
             Schema.vegetationSpawnMaterialType.Type.Define(new ExtensionInfo<Terrain.VegetationSpawnMaterialItem>());
+#endif
             Schema.triMeshMarkerType.Type.Define(new ExtensionInfo<Markers.TriMeshMarker>());
             Schema.markerPointType.Type.Define(new ExtensionInfo<Markers.PointMarker>());
             Schema.gameObjectFolderType.Type.Define(new ExtensionInfo<Game.XLEGameObjectsFolder>());
@@ -42,7 +44,9 @@ namespace LevelEditorXLE
                 typeof(XLEAssetService), 
                 typeof(Commands),
 
+#if GUILAYER_SCENEENGINE
                 typeof(Terrain.TerrainManipulator),
+#endif
 
                 typeof(ControlsLibraryExt.Commands.CommonCommands),
                 typeof(ControlsLibraryExt.Material.MaterialInspector),
@@ -51,6 +55,7 @@ namespace LevelEditorXLE
                 typeof(ControlsLibraryExt.Material.MatTab),
                 typeof(Materials.PickMaterialManipulator),
 
+#if GUILAYER_SCENEENGINE
                 // typeof(Placements.PlacementManipulator),     (provides access to the native placements manipulators... but not really required)
                 typeof(Placements.ResourceConverter),
                 typeof(Placements.ScatterPlaceManipulator),
@@ -59,6 +64,7 @@ namespace LevelEditorXLE
                 typeof(AssetMan.ResourcePreview),
                 typeof(Manipulators.ExtraEditCommands),
                 typeof(Terrain.TerrainNamingBridge),
+#endif
 
                 typeof(XLEBridgeUtils.ResourceQueryService)
                 );

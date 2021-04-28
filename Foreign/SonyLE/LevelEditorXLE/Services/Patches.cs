@@ -30,11 +30,13 @@ namespace LevelEditorXLE
     {
         public static DomNode GetReferenceTarget(DomNode node)
         {
+#if GUILAYER_SCENEENGINE
             var placementsCellRef = node.As<Placements.PlacementsCellRef>();
             if (placementsCellRef != null && placementsCellRef.Target != null)
             {
                 node = placementsCellRef.Target.As<DomNode>();
             }
+#endif
             return node;
         }
 
@@ -48,6 +50,7 @@ namespace LevelEditorXLE
             var game = gameNode.As<Game.GameExtensions>();
             if (game == null) return;
 
+#if GUILAYER_SCENEENGINE
             var placementsFolder = game.PlacementsFolder;
             if (placementsFolder != null)
             {
@@ -56,6 +59,7 @@ namespace LevelEditorXLE
                     cell.Resolve();
                 }
             }
+#endif
         }
 
         public static void Unresolve(IAdaptable gameNode)
@@ -63,6 +67,7 @@ namespace LevelEditorXLE
             var game = gameNode.As<Game.GameExtensions>();
             if (game == null) return;
 
+#if GUILAYER_SCENEENGINE
             var placementsFolder = game.PlacementsFolder;
             if (placementsFolder != null)
             {
@@ -71,6 +76,7 @@ namespace LevelEditorXLE
                     cell.Unresolve();
                 }
             }
+#endif
 
                 // Detach all children
                 // This will cause the native adapters to destroy the associated native objects.
@@ -83,6 +89,7 @@ namespace LevelEditorXLE
             var game = gameNode.As<Game.GameExtensions>();
             if (game == null) return;
 
+#if GUILAYER_SCENEENGINE
             var placementsFolder = game.PlacementsFolder;
             if (placementsFolder != null)
             {
@@ -93,10 +100,12 @@ namespace LevelEditorXLE
                     doc.Save(cellRef.Uri, schemaLoader);
                 }
             }
+#endif
         }
 
         public static bool ConfirmClose(IDocument document, IFileDialogService fileDialogService)
         {
+#if GUILAYER_SCENEENGINE
             var game = document.As<Game.GameExtensions>();
             if (game == null) return true;
             var terrain = game.Terrain;
@@ -135,7 +144,7 @@ namespace LevelEditorXLE
                     return false;
                 }
             }
-
+#endif
             return true;
         }
 
@@ -144,10 +153,12 @@ namespace LevelEditorXLE
             var game = gameNode.As<Game.GameExtensions>();
             if (game == null) return;
 
+#if GUILAYER_SCENEENGINE
             var placementsFolder = game.PlacementsFolder;
             if (placementsFolder != null)
                 foreach (var cellRef in placementsFolder.Cells)
                     cellRef.SelectNameIfNecessary();
+#endif
         }
 
         public static Tuple<string, string> GetSchemaResourceName()
@@ -160,6 +171,7 @@ namespace LevelEditorXLE
             var ext = gameRoot.As<Game.GameExtensions>();
             if (ext != null)
             {
+#if GUILAYER_SCENEENGINE
                     // Add default environment settings
                 var envFolder = ext.EnvSettingsFolder;
                 if (envFolder.Settings.Count == 0)
@@ -174,6 +186,7 @@ namespace LevelEditorXLE
                         ext.PlacementsFolder = newNode.As<Placements.PlacementsFolder>();
                     }
                 }
+#endif
             }
         }
 

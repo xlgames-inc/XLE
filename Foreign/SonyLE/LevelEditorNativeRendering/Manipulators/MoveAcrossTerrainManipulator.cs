@@ -145,14 +145,16 @@ namespace RenderingInterop
                     Matrix4F localToWorld = TransformUtils.CalcPathTransform(path, path.Count - 1);
 
                     m_originalTranslations[k] = localToWorld.Translation;
-                    
+
                     float heightAboveTerrain = 0.0f;
+#if GUILAYER_SCENEENGINE
                     float terrainHeight = 0.0f;
                     if (GUILayer.EditorInterfaceUtils.GetTerrainHeight(
                         out terrainHeight, intersectionScene, m_originalTranslations[k].X, m_originalTranslations[k].Y))
                     {
                         heightAboveTerrain = m_originalTranslations[k].Z - terrainHeight;
                     }
+#endif
                     m_originalHeights[k] = heightAboveTerrain;
                 }
             }
@@ -196,6 +198,7 @@ namespace RenderingInterop
                         Matrix4F parentWorldToLocal = new Matrix4F();
                         parentWorldToLocal.Invert(parentLocalToWorld);
 
+#if GUILAYER_SCENEENGINE
                         Vec3F newWorldPos = m_originalTranslations[i] + translate;
                         float terrainHeight = 0.0f;
                         GUILayer.Vector3 terrainNormal;
@@ -236,6 +239,7 @@ namespace RenderingInterop
 
                             node.UpdateTransform();
                         }
+#endif
                     }
                 }
             }
@@ -253,7 +257,7 @@ namespace RenderingInterop
 
         public override void OnMouseWheel(ViewControl vc, Point scrPt, int delta) { }
 
-        #endregion
+#endregion
 
         protected override Matrix4F GetManipulatorMatrix()
         {

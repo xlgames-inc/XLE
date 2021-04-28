@@ -50,6 +50,7 @@ namespace LevelEditorXLE.Manipulators
             var manipulators = Globals.MEFContainer.GetExportedValues<IManipulator>();
             foreach (var m in manipulators)
             {
+#if GUILAYER_SCENEENGINE
                 var t = m as Terrain.TerrainManipulator;
                 if (t != null)
                 {
@@ -106,8 +107,10 @@ namespace LevelEditorXLE.Manipulators
                     page.Controls.Add(properties);
                     m_controls.m_tabControl.TabPages.Add(page);
                 }
+#endif
             }
 
+#if GUILAYER_SCENEENGINE
             {
                 var page = new TabPage("Locked Area");
                 var lockedAreaCtrls = new Terrain.TerrainContextControls(m_contextRegistry);
@@ -115,6 +118,7 @@ namespace LevelEditorXLE.Manipulators
                 page.Controls.Add(lockedAreaCtrls);
                 m_controls.m_tabControl.TabPages.Add(page);
             }
+#endif
 
             m_controls.PerformLayout();
 
