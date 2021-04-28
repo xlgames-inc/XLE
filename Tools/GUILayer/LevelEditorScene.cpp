@@ -9,23 +9,30 @@
 #include "GUILayerUtil.h"
 #include "IOverlaySystem.h"
 #include "EditorInterfaceUtils.h"
+#if defined(GUILAYER_SCENEENGINE)
 #include "ManipulatorsLayer.h"
 #include "TerrainLayer.h"
+#endif
 #include "UITypesBinding.h" // for VisCameraSettings
 #include "Exceptions.h"
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "ExportedNativeTypes.h"
+#if defined(GUILAYER_SCENEENGINE)
 #include "../EntityInterface/PlacementEntities.h"
 #include "../EntityInterface/TerrainEntities.h"
-#include "../EntityInterface/RetainedEntities.h"
 #include "../EntityInterface/EnvironmentSettings.h"
 #include "../EntityInterface/VegetationSpawnEntities.h"
+#endif
+#include "../EntityInterface/RetainedEntities.h"
 #include "../EntityInterface/GameObjects.h"
+#if defined(GUILAYER_SCENEENGINE)
 #include "../ToolsRig/PlacementsManipulators.h"     // just needed for destructors referenced in PlacementGobInterface.h
 #include "../ToolsRig/TerrainManipulators.h"        // for TerrainManipulatorContext
 #include "../ToolsRig/VisualisationUtils.h"
+#endif
 #include "../ToolsRig/ObjectPlaceholders.h"
+#if defined(GUILAYER_SCENEENGINE)
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/TerrainFormat.h"
@@ -40,11 +47,13 @@
 #include "../../RenderCore/Techniques/ModelCache.h"
 #include "../../FixedFunctionModel/ModelCache.h"
 #include "../../FixedFunctionModel/SharedStateSet.h"
+#endif
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../OSServices/RawFS.h"
 #include "../../OSServices/LegacyFileStreams.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/OutputStreamFormatter.h"
 #include "../../Utility/Conversion.h"
 #include <memory>
 
@@ -83,6 +92,7 @@ namespace GUILayer
 
     EditorScene::EditorScene()
     {
+#if defined(GUILAYER_SCENEENGINE)
         auto fixedFunctionModelCache = std::make_shared<FixedFunctionModel::ModelCache>();
 		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
 		auto newModelCache = std::make_shared<RenderCore::Techniques::ModelCache>(pipelineAcceleratorPool);
@@ -103,6 +113,12 @@ namespace GUILayer
         _dynamicImposters = std::make_shared<SceneEngine::DynamicImposters>(fixedFunctionModelCache->GetSharedStateSet());
         _placementsManager->GetRenderer()->SetImposters(_dynamicImposters);
         _currentTime = 0.f;
+#else
+        auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
+        _flexObjects = std::make_shared<EntityInterface::RetainedEntities>();
+        _placeholders = std::make_shared<ToolsRig::ObjectPlaceholders>(pipelineAcceleratorPool, _flexObjects);
+        _currentTime = 0.f;
+#endif
     }
 
 	EditorScene::~EditorScene()
@@ -130,7 +146,7 @@ namespace GUILayer
                 auto p = GetFirst(initializers);
                 if (p._srcBegin && p._srcBegin != p._srcEnd)
                     geoType = Conversion::Convert<std::string>(
-                        std::basic_string<utf16>((const utf16*)p._srcBegin, (const utf16*)p._srcEnd));
+                        std::basic_string<ucs2>((const ucs2*)p._srcBegin, (const ucs2*)p._srcEnd));
                 
                 _scene->_placeholders->AddAnnotation(mappedId, geoType);
             }
@@ -142,6 +158,7 @@ namespace GUILayer
         return *_scene->_flexObjects;
     }
 
+#if defined(GUILAYER_SCENEENGINE)
     void EditorSceneManager::SaveTerrainLock(uint layerId, IProgress^ progress)
     {
         if (!_scene->_terrainManager) return;
@@ -229,6 +246,13 @@ namespace GUILayer
     {
         return gcnew PlacementsRendererWrapper(_scene->_placementsManager->GetRenderer());
     }
+#else
+    IntersectionTestSceneWrapper^ EditorSceneManager::GetIntersectionScene()
+	{
+        assert(0);
+		return nullptr;
+    }
+#endif
 
     EntityLayer^ EditorSceneManager::GetEntityInterface()
     {
@@ -319,21 +343,6 @@ namespace GUILayer
         return result;
     }
 
-    static auto WriteEnvSettings(OutputStream& stream, uint64 docId, EntityInterface::RetainedEntities* flexObjects) 
-        -> StreamWriterResult
-    {
-        OutputStreamFormatter formatter(stream);
-        EntityInterface::ExportEnvSettings(formatter, *flexObjects, docId);
-        return StreamWriterResult::Text;
-    }
-
-    auto EditorSceneManager::ExportEnv(EntityInterface::DocumentId docId) -> PendingExport^
-    {
-        return ExportViaStream(
-            "environment settings",
-            std::bind(WriteEnvSettings, _1, docId, _scene->_flexObjects.get()));
-    }
-
     static auto WriteGameObjects(
         OutputStream& stream, uint64 docId, 
         EntityInterface::RetainedEntities* flexObjects) -> StreamWriterResult
@@ -351,17 +360,33 @@ namespace GUILayer
             std::bind(WriteGameObjects, _1, docId, _scene->_flexObjects.get()));
     }
 
+#if defined(GUILAYER_SCENEENGINE)
+    static auto WriteEnvSettings(OutputStream& stream, uint64 docId, EntityInterface::RetainedEntities* flexObjects) 
+        -> StreamWriterResult
+    {
+        OutputStreamFormatter formatter(stream);
+        EntityInterface::ExportEnvSettings(formatter, *flexObjects, docId);
+        return StreamWriterResult::Text;
+    }
+
+    auto EditorSceneManager::ExportEnv(EntityInterface::DocumentId docId) -> PendingExport^
+    {
+        return ExportViaStream(
+            "environment settings",
+            std::bind(WriteEnvSettings, _1, docId, _scene->_flexObjects.get()));
+    }
+
     static auto WritePlacementsCfg(
         OutputStream& stream, 
         IEnumerable<EditorSceneManager::PlacementCellRef>^ cells) -> StreamWriterResult
     {
         OutputStreamFormatter formatter(stream);
         for each(auto c in cells) {
-            auto ele = formatter.BeginElement("CellRef");
-            formatter.WriteAttribute("Offset", ImpliedTyping::AsString(AsFloat3(c.Offset)));
-            formatter.WriteAttribute("Mins", ImpliedTyping::AsString(AsFloat3(c.Mins)));
-            formatter.WriteAttribute("Maxs", ImpliedTyping::AsString(AsFloat3(c.Maxs)));
-            formatter.WriteAttribute("NativeFile", clix::marshalString<clix::E_UTF8>(c.NativeFile));
+            auto ele = formatter.BeginKeyedElement("CellRef");
+            formatter.WriteKeyedValue("Offset", ImpliedTyping::AsString(AsFloat3(c.Offset)));
+            formatter.WriteKeyedValue("Mins", ImpliedTyping::AsString(AsFloat3(c.Mins)));
+            formatter.WriteKeyedValue("Maxs", ImpliedTyping::AsString(AsFloat3(c.Maxs)));
+            formatter.WriteKeyedValue("NativeFile", clix::marshalString<clix::E_UTF8>(c.NativeFile));
             formatter.EndElement(ele);
         }
         formatter.Flush();
@@ -549,6 +574,21 @@ namespace GUILayer
         _scene->_prepareSteps.push_back(
             std::bind(&::EntityInterface::EnvEntitiesManager::FlushUpdates, _envEntitiesManager.get()));
     }
+#else
+    EditorSceneManager::EditorSceneManager()
+    {
+        _scene = std::make_shared<EditorScene>();
+
+        using namespace EntityInterface;
+        auto flexGobInterface = std::make_shared<RetainedEntityInterface>(_scene->_flexObjects);
+
+        auto swtch = std::make_shared<Switch>();
+        swtch->RegisterInterface(flexGobInterface);
+        _entities = gcnew EntityLayer(std::move(swtch));
+
+        _flexGobInterface = flexGobInterface;
+    }
+#endif
 
     EditorSceneManager::~EditorSceneManager()
     {

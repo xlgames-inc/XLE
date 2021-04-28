@@ -98,7 +98,6 @@ namespace GUILayer
             return temp.release();
         }
 
-#if defined(GUILAYER_SCENEENGINE)
         static System::Collections::Generic::ICollection<HitRecord>^
             RayIntersection(
                 CameraDescWrapper^ camera,
@@ -161,7 +160,9 @@ namespace GUILayer
 					techniqueContext->_techniqueContext.GetNativePtr(),
 					EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool()
 				};
-				auto nativeResults = testScene->_scene->FrustumIntersection(
+				std::vector<SceneEngine::IntersectionTestResult> nativeResults;
+                testScene->_scene->FrustumIntersection(
+                    nativeResults,
                     testContext, worldToProjection, filter);
 
                 if (!nativeResults.empty()) {
@@ -193,6 +194,26 @@ namespace GUILayer
             return nullptr;
         }
 
+        static unsigned AsTypeId(System::Type^ type)
+        {
+            if (type == bool::typeid)                   { return (unsigned)ImpliedTyping::TypeCat::Bool; }
+            else if (type == System::Byte::typeid)      { return (unsigned)ImpliedTyping::TypeCat::UInt8; }
+            else if (type == System::SByte::typeid)     { return (unsigned)ImpliedTyping::TypeCat::Int8; }
+            else if (type == System::UInt16::typeid)    { return (unsigned)ImpliedTyping::TypeCat::UInt16; }
+            else if (type == System::Int16::typeid)     { return (unsigned)ImpliedTyping::TypeCat::Int16; }
+            else if (type == System::UInt32::typeid)    { return (unsigned)ImpliedTyping::TypeCat::UInt32; }
+            else if (type == System::Int32::typeid)     { return (unsigned)ImpliedTyping::TypeCat::Int32; }
+            else if (type == System::Single::typeid)    { return (unsigned)ImpliedTyping::TypeCat::Float; }
+
+            // else if (type == System::UInt64::typeid)    { return (unsigned)ImpliedTyping::TypeCat::UInt64; }
+            // else if (type == System::Int64::typeid)     { return (unsigned)ImpliedTyping::TypeCat::Int64; }
+            // else if (type == System::Double::typeid)    { return (unsigned)ImpliedTyping::TypeCat::Double; }
+            else if (type == System::Char::typeid)      { return (unsigned)ImpliedTyping::TypeCat::UInt16; }
+
+            return (unsigned)ImpliedTyping::TypeCat::Void;
+        }
+
+#if defined(GUILAYER_SCENEENGINE)
         static bool GetTerrainHeight(
             [Out] float% height,
             IntersectionTestSceneWrapper^ testScene,
@@ -283,25 +304,6 @@ namespace GUILayer
             return result;
         }
         
-        static unsigned AsTypeId(System::Type^ type)
-        {
-            if (type == bool::typeid)                   { return (unsigned)ImpliedTyping::TypeCat::Bool; }
-            else if (type == System::Byte::typeid)      { return (unsigned)ImpliedTyping::TypeCat::UInt8; }
-            else if (type == System::SByte::typeid)     { return (unsigned)ImpliedTyping::TypeCat::Int8; }
-            else if (type == System::UInt16::typeid)    { return (unsigned)ImpliedTyping::TypeCat::UInt16; }
-            else if (type == System::Int16::typeid)     { return (unsigned)ImpliedTyping::TypeCat::Int16; }
-            else if (type == System::UInt32::typeid)    { return (unsigned)ImpliedTyping::TypeCat::UInt32; }
-            else if (type == System::Int32::typeid)     { return (unsigned)ImpliedTyping::TypeCat::Int32; }
-            else if (type == System::Single::typeid)    { return (unsigned)ImpliedTyping::TypeCat::Float; }
-
-            // else if (type == System::UInt64::typeid)    { return (unsigned)ImpliedTyping::TypeCat::UInt64; }
-            // else if (type == System::Int64::typeid)     { return (unsigned)ImpliedTyping::TypeCat::Int64; }
-            // else if (type == System::Double::typeid)    { return (unsigned)ImpliedTyping::TypeCat::Double; }
-            else if (type == System::Char::typeid)      { return (unsigned)ImpliedTyping::TypeCat::UInt16; }
-
-            return (unsigned)ImpliedTyping::TypeCat::Void;
-        }
-
         static Tuple<Vector3, Vector3>^ CalculatePlacementCellBoundary(
             EditorSceneManager^ sceneMan,
             EntityInterface::DocumentId doc)

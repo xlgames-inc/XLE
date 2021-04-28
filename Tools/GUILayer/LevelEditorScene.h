@@ -9,8 +9,9 @@
 #include "EntityLayer.h"
 #include "MathLayer.h"      // (for Vector3)
 #include "CLIXAutoPtr.h"
+#include "EditorInterfaceUtils.h"
 #include "../EntityInterface/EntityInterface.h"
-#include "ManipulatorsLayer.h"      // for TerrainManipulators::Context
+// #include "ManipulatorsLayer.h"      // for TerrainManipulators::Context
 #include <memory>
 #include <functional>
 
@@ -41,6 +42,7 @@ namespace GUILayer
 {
     ref class VisCameraSettings;
 	ref class IntersectionTestSceneWrapper;
+#if defined(GUILAYER_SCENEENGINE)
     ref class PlacementsEditorWrapper;
     ref class PlacementsRendererWrapper;
     ref class ObjectSet;
@@ -72,6 +74,20 @@ namespace GUILayer
         EditorScene();
 		~EditorScene();
     };
+#else
+    class EditorScene
+    {
+    public:
+        std::shared_ptr<EntityInterface::RetainedEntities>      _flexObjects;
+        std::shared_ptr<ToolsRig::ObjectPlaceholders>			_placeholders;
+
+        void    IncrementTime(float increment) { _currentTime += increment; }
+        float   _currentTime;
+
+        EditorScene();
+		~EditorScene();
+    };
+#endif
 
     public ref class EditorSceneRenderSettings
     {
@@ -82,7 +98,9 @@ namespace GUILayer
 
     ref class IOverlaySystem;
     ref class IManipulatorSet;
+#if defined(GUILAYER_SCENEENGINE)
     ref class IPlacementManipulatorSettingsLayer;
+#endif
 
     /// <summary>High level manager for level editor interface</summary>
     /// The EditorSceneManager will start up and shutdown the core objects
@@ -117,8 +135,9 @@ namespace GUILayer
             virtual ExportResult PerformExport(System::Uri^ destFile) = 0;
         };
 
-        PendingExport^ ExportEnv(EntityInterface::DocumentId docId);
         PendingExport^ ExportGameObjects(EntityInterface::DocumentId docId);
+#if defined(GUILAYER_SCENEENGINE)
+        PendingExport^ ExportEnv(EntityInterface::DocumentId docId);
         PendingExport^ ExportPlacements(EntityInterface::DocumentId placementsDoc);
 
         PendingExport^ ExportTerrain(TerrainConfig^ cfg);
@@ -135,32 +154,39 @@ namespace GUILayer
             property Vector3 Maxs;
         };
         PendingExport^ ExportPlacementsCfg(IEnumerable<PlacementCellRef>^ cells);
+#endif
 
             //// //// ////   A C C E S S O R S   //// //// ////
 
+#if defined(GUILAYER_SCENEENGINE)
         IManipulatorSet^ CreateTerrainManipulators(TerrainManipulatorContext^ context);
         IManipulatorSet^ CreatePlacementManipulators(IPlacementManipulatorSettingsLayer^ context);
-        IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera, EditorSceneRenderSettings^ renderSettings);
-        IntersectionTestSceneWrapper^ GetIntersectionScene();
         PlacementsEditorWrapper^ GetPlacementsEditor();
         PlacementsRendererWrapper^ GetPlacementsRenderer();
+#endif
+        IntersectionTestSceneWrapper^ GetIntersectionScene();
+        IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera, EditorSceneRenderSettings^ renderSettings);
         EntityLayer^ GetEntityInterface();
 
         void SetTypeAnnotation(
             uint typeId, System::String^ annotationName, 
             IEnumerable<EntityLayer::PropertyInitializer>^ initializers);
 
+#if defined(GUILAYER_SCENEENGINE)
         void SaveTerrainLock(uint layerId, IProgress^ progress);
         void AbandonTerrainLock(uint layerId);
         bool HasTerrainLock(uint layerId);
+#endif
 
             //// //// ////   U T I L I T Y   //// //// ////
 
         const EntityInterface::RetainedEntities& GetFlexObjects();
         void IncrementTime(float increment);
 
+#if defined(GUILAYER_SCENEENGINE)
         void UnloadTerrain();
         void ReloadTerrain(TerrainConfig^ cfg);
+#endif
 
         EditorScene& GetScene();
 
@@ -171,8 +197,10 @@ namespace GUILayer
     protected:
         clix::shared_ptr<EditorScene> _scene;
         clix::shared_ptr<::EntityInterface::RetainedEntityInterface> _flexGobInterface;
+#if defined(GUILAYER_SCENEENGINE)
         clix::shared_ptr<::EntityInterface::TerrainEntities> _terrainInterface;
         clix::shared_ptr<::EntityInterface::EnvEntitiesManager> _envEntitiesManager;
+#endif
         EntityLayer^ _entities;
     };
 }

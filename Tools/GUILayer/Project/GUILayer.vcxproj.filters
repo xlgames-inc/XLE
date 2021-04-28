@@ -74,6 +74,9 @@
       <Filter>Vis</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\RenderCore\Vulkan\RegisterVulkan.cpp" />
+    <ClCompile Include="..\EditorSceneParserStubs.cpp">
+      <Filter>LevelEditor</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -148,6 +151,7 @@
       <Filter>GraphLanguage</Filter>
     </ClInclude>
     <ClInclude Include="..\AssetsLayer.h" />
+    <ClInclude Include="..\NativeEngineDevice.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="BasicControls">

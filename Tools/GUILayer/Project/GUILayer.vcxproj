@@ -178,6 +178,7 @@
     <ClCompile Include="..\EditorSceneParser.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\EditorSceneParserStubs.cpp" />
     <ClCompile Include="..\EngineDevice.cpp" />
     <ClCompile Include="..\EngineControl.cpp" />
     <ClCompile Include="..\EntityLayer.cpp" />
@@ -187,21 +188,15 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\LayerControl.cpp" />
-    <ClCompile Include="..\LevelEditorScene.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
-    </ClCompile>
+    <ClCompile Include="..\LevelEditorScene.cpp" />
     <ClCompile Include="..\ManipulatorUtils.cpp" />
     <ClCompile Include="..\VisSettingsLayer.cpp" />
-    <ClCompile Include="..\NativeManipulators.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
-    </ClCompile>
+    <ClCompile Include="..\NativeManipulators.cpp" />
     <ClCompile Include="..\NodeGraph.cpp" />
     <ClCompile Include="..\PreviewRenderManager.cpp" />
     <ClCompile Include="..\ShaderFragment.cpp" />
     <ClCompile Include="..\ShaderGenerator.cpp" />
-    <ClCompile Include="..\SimpleRenderingContext.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
-    </ClCompile>
+    <ClCompile Include="..\SimpleRenderingContext.cpp" />
     <ClCompile Include="..\ManipulatorsLayer.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
     </ClCompile>
@@ -232,17 +227,14 @@
     </ClInclude>
     <ClInclude Include="..\IWindowRig.h" />
     <ClInclude Include="..\LayerControl.h" />
-    <ClInclude Include="..\LevelEditorScene.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
-    </ClInclude>
+    <ClInclude Include="..\LevelEditorScene.h" />
     <ClInclude Include="..\ManipulatorUtils.h" />
     <ClInclude Include="..\MarshalString.h" />
     <ClInclude Include="..\ManipulatorsLayer.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\NativeManipulators.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
-    </ClInclude>
+    <ClInclude Include="..\NativeEngineDevice.h" />
+    <ClInclude Include="..\NativeManipulators.h" />
     <ClInclude Include="..\NodeGraph.h" />
     <ClInclude Include="..\ShaderGenerator.h" />
     <ClInclude Include="..\TerrainLayer.h">
