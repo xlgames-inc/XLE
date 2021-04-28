@@ -64,6 +64,24 @@ namespace RenderCore { namespace Techniques
     CommonResourceBox::~CommonResourceBox()
     {}
 
+    namespace AttachmentSemantics
+    {
+        const char* TryDehash(uint64_t hashValue)
+        {
+            switch (hashValue) {
+            case MultisampleDepth: return "MultisampleDepth"; 
+            case GBufferDiffuse: return "GBufferDiffuse"; 
+            case GBufferNormal: return "GBufferNormal"; 
+            case GBufferParameter: return "GBufferParameter"; 
+            case ColorLDR: return "ColorLDR"; 
+            case ColorHDR: return "ColorHDR"; 
+            case Depth: return "Depth"; 
+            case ShadowDepthMap: return "ShadowDepthMap"; 
+            default: return nullptr;
+            }
+        }
+    }
+
     namespace CommonSemantics
     {
         std::pair<const char*, unsigned> TryDehash(uint64_t hashValue)

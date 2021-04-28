@@ -45,16 +45,18 @@ namespace RenderCore { namespace Techniques
 
 	namespace AttachmentSemantics
     {
-        const uint64_t MultisampleDepth = ConstHash64<'Mult', 'isam', 'pleD', 'epth'>::Value;
-        const uint64_t GBufferDiffuse   = ConstHash64<'GBuf', 'ferD', 'iffu', 'se'>::Value;
-        const uint64_t GBufferNormal    = ConstHash64<'GBuf', 'ferN', 'orma', 'ls'>::Value;
-        const uint64_t GBufferParameter = ConstHash64<'GBuf', 'ferP', 'aram', 'eter'>::Value;
+        constexpr uint64_t MultisampleDepth = ConstHash64<'Mult', 'isam', 'pleD', 'epth'>::Value;
+        constexpr uint64_t GBufferDiffuse   = ConstHash64<'GBuf', 'ferD', 'iffu', 'se'>::Value;
+        constexpr uint64_t GBufferNormal    = ConstHash64<'GBuf', 'ferN', 'orma', 'ls'>::Value;
+        constexpr uint64_t GBufferParameter = ConstHash64<'GBuf', 'ferP', 'aram', 'eter'>::Value;
 
-        const uint64_t ColorLDR         = ConstHash64<'post', 'resc', 'olor'>::Value;
-        const uint64_t ColorHDR         = ConstHash64<'prer', 'esco', 'lor'>::Value;
-        const uint64_t Depth            = ConstHash64<'dept', 'h'>::Value;
+        constexpr uint64_t ColorLDR         = ConstHash64<'post', 'resc', 'olor'>::Value;
+        constexpr uint64_t ColorHDR         = ConstHash64<'prer', 'esco', 'lor'>::Value;
+        constexpr uint64_t Depth            = ConstHash64<'dept', 'h'>::Value;
 
-		const uint64_t ShadowDepthMap	= ConstHash64<'shad', 'owdm'>::Value;
+		constexpr uint64_t ShadowDepthMap	= ConstHash64<'shad', 'owdm'>::Value;
+
+        const char* TryDehash(uint64_t);
 	}
 
     namespace CommonSemantics

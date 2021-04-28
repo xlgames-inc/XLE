@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "RenderPass.h"
+#include "CommonBindings.h"     // (for semantic dehash)
 #include "../Metal/FrameBuffer.h"
 #include "../Metal/TextureView.h"
 #include "../Metal/DeviceContext.h"
@@ -25,7 +26,7 @@
 
 namespace RenderCore
 {
-    inline std::ostream& operator<<(std::ostream& str, const AttachmentDesc& attachment)
+    static std::ostream& operator<<(std::ostream& str, const AttachmentDesc& attachment)
     {
         str << "AttachmentDesc { "
             #if defined(_DEBUG)
@@ -34,13 +35,13 @@ namespace RenderCore
             << AsString(attachment._format) << ", "
             << attachment._width << ", "
             << attachment._height << ", "
-            << attachment._arrayLayerCount << ", "
+            << attachment._arrayLayerCount
             << ", 0x" << std::hex << attachment._flags << std::dec
             << ", 0x" << std::hex << attachment._bindFlagsForFinalLayout << std::dec << " }";
         return str;
     }
 
-    inline std::ostream& operator<<(std::ostream& str, const SubpassDesc& subpass)
+    static std::ostream& operator<<(std::ostream& str, const SubpassDesc& subpass)
     {
         str << "SubpassDesc { "
             #if defined(_DEBUG)
@@ -62,7 +63,7 @@ namespace RenderCore
         return str;
     }
 
-    inline std::ostream& operator<<(std::ostream& str, const ResourceDesc& desc)
+    static std::ostream& operator<<(std::ostream& str, const ResourceDesc& desc)
     {
         str << "ResourceDesc { ";
         if (desc._type == ResourceDesc::Type::Texture) {
@@ -89,6 +90,14 @@ namespace RenderCore
 
 namespace RenderCore { namespace Techniques
 {
+    struct AttachmentSemantic { uint64_t _value = 0; };
+    static std::ostream& operator<<(std::ostream& str, AttachmentSemantic semantic)
+    {
+        auto dehash = AttachmentSemantics::TryDehash(semantic._value);
+        if (dehash) str << dehash;
+        else str << "0x" << std::hex << semantic._value << std::dec;
+        return str;
+    }
 
     AttachmentName FrameBufferDescFragment::DefineAttachment(uint64_t semantic, const AttachmentDesc& request)
     {
@@ -811,7 +820,7 @@ namespace RenderCore { namespace Techniques
                     if (request->_semantic == _pimpl->_semanticAttachments[q]._semantic && !consumedSemantic[q] && _pimpl->_semanticAttachments[q]._resource) {
                         #if defined(_DEBUG)
 							if (!MatchRequest(requestDesc, *bindFlagI, _pimpl->_semanticAttachments[q]._desc, fbDesc.GetProperties())) {
-                            	Log(Warning) << "Attachment bound to the pool for semantic (0x" << std::hex << request->_semantic << ", bind flag: 0x" << *bindFlagI << std::dec << ") does not match the request for this semantic. Attempting to use it anyway. Request: "
+                            	Log(Warning) << "Attachment bound to the pool for semantic (" << AttachmentSemantic{request->_semantic} << ", bind flag: 0x" << std::hex << *bindFlagI << std::dec << ") does not match the request for this semantic. Attempting to use it anyway. Request: "
                                 	<< requestDesc << ", Bound to pool: " << _pimpl->_semanticAttachments[q]._desc
                                 	<< std::endl;
                         	}
@@ -1258,7 +1267,7 @@ namespace RenderCore { namespace Techniques
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    inline const char* AsString(PreregisteredAttachment::State state)
+    static const char* AsString(PreregisteredAttachment::State state)
     {
         switch (state) {
         case PreregisteredAttachment::State::Uninitialized: return "Uninitialized";
@@ -1267,37 +1276,37 @@ namespace RenderCore { namespace Techniques
         }
     }
 
-    inline std::ostream& operator<<(std::ostream& str, const PreregisteredAttachment& attachment)
+    static std::ostream& operator<<(std::ostream& str, const PreregisteredAttachment& attachment)
     {
-        str << "PreregisteredAttachment { 0x"
-            << std::hex << attachment._semantic << std::dec << ", "
+        str << "PreregisteredAttachment { "
+            << AttachmentSemantic{attachment._semantic} << ", "
             << attachment._desc << ", "
             << AsString(attachment._state) << ", "
             << AsString(attachment._stencilState) << "}";
         return str;
     }
 
-    inline std::ostream& operator<<(std::ostream& str, const WorkingAttachment& attachment)
+    static std::ostream& operator<<(std::ostream& str, const WorkingAttachment& attachment)
     {
         str << "WorkingAttachment {"
             << attachment._name << ", "
             << attachment._desc << ", "
-            << std::hex << "Contains: 0x" << attachment._containsDataForSemantic << ", "
-            << "ShouldReceive: 0x" << attachment._shouldReceiveDataForSemantic << ", "
-            << "FirstRead: 0x" << attachment._firstReadSemantic << ", "
-            << "LastWrite: 0x" << attachment._lastWriteSemantic << ", " << std::dec
+            << std::hex << "Contains: " << AttachmentSemantic{attachment._containsDataForSemantic} << ", "
+            << "ShouldReceive: " << AttachmentSemantic{attachment._shouldReceiveDataForSemantic} << ", "
+            << "FirstRead: " << AttachmentSemantic{attachment._firstReadSemantic} << ", "
+            << "LastWrite: " << AttachmentSemantic{attachment._lastWriteSemantic} << ", " << std::dec
             << attachment._forceShaderResourceFlag << ", "
             << AsString(attachment._state) << ", "
             << AsString(attachment._stencilState) << "}";
         return str;
     }
 
-    inline std::ostream& operator<<(std::ostream& str, const FrameBufferDescFragment& fragment)
+    static std::ostream& operator<<(std::ostream& str, const FrameBufferDescFragment& fragment)
     {
         str << "FrameBufferDescFragment with attachments: " << std::endl;
         for (unsigned c=0; c<fragment._attachments.size(); ++c) {
             str << StreamIndent(4) << "[" << c << "] "
-                << std::hex << " 0x" << fragment._attachments[c].GetInputSemanticBinding() << ", 0x" << fragment._attachments[c].GetOutputSemanticBinding() << std::dec << " : " << fragment._attachments[c]._desc
+                << AttachmentSemantic{fragment._attachments[c].GetInputSemanticBinding()} << ", " << AttachmentSemantic{fragment._attachments[c].GetOutputSemanticBinding()} << " : " << fragment._attachments[c]._desc
                 << std::endl;
         }
         str << "Subpasses: " << std::endl;
@@ -1434,7 +1443,7 @@ namespace RenderCore { namespace Techniques
                     if (firstUseDirection)
                         break;
                 }
-                assert(firstUseDirection != 0);
+                assert(firstUseDirection != 0);     // Note -- we can get here if we have an attachment that is defined, but never used
 
                 sortedInterfaceAttachments.push_back({interfaceAttachmentName, firstUseDirection});
             }
@@ -1481,7 +1490,7 @@ namespace RenderCore { namespace Techniques
                                     [&interfaceAttachment, dimensionsForCompatibilityTests](const WorkingAttachment& workingAttachment) {
                                         return IsCompatible(workingAttachment._desc, interfaceAttachment._desc, dimensionsForCompatibilityTests);
                                     });
-                                debugInfo << "      * Failed to find compatible initialized buffer for request: " << interfaceAttachment._desc << ". Semantic: 0x" << std::hex << interfaceAttachment.GetInputSemanticBinding() << std::dec << std::endl;
+                                debugInfo << "      * Failed to find compatible initialized buffer for request: " << interfaceAttachment._desc << ". Semantic: " << AttachmentSemantic{interfaceAttachment.GetInputSemanticBinding()} << std::endl;
                                 if (uninitializedCheck != workingAttachments.end())
                                     debugInfo << "      * Buffer " << std::distance(workingAttachments.begin(), uninitializedCheck) << " is compatible, but does not contain any initialized data (is there a missing Retain flag?)" << std::endl;
                                 debugInfo << "      * Working attachments are: " << std::endl;
@@ -1602,7 +1611,7 @@ namespace RenderCore { namespace Techniques
                         } else {
                             if (desc._format == Format::Unknown) {
                                 #if defined(_DEBUG)
-                                    debugInfo << "      * Could not resolve correct format for attachment: " << interfaceAttachment._desc << ". Semantic: 0x" << std::hex << interfaceAttachment.GetInputSemanticBinding() << std::dec << std::endl;
+                                    debugInfo << "      * Could not resolve correct format for attachment: " << interfaceAttachment._desc << ". Semantic: " << AttachmentSemantic{interfaceAttachment.GetInputSemanticBinding()} << std::endl;
                                     for (const auto& att : workingAttachments)
                                         debugInfo << att << std::endl;
                                     auto debugInfoStr = debugInfo.str();
@@ -1737,17 +1746,17 @@ namespace RenderCore { namespace Techniques
             debugInfo << "-------------------------------" << std::endl;
             debugInfo << "Final attachments" << std::endl;
             for (unsigned c=0; c<result._attachments.size(); ++c)
-                debugInfo << StreamIndent(4) << "[" << c << "] 0x"
-                    << std::hex << result._attachments[c].GetInputSemanticBinding() << ", 0x" << result._attachments[c].GetOutputSemanticBinding() << std::dec
+                debugInfo << StreamIndent(4) << "[" << c << "] "
+                    << AttachmentSemantic{result._attachments[c].GetInputSemanticBinding()} << ", " << AttachmentSemantic{result._attachments[c].GetOutputSemanticBinding()}
                     << " : " << result._attachments[c]._desc << std::endl;
             debugInfo << "Final subpasses" << std::endl;
             for (unsigned c=0; c<result._subpasses.size(); ++c)
                 debugInfo << StreamIndent(4) << "[" << c << "] " << result._subpasses[c] << std::endl;
             debugInfo << "Interface summary" << std::endl;
             for (unsigned c=0; c<finalResult._inputAttachments.size(); ++c)
-                debugInfo << StreamIndent(4) << "Input [" << c << "] 0x" << std::hex << finalResult._inputAttachments[c].first << std::dec << " " << finalResult._inputAttachments[c].second << " (" << finalResult._mergedFragment._attachments[finalResult._inputAttachments[c].second]._desc << ")" << std::endl;
+                debugInfo << StreamIndent(4) << "Input [" << c << "] " << AttachmentSemantic{finalResult._inputAttachments[c].first} << " " << finalResult._inputAttachments[c].second << " (" << finalResult._mergedFragment._attachments[finalResult._inputAttachments[c].second]._desc << ")" << std::endl;
             for (unsigned c=0; c<finalResult._outputAttachments.size(); ++c)
-                debugInfo << StreamIndent(4) << "Output [" << c << "] 0x" << std::hex << finalResult._outputAttachments[c].first << std::dec << " " << finalResult._outputAttachments[c].second << " (" << finalResult._mergedFragment._attachments[finalResult._outputAttachments[c].second]._desc << ")" << std::endl;
+                debugInfo << StreamIndent(4) << "Output [" << c << "] " << AttachmentSemantic{finalResult._outputAttachments[c].first} << " " << finalResult._outputAttachments[c].second << " (" << finalResult._mergedFragment._attachments[finalResult._outputAttachments[c].second]._desc << ")" << std::endl;
             debugInfo << "MergeFragments() finished." << std::endl;
             finalResult._log = debugInfo.str();
         #endif
