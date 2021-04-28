@@ -161,6 +161,16 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
+	void		GraphicsEncoder::SetStencilRef(unsigned frontFaceStencilRef, unsigned backFaceStencilRef)
+	{
+		if (frontFaceStencilRef == backFaceStencilRef) {
+			vkCmdSetStencilReference(_sharedState->_commandList.GetUnderlying().get(), VK_STENCIL_FACE_FRONT_AND_BACK, frontFaceStencilRef);
+		} else {
+			vkCmdSetStencilReference(_sharedState->_commandList.GetUnderlying().get(), VK_STENCIL_FACE_FRONT_BIT, frontFaceStencilRef);
+			vkCmdSetStencilReference(_sharedState->_commandList.GetUnderlying().get(), VK_STENCIL_FACE_BACK_BIT, backFaceStencilRef);
+		}
+	}
+
 	void        GraphicsEncoder::BindDescriptorSet(
 		unsigned index, VkDescriptorSet set
 		VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo&& description))

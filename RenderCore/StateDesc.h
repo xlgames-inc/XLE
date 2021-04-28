@@ -164,7 +164,6 @@ namespace RenderCore
         bool            _stencilEnable = false;
         uint8_t         _stencilReadMask = 0x0;
         uint8_t         _stencilWriteMask = 0x0;
-        uint8_t         _stencilReference = 0x0;
         StencilDesc     _frontFaceStencil;
         StencilDesc     _backFaceStencil;
 

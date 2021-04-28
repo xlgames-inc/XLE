@@ -247,7 +247,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		//	------ Non-pipeline states (that can be changed mid-render pass) -------
 		void        Bind(IteratorRange<const VertexBufferView*> vbViews, const IndexBufferView& ibView);
-		void		SetStencilRef(unsigned stencilRef);
+		void		SetStencilRef(unsigned frontFaceStencilRef, unsigned backFaceStencilRef);
 		void 		Bind(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects);
 
 		// --------------- Vulkan specific interface --------------- 

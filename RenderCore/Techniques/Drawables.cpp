@@ -515,6 +515,12 @@ namespace RenderCore { namespace Techniques
 		realContext._encoder->DrawAuto(*realContext._pipeline);
 	}
 
+	void ExecuteDrawableContext::SetStencilRef(unsigned frontFaceStencil, unsigned backFaceStencil) const
+	{
+		auto& realContext = *(RealExecuteDrawableContext*)this;
+		realContext._encoder->SetStencilRef(frontFaceStencil, backFaceStencil);
+	}
+
 	static DrawablesPacket::AllocateStorageResult AllocateFrom(std::vector<uint8_t>& vector, size_t size, unsigned alignment)
 	{
 		unsigned preAlignmentBuffer = 0;

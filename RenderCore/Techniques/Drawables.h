@@ -52,6 +52,7 @@ namespace RenderCore { namespace Techniques
 	public:
 		void		ApplyLooseUniforms(const UniformsStream&) const;
 		void 		ApplyDescriptorSets(IteratorRange<const IDescriptorSet* const*>) const;
+		void		SetStencilRef(unsigned frontFaceStencil, unsigned backFaceStencil) const;
 
 		uint64_t 	GetBoundLooseImmediateDatas() const;
 		uint64_t 	GetBoundLooseResources() const;

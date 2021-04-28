@@ -14,7 +14,6 @@ namespace RenderCore
         assert((unsigned(_depthTest) & ~0xfu) == 0);
         assert((unsigned(_stencilReadMask) & ~0xffu) == 0);
         assert((unsigned(_stencilWriteMask) & ~0xffu) == 0);
-        assert((unsigned(_stencilReference) & ~0xffu) == 0);
         assert((unsigned(_frontFaceStencil._passOp) & ~0xfu) == 0);
         assert((unsigned(_frontFaceStencil._failOp) & ~0xfu) == 0);
         assert((unsigned(_frontFaceStencil._depthFailOp) & ~0xfu) == 0);
@@ -38,10 +37,9 @@ namespace RenderCore
 
             |   ((uint64_t(_stencilReadMask) & 0xf) << 36ull)
             |   ((uint64_t(_stencilWriteMask) & 0xf) << 44ull)
-            |   ((uint64_t(_stencilReference) & 0xf) << 52ull)      // todo -- remove stencil reference
 
-            |   ((uint64_t(_depthWrite) & 0x1) << 60ull)
-            |   ((uint64_t(_stencilEnable) & 0x1) << 61ull)
+            |   ((uint64_t(_depthWrite) & 0x1) << 52ull)
+            |   ((uint64_t(_stencilEnable) & 0x1) << 53ull)
             ;
 
     }
