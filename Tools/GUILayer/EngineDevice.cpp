@@ -6,7 +6,7 @@
 #include "NativeEngineDevice.h"
 #include "MarshalString.h"
 #include "CLIXAutoPtr.h"
-#include "WindowRigInternal.h"
+#include "WindowRig.h"
 #include "DelayedDeleteQueue.h"
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/DivergentAsset.h"
@@ -73,14 +73,29 @@ namespace GUILayer
         return _drawingApparatus->_techniqueContext;
     }
 
-    const std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus>& NativeEngineDevice::GetLightingEngineApparatus()
+    const std::shared_ptr<RenderCore::Techniques::DrawingApparatus>& NativeEngineDevice::GetDrawingApparatus()
     {
-        return _lightingEngineApparatus;
+        return _drawingApparatus;
     }
 
     const std::shared_ptr<RenderCore::Techniques::ImmediateDrawingApparatus>& NativeEngineDevice::GetImmediateDrawingApparatus()
     {
         return _immediateDrawingApparatus;
+    }
+
+    const std::shared_ptr<RenderCore::Techniques::PrimaryResourcesApparatus>& NativeEngineDevice::GetPrimaryResourcesApparatus()
+    {
+        return _primaryResourcesApparatus;
+    }
+
+    const std::shared_ptr<RenderCore::Techniques::FrameRenderingApparatus>& NativeEngineDevice::GetFrameRenderingApparatus()
+    {
+        return _frameRenderingApparatus;
+    }
+
+    const std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus>& NativeEngineDevice::GetLightingEngineApparatus()
+    {
+        return _lightingEngineApparatus;
     }
 
     void NativeEngineDevice::ResetFrameBufferPool()

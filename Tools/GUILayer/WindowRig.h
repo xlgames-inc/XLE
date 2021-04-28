@@ -11,6 +11,8 @@
 #include <memory>
 #include <vector>
 
+namespace RenderCore { namespace Techniques { class SubFrameEvents; }}
+
 namespace GUILayer
 {
     class WindowRig : public IWindowRig
@@ -23,7 +25,7 @@ namespace GUILayer
         void AddWindowHandler(std::shared_ptr<PlatformRig::IWindowHandler> windowHandler);
         void OnResize(unsigned newWidth, unsigned newHeight);
 
-        WindowRig(RenderCore::IDevice& device, const void* platformWindowHandle);
+        WindowRig(RenderCore::IDevice& device, std::shared_ptr<RenderCore::Techniques::SubFrameEvents> subFrameEvents, const void* platformWindowHandle);
         ~WindowRig();
     protected:
         std::shared_ptr<PlatformRig::FrameRig> _frameRig;

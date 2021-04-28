@@ -248,7 +248,6 @@ namespace PlatformRig
         const std::shared_ptr<RenderCore::Techniques::SubFrameEvents>& subFrameEvents)
     : _subFrameEvents(subFrameEvents)
     {
-        const bool isMainFrameRig = true;
         _pimpl = std::make_unique<Pimpl>();
 
 		Log(Verbose) << "---- Beginning FrameRig ------------------------------------------------------------------" << std::endl;

@@ -38,11 +38,15 @@ namespace GUILayer
         ConsoleRig::GlobalServices* GetGlobalServices() { return _services.get(); }
         int                         GetCreationThreadId() { return _creationThreadId; }
 
+        const std::shared_ptr<RenderCore::Techniques::DrawingApparatus>& GetDrawingApparatus();
+        const std::shared_ptr<RenderCore::Techniques::ImmediateDrawingApparatus>& GetImmediateDrawingApparatus();
+        const std::shared_ptr<RenderCore::Techniques::PrimaryResourcesApparatus>& GetPrimaryResourcesApparatus();
+        const std::shared_ptr<RenderCore::Techniques::FrameRenderingApparatus>& GetFrameRenderingApparatus();
+        const std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus>& GetLightingEngineApparatus();
+
 		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& GetMainPipelineAcceleratorPool();
         const std::shared_ptr<RenderCore::Techniques::IImmediateDrawables>& GetImmediateDrawables();
         const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& GetTechniqueContext();
-        const std::shared_ptr<RenderCore::Techniques::ImmediateDrawingApparatus>& GetImmediateDrawingApparatus();        
-        const std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus>& GetLightingEngineApparatus();
 
         void ResetFrameBufferPool();
 

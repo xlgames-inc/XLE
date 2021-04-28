@@ -149,6 +149,7 @@ namespace GUILayer
 		auto immediateDrawables = EngineDevice::GetInstance()->GetNative().GetImmediateDrawables();
 		auto immediateDrawableApparatus = EngineDevice::GetInstance()->GetNative().GetImmediateDrawingApparatus();
 		auto lightingEngineApparatus = EngineDevice::GetInstance()->GetNative().GetLightingEngineApparatus();
+		auto techContext = EngineDevice::GetInstance()->GetNative().GetTechniqueContext();
 
 		_pimpl.reset(new VisLayerControllerPimpl());
 		_pimpl->_mouseOver = std::make_shared<ToolsRig::VisMouseOver>();
@@ -164,7 +165,6 @@ namespace GUILayer
 		_pimpl->_visOverlay->Set(_pimpl->_modelLayer->GetCamera());
 		_pimpl->_visOverlay->Set(_pimpl->_animState);
 
-		auto techContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
 		{
 			auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(_pimpl->_modelLayer->GetCamera(), techContext, pipelineAcceleratorPool);
 			manipulators->Register(

@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "WindowRigInternal.h"
+#include "WindowRig.h"
 #include "ExportedNativeTypes.h"
 #include "../../PlatformRig/OverlappedWindow.h"
 #include "../../PlatformRig/FrameRig.h"
@@ -68,7 +68,10 @@ namespace GUILayer
         return *_mainOverlaySystemSet;
     }
 
-    WindowRig::WindowRig(RenderCore::IDevice& device, const void* platformWindowHandle)
+    WindowRig::WindowRig(
+        RenderCore::IDevice& device,
+        std::shared_ptr<RenderCore::Techniques::SubFrameEvents> subFrameEvents,
+        const void* platformWindowHandle)
     {
         ::RECT clientRect;
         GetClientRect((HWND)platformWindowHandle, &clientRect);
@@ -77,8 +80,7 @@ namespace GUILayer
             platformWindowHandle,
 			RenderCore::PresentationChainDesc {
 				unsigned(clientRect.right - clientRect.left), unsigned(clientRect.bottom - clientRect.top)});
-        std::shared_ptr<RenderCore::Techniques::SubFrameEvents> subFrameEvents;
-        _frameRig = std::make_shared<PlatformRig::FrameRig>(subFrameEvents); // (not "main" frame rig by default)
+        _frameRig = std::make_shared<PlatformRig::FrameRig>(subFrameEvents);
 
         _mainOverlaySystemSet = std::make_shared<PlatformRig::OverlaySystemSet>();
         _frameRig->SetMainOverlaySystem(_mainOverlaySystemSet);

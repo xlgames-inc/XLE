@@ -21,6 +21,7 @@
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Techniques/PipelineAccelerator.h"
 #include "../../RenderCore/Techniques/Services.h"
+#include "../../RenderCore/Techniques/Apparatuses.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/MinimalShaderSource.h"
 #include "../../RenderCore/IDevice.h"
@@ -170,6 +171,7 @@ namespace GUILayer
 			_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
 			_globalTechniqueContext->_attachmentPool = std::make_shared<RenderCore::Techniques::AttachmentPool>(device);
 			_globalTechniqueContext->_frameBufferPool = std::make_shared<RenderCore::Techniques::FrameBufferPool>();
+			_globalTechniqueContext->_drawablesSharedResources = EngineDevice::GetInstance()->GetNative().GetDrawingApparatus()->_drawablesSharedResources;
 
 				////////////
 

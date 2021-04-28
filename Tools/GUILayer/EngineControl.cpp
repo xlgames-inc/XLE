@@ -9,7 +9,7 @@
 #include "EngineControl.h"
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
-#include "WindowRigInternal.h"
+#include "WindowRig.h"
 #include "DelayedDeleteQueue.h"
 #include "ExportedNativeTypes.h"
 #include "../../PlatformRig/FrameRig.h"
@@ -17,6 +17,7 @@
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../../RenderCore/Techniques/Apparatuses.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../Utility/PtrUtils.h"
 
@@ -279,14 +280,10 @@ namespace GUILayer
 
 	static std::unique_ptr<WindowRig> CreateWindowRig(EngineDevice^ engineDevice, const void* nativeWindowHandle)
     {
-        auto result = std::make_unique<WindowRig>(*engineDevice->GetNative().GetRenderDevice(), nativeWindowHandle);
-
-        /*BufferUploads::IManager* bufferUploads = engineDevice->GetNative().GetBufferUploads();
-        result->GetFrameRig().AddPostPresentCallback(
-            [bufferUploads](RenderCore::IThreadContext& threadContext)
-            { bufferUploads->Update(threadContext, false); });*/
-
-        return std::move(result);
+        return std::make_unique<WindowRig>(
+            *engineDevice->GetNative().GetRenderDevice(),
+            engineDevice->GetNative().GetPrimaryResourcesApparatus()->_subFrameEvents,
+            nativeWindowHandle);
     }
 
     EngineControl::EngineControl(Control^ control)
