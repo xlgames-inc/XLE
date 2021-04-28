@@ -537,6 +537,7 @@ namespace ToolsRig
 
 		auto colorLDRDesc = renderTarget->GetDesc();
 		UInt2 viewportDims { colorLDRDesc._textureDesc._width, colorLDRDesc._textureDesc._height };
+		RenderCore::FrameBufferProperties fbProps { colorLDRDesc._textureDesc._width, colorLDRDesc._textureDesc._height };
 
 		RenderCore::Techniques::SequencerContext sequencerTechnique;
 		auto cam = AsCameraDesc(*_pimpl->_cameraSettings);
@@ -551,15 +552,16 @@ namespace ToolsRig
 
 		if (_pimpl->_settings._drawWireframe || _pimpl->_settings._drawNormals || _pimpl->_settings._skeletonMode || doColorByMaterial) {
 			
+			AttachmentDesc depthAttachmentDesc { Format::D24_UNORM_S8_UINT };
+			depthAttachmentDesc._bindFlagsForFinalLayout = BindFlag::ShaderResource;
 			std::vector<FrameBufferDesc::Attachment> attachments {
 				{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(colorLDRDesc) },
-				{ Techniques::AttachmentSemantics::MultisampleDepth, Format::D24_UNORM_S8_UINT }
+				{ Techniques::AttachmentSemantics::MultisampleDepth, depthAttachmentDesc }
 			};
 			SubpassDesc mainPass;
 			mainPass.SetName("VisualisationOverlay");
 			mainPass.AppendOutput(0);
 			mainPass.SetDepthStencil(1, LoadStore::Retain_ClearStencil);		// ensure stencil is cleared (but ok to keep depth)
-			RenderCore::FrameBufferProperties fbProps { colorLDRDesc._textureDesc._width, colorLDRDesc._textureDesc._height };
 			FrameBufferDesc fbDesc{ std::move(attachments), std::vector<SubpassDesc>{mainPass}, fbProps };
 			Techniques::RenderPassInstance rpi {
 				threadContext, fbDesc, 
@@ -630,12 +632,10 @@ namespace ToolsRig
 					visContent->SetPreDrawDelegate(oldDelegate);
 			}
 		}
-
 		
             //  Draw an overlay over the scene, 
             //  containing debugging / profiling information
         if (doColorByMaterial) {
-#if 0
 			CATCH_ASSETS_BEGIN
                 RenderOverlays::HighlightByStencilSettings settings;
 
@@ -651,9 +651,9 @@ namespace ToolsRig
 
                 ExecuteHighlightByStencil(
                     threadContext, parserContext, 
+					_pimpl->_pipelineAccelerators->GetPipelineLayout(), fbProps,
                     settings, _pimpl->_settings._colourByMaterial==2);
             CATCH_ASSETS_END(parserContext)
-#endif
         }
 
 		bool writeMaterialName = 

@@ -180,11 +180,10 @@ namespace SceneEngine
             // for stream output. So the results can appear anywhere within the buffer.
             // We have to search for non-zero entries. Results that haven't been written
             // to will appear zeroed out.
-		if (_pimpl->_queryId != ~0u)
-			_pimpl->_res->_streamOutputQueryPool->End(metalContext, _pimpl->_queryId);
-
 		_pimpl->_encoder = {};
 		_pimpl->_rpi = {};
+		if (_pimpl->_queryId != ~0u)
+			_pimpl->_res->_streamOutputQueryPool->End(metalContext, _pimpl->_queryId);
 		_pimpl->_pendingUnbind = false;
 		_pimpl->_threadContext->CommitCommands(CommitCommandsFlags::WaitForCompletion);		// unfortunately we need a synchronize here
 
@@ -283,6 +282,7 @@ namespace SceneEngine
         // metalContext.Bind(MakeIteratorRange(&newViewport, &newViewport+1), {});
 
 		auto& box = ConsoleRig::FindCachedBoxDep2<ModelIntersectionTechniqueBox>();
+		_pimpl->_queryId = _pimpl->_res->_streamOutputQueryPool->Begin(metalContext);
 		_pimpl->_rpi = Techniques::RenderPassInstance {
 			threadContext,
 			box._fbDesc,
@@ -291,7 +291,6 @@ namespace SceneEngine
 		VertexBufferView sov { _pimpl->_res->_streamOutputBuffer.get() };
 		_pimpl->_encoder = metalContext.BeginStreamOutputEncoder(
 			pipelineAcceleratorPool.GetPipelineLayout(), MakeIteratorRange(&sov, &sov+1));
-		_pimpl->_queryId = _pimpl->_res->_streamOutputQueryPool->Begin(metalContext);
 
 		_pimpl->_sequencerConfig = pipelineAcceleratorPool.CreateSequencerConfig(
 			box._forwardIllumDelegate,
@@ -306,10 +305,10 @@ namespace SceneEngine
 
 		_pimpl->_rpi = Techniques::RenderPassInstance {};
 		if (_pimpl->_pendingUnbind) {
-			if (_pimpl->_queryId != ~0u)
-				_pimpl->_res->_streamOutputQueryPool->End(metalContext, _pimpl->_queryId);
 			_pimpl->_encoder = {};
 			_pimpl->_rpi = {};
+			if (_pimpl->_queryId != ~0u)
+				_pimpl->_res->_streamOutputQueryPool->End(metalContext, _pimpl->_queryId);
 		}
 
 		if (_pimpl->_queryId != ~0u) {

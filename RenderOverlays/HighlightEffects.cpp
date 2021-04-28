@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -17,6 +15,7 @@
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Techniques/RenderPassUtils.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Format.h"
 #include "../../RenderCore/BufferView.h"
 #include "../../Assets/Assets.h"
@@ -28,16 +27,15 @@ namespace RenderOverlays
 {
     using namespace RenderCore;
 
-	std::shared_ptr<Metal::ShaderProgram> LoadShaderProgram(
+	::Assets::FuturePtr<Metal::ShaderProgram> LoadShaderProgram(
+        const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
 		StringSection<> vs,
 		StringSection<> ps,
 		StringSection<> definesTable = {})
 	{
-		auto vsCode = ::Assets::MakeAsset<CompiledShaderByteCode>(vs, definesTable);
-		auto psCode = ::Assets::MakeAsset<CompiledShaderByteCode>(ps, definesTable);
-		auto vsActual = vsCode->Actualize();
-		auto psActual = psCode->Actualize();
-		return std::make_shared<Metal::ShaderProgram>(Metal::GetObjectFactory(), *vsActual, *psActual);
+		return ::Assets::MakeAsset<Metal::ShaderProgram>(
+            pipelineLayout,
+            vs, ps, definesTable);
 	}
 
     const UInt4 HighlightByStencilSettings::NoHighlight = UInt4(0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff);
@@ -53,19 +51,25 @@ namespace RenderOverlays
 
     static void ExecuteHighlightByStencil(
         Metal::DeviceContext& metalContext,
-        Metal::ShaderResourceView& stencilSrv,
+        Metal::GraphicsEncoder_ProgressivePipeline& encoder,
+        IResourceView* stencilSrv,
         const HighlightByStencilSettings& settings,
         bool onlyHighlighted)
     {
-		auto cbData = MakeIteratorRange(&settings, PtrAdd(&settings, sizeof(settings)));
-        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(Metal::MakeConstantBuffer(Metal::GetObjectFactory(), cbData)));
-        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(stencilSrv));
-        metalContext.Bind(Techniques::CommonResources()._dssDisable);
-        metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
-        metalContext.Bind(Topology::TriangleStrip);
-        metalContext.UnbindInputLayout();
+        assert(stencilSrv);
+        UniformsStream::ImmediateData cbData[] = {
+            {},
+            MakeOpaqueIteratorRange(settings)
+        };
+        auto numericUniforms = encoder.BeginNumericUniformsInterface();
+        numericUniforms.BindConstantBuffers(0, cbData);
+        numericUniforms.Bind(0, MakeIteratorRange(&stencilSrv, &stencilSrv+1));
+        numericUniforms.Apply(metalContext, encoder);
+        encoder.Bind(Techniques::CommonResourceBox::s_dsDisable);
+        encoder.Bind(MakeIteratorRange(&Techniques::CommonResourceBox::s_abAlphaPremultiplied, &Techniques::CommonResourceBox::s_abAlphaPremultiplied+1));
+        encoder.Bind(Metal::BoundInputLayout{}, Topology::TriangleStrip);
 
-        auto desc = stencilSrv.GetResource()->GetDesc();
+        auto desc = stencilSrv->GetResource()->GetDesc();
         if (desc._type != ResourceDesc::Type::Texture) return;
         
         auto components = GetComponents(desc._textureDesc._format);
@@ -77,35 +81,37 @@ namespace RenderOverlays
         params << "ONLY_HIGHLIGHTED=" << unsigned(onlyHighlighted);
         params << ";INPUT_MODE=" << (stencilInput?0:1);
 
-        {
-            auto shader = LoadShaderProgram(
-                BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
-                HIGHLIGHT_VIS_PIXEL_HLSL ":HighlightByStencil:ps_*",
-                (const ::Assets::ResChar*)params);
-                
-            metalContext.Bind(*shader);
-            metalContext.Draw(4);
+        auto highlightShader = LoadShaderProgram(
+            encoder.GetPipelineLayout(),
+            BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
+            HIGHLIGHT_VIS_PIXEL_HLSL ":HighlightByStencil:ps_*",
+            (const ::Assets::ResChar*)params)->TryActualize();
+        if (highlightShader) {
+            encoder.Bind(*highlightShader);
+            encoder.Draw(4);
         }
 
-        {
-            auto shader = LoadShaderProgram(
-                BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
-                HIGHLIGHT_VIS_PIXEL_HLSL ":OutlineByStencil:ps_*",
-                (const ::Assets::ResChar*)params);
-                
-            metalContext.Bind(*shader);
-            metalContext.Draw(4);
+        auto outlineShader = LoadShaderProgram(
+            encoder.GetPipelineLayout(),
+            BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
+            HIGHLIGHT_VIS_PIXEL_HLSL ":OutlineByStencil:ps_*",
+            (const ::Assets::ResChar*)params)->TryActualize();
+        if (outlineShader) {                
+            encoder.Bind(*outlineShader);
+            encoder.Draw(4);
         }
-
-        metalContext.GetNumericUniforms(ShaderStage::Pixel).Reset();
     }
 
     void ExecuteHighlightByStencil(
         IThreadContext& threadContext,
         Techniques::ParsingContext& parsingContext,
+        std::shared_ptr<ICompiledPipelineLayout> pipelineLayout,
+        const RenderCore::FrameBufferProperties& fbProps,
         const HighlightByStencilSettings& settings,
         bool onlyHighlighted)
     {
+        // Verbose.SetConfiguration({});
+        
 		std::vector<FrameBufferDesc::Attachment> attachments {
 			{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(parsingContext.GetTechniqueContext()._attachmentPool->GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()) },
 			{ Techniques::AttachmentSemantics::MultisampleDepth, Format::D24_UNORM_S8_UINT }
@@ -114,11 +120,11 @@ namespace RenderOverlays
 		mainPass.SetName("VisualisationOverlay");
 		mainPass.AppendOutput(0);
 		mainPass.AppendInput(1);
-		FrameBufferDesc fbDesc{ std::move(attachments), {mainPass} };
+		FrameBufferDesc fbDesc{ std::move(attachments), {mainPass}, fbProps };
 		Techniques::RenderPassInstance rpi {
 			threadContext, fbDesc, 
-			parsingContext.GetFrameBufferPool(),
-			parsingContext.GetNamedResources() };
+			*parsingContext.GetTechniqueContext()._frameBufferPool,
+			*parsingContext.GetTechniqueContext()._attachmentPool };
 
         auto stencilSrv = rpi.GetInputAttachmentSRV(
             0,
@@ -126,10 +132,13 @@ namespace RenderOverlays
                 {TextureViewDesc::Aspect::Stencil},
                 TextureViewDesc::All, TextureViewDesc::All, TextureDesc::Dimensionality::Undefined,
 				TextureViewDesc::Flags::JustStencil});
-        if (!stencilSrv->IsGood()) return;
+        if (!stencilSrv) return;
 
         auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
-        ExecuteHighlightByStencil(metalContext, *stencilSrv, settings, onlyHighlighted);
+        auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(pipelineLayout);
+        ExecuteHighlightByStencil(metalContext, encoder, stencilSrv, settings, onlyHighlighted);
+
+        // Verbose.SetConfiguration(OSServices::MessageTargetConfiguration{ std::string(), 0, OSServices::MessageTargetConfiguration::Sink::Console });
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -137,8 +146,6 @@ namespace RenderOverlays
     class HighlightShaders
     {
     public:
-        class Desc {};
-
         std::shared_ptr<Metal::ShaderProgram> _drawHighlight;
         Metal::BoundUniforms _drawHighlightUniforms;
 
@@ -147,43 +154,63 @@ namespace RenderOverlays
 
         const ::Assets::DependencyValidation& GetDependencyValidation() const { return _validationCallback; }
 
-        HighlightShaders(const Desc&);
+        HighlightShaders(std::shared_ptr<Metal::ShaderProgram> drawHighlight, std::shared_ptr<Metal::ShaderProgram> drawShadow);
+        static void ConstructToFuture(
+			::Assets::AssetFuture<HighlightShaders>&,
+			const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout);
     protected:
-        ::Assets::DependencyValidation  _validationCallback
+        ::Assets::DependencyValidation  _validationCallback;
+        
     };
 
-    HighlightShaders::HighlightShaders(const Desc&)
+    void HighlightShaders::ConstructToFuture(
+        ::Assets::AssetFuture<HighlightShaders>& result,
+        const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout)
     {
         //// ////
-        _drawHighlight = LoadShaderProgram(
+        auto drawHighlightFuture = LoadShaderProgram(
+            pipelineLayout,
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
             OUTLINE_VIS_PIXEL_HLSL ":main:ps_*");
+        auto drawShadowFuture = LoadShaderProgram(
+            pipelineLayout,
+            BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
+            OUTLINE_VIS_PIXEL_HLSL ":main_shadow:ps_*");
+
+        ::Assets::WhenAll(drawHighlightFuture, drawShadowFuture).ThenConstructToFuture(result);
+    }
+
+    HighlightShaders::HighlightShaders(std::shared_ptr<Metal::ShaderProgram> drawHighlight, std::shared_ptr<Metal::ShaderProgram> drawShadow)
+    : _drawHighlight(std::move(drawHighlight))
+    , _drawShadow(std::move(drawShadow))
+    {
 		UniformsStreamInterface drawHighlightInterface;
-		drawHighlightInterface.BindConstantBuffer(0, { Hash64("$Globals") });
+		drawHighlightInterface.BindImmediateData(0, Hash64("$Globals"));
 		_drawHighlightUniforms = Metal::BoundUniforms(*_drawHighlight, {}, {}, drawHighlightInterface);
 
         //// ////
-        _drawShadow = LoadShaderProgram(
-            BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
-            OUTLINE_VIS_PIXEL_HLSL ":main_shadow:ps_*");
+        
 		UniformsStreamInterface drawShadowInterface;
-		drawShadowInterface.BindConstantBuffer(0, { Hash64("ShadowHighlightSettings") });
+		drawShadowInterface.BindImmediateData(0, Hash64("ShadowHighlightSettings"));
 		_drawShadowUniforms = Metal::BoundUniforms(*_drawShadow, {}, {}, drawShadowInterface);
 
         //// ////
-        _validationCallback = _drawHighlight->GetDependencyValidation();
+        _validationCallback = ::Assets::GetDepValSys().Make();
+        _validationCallback.RegisterDependency(_drawHighlight->GetDependencyValidation());
+        _validationCallback.RegisterDependency(_drawShadow->GetDependencyValidation());
     }
 
     class BinaryHighlight::Pimpl
     {
     public:
         IThreadContext*                 _threadContext;
+        std::shared_ptr<RenderCore::ICompiledPipelineLayout> _pipelineLayout;
         Techniques::AttachmentPool*	_namedRes;
         Techniques::RenderPassInstance  _rpi;
 		FrameBufferDesc _fbDesc;
 
-        Pimpl(IThreadContext& threadContext, Techniques::AttachmentPool& namedRes)
-        : _threadContext(&threadContext), _namedRes(&namedRes) {}
+        Pimpl(IThreadContext& threadContext, std::shared_ptr<RenderCore::ICompiledPipelineLayout> pipelineLayout, Techniques::AttachmentPool& namedRes)
+        : _threadContext(&threadContext), _pipelineLayout(std::move(pipelineLayout)), _namedRes(&namedRes) {}
         ~Pimpl() {}
     };
 
@@ -194,11 +221,13 @@ namespace RenderOverlays
 
     BinaryHighlight::BinaryHighlight(
         IThreadContext& threadContext, 
+        std::shared_ptr<RenderCore::ICompiledPipelineLayout> pipelineLayout,
 		Techniques::FrameBufferPool& fbPool,
-        Techniques::AttachmentPool& namedRes)
+        Techniques::AttachmentPool& namedRes,
+        const FrameBufferProperties& fbProps)
     {
         using namespace RenderCore;
-        _pimpl = std::make_unique<Pimpl>(threadContext, namedRes);
+        _pimpl = std::make_unique<Pimpl>(threadContext, std::move(pipelineLayout), namedRes);
 
 		const bool doDepthTest = true;
 
@@ -206,21 +235,16 @@ namespace RenderOverlays
 		auto n_offscreen = fbDescFrag.DefineTemporaryAttachment(
 			AttachmentDesc {
 				Format::R8G8B8A8_UNORM, 1.f, 1.f, 0u,
-				AttachmentDesc::DimensionsMode::OutputRelative, 
-				AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource });
+				AttachmentDesc::Flags::OutputRelativeDimensions });
 		auto n_mainColor = fbDescFrag.DefineAttachment(
 			RenderCore::Techniques::AttachmentSemantics::ColorLDR,
 			AsAttachmentDesc(namedRes.GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()));
 		AttachmentName n_depth = ~0u;
 		if (doDepthTest) {
-			AttachmentDesc depthAttachment;
+			AttachmentDesc depthAttachment { Format::D24_UNORM_S8_UINT };
 			auto* existingDepthAttachment = namedRes.GetBoundResource(RenderCore::Techniques::AttachmentSemantics::MultisampleDepth).get();
-			if (existingDepthAttachment) {
+			if (existingDepthAttachment)
 				depthAttachment = AsAttachmentDesc(existingDepthAttachment->GetDesc());
-			} else {
-				depthAttachment._format = Format::D24_UNORM_S8_UINT;
-				depthAttachment._flags = AttachmentDesc::Flags::DepthStencil | AttachmentDesc::Flags::ShaderResource;
-			}
 			n_depth = fbDescFrag.DefineAttachment(RenderCore::Techniques::AttachmentSemantics::MultisampleDepth, depthAttachment);
 		}
 
@@ -235,7 +259,7 @@ namespace RenderOverlays
 		fbDescFrag.AddSubpass(std::move(subpass1));
         
 		ClearValue clearValues[] = {MakeClearValue(0.f, 0.f, 0.f, 0.f)};
-		_pimpl->_fbDesc = Techniques::BuildFrameBufferDesc(std::move(fbDescFrag));
+		_pimpl->_fbDesc = Techniques::BuildFrameBufferDesc(std::move(fbDescFrag), fbProps);
         _pimpl->_rpi = Techniques::RenderPassInstance(
             threadContext, _pimpl->_fbDesc, 
 			fbPool, namedRes,
@@ -244,12 +268,12 @@ namespace RenderOverlays
 
     void BinaryHighlight::FinishWithOutlineAndOverlay(RenderCore::IThreadContext& threadContext, Float3 outlineColor, unsigned overlayColor)
     {
-        auto& srv = *_pimpl->_rpi.GetInputAttachmentSRV(0);
-        assert(srv.IsGood());
+        auto* srv = _pimpl->_rpi.GetInputAttachmentSRV(0);
+        assert(srv);
 
         _pimpl->_rpi.NextSubpass();
 
-        if (srv.IsGood()) {
+        if (srv) {
 			static Float3 highlightColO(1.5f, 1.35f, .7f);
 			static unsigned overlayColO = 1;
 
@@ -262,8 +286,9 @@ namespace RenderOverlays
 			settings._outlineColor = outlineColor;
 			for (unsigned c=1; c<dimof(settings._stencilToMarkerMap); ++c)
 				settings._stencilToMarkerMap[c] = UInt4(overlayColor, overlayColor, overlayColor, overlayColor);
+            auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(_pimpl->_pipelineLayout);
 			ExecuteHighlightByStencil(
-				metalContext, srv, 
+				metalContext, encoder, srv, 
 				settings, false);
 		}
 
@@ -275,24 +300,26 @@ namespace RenderOverlays
             //  now we can render these objects over the main image, 
             //  using some filtering
 
-        auto& srv = *_pimpl->_rpi.GetInputAttachmentSRV(0);
-        assert(srv.IsGood());
+        auto* srv = _pimpl->_rpi.GetInputAttachmentSRV(0);
+        assert(srv);
         _pimpl->_rpi.NextSubpass();
 
-		if (srv.IsGood()) {
+        auto shaders = ::Assets::MakeAsset<HighlightShaders>(_pimpl->_pipelineLayout)->TryActualize();
+		if (srv && shaders) {
 			auto& metalContext = *Metal::DeviceContext::Get(threadContext);
-			metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(srv));
+            auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(_pimpl->_pipelineLayout);
+            auto numericUniforms = encoder.BeginNumericUniformsInterface();
+			numericUniforms.Bind(MakeResourceList(*srv));        // (pixel)
+            numericUniforms.Apply(metalContext, encoder);
 
 			struct Constants { Float3 _color; unsigned _dummy; } constants = { outlineColor, 0 };
-			ConstantBufferView cbvs[] = { MakeSharedPkt(constants) };
 
-			auto& shaders = ConsoleRig::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
-			shaders._drawHighlightUniforms.Apply(metalContext, 1, { MakeIteratorRange(cbvs) });
-			metalContext.Bind(*shaders._drawHighlight);
-			metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
-			metalContext.Bind(Techniques::CommonResources()._dssDisable);
-			metalContext.Bind(Topology::TriangleStrip);
-			metalContext.Draw(4);
+			shaders->_drawHighlightUniforms.ApplyLooseUniforms(metalContext, encoder, ImmediateDataStream{constants}, 1);
+			encoder.Bind(*shaders->_drawHighlight);
+			encoder.Bind(MakeIteratorRange(&Techniques::CommonResourceBox::s_abAlphaPremultiplied, &Techniques::CommonResourceBox::s_abAlphaPremultiplied+1));
+			encoder.Bind(Techniques::CommonResourceBox::s_dsDisable);
+			encoder.Bind({}, Topology::TriangleStrip);
+			encoder.Draw(4);
 		}
 
         _pimpl->_rpi.End();
@@ -300,27 +327,29 @@ namespace RenderOverlays
 
     void BinaryHighlight::FinishWithShadow(RenderCore::IThreadContext& threadContext, Float4 shadowColor)
     {
-        auto& srv = *_pimpl->_rpi.GetInputAttachmentSRV(0);
-        assert(srv.IsGood());
+        auto* srv = _pimpl->_rpi.GetInputAttachmentSRV(0);
+        assert(srv);
         _pimpl->_rpi.NextSubpass();
 
             //  now we can render these objects over the main image, 
             //  using some filtering
 
-        if (srv.IsGood()) {
+        auto shaders = ::Assets::MakeAsset<HighlightShaders>(_pimpl->_pipelineLayout)->TryActualize();
+        if (srv && shaders) {
 			auto& metalContext = *Metal::DeviceContext::Get(threadContext);
-			metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(srv));
+            auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(_pimpl->_pipelineLayout);
+            auto numericUniforms = encoder.BeginNumericUniformsInterface();
+			numericUniforms.Bind(MakeResourceList(*srv));            // (pixel)
+            numericUniforms.Apply(metalContext, encoder);
 
 			struct Constants { Float4 _shadowColor; } constants = { shadowColor };
-			ConstantBufferView cbvs[] = { MakeSharedPkt(constants) };
 
-			auto& shaders = ConsoleRig::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
-			shaders._drawShadowUniforms.Apply(metalContext, 1, { MakeIteratorRange(cbvs) });
-			metalContext.Bind(*shaders._drawShadow);
-			metalContext.Bind(Techniques::CommonResources()._blendStraightAlpha);
-			metalContext.Bind(Techniques::CommonResources()._dssDisable);
-			metalContext.Bind(Topology::TriangleStrip);
-			metalContext.Draw(4);
+			shaders->_drawShadowUniforms.ApplyLooseUniforms(metalContext, encoder, ImmediateDataStream{constants}, 1);
+			encoder.Bind(*shaders->_drawShadow);
+			encoder.Bind(MakeIteratorRange(&Techniques::CommonResourceBox::s_abStraightAlpha, &Techniques::CommonResourceBox::s_abStraightAlpha+1));
+			encoder.Bind(Techniques::CommonResourceBox::s_dsDisable);
+			encoder.Bind({}, Topology::TriangleStrip);
+			encoder.Draw(4);
 		}
 
         _pimpl->_rpi.End();

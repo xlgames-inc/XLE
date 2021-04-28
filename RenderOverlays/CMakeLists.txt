@@ -8,7 +8,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         FontRectanglePacking.cpp
         FontRendering.cpp
         FT_Font.cpp
-        #HighlightEffects.cpp
+        HighlightEffects.cpp
         OverlayContext.cpp
         OverlayPrimitives.cpp
         OverlayUtils.cpp)

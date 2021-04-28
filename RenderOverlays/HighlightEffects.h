@@ -10,7 +10,7 @@
 #include "../../Math/Vector.h"
 
 namespace RenderCore { namespace Techniques { class ParsingContext; class AttachmentPool; class FrameBufferPool; } }
-namespace RenderCore { class FrameBufferDesc; class IThreadContext; }
+namespace RenderCore { class FrameBufferDesc; class FrameBufferProperties; class IThreadContext; class ICompiledPipelineLayout; }
 
 namespace RenderOverlays
 {
@@ -29,6 +29,8 @@ namespace RenderOverlays
     void ExecuteHighlightByStencil(
         RenderCore::IThreadContext& threadContext,
         RenderCore::Techniques::ParsingContext& parsingContext,
+        std::shared_ptr<RenderCore::ICompiledPipelineLayout> pipelineLayout,
+        const RenderCore::FrameBufferProperties& fbProps,
         const HighlightByStencilSettings& settings,
         bool onlyHighlighted);
 
@@ -53,7 +55,11 @@ namespace RenderOverlays
 
 		const RenderCore::FrameBufferDesc& GetFrameBufferDesc() const;
         
-        BinaryHighlight(RenderCore::IThreadContext& threadContext, RenderCore::Techniques::FrameBufferPool& fbPool, RenderCore::Techniques::AttachmentPool& namedRes);
+        BinaryHighlight(
+            RenderCore::IThreadContext& threadContext,
+            std::shared_ptr<RenderCore::ICompiledPipelineLayout> pipelineLayout,
+            RenderCore::Techniques::FrameBufferPool& fbPool, RenderCore::Techniques::AttachmentPool& namedRes, 
+            const RenderCore::FrameBufferProperties& fbProps);
         ~BinaryHighlight();
     protected:
         class Pimpl;
