@@ -6,13 +6,13 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/Forward.h"
 #include "../Math/Matrix.h"
 #include <memory>
 
 namespace FixedFunctionModel { class SharedStateSet; class ModelRenderer; }
 namespace RenderCore { namespace Assets { class ModelScaffold; }}
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
+namespace RenderCore { class IResourceView; class IThreadContext; }
 
 namespace SceneEngine
 {
@@ -31,7 +31,7 @@ namespace SceneEngine
         //////////////////////////////////////////////////////////////////////////////
             //   Q U E U E   &   R E N D E R
         void Render(
-            RenderCore::Metal::DeviceContext& context,
+            RenderCore::IThreadContext& context,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex);
         void Queue(
@@ -67,7 +67,7 @@ namespace SceneEngine
             //   M E T R I C S
         class Metrics;
         Metrics GetMetrics() const;
-        RenderCore::Metal::ShaderResourceView GetAtlasResource(unsigned layer);
+        const RenderCore::IResourceView* GetAtlasResource(unsigned layer);
         class SpriteMetrics;
         SpriteMetrics GetSpriteMetrics(unsigned spriteIndex);
 

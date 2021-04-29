@@ -30,8 +30,6 @@
 #include "../../RenderCore/Techniques/Apparatuses.h"
 #include "../../RenderCore/Techniques/ImmediateDrawables.h"
 #include "../../RenderCore/IThreadContext.h"
-#include "../../RenderCore/Metal/State.h"
-#include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/Assets.h"
@@ -289,7 +287,7 @@ namespace ToolsRig
 					if (next._type == RenderCore::LightingEngine::StepType::None || next._type == RenderCore::LightingEngine::StepType::Abort) break;
 					assert(next._type == RenderCore::LightingEngine::StepType::ParseScene);
 					assert(next._pkt);
-					_pimpl->_scene->ExecuteScene(threadContext, SceneEngine::SceneView{}, next._batch, *next._pkt);
+					_pimpl->_scene->ExecuteScene(threadContext, SceneEngine::ExecuteSceneContext{SceneEngine::SceneView{}, next._batch, next._pkt});
 				}
 			}
 			parserContext.GetTechniqueContext()._attachmentPool->Unbind(*renderTarget);
@@ -769,7 +767,7 @@ namespace ToolsRig
 		Techniques::ParsingContext parserContext { techniqueContext };
 
 		RenderCore::Techniques::DrawablesPacket pkt;
-        scene.ExecuteScene(threadContext, {SceneEngine::SceneView::Type::Other}, RenderCore::Techniques::BatchFilter::General, pkt);
+        scene.ExecuteScene(threadContext, SceneEngine::ExecuteSceneContext{{SceneEngine::SceneView::Type::Other}, RenderCore::Techniques::BatchFilter::General, &pkt});
 		
 		SceneEngine::ModelIntersectionStateContext stateContext {
             SceneEngine::ModelIntersectionStateContext::RayTest,

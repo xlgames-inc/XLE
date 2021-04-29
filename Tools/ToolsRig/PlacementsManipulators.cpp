@@ -11,24 +11,27 @@
 #include "VisualisationUtils.h"		// (for AsCameraDesc)
 
 #include "../../SceneEngine/PlacementsManager.h"
-#include "../../SceneEngine/Terrain.h"
+//#include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/IntersectionTest.h"
 
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/IOverlayContext.h"
 #include "../../RenderOverlays/OverlayContext.h"
-#include "../../RenderOverlays/Overlays/Browser.h"
-#include "../../RenderOverlays/OverlayUtils.h"
+//#include "../../RenderOverlays/Overlays/Browser.h"
+//#include "../../RenderOverlays/OverlayUtils.h"
 #include "../../RenderCore/IThreadContext.h"
 
-#include "../../Utility/TimeUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/IteratorUtils.h"
+#include "../../Utility/StringUtils.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/Geometry.h"
 #include <iomanip>
 #include <random>
+#include <chrono>
+
+namespace Overlays { class ModelBrowser; }
 
 namespace ToolsRig
 {
@@ -120,7 +123,7 @@ namespace ToolsRig
             Float3  _parameter;
             Axis    _axisRestriction;
             Coord2  _cursorStart;
-            SceneEngine::IIntersectionScene::Result _anchorTerrainIntersection;
+            SceneEngine::IntersectionTestResult _anchorTerrainIntersection;
             char    _typeInBuffer[4];
 
             SubOperation() : _type(None), _parameter(0.f, 0.f, 0.f), _axisRestriction(NoAxis), _cursorStart(0, 0) { _typeInBuffer[0] = '\0'; }
@@ -186,6 +189,15 @@ namespace ToolsRig
         return res;
     }
 
+    static void AppendStr(char buffer[], size_t bufferMaxCount, char newChar)
+    {
+        auto len = std::strlen(buffer);
+        if (len+2 <= bufferMaxCount) {
+            buffer[len] = newChar;
+            buffer[len+1] = '\0';
+        }
+    }
+
     bool SelectAndEdit::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt,
         const SceneEngine::IntersectionTestContext& hitTestContext,
@@ -224,8 +236,9 @@ namespace ToolsRig
                 _activeSubop._cursorStart = evnt._mousePosition;
 
                 if (newSubOp == SubOperation::MoveAcrossTerrainSurface) {
-                    _activeSubop._anchorTerrainIntersection = hitTestScene->UnderCursor(
-                        hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestResult::Type::Terrain);
+                    _activeSubop._anchorTerrainIntersection = hitTestScene->FirstRayIntersection(
+                        hitTestContext,
+                        hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition), SceneEngine::IntersectionTestResult::Type::Terrain);
                 }
             }
 
@@ -239,7 +252,7 @@ namespace ToolsRig
                     // allow some characters to enter into the "type in buffer"
                     //      digits & '.' & '-'
                 if ((evnt._pressedChar >= (ucs2)'0' && evnt._pressedChar <= (ucs2)'9') || evnt._pressedChar == (ucs2)'.' || evnt._pressedChar == (ucs2)'-') {
-                    XlCatString(_activeSubop._typeInBuffer, dimof(_activeSubop._typeInBuffer), (char)evnt._pressedChar);
+                    AppendStr(_activeSubop._typeInBuffer, dimof(_activeSubop._typeInBuffer), (char)evnt._pressedChar);
                     consume = true;
                     updateState = true;
                 }
@@ -316,6 +329,7 @@ namespace ToolsRig
                         case SubOperation::X: upAxis = Float3(1.f, 0.f, 0.f); break;
                         case SubOperation::Y: upAxis = Float3(0.f, 1.f, 0.f); break;
                         case SubOperation::Z: upAxis = Float3(0.f, 0.f, 1.f); break;
+                        default: break;
                         }
 
                         rightAxis = rightAxis - upAxis * Dot(upAxis, rightAxis);
@@ -358,7 +372,7 @@ namespace ToolsRig
                             //  We want to find an intersection point with the terrain, and then 
                             //  compare the XY coordinates of that to the anchor point
 
-                        auto collision = hitTestScene->UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestResult::Type::Terrain);
+                        auto collision = hitTestScene->FirstRayIntersection(hitTestContext, hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition), SceneEngine::IntersectionTestResult::Type::Terrain);
                         if (collision._type == SceneEngine::IntersectionTestResult::Type::Terrain
                             && _activeSubop._anchorTerrainIntersection._type == SceneEngine::IntersectionTestResult::Type::Terrain) {
                             _activeSubop._parameter = Float3(
@@ -546,6 +560,8 @@ namespace ToolsRig
         case SubOperation::MoveAcrossTerrainSurface:
             meld << "T <<terrain>>: (" << _activeSubop._parameter[0] << ", " << _activeSubop._parameter[1] << "). ";
             break;
+
+        default:break;
         }
 
         switch (_activeSubop._axisRestriction) 
@@ -613,7 +629,7 @@ namespace ToolsRig
         ~PlaceSingle();
 
     protected:
-        Millisecond                     _placeTimeout;
+        std::chrono::steady_clock::time_point   _placeTimeout;
         IPlacementManipulatorSettings*  _manInterface;
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
         std::shared_ptr<SceneEngine::PlacementsRenderer> _renderer;
@@ -658,7 +674,7 @@ namespace ToolsRig
                 }
 
                 _transaction->Create(newState);
-                _placeTimeout = Millisecond_Now();
+                _placeTimeout = std::chrono::steady_clock::now();
             } else {
                 _transaction->SetObject(0, newState);
             }
@@ -685,7 +701,7 @@ namespace ToolsRig
         if (_rendersSinceHitTest > 0 && hitTestScene) {
             _rendersSinceHitTest = 0;
 
-            auto test = hitTestScene->UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestResult::Type::Terrain);
+            auto test = hitTestScene->FirstRayIntersection(hitTestContext, hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition), SceneEngine::IntersectionTestResult::Type::Terrain);
             if (test._type == SceneEngine::IntersectionTestResult::Type::Terrain) {
 
                     //  This is a spawn event. We should add a new item of the selected model
@@ -695,8 +711,8 @@ namespace ToolsRig
         }
 
             // We add a small timeout 
-        const unsigned safetyTimeout = 200;
-        if (evnt.IsRelease_LButton() && (_placeTimeout - Millisecond_Now()) > safetyTimeout) {
+        const auto safetyTimeout = std::chrono::milliseconds(200);
+        if (evnt.IsRelease_LButton() && (_placeTimeout - std::chrono::steady_clock::now()) > safetyTimeout) {
             if (_transaction) {
                 _transaction->Commit();
                 _transaction.reset();
@@ -751,7 +767,7 @@ namespace ToolsRig
         if (_manInterface) {
             _manInterface->EnableSelectedModelDisplay(newState);
         }
-        _placeTimeout = Millisecond_Now();
+        _placeTimeout = std::chrono::steady_clock::now();
     }
 
     PlaceSingle::PlaceSingle(
@@ -759,7 +775,7 @@ namespace ToolsRig
         std::shared_ptr<SceneEngine::PlacementsEditor> editor,
         std::shared_ptr<SceneEngine::PlacementsRenderer> renderer)
     {
-        _placeTimeout = 0;
+        _placeTimeout = std::chrono::steady_clock::time_point();
         _manInterface = manInterface;
         _editor = std::move(editor);
         _renderer = std::move(renderer);
@@ -796,7 +812,7 @@ namespace ToolsRig
         ~ScatterPlacements();
 
     protected:
-        Millisecond                         _spawnTimer;
+        std::chrono::steady_clock::time_point   _spawnTimer;
         IPlacementManipulatorSettings*    _manInterface;
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
 
@@ -824,12 +840,12 @@ namespace ToolsRig
 
 		if (!hitTestScene) return false;
 
-        auto test = hitTestScene->UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestResult::Type::Terrain);
+        auto test = hitTestScene->FirstRayIntersection(hitTestContext, hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition), SceneEngine::IntersectionTestResult::Type::Terrain);
         _hoverPoint = test._worldSpaceCollision;
         _hasHoverPoint = test._type == SceneEngine::IntersectionTestResult::Type::Terrain;
 
-        const Millisecond spawnTimeOut = 200;
-        auto now = Millisecond_Now();
+        const auto spawnTimeOut = std::chrono::milliseconds(200);
+        auto now = std::chrono::steady_clock::now();
         if (evnt.IsHeld_LButton()) {
             if (test._type == SceneEngine::IntersectionTestResult::Type::Terrain) {
                 auto selectedModel = _manInterface->GetSelectedModel();
@@ -840,7 +856,7 @@ namespace ToolsRig
                 }
                 return true;
             }
-        } else { _spawnTimer = 0; }
+        } else { _spawnTimer = {}; }
 
         if (evnt._wheelDelta) {
             _radius = std::max(1.f, _radius + 3.f * evnt._wheelDelta / 120.f);
@@ -1283,7 +1299,7 @@ namespace ToolsRig
         IPlacementManipulatorSettings* manInterface,
         std::shared_ptr<SceneEngine::PlacementsEditor> editor)
     {
-        _spawnTimer = 0;
+        _spawnTimer = {};
         _manInterface = manInterface;
         _editor = std::move(editor);
         _hasHoverPoint = false;
@@ -1618,7 +1634,7 @@ namespace ToolsRig
         pimpl->_screens = std::make_shared<DebugScreensSystem>();
         pimpl->_placementsManager = placementsManager;
         pimpl->_editor = pimpl->_placementsManager->CreateEditor(placementCellSet);
-        pimpl->_intersectionTestScene = std::make_shared<SceneEngine::IIntersectionScene>(
+        pimpl->_intersectionTestScene = SceneEngine::CreateIntersectionTestScene(
             terrainManager, placementCellSet, pimpl->_editor);
         pimpl->_placementsDispl = std::make_shared<PlacementsWidgets>(
             pimpl->_editor, placementsManager->GetRenderer(),

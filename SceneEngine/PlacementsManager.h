@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/Forward.h"
+#include "IScene.h"
 #include "../Assets/AssetsCore.h"
 #include "../Utility/UTFUtils.h"
 #include "../Math/Vector.h"
@@ -49,7 +49,7 @@ namespace SceneEngine
     class PlacementsRenderer;
     class PlacementsIntersections;
     class PlacementsEditor;
-    class PlacementsQuadTree;
+    class GenericQuadTree;
     class DynamicImposters;
 
     /// <summary>A collection of cells</summary>
@@ -88,26 +88,25 @@ namespace SceneEngine
     class PlacementsCache;
     class PreparedScene;
     using PlacementGUID = std::pair<uint64_t, uint64_t>;
-	class SceneExecuteContext;
     
     class PlacementsRenderer
     {
     public:
             // -------------- Rendering --------------
         void BuildDrawables(
-            SceneExecuteContext& executeContext,
+            const ExecuteSceneContext& executeContext,
 			const PlacementCellSet& cellSet);
 
             // -------------- Render filtered --------------
         void BuildDrawables(
-            SceneExecuteContext& executeContext,
+            const ExecuteSceneContext& executeContext,
             const PlacementCellSet& cellSet,
             const PlacementGUID* begin, const PlacementGUID* end,
 			const std::shared_ptr<RenderCore::Techniques::IPreDrawDelegate>& preDrawDelegate = nullptr);
 
             // -------------- Utilities --------------
         auto GetVisibleQuadTrees(const PlacementCellSet& cellSet, const Float4x4& worldToClip) const
-            -> std::vector<std::pair<Float3x4, const PlacementsQuadTree*>>;
+            -> std::vector<std::pair<Float3x4, const GenericQuadTree*>>;
 
         struct ObjectBoundingBoxes { const std::pair<Float3, Float3> * _boundingBox; unsigned _stride; unsigned _count; };
         auto GetObjectBoundingBoxes(const PlacementCellSet& cellSet, const Float4x4& worldToClip) const

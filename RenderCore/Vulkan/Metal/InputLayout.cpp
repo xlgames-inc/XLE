@@ -553,17 +553,17 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		// We need to map on the input descriptor set bindings to the slots understood
 		// by the shader's pipeline layout
-		auto& pipelineLayout = shader.GetPipelineLayout();
+		auto* pipelineLayout = shader.GetPipelineLayout().get();
 		ConstructionHelper helper;
 		helper._looseUniforms = MakeIteratorRange(groups);
-		helper._pipelineLayout = &pipelineLayout;
+		helper._pipelineLayout = pipelineLayout;
 		
-		for (unsigned c=0; c<pipelineLayout.GetDescriptorSetCount(); ++c) {
+		for (unsigned c=0; c<pipelineLayout->GetDescriptorSetCount(); ++c) {
 			bool foundMapping = false;
 			for (signed gIdx=3; gIdx>=0 && !foundMapping; --gIdx) {
 				for (unsigned dIdx=0; dIdx<groups[gIdx]->_fixedDescriptorSetBindings.size() && !foundMapping; ++dIdx) {
 					auto bindName = groups[gIdx]->_fixedDescriptorSetBindings[dIdx];
-					if (pipelineLayout.GetDescriptorSetBindingNames()[c] == bindName) {
+					if (pipelineLayout->GetDescriptorSetBindingNames()[c] == bindName) {
 						// todo -- we should check compatibility between the given descriptor set and the pipeline layout
 						helper._fixedDescriptorSets.insert({c, std::make_tuple(gIdx, dIdx, groups[gIdx]->GetDescriptorSetSignature(bindName))});
 						foundMapping = true;

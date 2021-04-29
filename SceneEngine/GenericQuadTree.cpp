@@ -529,10 +529,10 @@ namespace SceneEngine
 		return result;
 	}
 
-	std::vector<uint8_t> GenericQuadTree::BuildQuadTree(
+	auto GenericQuadTree::BuildQuadTree(
         const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,
         size_t objCount, unsigned leafThreshold,
-		Orientation orientation)
+		Orientation orientation) -> std::pair<DataBlock, size_t>
     {
             //  Find the minimum and maximum XY of the placements in "placements", and
             //  divide this space up into a quad tree (ignoring height)
@@ -570,9 +570,7 @@ namespace SceneEngine
 
         ::Assets::NascentBlockSerializer serializer;
 		SerializationOperator(serializer, *pimpl);
-		return std::vector<uint8_t>(
-			serializer.AsMemoryBlock(),
-			serializer.Size());
+		return std::make_pair(std::move(serializer.AsMemoryBlock()), serializer.Size());
     }
 
 	static const uint64 ChunkType_QuadTree = ConstHash64<'Quad', 'Tree'>::Value;

@@ -21,7 +21,7 @@ namespace SceneEngine
 		IScene& scene)
     {
 		RenderCore::Techniques::DrawablesPacket pkt;
-        scene.ExecuteScene(threadContext, view, batchFilter, pkt);
+        scene.ExecuteScene(threadContext, ExecuteSceneContext{view, batchFilter, &pkt});
 		RenderCore::Techniques::Draw(threadContext, parserContext, pipelineAccelerators, sequencerTechnique, pkt);
     }
 

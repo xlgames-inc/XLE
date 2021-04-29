@@ -52,13 +52,15 @@ namespace SceneEngine
 
 		enum class Orientation { YUp, ZUp };
 
-		static std::vector<uint8_t> BuildQuadTree(
+        using DataBlock = std::unique_ptr<uint8[], PODAlignedDeletor>;
+
+		static std::pair<DataBlock, size_t> BuildQuadTree(
             const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,
             size_t objCount, unsigned leafThreshold,
 			Orientation orientation = Orientation::ZUp);
 
 		GenericQuadTree(const ::Assets::ChunkFileContainer& chunkFile);
-		GenericQuadTree(std::unique_ptr<uint8[], PODAlignedDeletor>&& dataBlock);
+		GenericQuadTree(DataBlock&& dataBlock);
 		GenericQuadTree();
         ~GenericQuadTree();
 
@@ -70,7 +72,7 @@ namespace SceneEngine
 
     protected:
         class Pimpl;
-		std::unique_ptr<uint8[], PODAlignedDeletor> _dataBlock;
+		DataBlock _dataBlock;
 		::Assets::DependencyValidation _depVal;
 
 		const Pimpl& GetPimpl() const;

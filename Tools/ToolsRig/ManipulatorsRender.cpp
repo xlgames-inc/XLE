@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -9,14 +7,15 @@
 // #include "../../SceneEngine/SceneEngineUtils.h"
 // #include "../../SceneEngine/MetalStubs.h"
 // #include "../../SceneEngine/RenderStep.h"
-#include "../../FixedFunctionModel/ModelRunTime.h"
-#include "../../FixedFunctionModel/PreboundShaders.h"
+#include "../../SceneEngine/IScene.h"
+// #include "../../FixedFunctionModel/ModelRunTime.h"
+// #include "../../FixedFunctionModel/PreboundShaders.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
-#include "../../RenderCore/Metal/State.h"
-#include "../../RenderCore/Metal/Shader.h"
-#include "../../RenderCore/Metal/TextureView.h"
-#include "../../RenderCore/Metal/ObjectFactory.h"
+// #include "../../RenderCore/Metal/State.h"
+// #include "../../RenderCore/Metal/Shader.h"
+// #include "../../RenderCore/Metal/TextureView.h"
+// #include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
@@ -25,6 +24,7 @@
 #include "../../RenderCore/Techniques/SimpleModelRenderer.h"
 #include "../../RenderCore/Techniques/TechniqueDelegates.h"
 #include "../../RenderCore/Techniques/PipelineAccelerator.h"
+#include "../../RenderCore/Techniques/Services.h"
 #include "../../RenderCore/Assets/PredefinedCBLayout.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Format.h"
@@ -43,18 +43,19 @@ namespace ToolsRig
     void Placements_RenderFiltered(
         RenderCore::IThreadContext& threadContext,
         Techniques::ParsingContext& parserContext,
+        Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
         const RenderCore::Techniques::SequencerContext& sequencerTechnique,
         SceneEngine::PlacementsRenderer& renderer,
         const SceneEngine::PlacementCellSet& cellSet,
         const SceneEngine::PlacementGUID* filterBegin,
         const SceneEngine::PlacementGUID* filterEnd,
-        uint64 materialGuid)
+        uint64_t materialGuid)
     {
 		class PreDrawDelegate : public RenderCore::Techniques::IPreDrawDelegate
 		{
 		public:
 			virtual bool OnDraw(
-				Metal::DeviceContext&, RenderCore::Techniques::ParsingContext&,
+				const RenderCore::Techniques::ExecuteDrawableContext&, RenderCore::Techniques::ParsingContext&,
 				const RenderCore::Techniques::Drawable&,
 				uint64_t materialGuid, unsigned drawCallIdx)
 			{
@@ -66,9 +67,11 @@ namespace ToolsRig
 
 		using namespace RenderCore;
 		using namespace SceneEngine;
-		SceneExecuteContext sceneExeContext;
-		auto viewDelegate = std::make_shared<BasicViewDelegate>();
-		sceneExeContext.AddView({SceneView::Type::Normal, parserContext.GetProjectionDesc()}, viewDelegate);
+		SceneEngine::ExecuteSceneContext sceneExeContext;
+        Techniques::DrawablesPacket pkt;
+        sceneExeContext._destinationPkt = &pkt;
+        sceneExeContext._view = {SceneView::Type::Normal, parserContext.GetProjectionDesc()};
+        sceneExeContext._batchFilter = Techniques::BatchFilter::General;
 		if (materialGuid == ~0ull) {
 			renderer.BuildDrawables(
 				sceneExeContext,
@@ -79,15 +82,16 @@ namespace ToolsRig
 		}
 
 		Techniques::Draw(
-			threadContext, parserContext, 
+			threadContext, parserContext,
+            pipelineAccelerators,
 			sequencerTechnique, 
-			viewDelegate->_pkt);
+			pkt);
     }
 
 	class TechniqueBox
 	{
 	public:
-		std::shared_ptr<RenderCore::Techniques::TechniqueSetFile> _techniqueSetFile;
+		::Assets::FuturePtr<RenderCore::Techniques::TechniqueSetFile> _techniqueSetFile;
 		std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources> _techniqueSharedResources;
 		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _forwardIllumDelegate;
 
@@ -96,8 +100,8 @@ namespace ToolsRig
 		struct Desc {};
 		TechniqueBox(const Desc&)
 		{
-			_techniqueSetFile = ::Assets::AutoConstructAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
-			_techniqueSharedResources = std::make_shared<RenderCore::Techniques::TechniqueSharedResources>();
+			_techniqueSetFile = ::Assets::MakeAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
+			_techniqueSharedResources = RenderCore::Techniques::CreateTechniqueSharedResources(RenderCore::Techniques::Services::GetInstance().GetDevice());
 			_forwardIllumDelegate = RenderCore::Techniques::CreateTechniqueDelegate_Forward(_techniqueSetFile, _techniqueSharedResources, RenderCore::Techniques::TechniqueDelegateForwardFlags::DisableDepthWrite);
 		}
 	};
@@ -110,20 +114,24 @@ namespace ToolsRig
         const SceneEngine::PlacementCellSet& cellSet,
         const SceneEngine::PlacementGUID* filterBegin,
         const SceneEngine::PlacementGUID* filterEnd,
-        uint64 materialGuid)
+        uint64_t materialGuid)
     {
+        assert(0);  // fill in fbProps
+        RenderCore::FrameBufferProperties fbProps;
         CATCH_ASSETS_BEGIN
             RenderOverlays::BinaryHighlight highlight(
                 threadContext,
+                pipelineAccelerators.GetPipelineLayout(),
                 *parserContext.GetTechniqueContext()._frameBufferPool,
-                *parserContext.GetTechniqueContext()._attachmentPool);
+                *parserContext.GetTechniqueContext()._attachmentPool,
+                fbProps);
 			RenderCore::Techniques::SequencerContext seqContext;
 			auto sequencerCfg = pipelineAccelerators.CreateSequencerConfig(
 				ConsoleRig::FindCachedBoxDep2<TechniqueBox>()._forwardIllumDelegate, ParameterBox{}, 
 				highlight.GetFrameBufferDesc());
 			seqContext._sequencerConfig = sequencerCfg.get();
             Placements_RenderFiltered(
-                threadContext, parserContext, 
+                threadContext, parserContext, pipelineAccelerators,
 				seqContext,
                 renderer, cellSet, filterBegin, filterEnd, materialGuid);
             highlight.FinishWithOutline(threadContext, Float3(.65f, .8f, 1.5f));
@@ -138,20 +146,24 @@ namespace ToolsRig
         const SceneEngine::PlacementCellSet& cellSet,
 		const SceneEngine::PlacementGUID* filterBegin,
         const SceneEngine::PlacementGUID* filterEnd,
-        uint64 materialGuid)
+        uint64_t materialGuid)
     {
+        assert(0);  // fill in fbProps
+        RenderCore::FrameBufferProperties fbProps;
 		CATCH_ASSETS_BEGIN
             RenderOverlays::BinaryHighlight highlight(
                 threadContext,
+                pipelineAccelerators.GetPipelineLayout(),
                 *parserContext.GetTechniqueContext()._frameBufferPool,
-                *parserContext.GetTechniqueContext()._attachmentPool);
+                *parserContext.GetTechniqueContext()._attachmentPool,
+                fbProps);
 			RenderCore::Techniques::SequencerContext seqContext;
 			auto sequencerCfg = pipelineAccelerators.CreateSequencerConfig(
 				ConsoleRig::FindCachedBoxDep2<TechniqueBox>()._forwardIllumDelegate, ParameterBox{}, 
 				highlight.GetFrameBufferDesc());
 			seqContext._sequencerConfig = sequencerCfg.get();
             Placements_RenderFiltered(
-                threadContext, parserContext, 
+                threadContext, parserContext, pipelineAccelerators,
 				seqContext,
                 renderer, cellSet, filterBegin, filterEnd, materialGuid);
 
@@ -170,24 +182,50 @@ namespace ToolsRig
         const SceneEngine::PlacementCellSet& cellSet,
         const SceneEngine::PlacementGUID* filterBegin,
         const SceneEngine::PlacementGUID* filterEnd,
-        uint64 materialGuid)
+        uint64_t materialGuid)
     {
+        assert(0);  // fill in fbProps
+        RenderCore::FrameBufferProperties fbProps;
         CATCH_ASSETS_BEGIN
             RenderOverlays::BinaryHighlight highlight(
                 threadContext,
+                pipelineAccelerators.GetPipelineLayout(),
                 *parserContext.GetTechniqueContext()._frameBufferPool,
-                *parserContext.GetTechniqueContext()._attachmentPool);
+                *parserContext.GetTechniqueContext()._attachmentPool,
+                fbProps);
             RenderCore::Techniques::SequencerContext seqContext;
 			auto sequencerCfg = pipelineAccelerators.CreateSequencerConfig(
 				ConsoleRig::FindCachedBoxDep2<TechniqueBox>()._forwardIllumDelegate, ParameterBox{}, 
 				highlight.GetFrameBufferDesc());
 			seqContext._sequencerConfig = sequencerCfg.get();
 			Placements_RenderFiltered(
-                threadContext, parserContext, 
+                threadContext, parserContext, pipelineAccelerators,
 				seqContext,
                 renderer, cellSet, filterBegin, filterEnd, materialGuid);
             highlight.FinishWithShadow(threadContext, Float4(.025f, .025f, .025f, 0.85f));
         CATCH_ASSETS_END(parserContext)
+    }
+
+    static void DrawAutoFullscreenImmediately(
+        IThreadContext& threadContext,
+        ::Assets::AssetFuture<Metal::ShaderProgram>& shader,
+        const UniformsStreamInterface& uniformStreamInterface,
+        const UniformsStream& uniforms,
+        const AttachmentBlendDesc& ab = Techniques::CommonResourceBox::s_abStraightAlpha,
+        const DepthStencilDesc& ds = Techniques::CommonResourceBox::s_dsReadWrite)
+    {
+        auto* actualShader = shader.TryActualize().get();
+
+        auto& metalContext = *Metal::DeviceContext::Get(threadContext);            
+        auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(actualShader->GetPipelineLayout());
+        encoder.Bind(*actualShader);
+        
+        Metal::BoundUniforms boundLayout(*actualShader, uniformStreamInterface);
+        boundLayout.ApplyLooseUniforms(metalContext, encoder, uniforms);
+        encoder.Bind({&ab, &ab+1});
+        encoder.Bind(ds);
+        encoder.Bind(Metal::BoundInputLayout{}, Topology::TriangleStrip);
+        encoder.Draw(4);
     }
 
     void RenderCylinderHighlight(
@@ -207,26 +245,20 @@ namespace ToolsRig
 		FrameBufferDesc fbDesc{ std::move(attachments), {mainPass} };
 		Techniques::RenderPassInstance rpi {
 			threadContext, fbDesc, 
-			parserContext.GetTechniqueContext()._frameBufferPool,
-			parserContext.GetTechniqueContext()._attachmentPool };
+			*parserContext.GetTechniqueContext()._frameBufferPool,
+			*parserContext.GetTechniqueContext()._attachmentPool };
 
         auto depthSrv = rpi.GetInputAttachmentSRV(0, TextureViewDesc{{TextureViewDesc::Aspect::Depth}});
         if (!depthSrv) return;
 
         TRY
         {
-                // note -- we might need access to the MSAA defines for this shader
-            auto& shaderProgram = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
-                BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector:vs_*",
-                "xleres/ui/terrainmanipulators.hlsl:ps_circlehighlight:ps_*");
-            
             struct HighlightParameters
             {
                 Float3 _center;
                 float _radius;
             } highlightParameters = { centre, radius };
-            ConstantBufferView constantBufferPackets[2];
-            constantBufferPackets[0] = MakeSharedPkt(highlightParameters);
+            auto cbs = RenderCore::ImmediateDataStream { highlightParameters };
 
             auto& circleHighlight = *::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L")->Actualize();
             const IResourceView* resources[] = { depthSrv, circleHighlight.GetShaderResource().get() };
@@ -236,31 +268,20 @@ namespace ToolsRig
             usi.BindResourceView(0, Hash64("DepthTexture"));
             usi.BindResourceView(1, Hash64("HighlightResource"));
 
-			Metal::BoundUniforms boundLayout(
-				shaderProgram,
-				{},
-				RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
-				usi);
-
-			auto& metalContext = *Metal::DeviceContext::Get(threadContext);
-            metalContext.Bind(shaderProgram);
-            boundLayout.Apply(metalContext, 0, parserContext.GetGlobalUniformsStream());
-			boundLayout.Apply(metalContext, 1, UniformsStream{
-				MakeIteratorRange(constantBufferPackets),
-				UniformsStream::MakeResources(MakeIteratorRange(resources))
-				});
-
-            metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
-            metalContext.Bind(Techniques::CommonResources()._dssDisable);
-            metalContext.Bind(Topology::TriangleStrip);
-			metalContext.UnbindInputLayout();
-
                 // note --  this will render a full screen quad. we could render cylinder geometry instead,
                 //          because this decal only affects the area within a cylinder. But it's just for
-                //          tools, so the easy way should be fine.
-            metalContext.Draw(4);
+                //          tools, so the easy way should be fine.            
+            DrawAutoFullscreenImmediately(
+                threadContext,
+                *::Assets::MakeAsset<Metal::ShaderProgram>(      // note -- we might need access to the MSAA defines for this shader
+                    pipelineAccelerators.GetPipelineLayout(),
+                    BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector:vs_*",
+                    "xleres/ui/terrainmanipulators.hlsl:ps_circlehighlight:ps_*"),
+                usi, UniformsStream{MakeIteratorRange(resources), MakeIteratorRange(cbs._immediateDatas)},
+                Techniques::CommonResourceBox::s_abAlphaPremultiplied,
+                Techniques::CommonResourceBox::s_dsDisable);
 
-            SceneEngine::MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 3, 1);
+            // SceneEngine::MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 3, 1);
         } 
         CATCH_ASSETS(parserContext)
         CATCH(...) {} 
@@ -285,21 +306,14 @@ namespace ToolsRig
 		FrameBufferDesc fbDesc{ std::move(attachments), {mainPass} };
 		Techniques::RenderPassInstance rpi {
 			threadContext, fbDesc, 
-			parserContext.GetTechniqueContext()._frameBufferPool,
-			parserContext.GetTechniqueContext()._attachmentPool };
+			*parserContext.GetTechniqueContext()._frameBufferPool,
+			*parserContext.GetTechniqueContext()._attachmentPool };
 
         auto depthSrv = rpi.GetInputAttachmentSRV(0, TextureViewDesc{{TextureViewDesc::Aspect::Depth}});
-        if (!depthSrv || !depthSrv->IsGood()) return;
+        if (!depthSrv) return;
 
         TRY
         {
-                // note -- we might need access to the MSAA defines for this shader
-            auto& shaderProgram = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
-                BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector:vs_*",
-                (type == RectangleHighlightType::Tool)
-					? "xleres/ui/terrainmanipulators.hlsl:ps_rectanglehighlight:ps_*"
-					: "xleres/ui/terrainmanipulators.hlsl:ps_lockedareahighlight:ps_*");
-            
             struct HighlightParameters
             {
                 Float3 _mins; float _dummy0;
@@ -307,50 +321,39 @@ namespace ToolsRig
             } highlightParameters = {
                 mins, 0.f, maxs, 0.f
             };
-            ConstantBufferView constantBufferPackets[2];
-            constantBufferPackets[0] = MakeSharedPkt(highlightParameters);
+            auto cbs = RenderCore::ImmediateDataStream { highlightParameters };
 
             auto& circleHighlight = *::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L")->Actualize();
-            const Metal::ShaderResourceView* resources[] = { depthSrv, &circleHighlight.GetShaderResource() };
+            const IResourceView* resources[] = { depthSrv, circleHighlight.GetShaderResource().get() };
 
 			UniformsStreamInterface usi;
-			usi.BindConstantBuffer(0, {Hash64("RectangleHighlightParameters")});
-            usi.BindShaderResource(0, Hash64("DepthTexture"));
-            usi.BindShaderResource(1, Hash64("HighlightResource"));
-
-			Metal::BoundUniforms boundLayout(
-				shaderProgram,
-				{},
-				RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
-				usi);
-
-            auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
-			metalContext.Bind(shaderProgram);
-			boundLayout.Apply(metalContext, 0, parserContext.GetGlobalUniformsStream());
-			boundLayout.Apply(metalContext, 1, UniformsStream{
-				MakeIteratorRange(constantBufferPackets),
-				UniformsStream::MakeResources(MakeIteratorRange(resources))
-				});
-
-            metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
-            metalContext.Bind(Techniques::CommonResources()._dssDisable);
-            metalContext.Bind(Topology::TriangleStrip);
-			#if GFXAPI_TARGET == GFXAPI_DX11
-				metalContext.GetUnderlying()->IASetInputLayout(nullptr);
-			#endif
+			usi.BindImmediateData(0, Hash64("RectangleHighlightParameters"));
+            usi.BindResourceView(0, Hash64("DepthTexture"));
+            usi.BindResourceView(1, Hash64("HighlightResource"));
 
                 // note --  this will render a full screen quad. we could render cylinder geometry instead,
                 //          because this decal only affects the area within a cylinder. But it's just for
                 //          tools, so the easy way should be fine.
-            metalContext.Draw(4);
+            DrawAutoFullscreenImmediately(
+                threadContext,
+                *::Assets::MakeAsset<Metal::ShaderProgram>(      // note -- we might need access to the MSAA defines for this shader
+                    pipelineAccelerators.GetPipelineLayout(),
+                    BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector:vs_*",
+                    (type == RectangleHighlightType::Tool)
+                        ? "xleres/ui/terrainmanipulators.hlsl:ps_rectanglehighlight:ps_*"
+                        : "xleres/ui/terrainmanipulators.hlsl:ps_lockedareahighlight:ps_*"),
+                usi, UniformsStream{MakeIteratorRange(resources), MakeIteratorRange(cbs._immediateDatas)},
+                Techniques::CommonResourceBox::s_abAlphaPremultiplied,
+                Techniques::CommonResourceBox::s_dsDisable);
 
-            SceneEngine::MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 3, 1);
+            // SceneEngine::MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 3, 1);
         } 
         CATCH_ASSETS(parserContext)
         CATCH(...) {} 
         CATCH_END
     }
 
+#if 0
     class ManipulatorResBox
     {
     public:
@@ -372,11 +375,14 @@ namespace ToolsRig
         ParameterBox({ std::make_pair("SHAPE", "4") }))
     {
     }
+#endif
 
     void DrawWorldSpaceCylinder(
         RenderCore::IThreadContext& threadContext, Techniques::ParsingContext& parserContext,
         Float3 origin, Float3 axis, float radius)
     {
+        assert(0);
+#if 0
         CATCH_ASSETS_BEGIN
             auto& box = ConsoleRig::FindCachedBoxDep2<ManipulatorResBox>();
             auto localToWorld = Identity<Float4x4>();
@@ -420,8 +426,10 @@ namespace ToolsRig
             }
 
         CATCH_ASSETS_END(parserContext)
+#endif
     }
 
+/*
     void DrawQuadDirect(
         RenderCore::IThreadContext& threadContext, const RenderCore::Metal::ShaderResourceView& srv, 
         Float2 screenMins, Float2 screenMaxs)
@@ -473,5 +481,6 @@ namespace ToolsRig
 
 		boundLayout.UnbindShaderResources(metalContext, 1);
     }
+*/
 }
 

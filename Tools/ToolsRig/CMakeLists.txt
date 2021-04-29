@@ -6,10 +6,11 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
 		BasicManipulators.cpp
 		DivergentAsset.cpp
 		#GenerateAO.cpp
-		#ManipulatorsRender.cpp
+		ManipulatorsRender.cpp
 		MaterialVisualisation.cpp
 		ModelVisualisation.cpp
 		ObjectPlaceholders.cpp
+		PlacementsManipulators.cpp
 		PreviewSceneRegistry.cpp
 		#TerrainConversion.cpp
 		#TerrainManipulators.cpp

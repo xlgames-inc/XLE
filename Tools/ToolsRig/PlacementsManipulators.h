@@ -23,6 +23,7 @@ namespace SceneEngine
     class LightingParserContext;
     class PlacementsEditor;
     class PlacementCellSet;
+    class IIntersectionScene;
     typedef std::pair<uint64, uint64> PlacementGUID;
 }
 

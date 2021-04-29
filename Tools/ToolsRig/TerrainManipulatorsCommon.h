@@ -8,6 +8,7 @@
 
 #include "IManipulator.h"
 #include "../../Math/Vector.h"
+#include <chrono>
 
 namespace SceneEngine
 {
@@ -61,7 +62,7 @@ namespace ToolsRig
         Int2        _mouseCoords;
         float       _strength;
         float       _size;
-        unsigned    _lastPerform;
+        std::chrono::steady_clock::time_point    _lastPerform;
         unsigned    _lastRenderCount0, _lastRenderCount1;
     };
 

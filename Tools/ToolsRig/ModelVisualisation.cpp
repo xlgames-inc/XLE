@@ -56,9 +56,7 @@ namespace ToolsRig
     public:
 		virtual void ExecuteScene(
             RenderCore::IThreadContext& threadContext,
-			const SceneEngine::SceneView& view,
-			RenderCore::Techniques::BatchFilter batch,
-			RenderCore::Techniques::DrawablesPacket& destinationPkt) const override
+			const SceneEngine::ExecuteSceneContext& executeContext) const override
 		{
 			auto* r = TryActualize();
 			if (!r) {
@@ -106,7 +104,7 @@ namespace ToolsRig
 
 			RenderCore::Techniques::DrawablesPacket* pkts[unsigned(RenderCore::Techniques::BatchFilter::Max)];
 			XlZeroMemory(pkts);
-			pkts[(unsigned)batch] = &destinationPkt;
+			pkts[(unsigned)executeContext._batchFilter] = executeContext._destinationPkt;
 			r->_renderer->BuildDrawables(MakeIteratorRange(pkts), Identity<Float4x4>(), _preDrawDelegate);
 		}
 

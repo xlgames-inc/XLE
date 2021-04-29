@@ -25,7 +25,7 @@ namespace ToolsRig
         const SceneEngine::IntersectionTestContext& context, const SceneEngine::IIntersectionScene& scene,
         const Int2 screenCoords)
     {
-        auto result = scene.UnderCursor(context, screenCoords, SceneEngine::IntersectionTestResult::Type::Terrain);
+        auto result = scene.FirstRayIntersection(context, context.CalculateWorldSpaceRay(screenCoords), SceneEngine::IntersectionTestResult::Type::Terrain);
         if (result._type == SceneEngine::IntersectionTestResult::Type::Terrain) {
             return std::make_pair(result._worldSpaceCollision, true);
         }
@@ -137,7 +137,7 @@ namespace ToolsRig
             && (FrameRenderCount > _lastRenderCount0)) || evnt.IsPress_LButton()) && hitTestScene) {
 
             _currentWorldSpaceTarget = FindTerrainIntersection(hitTestContext, *hitTestScene, newMouseCoords);
-            _lastPerform = 0;
+            _lastPerform = {};
             _mouseCoords = newMouseCoords;
             _lastRenderCount0 = FrameRenderCount;
 
@@ -148,11 +148,11 @@ namespace ToolsRig
 
         if (evnt.IsHeld_LButton()) {
                 // perform action -- (like raising or lowering the terrain)
-            if (_currentWorldSpaceTarget.second && (Millisecond_Now() - _lastPerform) > 33 && (FrameRenderCount > _lastRenderCount1)) {
+            if (_currentWorldSpaceTarget.second && (std::chrono::steady_clock::now() - _lastPerform) > std::chrono::milliseconds(33) && (FrameRenderCount > _lastRenderCount1)) {
 
                 PerformAction(_currentWorldSpaceTarget.first, _size, shiftHeld?(-_strength):_strength);
                 
-                _lastPerform = Millisecond_Now();
+                _lastPerform = std::chrono::steady_clock::now();
                 _lastRenderCount1 = FrameRenderCount;
             }
             return true;
@@ -185,7 +185,7 @@ namespace ToolsRig
         _mouseCoords = Int2(0,0);
         _strength = 1.f;
         _size = 20.f;
-        _lastPerform = 0;
+        _lastPerform = {};
         _lastRenderCount0 = _lastRenderCount1 = 0;
     }
 

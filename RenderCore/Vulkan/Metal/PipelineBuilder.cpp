@@ -191,7 +191,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkGraphicsPipelineCreateInfo pipeline = {};
 		pipeline.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipeline.pNext = nullptr;
-		pipeline.layout = _shaderProgram->GetPipelineLayout().GetUnderlying();
+		pipeline.layout = _shaderProgram->GetPipelineLayout()->GetUnderlying();
 		pipeline.basePipelineHandle = VK_NULL_HANDLE;
 		pipeline.basePipelineIndex = 0;
 		pipeline.flags = 0; // VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;

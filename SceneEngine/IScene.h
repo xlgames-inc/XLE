@@ -28,14 +28,20 @@ namespace SceneEngine
 	};
 #pragma warning(pop)
 
+    class ExecuteSceneContext
+    {
+    public:
+        SceneView _view;
+        RenderCore::Techniques::BatchFilter _batchFilter;
+        RenderCore::Techniques::DrawablesPacket* _destinationPkt;
+    };
+
     class IScene
     {
     public:
         virtual void ExecuteScene(
             RenderCore::IThreadContext& threadContext,
-            const SceneView& view,
-            RenderCore::Techniques::BatchFilter batch,
-			RenderCore::Techniques::DrawablesPacket& destinationPkt) const = 0;
+            const ExecuteSceneContext& executeContext) const = 0;
 		virtual ~IScene() = default;
 	};
 

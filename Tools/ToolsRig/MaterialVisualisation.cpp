@@ -106,11 +106,9 @@ namespace ToolsRig
     public:
         virtual void ExecuteScene(
             RenderCore::IThreadContext& threadContext,
-			const SceneEngine::SceneView& view,
-			RenderCore::Techniques::BatchFilter batch,
-			RenderCore::Techniques::DrawablesPacket& pkt) const override
+			const SceneEngine::ExecuteSceneContext& executeContext) const override
         {
-			if (batch != RenderCore::Techniques::BatchFilter::General) return;
+			if (executeContext._batchFilter != RenderCore::Techniques::BatchFilter::General) return;
 
 			auto usi = std::make_shared<UniformsStreamInterface>();
 			usi->BindImmediateData(0, Techniques::ObjectCB::LocalTransform);
@@ -130,10 +128,10 @@ namespace ToolsRig
                     { Float3( 1.f,  1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(1.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) }
                 };
 
-				auto space = pkt.AllocateStorage(Techniques::DrawablesPacket::Storage::VB, sizeof(vertices));
+				auto space = executeContext._destinationPkt->AllocateStorage(Techniques::DrawablesPacket::Storage::VB, sizeof(vertices));
 				std::memcpy(space._data.begin(), vertices, sizeof(vertices));
 
-				auto& drawable = *pkt._drawables.Allocate<MaterialSceneParserDrawable>();
+				auto& drawable = *executeContext._destinationPkt->_drawables.Allocate<MaterialSceneParserDrawable>();
 				drawable._descriptorSet = pipeline->_descriptorSet ? pipeline->_descriptorSet->TryActualize() : nullptr;
 				drawable._pipeline = pipeline->_pipelineAccelerator;
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
@@ -155,7 +153,7 @@ namespace ToolsRig
                     count = _visGeo._cubeVCount;
                 } else return;
 
-				auto& drawable = *pkt._drawables.Allocate<MaterialSceneParserDrawable>();
+				auto& drawable = *executeContext._destinationPkt->_drawables.Allocate<MaterialSceneParserDrawable>();
 				drawable._descriptorSet = pipeline->_descriptorSet ? pipeline->_descriptorSet->TryActualize() : nullptr;
 				drawable._pipeline = pipeline->_pipelineAccelerator;
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();

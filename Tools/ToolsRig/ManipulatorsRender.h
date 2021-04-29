@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../../RenderCore/Metal/Forward.h"
 #include "../../Math/Vector.h"
 #include "../../Core/Types.h"
 #include <utility>
@@ -81,9 +80,9 @@ namespace ToolsRig
         const Float3& mins, const Float3& maxs,
 		RectangleHighlightType type = RectangleHighlightType::Tool);
 
-    void DrawQuadDirect(
+    /*void DrawQuadDirect(
         RenderCore::IThreadContext& threadContext, 
         const std::shared_ptr<RenderCore::IResourceView>& srv, 
-        Float2 screenMins, Float2 screenMaxs);
+        Float2 screenMins, Float2 screenMaxs);*/
 }
 

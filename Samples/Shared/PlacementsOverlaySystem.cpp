@@ -23,7 +23,7 @@ namespace Sample
                 placementsManager, placementsCell, terrainManager, intersectionContext);
         }
 
-        std::shared_ptr<IInputListener> GetInputListener()
+        std::shared_ptr<PlatformRig::IInputListener> GetInputListener()
         {
             return _placementsManipulators->GetInputLister();
         }

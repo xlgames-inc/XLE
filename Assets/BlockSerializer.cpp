@@ -193,9 +193,9 @@ namespace Assets
             + _internalPointers.size() * sizeof(InternalPointer);
     }
 
-    std::unique_ptr<uint8_t[]>      NascentBlockSerializer::AsMemoryBlock() const
+    std::unique_ptr<uint8_t[], PODAlignedDeletor>      NascentBlockSerializer::AsMemoryBlock() const
     {
-        std::unique_ptr<uint8_t[]> result = std::make_unique<uint8_t[]>(Size());
+        std::unique_ptr<uint8_t[], PODAlignedDeletor> result{(uint8_t*)XlMemAlign(Size(), sizeof(uint64_t))};
 
         ((Header*)result.get())->_rawMemorySize = _memory.size() + _trailingSubBlocks.size();
         ((Header*)result.get())->_internalPointerCount = _internalPointers.size();

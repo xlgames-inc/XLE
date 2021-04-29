@@ -55,9 +55,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		ShaderProgram();
         ~ShaderProgram();
 
-		const CompiledShaderByteCode&				GetCompiledCode(ShaderStage stage) const	{ assert(unsigned(stage) < dimof(_compiledCode)); return _compiledCode[(unsigned)stage]; }
-		const VulkanSharedPtr<VkShaderModule>&		GetModule(ShaderStage stage) const			{ assert(unsigned(stage) < dimof(_modules)); return _modules[(unsigned)stage]; }
-		const CompiledPipelineLayout&				GetPipelineLayout() const					{ return *_pipelineLayout; }
+		const CompiledShaderByteCode&					GetCompiledCode(ShaderStage stage) const	{ assert(unsigned(stage) < dimof(_compiledCode)); return _compiledCode[(unsigned)stage]; }
+		const VulkanSharedPtr<VkShaderModule>&			GetModule(ShaderStage stage) const			{ assert(unsigned(stage) < dimof(_modules)); return _modules[(unsigned)stage]; }
+		const std::shared_ptr<CompiledPipelineLayout>&	GetPipelineLayout() const					{ return _pipelineLayout; }
 		static const unsigned s_maxShaderStages = 5;
 
         bool DynamicLinkingEnabled() const;

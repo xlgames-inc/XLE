@@ -9,6 +9,7 @@
 #include "../Math/Matrix.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/IteratorUtils.h"
+#include "../Utility/MemoryUtils.h"
 #include "../Utility/Streams/SerializationUtils.h"
 #include <vector>
 #include <iterator>
@@ -56,7 +57,7 @@ namespace Assets
 		template<typename Type>
 			void    SerializeRaw    ( const Type& type );
 
-		std::unique_ptr<uint8_t[]>      AsMemoryBlock() const;
+		std::unique_ptr<uint8_t[], PODAlignedDeletor>      AsMemoryBlock() const;
 		size_t                          Size() const;
 
 		NascentBlockSerializer();
