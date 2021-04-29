@@ -36,7 +36,6 @@ RayTest=~
 		INTERSECTION_TEST
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
 	GeometryShader=xleres/TechniqueLibrary/Standard/raytest.geo.hlsl:triangles
-	PixelShader=null
 
 WriteTriangleIndex=~
 	Inherit=~; Silhouette
@@ -45,7 +44,6 @@ WriteTriangleIndex=~
 		SHADOW_CASCADE_MODE
 	VertexShader=xleres/shadowgen/rtwritetiles.hlsl:vs_writetris
 	GeometryShader=xleres/shadowgen/rtwritetiles.hlsl:gs_writetris
-	PixelShader=null
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -58,7 +56,7 @@ VisNormals=~
 		GEO_HAS_TEXBITANGENT
 		GEO_HAS_NORMAL
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
-	GeometryShader=xleres/TechniqueLibrary/ToolsRig/vis/geowires.geo.hlsl:NormalsAndTangents
+	GeometryShader=xleres/TechniqueLibrary/ToolsRig/Vis/geowires.geo.hlsl:NormalsAndTangents
 	PixelShader=xleres/TechniqueLibrary/Basic/basic.pixel.hlsl:PC
 
 VisWireframe=~

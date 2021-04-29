@@ -76,4 +76,3 @@ RayTest=~
             MAT_ALPHA_TEST
     VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
     GeometryShader=xleres/forward/raytest.geo.hlsl:triangles
-    PixelShader=null

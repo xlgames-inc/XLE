@@ -14,7 +14,6 @@ RayTest=~
 		INTERSECTION_TEST
     VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
     GeometryShader=xleres/TechniqueLibrary/Standard/raytest.geo.hlsl:triangles
-    PixelShader=null
 
 Technique=~
 	Forward = Illum

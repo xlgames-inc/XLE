@@ -26,5 +26,5 @@ DescriptorSet Numeric
 	UniformBuffer cb2;					// 21
 	UniformBuffer cb3;					// 22
 
-	Sampler hlslccDummySampler;			// 23
+	Sampler hlslcc_DummySampler;		// 23
 };

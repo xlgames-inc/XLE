@@ -23,8 +23,8 @@ DescriptorSet Sequencer
 		uint GlobalSamplingPassCount;
 	};
 
-	UniformBuffer cb0;							// 3
-	UniformBuffer cb1;							// 4
+	UniformBuffer BasicLightingEnvironment;		// 3
+	UniformBuffer RayDefinition;				// 4
 	UniformBuffer cb2;							// 5
 
 	SampledTexture tex0;						// 6

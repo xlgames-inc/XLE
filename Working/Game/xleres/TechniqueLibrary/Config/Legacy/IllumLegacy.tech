@@ -84,7 +84,7 @@ VisNormals=~
 		GEO_HAS_NORMAL
 		RES_HAS_NormalsTexture
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
-	GeometryShader=xleres/TechniqueLibrary/ToolsRig/vis/geowires.geo.hlsl:NormalsAndTangents
+	GeometryShader=xleres/TechniqueLibrary/ToolsRig/Vis/geowires.geo.hlsl:NormalsAndTangents
 	PixelShader=xleres/TechniqueLibrary/Basic/basic.pixel.hlsl:PC
 
 VisWireframe=~

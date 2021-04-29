@@ -17,16 +17,12 @@ struct GSOutput
 	uint4	properties : PROPERTIES;
 };
 
-cbuffer RayDefinition : register(b8)
+cbuffer RayDefinition BIND_SEQ_B4
 {
 	float3	RayStart;
 	float	RayLength;
 	float3	RayDirection;
-}
-
-cbuffer IntersectionFrustumDefinition : register(b9)
-{
-	row_major float4x4 IntersectionFrustum;
+ 	row_major float4x4 IntersectionFrustum;
 }
 
 cbuffer DrawCallProperties
@@ -72,12 +68,6 @@ float3 RayTriangleIntersection(float3 p, float3 d, float3 v0, float3 v1, float3 
 	else
 		return 0.0.xxx;
 }
-
-#if VSOUT_HAS_TEXCOORD>=1
-	float2 VSOUT_GetTexCoord0(VSOUT input) { return input.texCoord; }
-#else
-	float2 VSOUT_GetTexCoord0(VSOUT input) { return 1.0.xx; }
-#endif
 
 bool PtInFrustum(float4 pt)
 {

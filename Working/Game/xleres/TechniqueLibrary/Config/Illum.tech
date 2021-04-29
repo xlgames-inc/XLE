@@ -7,12 +7,10 @@
 Silhouette=~
 	Inherit=~; Shared.tech:Skinnable; Shared.tech:VegetationSpawn
 	Selectors=~
-		GEO_HAS_COLOR
-		GEO_HAS_TEXCOORD
-		GEO_HAS_NORMAL
 		MAT_ALPHA_TEST
 		RES_HAS_DiffuseTexture
 		MAT_VCOLOR_IS_ANIM_PARAM
+	Preconfiguration=xleres/TechniqueLibrary/Framework/SelectorPreconfiguration.hlsl
 
 VS_NoPatches=~
 	Inherit=~; Silhouette
@@ -51,10 +49,6 @@ VSShadowGen_DeformVertex=~
 IllumShared=~
 	Inherit=~; Shared.tech:LegacyCommonMaterial; Shared.tech:System
 	Selectors=~
-		GEO_HAS_TEXBITANGENT
-		GEO_HAS_NORMAL
-		GEO_HAS_TEXTANGENT
-		GEO_HAS_PER_VERTEX_AO
 		CLASSIFY_NORMAL_MAP
 		SKIP_MATERIAL_DIFFUSE=~; relevance=<:(value!=0):>
 
@@ -76,7 +70,6 @@ RayTest=~
 		VSOUT_HAS_WORLD_POSITION=1
 		INTERSECTION_TEST
 	GeometryShader=xleres/TechniqueLibrary/Standard/raytest.geo.hlsl:triangles
-	PixelShader=null
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

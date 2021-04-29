@@ -22,9 +22,9 @@ uint4 StencilToMarkerMap[256];
 		// the stencil parts (assuming the view was created with X24_TYPELESS_G8_UINT
 		// or some similar stencil-only format).
 		// But, on other hardware we must explicitly access the "G" channel.
-	Texture2D<uint2>	StencilInput;
+	Texture2D<uint2>	StencilInput BIND_NUMERIC_T0;
 #elif INPUT_MODE == 1
- 	Texture2D			StencilInput;
+ 	Texture2D			StencilInput BIND_NUMERIC_T0;
 #endif
 
 static const uint DummyMarker = 0xffffffff;
@@ -60,7 +60,7 @@ bool HatchFilter(uint2 position)
 }
 
 float4 HighlightByStencil(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
-{
+{	
 	if (!HatchFilter(position.xy)) { discard; }
 
 	uint marker = Marker(uint2(position.xy));
