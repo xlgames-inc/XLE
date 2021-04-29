@@ -2,20 +2,23 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "Drawables.h"
+#pragma once
+
 #include "PipelineAccelerator.h"
+#include "../Assets/MaterialScaffold.h"
 #include "../Types.h"
 #include "../StateDesc.h"
 #include "../RenderUtils.h"		// for SharedPkt
 #include "../../Math/Vector.h"
 #include <memory>
 
-namespace RenderCore { class IThreadContext; class FrameBufferDesc; class SharedPkt; }
+namespace RenderCore { class IThreadContext; class FrameBufferDesc; class SharedPkt; class IResourceView; class ISampler; class UniformsStreamInterface; }
 namespace Assets { class IAsyncMarker; }
 
 namespace RenderCore { namespace Techniques
 {
 	class ParsingContext;
+	class DrawableGeo;
 
 	class RetainedUniformsStream
 	{
@@ -39,6 +42,12 @@ namespace RenderCore { namespace Techniques
 	public:
 		virtual IteratorRange<void*> QueueDraw(
 			size_t vertexCount,
+			IteratorRange<const MiniInputElementDesc*> inputAssembly,
+			const ImmediateDrawableMaterial& material = {},
+			Topology topology = Topology::TriangleList) = 0;
+		virtual void QueueDraw(
+			size_t indexOrVertexCount, size_t indexOrVertexStartLocation,
+			std::shared_ptr<DrawableGeo> customGeo,
 			IteratorRange<const MiniInputElementDesc*> inputAssembly,
 			const ImmediateDrawableMaterial& material = {},
 			Topology topology = Topology::TriangleList) = 0;

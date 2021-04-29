@@ -5,11 +5,12 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CLIXAutoPtr.h"
+#include "../../RenderCore/Techniques/ImmediateDrawables.h"
 #include "../../Core/Types.h"
 #include <memory>
 
 namespace RenderCore { class IThreadContext; }
-namespace RenderCore { namespace Techniques { class ParsingContext; } }
+namespace RenderCore { namespace Techniques { class ParsingContext; class IImmediateDrawables; } }
 
 namespace GUILayer
 {
@@ -47,13 +48,15 @@ namespace GUILayer
         RenderCore::IThreadContext& GetThreadContext() { return *_threadContext; }
 
         SimpleRenderingContext(
+            RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
+            RetainedRenderResources^ savedRes,
             RenderCore::IThreadContext* threadContext,
-            RetainedRenderResources^ savedRes, 
             void* parsingContext);
         ~SimpleRenderingContext();
         !SimpleRenderingContext();
     protected:
         RetainedRenderResources^ _retainedRes;
+        RenderCore::Techniques::IImmediateDrawables* _immediateDrawables;     // note -- keeping an unprotected pointer here (SimpleRenderingContext is typically short lived). Create must be careful to manage lifetimes
         RenderCore::Techniques::ParsingContext* _parsingContext;
         RenderCore::IThreadContext* _threadContext;     // note -- keeping an unprotected pointer here (SimpleRenderingContext is typically short lived). Create must be careful to manage lifetimes
     };

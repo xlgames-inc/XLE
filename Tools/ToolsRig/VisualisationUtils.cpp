@@ -67,6 +67,12 @@ namespace ToolsRig
         return result;
     }
 
+	void ConfigureParsingContext(RenderCore::Techniques::ParsingContext& parsingContext, const VisCameraSettings& cam, UInt2 viewportDims)
+	{
+		auto camDesc = ToolsRig::AsCameraDesc(cam);
+        parsingContext.GetProjectionDesc() = RenderCore::Techniques::BuildProjectionDesc(camDesc, viewportDims);
+	}
+
     VisCameraSettings AlignCameraToBoundingBox(
         float verticalFieldOfView, 
         const std::pair<Float3, Float3>& boxIn)

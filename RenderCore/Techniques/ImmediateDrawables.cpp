@@ -8,6 +8,7 @@
 #include "TechniqueDelegates.h"
 #include "CommonResources.h"
 #include "CompiledShaderPatchCollection.h"
+#include "Drawables.h"
 #include "../Assets/MaterialScaffold.h"
 #include "../Assets/AssetFutureContinuation.h"
 #include "../Assets/Assets.h"
@@ -103,8 +104,41 @@ namespace RenderCore { namespace Techniques
 
 	struct DrawableWithVertexCount : public Drawable 
 	{ 
-		unsigned _vertexCount = 0, _vertexStride = 0, _bytesAllocated = 0;
+		unsigned _vertexCount = 0, _vertexStride = 0, _vertexStartLocation = 0, _bytesAllocated = 0;
+		DEBUG_ONLY(bool _userGeo = false;)
 		RetainedUniformsStream _uniforms;
+
+		static void ExecuteFn(ParsingContext&, const ExecuteDrawableContext& drawContext, const Drawable& drawable)
+		{
+			auto* customDrawable = (DrawableWithVertexCount*)&drawable;
+			if (drawContext.AtLeastOneBoundLooseUniform())
+				customDrawable->ApplyUniforms(drawContext);
+			drawContext.Draw(customDrawable->_vertexCount, customDrawable->_vertexStartLocation);
+		};
+
+		static void IndexedExecuteFn(ParsingContext&, const ExecuteDrawableContext& drawContext, const Drawable& drawable)
+		{
+			auto* customDrawable = (DrawableWithVertexCount*)&drawable;
+			if (drawContext.AtLeastOneBoundLooseUniform())
+				customDrawable->ApplyUniforms(drawContext);
+			drawContext.DrawIndexed(customDrawable->_vertexCount, customDrawable->_vertexStartLocation);
+		};
+
+	private:
+		void ApplyUniforms(const ExecuteDrawableContext& drawContext)
+		{
+			const IResourceView* res[_uniforms._resourceViews.size()];
+			for (size_t c=0; c<_uniforms._resourceViews.size(); ++c) res[c] = _uniforms._resourceViews[c].get();
+			UniformsStream::ImmediateData immData[_uniforms._immediateData.size()];
+			for (size_t c=0; c<_uniforms._immediateData.size(); ++c) immData[c] = _uniforms._immediateData[c];
+			const ISampler* samplers[_uniforms._samplers.size()];
+			for (size_t c=0; c<_uniforms._samplers.size(); ++c) samplers[c] = _uniforms._samplers[c].get();
+			drawContext.ApplyLooseUniforms(
+				UniformsStream { 
+					MakeIteratorRange(res, &res[_uniforms._resourceViews.size()]),
+					MakeIteratorRange(immData, &immData[_uniforms._immediateData.size()]),
+					MakeIteratorRange(samplers, &samplers[_uniforms._samplers.size()]) });
+		}
 	};
 
 	class ImmediateDrawables : public IImmediateDrawables
@@ -124,6 +158,7 @@ namespace RenderCore { namespace Techniques
 
 			// check if we can just merge it into the previous draw call. If so we're just going to
 			// increase the vertex count on that draw call
+			assert(!_lastQueuedDrawable || !_lastQueuedDrawable->_userGeo); 
 			bool compatibleWithLastDraw =
 				    _lastQueuedDrawable && _lastQueuedDrawable->_pipeline == pipeline && _lastQueuedDrawable->_vertexStride == vStride
 				&& topology != Topology::TriangleStrip
@@ -150,23 +185,7 @@ namespace RenderCore { namespace Techniques
 				drawable->_vertexCount = vertexCount;
 				drawable->_vertexStride = vStride;
 				drawable->_bytesAllocated = vertexDataSize;
-				drawable->_drawFn = [](ParsingContext&, const ExecuteDrawableContext& drawContext, const Drawable& drawable) {
-					auto* customDrawable = (DrawableWithVertexCount*)&drawable;
-					if (drawContext.AtLeastOneBoundLooseUniform()) {
-						const IResourceView* res[customDrawable->_uniforms._resourceViews.size()];
-						for (size_t c=0; c<customDrawable->_uniforms._resourceViews.size(); ++c) res[c] = customDrawable->_uniforms._resourceViews[c].get();
-						UniformsStream::ImmediateData immData[customDrawable->_uniforms._immediateData.size()];
-						for (size_t c=0; c<customDrawable->_uniforms._immediateData.size(); ++c) immData[c] = customDrawable->_uniforms._immediateData[c];
-						const ISampler* samplers[customDrawable->_uniforms._samplers.size()];
-						for (size_t c=0; c<customDrawable->_uniforms._samplers.size(); ++c) samplers[c] = customDrawable->_uniforms._samplers[c].get();
-						drawContext.ApplyLooseUniforms(
-							UniformsStream { 
-								MakeIteratorRange(res, &res[customDrawable->_uniforms._resourceViews.size()]),
-								MakeIteratorRange(immData, &immData[customDrawable->_uniforms._immediateData.size()]),
-								MakeIteratorRange(samplers, &samplers[customDrawable->_uniforms._samplers.size()]) });
-					}
-					drawContext.Draw(customDrawable->_vertexCount);
-				};
+				drawable->_drawFn = &DrawableWithVertexCount::ExecuteFn;
 				if (material._uniformStreamInterface) {
 					drawable->_looseUniformsInterface = material._uniformStreamInterface;
 					drawable->_uniforms = material._uniforms;
@@ -175,6 +194,31 @@ namespace RenderCore { namespace Techniques
 				_lastQueuedDrawVertexCountOffset = 0;
 				return vertexStorage._data;
 			}
+		}
+
+		void QueueDraw(
+			size_t indexOrVertexCount, size_t indexOrVertexStartLocation,
+			std::shared_ptr<DrawableGeo> customGeo,
+			IteratorRange<const MiniInputElementDesc*> inputAssembly,
+			const ImmediateDrawableMaterial& material = {},
+			Topology topology = Topology::TriangleList)
+		{
+			auto* drawable = _workingPkt._drawables.Allocate<DrawableWithVertexCount>();
+			drawable->_geo = std::move(customGeo);
+			drawable->_pipeline = GetPipelineAccelerator(inputAssembly, material._stateSet, topology, material._shaderSelectors);
+			drawable->_vertexCount = indexOrVertexCount;
+			drawable->_vertexStartLocation = indexOrVertexStartLocation;
+			drawable->_vertexStride = 0;
+			drawable->_bytesAllocated = 0;
+			DEBUG_ONLY(drawable->_userGeo = true;)
+			bool _indexed = (drawable->_geo->_ib != nullptr) || (drawable->_geo->_dynIBBegin != ~0u);
+			drawable->_drawFn = _indexed ? &DrawableWithVertexCount::IndexedExecuteFn : &DrawableWithVertexCount::ExecuteFn;
+			if (material._uniformStreamInterface) {
+				drawable->_looseUniformsInterface = material._uniformStreamInterface;
+				drawable->_uniforms = material._uniforms;
+			}
+			_lastQueuedDrawable = nullptr;		// this is always null, because we can't modify or extend a user geo
+			_lastQueuedDrawVertexCountOffset = 0;
 		}
 
 		IteratorRange<void*> UpdateLastDrawCallVertexCount(size_t newVertexCount)

@@ -8,6 +8,7 @@
 #include "../../PlatformRig/DebuggingDisplays/ConsoleDisplay.h"
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderCore/IThreadContext.h"
+#include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/RenderPassUtils.h"
 #include "../../RenderCore/Techniques/RenderPass.h"

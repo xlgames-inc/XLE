@@ -59,6 +59,7 @@ namespace XLEBridgeUtils
             _layerControl->AddSystem(_mainOverlay);
             _manipulatorOverlay = gcnew GUILayer::SimpleRenderingContextOverlaySystem();
             _manipulatorOverlay->RetainedResources = savedRes;
+            _manipulatorOverlay->CameraSettings = _cameraSettings;
             _layerControl->AddSystem(_manipulatorOverlay);
             SceCamera = camera;
             ViewportSize = attachedControl->Size;

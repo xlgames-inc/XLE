@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -10,46 +8,29 @@
 #include "EditorInterfaceUtils.h"
 #include "GUILayerUtil.h"
 #include "IOverlaySystem.h"
-#if defined(GUILAYER_SCENEENGINE)
-#include "LevelEditorScene.h"
-#endif
+#include "UITypesBinding.h"
 #include "MathLayer.h"
 #include "ExportedNativeTypes.h"
-#include "../ToolsRig/ManipulatorsUtil.h"
-#include "../ToolsRig/ManipulatorsRender.h"
-#include "../../SceneEngine/BasicLightingStateDelegate.h"     // (SceneEngine::EnvironmentSettings destructor)
-#include "../../SceneEngine/PlacementsManager.h"
-#include "../../FixedFunctionModel/PreboundShaders.h"
-#include "../../RenderOverlays/HighlightEffects.h"
-#include "../../RenderCore/Techniques/ParsingContext.h"
-#include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/CommonBindings.h"
-#include "../../RenderCore/Techniques/CommonUtils.h"
+#include "../ToolsRig/VisualisationUtils.h"
+#include "../../RenderCore/Types.h"
+#include "../../RenderCore/ResourceDesc.h"
+#include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Techniques/RenderPassUtils.h"
-#include "../../RenderCore/Assets/PredefinedCBLayout.h"
-#include "../../RenderCore/IDevice.h"
-// #include "../../RenderCore/Metal/Buffer.h"
-// #include "../../RenderCore/Metal/DeviceContext.h"
-// #include "../../RenderCore/Metal/InputLayout.h"
-#include "../../RenderCore/Format.h"
-#include "../../Math/Vector.h"
-#include "../../Math/Matrix.h"
-#include "../../Utility/IteratorUtils.h"
-#include "../../Core/Types.h"
-#include "../../xleres/FileList.h"
-#include <vector>
-
+#include "../../RenderCore/Techniques/Apparatuses.h"
+#include "../../RenderCore/Techniques/ImmediateDrawables.h"
+#include "../../RenderCore/Techniques/Drawables.h"
+#include "../../RenderCore/Techniques/CommonBindings.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
+#include <vector>
 
 namespace GUILayer
 {
     class VertexFormatRecord
     {
     public:
-        RenderCore::InputLayout _inputLayout;
-        ParameterBox _geoParams;
-        unsigned _vertexStride;
+        std::vector<RenderCore::MiniInputElementDesc> _inputLayout;
     };
 
     class SavedRenderResourcesPimpl
@@ -71,32 +52,16 @@ namespace GUILayer
     {
             //  These are the vertex formats defined by the Sony editor
         using namespace RenderCore;
-        _vfRecord[0]._inputLayout = GlobalInputLayouts::P;
-        _vfRecord[1]._inputLayout = GlobalInputLayouts::PC;
-        _vfRecord[2]._inputLayout = GlobalInputLayouts::PN;
-        _vfRecord[3]._inputLayout = GlobalInputLayouts::PT;
+        _vfRecord[0]._inputLayout = {GlobalMiniInputLayouts::P.begin(), GlobalMiniInputLayouts::P.end()};
+        _vfRecord[1]._inputLayout = {GlobalMiniInputLayouts::PC.begin(), GlobalMiniInputLayouts::PC.end()};
+        _vfRecord[2]._inputLayout = {GlobalMiniInputLayouts::PN.begin(), GlobalMiniInputLayouts::PN.end()};
+        _vfRecord[3]._inputLayout = {GlobalMiniInputLayouts::PT.begin(), GlobalMiniInputLayouts::PT.end()};
 		_vfRecord[4]._inputLayout = {};
-        _vfRecord[5]._inputLayout = GlobalInputLayouts::PNT;
-        _vfRecord[6]._inputLayout = GlobalInputLayouts::PNTT;
+        _vfRecord[5]._inputLayout = {GlobalMiniInputLayouts::PNT.begin(), GlobalMiniInputLayouts::PNT.end()};
+        _vfRecord[6]._inputLayout = {GlobalMiniInputLayouts::PNTT.begin(), GlobalMiniInputLayouts::PNTT.end()};
 		_vfRecord[7]._inputLayout = {};
-
-        _vfRecord[1]._geoParams = ParameterBox({std::make_pair((const utf8*)"GEO_HAS_COLOR", "1")});
-        _vfRecord[2]._geoParams = ParameterBox({std::make_pair((const utf8*)"GEO_HAS_NORMAL", "1")});
-        _vfRecord[3]._geoParams = ParameterBox({std::make_pair((const utf8*)"GEO_HAS_TEXCOORD", "1")});
-        _vfRecord[5]._geoParams = ParameterBox({std::make_pair((const utf8*)"GEO_HAS_NORMAL", "1"), std::make_pair((const utf8*)"GEO_HAS_TEXCOORD", "1")});
-        _vfRecord[6]._geoParams = ParameterBox({std::make_pair((const utf8*)"GEO_HAS_NORMAL", "1"), std::make_pair((const utf8*)"GEO_HAS_TEXCOORD", "1"), std::make_pair((const utf8*)"GEO_HAS_TEXTANGENT", "1"), std::make_pair((const utf8*)"GEO_HAS_TEXBITANGENT", "1")});
-
-        _vfRecord[0]._vertexStride = 3*4;
-        _vfRecord[1]._vertexStride = 3*4 + 4;
-        _vfRecord[2]._vertexStride = 3*4 + 3*4;
-        _vfRecord[3]._vertexStride = 3*4 + 2*4;
-        _vfRecord[4]._vertexStride = 3*4 + 2*4 + 4;
-        _vfRecord[5]._vertexStride = 3*4 + 3*4 + 2*4;
-        _vfRecord[6]._vertexStride = 3*4 + 3*4 + 2*4 + 4*4;
-        _vfRecord[7]._vertexStride = 2*4;
     }
 
-#if defined(GUILAYER_SCENEENGINE)
     /// <summary>Create and maintain rendering resources for SimpleRenderingContext</summary>
     /// Create & maintain vertex and index buffers. Intended for use when linking to
     /// C# GUI apps.
@@ -107,8 +72,8 @@ namespace GUILayer
         uint64  CreateIndexBuffer(void* data, size_t size);
         bool    DeleteBuffer(uint64 id);
 
-        RenderCore::IResource* GetVertexBuffer(uint64 id);
-        RenderCore::IResource* GetIndexBuffer(uint64 id);
+        std::shared_ptr<RenderCore::IResource> GetVertexBuffer(uint64 id);
+        std::shared_ptr<RenderCore::IResource> GetIndexBuffer(uint64 id);
         const VertexFormatRecord* GetVertexBufferFormat(uint64 id);
 
         RetainedRenderResources(EngineDevice^ engineDevice);
@@ -118,6 +83,7 @@ namespace GUILayer
         clix::auto_ptr<SavedRenderResourcesPimpl> _pimpl;
     };
 
+#if defined(GUILAYER_SCENEENGINE)
     static bool SetupState(
         RenderCore::Metal::DeviceContext& devContext, 
         RenderCore::Techniques::ParsingContext& parsingContext,
@@ -159,18 +125,6 @@ namespace GUILayer
         CATCH_ASSETS_END(parsingContext)
         return false;
     }
-#else
-    public ref class RetainedRenderResources
-    {
-    public:
-        uint64  CreateVertexBuffer(void* data, size_t size, unsigned format) { return 0; }
-        uint64  CreateIndexBuffer(void* data, size_t size) { return 0; }
-        bool    DeleteBuffer(uint64 id) { return true; }
-
-        RetainedRenderResources(EngineDevice^ engineDevice) {}
-        ~RetainedRenderResources() {}
-        !RetainedRenderResources() {}
-    };
 #endif
 
     void SimpleRenderingContext::DrawPrimitive(
@@ -180,24 +134,22 @@ namespace GUILayer
         unsigned vertexCount,
         const float color[], const float xform[])
     {
-        // \todo -- this should be converted across to using a drawable based system
-#if defined(GUILAYER_SCENEENGINE)
-        // We need to bind the technique and technique interface
-        //      (including vertex input format)
-        // "color" can be passed as a Float4 as the material parameter "MaterialDiffuse"
-        // then we just bind the vertex buffer and call draw
-
-        auto* vbuffer = _retainedRes->GetVertexBuffer(vb);
-        if (!vbuffer) return;
-
         auto* vfFormat = _retainedRes->GetVertexBufferFormat(vb);
         if (!vfFormat) return;
 
-        if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat, vbuffer)) {
-            _devContext->Bind((RenderCore::Topology)primitiveType);
-            _devContext->Draw(vertexCount, startVertex);
-        }
-#endif
+        auto geo = std::make_shared<RenderCore::Techniques::DrawableGeo>();
+        geo->_vertexStreams[0]._resource = _retainedRes->GetVertexBuffer(vb);
+        geo->_vertexStreamCount = 1;
+
+        if (!geo->_vertexStreams[0]._resource) return;
+
+        RenderCore::Techniques::ImmediateDrawableMaterial currentState;
+        _immediateDrawables->QueueDraw(
+            vertexCount, startVertex,
+            geo,
+            vfFormat->_inputLayout,
+            currentState,
+            (RenderCore::Topology)primitiveType);
     }
 
     void SimpleRenderingContext::DrawIndexedPrimitive(
@@ -208,20 +160,25 @@ namespace GUILayer
         unsigned startVertex,
         const float color[], const float xform[]) 
     {
-#if defined(GUILAYER_SCENEENGINE)
-        auto* ibuffer = _retainedRes->GetIndexBuffer(ib);
-        auto* vbuffer = _retainedRes->GetVertexBuffer(vb);
-        if (!ibuffer || !vbuffer) return;
+        assert(startVertex == 0);
 
         auto* vfFormat = _retainedRes->GetVertexBufferFormat(vb);
         if (!vfFormat) return;
-            
-        if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat, vbuffer, ibuffer)) {
-            auto& devContext = *_devContext.get();
-            _devContext->Bind((RenderCore::Topology)primitiveType);
-            devContext.DrawIndexed(indexCount, startIndex, startVertex);
-        }
-#endif
+
+        auto geo = std::make_shared<RenderCore::Techniques::DrawableGeo>();
+        geo->_vertexStreams[0]._resource = _retainedRes->GetVertexBuffer(vb);
+        geo->_vertexStreamCount = 1;
+        geo->_ib = _retainedRes->GetIndexBuffer(ib);
+
+        if (!geo->_vertexStreams[0]._resource || !geo->_ib) return;
+
+        RenderCore::Techniques::ImmediateDrawableMaterial currentState;
+        _immediateDrawables->QueueDraw(
+            indexCount, startIndex,
+            geo,
+            vfFormat->_inputLayout,
+            currentState,
+            (RenderCore::Topology)primitiveType);
     }
 
     void SimpleRenderingContext::InitState(bool depthTest, bool depthWrite)
@@ -238,10 +195,13 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if defined(GUILAYER_SCENEENGINE)
     uint64  RetainedRenderResources::CreateVertexBuffer(void* data, size_t size, unsigned format)
     {
-		auto newBuffer = RenderCore::Techniques::CreateStaticVertexBuffer(*_pimpl->_device, MakeIteratorRange(data, PtrAdd(data, size)));
+        using namespace RenderCore;
+        auto desc = CreateDesc(BindFlag::VertexBuffer, 0, GPUAccess::Read, LinearBufferDesc::Create((unsigned)size), "retained-render-resources");
+		auto newBuffer = _pimpl->_device->CreateResource(
+            desc,
+            SubResourceInitData{MakeIteratorRange(data, PtrAdd(data, size))});
         _pimpl->_vertexBuffers.push_back(std::make_pair(_pimpl->_nextBufferID, std::move(newBuffer)));
         _pimpl->_vbFormat.push_back(std::make_pair(_pimpl->_nextBufferID, format));
         return _pimpl->_nextBufferID++;
@@ -249,15 +209,19 @@ namespace GUILayer
 
     uint64  RetainedRenderResources::CreateIndexBuffer(void* data, size_t size)
     {
-		auto newBuffer = RenderCore::Techniques::CreateStaticIndexBuffer(*_pimpl->_device, MakeIteratorRange(data, PtrAdd(data, size)));
+		using namespace RenderCore;
+        auto desc = CreateDesc(BindFlag::IndexBuffer, 0, GPUAccess::Read, LinearBufferDesc::Create((unsigned)size), "retained-render-resources");
+		auto newBuffer = _pimpl->_device->CreateResource(
+            desc,
+            SubResourceInitData{MakeIteratorRange(data, PtrAdd(data, size))});
         _pimpl->_indexBuffers.push_back(std::make_pair(_pimpl->_nextBufferID, std::move(newBuffer)));
         return _pimpl->_nextBufferID++;
     }
 
-    RenderCore::IResource* RetainedRenderResources::GetVertexBuffer(uint64 id)
+    std::shared_ptr<RenderCore::IResource> RetainedRenderResources::GetVertexBuffer(uint64 id)
     {
         for (auto i = _pimpl->_vertexBuffers.cbegin(); i != _pimpl->_vertexBuffers.cend(); ++i)
-            if (i->first == id) return i->second.get();
+            if (i->first == id) return i->second;
         return nullptr;
     }
 
@@ -270,10 +234,10 @@ namespace GUILayer
         return nullptr;
     }
 
-    RenderCore::IResource* RetainedRenderResources::GetIndexBuffer(uint64 id)
+    std::shared_ptr<RenderCore::IResource> RetainedRenderResources::GetIndexBuffer(uint64 id)
     {
         for (auto i = _pimpl->_indexBuffers.cbegin(); i != _pimpl->_indexBuffers.cend(); ++i)
-            if (i->first == id) return i->second.get();
+            if (i->first == id) return i->second;
         return nullptr;
     }
 
@@ -303,15 +267,16 @@ namespace GUILayer
 
     RetainedRenderResources::~RetainedRenderResources() { _pimpl.reset(); }
     RetainedRenderResources::!RetainedRenderResources() { _pimpl.reset(); }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////?//
 
     SimpleRenderingContext::SimpleRenderingContext(
+        RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
+        RetainedRenderResources^ savedRes,
         RenderCore::IThreadContext* threadContext,
-        RetainedRenderResources^ savedRes, 
         void* parsingContext)
-    : _retainedRes(savedRes), _parsingContext((RenderCore::Techniques::ParsingContext*)parsingContext)
+    : _retainedRes(savedRes)
+    , _immediateDrawables(&immediateDrawables), _parsingContext((RenderCore::Techniques::ParsingContext*)parsingContext)
     , _threadContext(threadContext)
     {
     }
@@ -380,12 +345,21 @@ namespace GUILayer
 			const GUILayer::RenderTargetWrapper& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) override
         {
-			auto context = gcnew GUILayer::SimpleRenderingContext(&threadContext, RetainedResources, &parserContext);
+            auto targetDesc = renderTarget._renderTarget->GetDesc();
+            Int2 viewportDims{ targetDesc._textureDesc._width, targetDesc._textureDesc._height };
+            
+            ToolsRig::ConfigureParsingContext(parserContext, *_visCameraSettings.get(), viewportDims);
+            parserContext.GetTechniqueContext()._attachmentPool->Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget._renderTarget);
+            
+            auto immediateDrawables = EngineDevice::GetInstance()->GetNative().GetImmediateDrawingApparatus()->_immediateDrawables;
+			auto context = gcnew GUILayer::SimpleRenderingContext(*immediateDrawables, RetainedResources, &threadContext, &parserContext);
 			try
 			{
+                OnRender(context);
+
 				{
 					auto rpi = RenderCore::Techniques::RenderPassToPresentationTargetWithDepthStencil(threadContext, renderTarget._renderTarget, parserContext);
-					OnRender(context);
+					immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi.GetFrameBufferDesc(), 0, viewportDims);
 				}
 				OnRenderPostProcess(context);
 			}
@@ -393,11 +367,25 @@ namespace GUILayer
 			{
 				delete context;
 			}
+
+            parserContext.GetTechniqueContext()._attachmentPool->Unbind(*renderTarget._renderTarget);
+        }
+
+        property VisCameraSettings^ CameraSettings {
+            void set(VisCameraSettings^ cameraSettings)
+            {
+                _visCameraSettings = cameraSettings->GetUnderlying();
+            }
+            VisCameraSettings^ get()
+            {
+                return gcnew VisCameraSettings(_visCameraSettings);
+            }
         }
 
         event RenderCallback^ OnRender;
 		event RenderCallback^ OnRenderPostProcess;
         property GUILayer::RetainedRenderResources^ RetainedResources;
+        clix::shared_ptr<ToolsRig::VisCameraSettings> _visCameraSettings;
     };
 
 }

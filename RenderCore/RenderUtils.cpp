@@ -534,6 +534,81 @@ namespace RenderCore
         InputLayout PNTT = MakeIteratorRange(Detail::PNTT_Elements);
     }
 
+    namespace GlobalMiniInputLayouts
+    {
+        namespace Detail
+        {
+            MiniInputElementDesc P2CT_Elements[] =
+            {
+                MiniInputElementDesc{ Hash64("PIXELPOSITION"), Format::R32G32_FLOAT },
+                MiniInputElementDesc{ Hash64("COLOR"), Format::R8G8B8A8_UNORM },
+                MiniInputElementDesc{ Hash64("TEXCOORD"), Format::R32G32_FLOAT }
+            };
+
+            MiniInputElementDesc P2C_Elements[] = 
+            {
+                MiniInputElementDesc{ Hash64("PIXELPOSITION"), Format::R32G32_FLOAT },
+                MiniInputElementDesc{ Hash64("COLOR"), Format::R8G8B8A8_UNORM }
+            };
+
+            MiniInputElementDesc PCT_Elements[] = 
+            {
+                MiniInputElementDesc{ Hash64("POSITION"), Format::R32G32B32_FLOAT },
+                MiniInputElementDesc{ Hash64("COLOR"), Format::R8G8B8A8_UNORM },
+                MiniInputElementDesc{ Hash64("TEXCOORD"), Format::R32G32_FLOAT }
+            };
+
+            MiniInputElementDesc P_Elements[] = 
+            {
+                MiniInputElementDesc{ Hash64("POSITION"), Format::R32G32B32_FLOAT }
+            };
+
+            MiniInputElementDesc PC_Elements[] = 
+            {
+                MiniInputElementDesc{ Hash64("POSITION"), Format::R32G32B32_FLOAT },
+                MiniInputElementDesc{ Hash64("COLOR"), Format::R8G8B8A8_UNORM }
+            };
+
+            MiniInputElementDesc PT_Elements[] = 
+            {
+                MiniInputElementDesc{ Hash64("POSITION"), Format::R32G32B32_FLOAT },
+                MiniInputElementDesc{ Hash64("TEXCOORD"), Format::R32G32_FLOAT }
+            };
+
+            MiniInputElementDesc PN_Elements[] = 
+            {
+                MiniInputElementDesc{ Hash64("POSITION"), Format::R32G32B32_FLOAT },
+                MiniInputElementDesc{ Hash64("NORMAL"), Format::R32G32B32_FLOAT }
+            };
+
+            MiniInputElementDesc PNT_Elements[] = 
+            {
+                MiniInputElementDesc{ Hash64("POSITION"), Format::R32G32B32_FLOAT },
+                MiniInputElementDesc{ Hash64("NORMAL"), Format::R32G32B32_FLOAT },
+                MiniInputElementDesc{ Hash64("TEXCOORD"), Format::R32G32_FLOAT }
+            };
+
+            MiniInputElementDesc PNTT_Elements[] = 
+            {
+                MiniInputElementDesc{ Hash64("POSITION"), Format::R32G32B32_FLOAT },
+                MiniInputElementDesc{ Hash64("NORMAL"), Format::R32G32B32_FLOAT },
+                MiniInputElementDesc{ Hash64("TEXCOORD"), Format::R32G32_FLOAT },
+                MiniInputElementDesc{ Hash64("TEXTANGENT"), Format::R32G32B32_FLOAT },
+                MiniInputElementDesc{ Hash64("TEXBITANGENT"), Format::R32G32B32_FLOAT }
+            };
+        }
+
+        IteratorRange<const MiniInputElementDesc*> P2CT = MakeIteratorRange(Detail::P2CT_Elements);
+        IteratorRange<const MiniInputElementDesc*> P2C = MakeIteratorRange(Detail::P2C_Elements);
+        IteratorRange<const MiniInputElementDesc*> PCT = MakeIteratorRange(Detail::PCT_Elements);
+        IteratorRange<const MiniInputElementDesc*> P = MakeIteratorRange(Detail::P_Elements);
+        IteratorRange<const MiniInputElementDesc*> PC = MakeIteratorRange(Detail::PC_Elements);
+        IteratorRange<const MiniInputElementDesc*> PT = MakeIteratorRange(Detail::PT_Elements);
+        IteratorRange<const MiniInputElementDesc*> PN = MakeIteratorRange(Detail::PN_Elements);
+        IteratorRange<const MiniInputElementDesc*> PNT = MakeIteratorRange(Detail::PNT_Elements);
+        IteratorRange<const MiniInputElementDesc*> PNTT = MakeIteratorRange(Detail::PNTT_Elements);
+    }
+
     unsigned CalculateVertexStrideForSlot(IteratorRange<const InputElementDesc*> range, unsigned slot)
     {
             // note --  Assuming vertex elements are densely packed (which

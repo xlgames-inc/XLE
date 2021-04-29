@@ -87,6 +87,19 @@ namespace RenderCore
         extern InputLayout PNT;
         extern InputLayout PNTT;
     }
+
+    namespace GlobalMiniInputLayouts
+    {
+        extern IteratorRange<const MiniInputElementDesc*> P;
+        extern IteratorRange<const MiniInputElementDesc*> PC;
+        extern IteratorRange<const MiniInputElementDesc*> P2C;
+        extern IteratorRange<const MiniInputElementDesc*> P2CT;
+        extern IteratorRange<const MiniInputElementDesc*> PCT;
+        extern IteratorRange<const MiniInputElementDesc*> PT;
+        extern IteratorRange<const MiniInputElementDesc*> PN;
+        extern IteratorRange<const MiniInputElementDesc*> PNT;
+        extern IteratorRange<const MiniInputElementDesc*> PNTT;
+    }
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
