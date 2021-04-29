@@ -15,7 +15,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
 		#TerrainConversion.cpp
 		#TerrainManipulators.cpp
 		#TerrainManipulatorsCommon.cpp
-		#TerrainManipulatorsInterface.cpp
+		TerrainManipulatorsInterface.cpp
 		#TerrainOp.cpp
 		#TerrainShadowOp.cpp
 		VisualisationGeo.cpp
@@ -23,6 +23,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
 		../EntityInterface/EntityInterface.cpp
 		../EntityInterface/GameObjects.cpp
 		../EntityInterface/RetainedEntities.cpp
+		../EntityInterface/PlacementEntities.cpp
 		)
 	xle_configure_library(ToolsRig-${metal_name})
 	target_link_libraries(ToolsRig-${metal_name} PRIVATE RenderCoreTechniques-${metal_name})

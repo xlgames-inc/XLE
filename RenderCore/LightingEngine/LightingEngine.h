@@ -7,7 +7,7 @@
 #include "../Techniques/Drawables.h"		// for Techniques::BatchFilter
 
 namespace RenderCore { class IDevice; class IThreadContext; class FrameBufferProperties; }
-namespace RenderCore { namespace Techniques { class ParsingContext; class AttachmentPool; class FrameBufferPool; class PreregisteredAttachment; } }
+namespace RenderCore { namespace Techniques { class ParsingContext; class AttachmentPool; class FrameBufferPool; struct PreregisteredAttachment; } }
 
 namespace RenderCore { namespace LightingEngine
 {

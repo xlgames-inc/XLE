@@ -9,9 +9,8 @@
 #include "../Math/Matrix.h"
 #include <memory>
 
-namespace FixedFunctionModel { class SharedStateSet; class ModelRenderer; }
 namespace RenderCore { namespace Assets { class ModelScaffold; }}
-namespace RenderCore { namespace Techniques { class ParsingContext; }}
+namespace RenderCore { namespace Techniques { class ParsingContext; class SimpleModelRenderer; }}
 namespace RenderCore { class IResourceView; class IThreadContext; }
 
 namespace SceneEngine
@@ -24,8 +23,7 @@ namespace SceneEngine
     class DynamicImposters
     {
     public:
-        using SharedStateSet = FixedFunctionModel::SharedStateSet;
-        using ModelRenderer = FixedFunctionModel::ModelRenderer;
+        using ModelRenderer = RenderCore::Techniques::SimpleModelRenderer;
         using ModelScaffold = RenderCore::Assets::ModelScaffold;
 
         //////////////////////////////////////////////////////////////////////////////
@@ -35,7 +33,7 @@ namespace SceneEngine
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex);
         void Queue(
-            const ModelRenderer& renderer, const ModelScaffold& scaffold, 
+            const ModelRenderer& renderer,
             const Float3x4& localToWorld, const Float3& cameraPosition);
         void Reset();
 
@@ -71,7 +69,7 @@ namespace SceneEngine
         class SpriteMetrics;
         SpriteMetrics GetSpriteMetrics(unsigned spriteIndex);
 
-        DynamicImposters(SharedStateSet& sharedStateSet);
+        DynamicImposters();
         ~DynamicImposters();
     private:
         class Pimpl;

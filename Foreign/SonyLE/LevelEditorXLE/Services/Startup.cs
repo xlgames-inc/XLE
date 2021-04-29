@@ -13,24 +13,24 @@ namespace LevelEditorXLE
     {
         public static void InitializeAdapters()
         {
-#if GUILAYER_SCENEENGINE
             Schema.placementsCellReferenceType.Type.Define(new ExtensionInfo<Placements.PlacementsCellRef>());
             Schema.placementsFolderType.Type.Define(new ExtensionInfo<Placements.PlacementsFolder>());
             Schema.placementsDocumentType.Type.Define(new ExtensionInfo<Placements.XLEPlacementDocument>());
             Schema.placementObjectType.Type.Define(new ExtensionInfo<Placements.XLEPlacementObject>());
             Schema.modelBookmarkType.Type.Define(new ExtensionInfo<Placements.Bookmark>());
+#if GUILAYER_SCENEENGINE
             Schema.terrainType.Type.Define(new ExtensionInfo<Terrain.XLETerrainGob>());
             Schema.terrainCoverageLayer.Type.Define(new ExtensionInfo<Terrain.XLETerrainCoverage>());
             Schema.terrainBaseTextureType.Type.Define(new ExtensionInfo<Terrain.TerrainBaseTexture>());
             Schema.abstractTerrainMaterialDescType.Type.Define(new ExtensionInfo<Terrain.TerrainBaseTextureMaterial>());
             Schema.envSettingsFolderType.Type.Define(new ExtensionInfo<Environment.XLEEnvSettingsFolder>());
             Schema.envSettingsType.Type.Define(new ExtensionInfo<Environment.XLEEnvSettings>());
-            Schema.xleGameType.Type.Define(new ExtensionInfo<Game.GameExtensions>());
             Schema.envUtilityType.Type.Define(new ExtensionInfo<Environment.EnvUtility>());
             Schema.envObjectType.Type.Define(new ExtensionInfo<Environment.XLEEnvObject>());
             Schema.vegetationSpawnConfigType.Type.Define(new ExtensionInfo<Terrain.VegetationSpawnConfigGob>());
             Schema.vegetationSpawnMaterialType.Type.Define(new ExtensionInfo<Terrain.VegetationSpawnMaterialItem>());
 #endif
+            Schema.xleGameType.Type.Define(new ExtensionInfo<Game.GameExtensions>());
             Schema.triMeshMarkerType.Type.Define(new ExtensionInfo<Markers.TriMeshMarker>());
             Schema.markerPointType.Type.Define(new ExtensionInfo<Markers.PointMarker>());
             Schema.gameObjectFolderType.Type.Define(new ExtensionInfo<Game.XLEGameObjectsFolder>());
@@ -55,14 +55,14 @@ namespace LevelEditorXLE
                 typeof(ControlsLibraryExt.Material.MatTab),
                 typeof(Materials.PickMaterialManipulator),
 
-#if GUILAYER_SCENEENGINE
                 // typeof(Placements.PlacementManipulator),     (provides access to the native placements manipulators... but not really required)
                 typeof(Placements.ResourceConverter),
-                typeof(Placements.ScatterPlaceManipulator),
                 typeof(Placements.ResourceListerCommandClient),
 
                 typeof(AssetMan.ResourcePreview),
                 typeof(Manipulators.ExtraEditCommands),
+#if GUILAYER_SCENEENGINE
+                typeof(Placements.ScatterPlaceManipulator),
                 typeof(Terrain.TerrainNamingBridge),
 #endif
 

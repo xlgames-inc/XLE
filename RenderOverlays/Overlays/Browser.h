@@ -7,7 +7,8 @@
 #pragma once
 
 #include "../DebuggingDisplay.h"
-#include "../../RenderCore/Metal/Forward.h"
+#include "../../RenderCore/IDevice.h"
+#include "../../RenderCore/IThreadContext.h"
 #include <memory>
 
 namespace Overlays
@@ -28,16 +29,13 @@ namespace Overlays
         std::unique_ptr<Pimpl> _pimpl;
         ScrollBar   _mainScrollBar;
 
-        virtual std::pair<const RenderCore::Metal::ShaderResourceView*, uint64> GetSRV(RenderCore::IThreadContext& devContext, const std::basic_string<ucs2>&) = 0;
+        virtual std::pair<const RenderCore::IResourceView*, uint64> GetSRV(RenderCore::IThreadContext& devContext, const std::basic_string<ucs2>&) = 0;
         virtual bool Filter(const std::basic_string<ucs2>&) = 0;
     };
 
-    class ModelBrowser : public SharedBrowser
+    class IModelBrowser
     {
     public:
-        ModelBrowser(const char baseDirectory[]);
-        ~ModelBrowser();
-
         class ProcessInputResult
         {
         public:
@@ -46,11 +44,23 @@ namespace Overlays
             ProcessInputResult(bool consumed, const std::string& selected = std::string())
                 : _consumed(consumed), _selectedModel(selected) {}
         };
+        virtual ProcessInputResult SpecialProcessInput(
+            InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input) = 0;
+
+        virtual Coord2  GetPreviewSize() const = 0;
+    };
+
+    class ModelBrowser : public SharedBrowser, public IModelBrowser
+    {
+    public:
+        ModelBrowser(const char baseDirectory[]);
+        ~ModelBrowser();
+
         ProcessInputResult SpecialProcessInput(
             InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input);
 
         Coord2  GetPreviewSize() const;
-        auto    GetSRV(RenderCore::IThreadContext& context, const std::basic_string<ucs2>&) -> std::pair<const RenderCore::Metal::ShaderResourceView*, uint64>;
+        auto    GetSRV(RenderCore::IThreadContext& context, const std::basic_string<ucs2>&) -> std::pair<const RenderCore::IResourceView*, uint64>;
 
     private:
         class Pimpl;
@@ -69,7 +79,7 @@ namespace Overlays
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
 
-        std::pair<const RenderCore::Metal::ShaderResourceView*, uint64> GetSRV(RenderCore::IThreadContext& devContext, const std::basic_string<ucs2>&);
+        std::pair<const RenderCore::IResourceView*, uint64> GetSRV(RenderCore::IThreadContext& devContext, const std::basic_string<ucs2>&);
         bool Filter(const std::basic_string<ucs2>&);
     };
 }

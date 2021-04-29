@@ -56,11 +56,11 @@ namespace ToolsRig
         : _parent(std::move(parent))
     {}
 
-    void    ManipulatorsInterface::Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext)
+    void    ManipulatorsInterface::Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext, RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators)
     {
 		auto a = GetActiveManipulator();
         if (a)
-            a->Render(context, parserContext);
+            a->Render(context, parserContext, pipelineAccelerators);
     }
 
     void    ManipulatorsInterface::Update()
@@ -83,9 +83,11 @@ namespace ToolsRig
 		const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext)
     {
         _activeManipulatorIndex = 0;
+#if defined(GUILAYER_SCENEENGINE)
         _manipulators = CreateTerrainManipulators(terrainManager, terrainManipulatorContext);
+#endif
 
-        auto intersectionTestScene = std::make_shared<SceneEngine::IntersectionTestScene>(terrainManager);
+        auto intersectionTestScene = SceneEngine::CreateIntersectionTestScene(terrainManager, nullptr, nullptr);
 
         _terrainManager = terrainManager;
         _intersectionTestScene = intersectionTestScene;

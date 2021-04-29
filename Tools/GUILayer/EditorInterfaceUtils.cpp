@@ -10,10 +10,12 @@
 #include "GUILayerUtil.h"
 #include "MathLayer.h"
 #include "MarshalString.h"
+#include "LevelEditorScene.h"
 #include "ExportedNativeTypes.h"
 #include "../EntityInterface/EntityInterface.h"
 #include "../EntityInterface/EnvironmentSettings.h"
 #include "../ToolsRig/VisualisationUtils.h"
+#include "../ToolsRig/PlacementsManipulators.h"
 #include "../../SceneEngine/BasicLightingStateDelegate.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/Terrain.h"
@@ -54,13 +56,9 @@ namespace GUILayer
 
     void ObjectSet::DoFixup(SceneEngine::PlacementsEditor& placements)
     {
-#if defined(GUILAYER_SCENEENGINE)
         placements.PerformGUIDFixup(
             AsPointer(_nativePlacements->begin()),
             AsPointer(_nativePlacements->end()));
-#else
-        assert(0);
-#endif
     }
         
     void ObjectSet::DoFixup(PlacementsEditorWrapper^ placements)
@@ -213,6 +211,53 @@ namespace GUILayer
             return (unsigned)ImpliedTyping::TypeCat::Void;
         }
 
+        ref class ScatterPlaceOperation
+        {
+        public:
+            List<Tuple<uint64, uint64>^>^ _toBeDeleted;
+            List<Vector3>^ _creationPositions;
+        };
+
+        static ScatterPlaceOperation^ CalculateScatterOperation(
+            PlacementsEditorWrapper^ placements,
+            IntersectionTestSceneWrapper^ scene,
+            IEnumerable<System::String^>^ modelName, 
+            Vector3 centre, float radius, float density)
+        {
+            std::vector<SceneEngine::PlacementGUID> toBeDeleted;
+            std::vector<Float3> spawnPositions;
+
+            std::vector<std::string> convertedNames;
+            std::vector<const char*> names;
+            for each(System::String^ n in modelName) {
+                auto str = clix::marshalString<clix::E_UTF8>(n);
+                convertedNames.push_back(str);
+                names.push_back(convertedNames[convertedNames.size()-1].c_str());
+            }
+
+            ToolsRig::CalculateScatterOperation(
+                toBeDeleted, spawnPositions,
+                placements->GetNative(), scene->GetNative(), 
+                AsPointer(names.cbegin()), (unsigned)names.size(),
+                AsFloat3(centre), radius, density);
+
+            auto result = gcnew ScatterPlaceOperation();
+            result->_toBeDeleted = gcnew List<Tuple<uint64, uint64>^>();
+            result->_creationPositions = gcnew List<Vector3>();
+            for (const auto& d:toBeDeleted) result->_toBeDeleted->Add(Tuple::Create(d.first, d.second & 0xffffffffull));
+            for (const auto& p:spawnPositions) result->_creationPositions->Add(Vector3(p[0], p[1], p[2]));
+
+            return result;
+        }
+        
+        static Tuple<Vector3, Vector3>^ CalculatePlacementCellBoundary(
+            EditorSceneManager^ sceneMan,
+            EntityInterface::DocumentId doc)
+        {
+            auto boundary = sceneMan->GetScene()._placementsEditor->CalculateCellBoundary(doc);
+            return Tuple::Create(AsVector3(boundary.first), AsVector3(boundary.second));
+        }
+
 #if defined(GUILAYER_SCENEENGINE)
         static bool GetTerrainHeight(
             [Out] float% height,
@@ -263,53 +308,6 @@ namespace GUILayer
                 return true;
             }
             return false;
-        }
-
-        ref class ScatterPlaceOperation
-        {
-        public:
-            List<Tuple<uint64, uint64>^>^ _toBeDeleted;
-            List<Vector3>^ _creationPositions;
-        };
-
-        static ScatterPlaceOperation^ CalculateScatterOperation(
-            PlacementsEditorWrapper^ placements,
-            IntersectionTestSceneWrapper^ scene,
-            IEnumerable<System::String^>^ modelName, 
-            Vector3 centre, float radius, float density)
-        {
-            std::vector<SceneEngine::PlacementGUID> toBeDeleted;
-            std::vector<Float3> spawnPositions;
-
-            std::vector<std::string> convertedNames;
-            std::vector<const char*> names;
-            for each(System::String^ n in modelName) {
-                auto str = clix::marshalString<clix::E_UTF8>(n);
-                convertedNames.push_back(str);
-                names.push_back(convertedNames[convertedNames.size()-1].c_str());
-            }
-
-            ToolsRig::CalculateScatterOperation(
-                toBeDeleted, spawnPositions,
-                placements->GetNative(), scene->GetNative(), 
-                AsPointer(names.cbegin()), (unsigned)names.size(),
-                AsFloat3(centre), radius, density);
-
-            auto result = gcnew ScatterPlaceOperation();
-            result->_toBeDeleted = gcnew List<Tuple<uint64, uint64>^>();
-            result->_creationPositions = gcnew List<Vector3>();
-            for (const auto& d:toBeDeleted) result->_toBeDeleted->Add(Tuple::Create(d.first, d.second & 0xffffffffull));
-            for (const auto& p:spawnPositions) result->_creationPositions->Add(Vector3(p[0], p[1], p[2]));
-
-            return result;
-        }
-        
-        static Tuple<Vector3, Vector3>^ CalculatePlacementCellBoundary(
-            EditorSceneManager^ sceneMan,
-            EntityInterface::DocumentId doc)
-        {
-            auto boundary = sceneMan->GetScene()._placementsEditor->CalculateCellBoundary(doc);
-            return Tuple::Create(AsVector3(boundary.first), AsVector3(boundary.second));
         }
 
         static void GenerateBlankUberSurface(

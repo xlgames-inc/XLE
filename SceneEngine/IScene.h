@@ -32,8 +32,8 @@ namespace SceneEngine
     {
     public:
         SceneView _view;
-        RenderCore::Techniques::BatchFilter _batchFilter;
-        RenderCore::Techniques::DrawablesPacket* _destinationPkt;
+        RenderCore::Techniques::BatchFilter _batchFilter = RenderCore::Techniques::BatchFilter(0);
+        RenderCore::Techniques::DrawablesPacket* _destinationPkt = nullptr;
     };
 
     class IScene

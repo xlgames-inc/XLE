@@ -25,7 +25,8 @@ namespace ToolsRig
             const SceneEngine::IIntersectionScene* hitTestScene);
         void Render(
             RenderCore::IThreadContext& context, 
-            RenderCore::Techniques::ParsingContext& parserContext);
+            RenderCore::Techniques::ParsingContext& parserContext,
+            RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators);
 
         const char* GetName() const;
         std::string GetStatusText() const;
@@ -169,7 +170,8 @@ namespace ToolsRig
 
     void CameraMovementManipulator::Render(
         RenderCore::IThreadContext&, 
-        RenderCore::Techniques::ParsingContext&)
+        RenderCore::Techniques::ParsingContext&,
+        RenderCore::Techniques::IPipelineAcceleratorPool&)
     {
         // we could draw some movement widgets here
     }

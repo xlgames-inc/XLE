@@ -36,7 +36,8 @@ namespace SceneEngine
 
 	static std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> CreateTechniqueDelegate(
 		const ::Assets::FuturePtr<RenderCore::Techniques::TechniqueSetFile>& techniqueSet,
-		const std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources>& sharedResources);
+		const std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources>& sharedResources,
+		unsigned testTypeParameter);
 
 	class RayDefinitionUniformDelegate : public Techniques::IUniformBufferDelegate
 	{
@@ -75,6 +76,7 @@ namespace SceneEngine
 		TestType _testType;
 
 		std::shared_ptr<Techniques::SequencerConfig> _sequencerConfig;
+		Techniques::IPipelineAcceleratorPool* _pipelineAccelerators = nullptr;
     };
 
     class ModelIntersectionResources
@@ -237,7 +239,8 @@ namespace SceneEngine
 	public:
 		FrameBufferDesc _fbDesc;
 		std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources> _techniqueSharedResources;
-		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _forwardIllumDelegate;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _rayTestTechniqueDelegate;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _frustumTechniqueDelegate;
 		::Assets::DependencyValidation _depVal;
 
 		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
@@ -248,7 +251,8 @@ namespace SceneEngine
 			auto& device = RenderCore::Techniques::Services::GetDevice();
 			auto techniqueSetFile = ::Assets::MakeAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
 			_techniqueSharedResources = RenderCore::Techniques::CreateTechniqueSharedResources(device);
-			_forwardIllumDelegate = CreateTechniqueDelegate(techniqueSetFile, _techniqueSharedResources);
+			_rayTestTechniqueDelegate = CreateTechniqueDelegate(techniqueSetFile, _techniqueSharedResources, 0);
+			_frustumTechniqueDelegate = CreateTechniqueDelegate(techniqueSetFile, _techniqueSharedResources, 1);
 
 			std::vector<SubpassDesc> subpasses;
 			subpasses.emplace_back(SubpassDesc{});
@@ -292,11 +296,18 @@ namespace SceneEngine
 		_pimpl->_encoder = metalContext.BeginStreamOutputEncoder(
 			pipelineAcceleratorPool.GetPipelineLayout(), MakeIteratorRange(&sov, &sov+1));
 
-		_pimpl->_sequencerConfig = pipelineAcceleratorPool.CreateSequencerConfig(
-			box._forwardIllumDelegate,
-			{}, box._fbDesc);
+		if (testType == TestType::FrustumTest) {
+			_pimpl->_sequencerConfig = pipelineAcceleratorPool.CreateSequencerConfig(
+				box._frustumTechniqueDelegate,
+				{}, box._fbDesc);
+		} else {
+			_pimpl->_sequencerConfig = pipelineAcceleratorPool.CreateSequencerConfig(
+				box._rayTestTechniqueDelegate,
+				{}, box._fbDesc);
+		}
 
 		_pimpl->_testType = testType;
+		_pimpl->_pipelineAccelerators = &pipelineAcceleratorPool;
     }
 
     ModelIntersectionStateContext::~ModelIntersectionStateContext()
@@ -320,7 +331,6 @@ namespace SceneEngine
 
 	void ModelIntersectionStateContext::ExecuteDrawables(
 		Techniques::ParsingContext& parsingContext, 
-		const RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators, 
 		RenderCore::Techniques::DrawablesPacket& drawablePkt,
 		const Techniques::CameraDesc* cameraForLOD)
 	{
@@ -342,8 +352,6 @@ namespace SceneEngine
 		projDesc._worldToProjection = Combine(InvertOrthonormalTransform(projDesc._cameraToWorld), projDesc._cameraToProjection);
 		parsingContext.GetProjectionDesc() = projDesc;
 
-		parsingContext.GetSubframeShaderSelectors().SetParameter("INTERSECTION_TEST", unsigned(_pimpl->_testType));
-
 		using namespace RenderCore::Techniques;
 		IResourcePtr temporaryVB, temporaryIB;
 		if (!drawablePkt.GetStorage(DrawablesPacket::Storage::VB).empty()) {
@@ -355,9 +363,7 @@ namespace SceneEngine
 
 		auto& metalContext = *Metal::DeviceContext::Get(context);
 		auto sequencerTechnique = MakeRayTestSequencerTechnique();
-		RenderCore::Techniques::Draw(metalContext, _pimpl->_encoder, parsingContext, pipelineAccelerators, sequencerTechnique, drawablePkt, temporaryVB, temporaryIB);
-
-		parsingContext.GetSubframeShaderSelectors().RemoveParameter("INTERSECTION_TEST");
+		RenderCore::Techniques::Draw(metalContext, _pimpl->_encoder, parsingContext, *_pimpl->_pipelineAccelerators, sequencerTechnique, drawablePkt, temporaryVB, temporaryIB);
 	}
 
 	static const InputElementDesc s_soEles[] = {
@@ -371,10 +377,11 @@ namespace SceneEngine
 
 	static std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> CreateTechniqueDelegate(
 		const ::Assets::FuturePtr<RenderCore::Techniques::TechniqueSetFile>& techniqueSet,
-		const std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources>& sharedResources)
+		const std::shared_ptr<RenderCore::Techniques::TechniqueSharedResources>& sharedResources,
+		unsigned testTypeParameter)
 	{
 		return RenderCore::Techniques::CreateTechniqueDelegate_RayTest(
-			techniqueSet, sharedResources, 
+			techniqueSet, sharedResources, testTypeParameter, 
 			StreamOutputInitializers {
 				MakeIteratorRange(s_soEles),
 				MakeIteratorRange(s_soStrides)});

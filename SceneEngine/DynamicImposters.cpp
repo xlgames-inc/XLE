@@ -5,6 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DynamicImposters.h"
+
+#if 0
+
 #include "GestaltResource.h"
 #include "SceneEngineUtils.h"
 #include "../RenderCore/Metal/State.h"
@@ -1064,3 +1067,49 @@ template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::DynamicImposte
     }
     return props;
 }
+
+#else
+
+#include "../Utility/Meta/ClassAccessors.h"
+#include "../Utility/Meta/ClassAccessorsImpl.h"
+#include "../Utility/Meta/AccessorSerialize.h"
+
+namespace SceneEngine
+{
+    class DynamicImposters::Pimpl {};
+    void DynamicImposters::Render(
+        RenderCore::IThreadContext& context,
+        RenderCore::Techniques::ParsingContext& parserContext,
+        unsigned techniqueIndex) 
+    {}
+    void DynamicImposters::Queue(
+        const ModelRenderer& renderer,
+        const Float3x4& localToWorld, const Float3& cameraPosition)
+    {}
+    void DynamicImposters::Reset() {}
+
+    void DynamicImposters::Load(const Config& config) {}
+    void DynamicImposters::Disable() {}
+
+    float DynamicImposters::GetThresholdDistance() const { return 1e32f; }
+    bool DynamicImposters::IsEnabled() const { return false; }
+
+    auto DynamicImposters::GetMetrics() const -> Metrics { return {}; }
+    const RenderCore::IResourceView* DynamicImposters::GetAtlasResource(unsigned layer) { return nullptr; }
+    auto DynamicImposters::GetSpriteMetrics(unsigned spriteIndex) -> SpriteMetrics { return {}; }
+
+    DynamicImposters::DynamicImposters() {}
+    DynamicImposters::~DynamicImposters() {}
+
+    DynamicImposters::Config::Config() {}
+    DynamicImposters::Metrics::Metrics() {}
+}
+
+template<> const ClassAccessors& Legacy_GetAccessors<SceneEngine::DynamicImposters::Config>()
+{
+    using Obj = SceneEngine::DynamicImposters::Config;
+    static ClassAccessors props(typeid(Obj).hash_code());
+    return props;
+}
+
+#endif

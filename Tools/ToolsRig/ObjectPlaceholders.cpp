@@ -5,6 +5,8 @@
 #include "ObjectPlaceholders.h"
 #include "VisualisationGeo.h"
 #include "../EntityInterface/RetainedEntities.h"
+#include "../../SceneEngine/IntersectionTest.h"
+#include "../../SceneEngine/IScene.h"
 #include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/Assets/ModelScaffoldInternal.h"
 #include "../../RenderCore/Assets/ModelImmutableData.h"
@@ -456,15 +458,17 @@ namespace ToolsRig
 			};
     }
 
-	void ObjectPlaceholders::BuildDrawables(IteratorRange<RenderCore::Techniques::DrawablesPacket** const> pkts)
+	void ObjectPlaceholders::BuildDrawables(const SceneEngine::ExecuteSceneContext& executeContext)
 	{
+		RenderCore::Techniques::DrawablesPacket* pkts[(unsigned)RenderCore::Techniques::BatchFilter::Max];
+		pkts[(unsigned)executeContext._batchFilter] = executeContext._destinationPkt;
 		if (Tweakable("DrawMarkers", true)) {
 			auto visBox = ::Assets::MakeAsset<VisGeoBox>(_pipelineAcceleratorPool)->TryActualize();
 			for (const auto& a:_cubeAnnotations) {
 				auto objects = _objects->FindEntitiesOfType(a._typeId);
 				for (const auto&o:objects) {
 					if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
-					DrawSphereStandIn(_pipelineAcceleratorPool, pkts, GetTransform(*o));
+					DrawSphereStandIn(_pipelineAcceleratorPool, MakeIteratorRange(pkts), GetTransform(*o));
 				}
 			}
 
@@ -478,7 +482,7 @@ namespace ToolsRig
 					auto translation = ExtractTranslation(trans);
 					trans = MakeObjectToWorld(-Normalize(translation), Float3(0.f, 0.f, 1.f), translation);
 
-					DrawPointerStandIn(_pipelineAcceleratorPool, pkts, trans);
+					DrawPointerStandIn(_pipelineAcceleratorPool, MakeIteratorRange(pkts), trans);
 				}
 			}
 
@@ -513,7 +517,7 @@ namespace ToolsRig
 				if (visBox) {
 					auto objects = _objects->FindEntitiesOfType(a._typeId);
 					for (auto o=objects.cbegin(); o!=objects.cend(); ++o) {
-						DrawTriMeshMarker(pkts, *visBox, **o, *_objects);
+						DrawTriMeshMarker(MakeIteratorRange(pkts), *visBox, **o, *_objects);
 					}
 				}
             }
@@ -536,18 +540,19 @@ namespace ToolsRig
         }
     }
 
-#if 0
     class ObjectPlaceholders::IntersectionTester : public SceneEngine::IIntersectionScene
     {
     public:
-        Result FirstRayIntersection(
+        SceneEngine::IntersectionTestResult FirstRayIntersection(
             const SceneEngine::IntersectionTestContext& context,
-            std::pair<Float3, Float3> worldSpaceRay) const;
+            std::pair<Float3, Float3> worldSpaceRay,
+			SceneEngine::IntersectionTestResult::Type::BitField filter) const override;
 
         void FrustumIntersection(
-            std::vector<Result>& results,
+            std::vector<SceneEngine::IntersectionTestResult>& results,
             const SceneEngine::IntersectionTestContext& context,
-            const Float4x4& worldToProjection) const;
+            const Float4x4& worldToProjection,
+			SceneEngine::IntersectionTestResult::Type::BitField filter) const override;
 
         IntersectionTester(std::shared_ptr<ObjectPlaceholders> placeHolders);
         ~IntersectionTester();
@@ -569,7 +574,8 @@ namespace ToolsRig
 
     auto ObjectPlaceholders::IntersectionTester::FirstRayIntersection(
         const SceneEngine::IntersectionTestContext& context,
-        std::pair<Float3, Float3> worldSpaceRay) const -> Result
+        std::pair<Float3, Float3> worldSpaceRay,
+		SceneEngine::IntersectionTestResult::Type::BitField filter) const -> SceneEngine::IntersectionTestResult
     {
         using namespace SceneEngine;
 
@@ -630,13 +636,14 @@ namespace ToolsRig
 			}
 		}
 
-        return Result();
+        return {};
     }
 
     void ObjectPlaceholders::IntersectionTester::FrustumIntersection(
-        std::vector<Result>& results,
+        std::vector<SceneEngine::IntersectionTestResult>& results,
         const SceneEngine::IntersectionTestContext& context,
-        const Float4x4& worldToProjection) const
+        const Float4x4& worldToProjection,
+		SceneEngine::IntersectionTestResult::Type::BitField filter) const
     {}
 
     ObjectPlaceholders::IntersectionTester::IntersectionTester(std::shared_ptr<ObjectPlaceholders> placeHolders)
@@ -649,13 +656,6 @@ namespace ToolsRig
     {
         return std::make_shared<IntersectionTester>(shared_from_this());
     }
-#else
-	std::shared_ptr<SceneEngine::IIntersectionScene> ObjectPlaceholders::CreateIntersectionTester()
-    {
-		assert(0);
-        return nullptr;
-    }
-#endif
 
     ObjectPlaceholders::ObjectPlaceholders(
 		const std::shared_ptr<RenderCore::Techniques::IPipelineAcceleratorPool>& pipelineAcceleratorPool,

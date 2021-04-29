@@ -17,9 +17,10 @@
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/IOverlayContext.h"
 #include "../../RenderOverlays/OverlayContext.h"
-//#include "../../RenderOverlays/Overlays/Browser.h"
+#include "../../RenderOverlays/Overlays/Browser.h"
 //#include "../../RenderOverlays/OverlayUtils.h"
 #include "../../RenderCore/IThreadContext.h"
+#include "../../RenderCore/Techniques/Apparatuses.h"
 
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Conversion.h"
@@ -47,7 +48,8 @@ namespace ToolsRig
         void    Render(         RenderOverlays::IOverlayContext& context, Layout& layout, 
                                 Interactables& interactables, InterfaceState& interfaceState);
         void    RenderToScene(  RenderCore::IThreadContext& context, 
-                                RenderCore::Techniques::ParsingContext& parserContext);
+                                RenderCore::Techniques::ParsingContext& parserContext,
+                                RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators);
         bool    ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input);
 
         PlacementsWidgets(
@@ -59,7 +61,7 @@ namespace ToolsRig
         ~PlacementsWidgets();
 
     private:
-        typedef Overlays::ModelBrowser ModelBrowser;
+        typedef RenderOverlays::DebuggingDisplay::IWidget ModelBrowser;
 
         std::shared_ptr<ModelBrowser>       _browser;
         std::shared_ptr<VisCameraSettings> _camera;
@@ -93,7 +95,8 @@ namespace ToolsRig
             const SceneEngine::IIntersectionScene* hitTestScene);
         void Render(
             RenderCore::IThreadContext& context,
-            RenderCore::Techniques::ParsingContext& parserContext);
+            RenderCore::Techniques::ParsingContext& parserContext,
+            RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators);
 
         const char* GetName() const;
         std::string GetStatusText() const;
@@ -172,12 +175,9 @@ namespace ToolsRig
                 //  from the terrain height.
             Float2 finalXY = Truncate(ExtractTranslation(inputObj._localToWorld)) + Truncate(_activeSubop._parameter);
             float terrainHeight = 0.f;
-            auto terrain = hitTestScene.GetTerrain().get();
-            if (terrain) {
-                terrainHeight = GetTerrainHeight(
-                    *terrain->GetFormat().get(), terrain->GetConfig(), terrain->GetCoords(), 
-                    finalXY);
-            }
+            auto terrainHeightQuery = SceneEngine::Stubs::GetTerrainHeight(hitTestScene, finalXY);
+            if (terrainHeightQuery.has_value())
+                terrainHeight = terrainHeightQuery.value();
             
             transform = AsFloat4x4(Float3(-ExtractTranslation(inputObj._localToWorld) + Expand(finalXY, terrainHeight)));
         } else {
@@ -503,7 +503,8 @@ namespace ToolsRig
 
     void SelectAndEdit::Render(
         RenderCore::IThreadContext& context,
-        RenderCore::Techniques::ParsingContext& parserContext)
+        RenderCore::Techniques::ParsingContext& parserContext,
+        RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators)
     {
         std::vector<std::pair<uint64, uint64>> activeSelection;
 
@@ -524,7 +525,7 @@ namespace ToolsRig
                 //  likely get the most efficient results by rendering
                 //  all of objects that require highlights in one go.
             Placements_RenderHighlight(
-                context, parserContext, *_renderer, _editor->GetCellSet(),
+                context, parserContext, pipelineAccelerators, *_renderer, _editor->GetCellSet(),
                 AsPointer(activeSelection.begin()), AsPointer(activeSelection.end()));
         }
     }
@@ -613,7 +614,8 @@ namespace ToolsRig
             const SceneEngine::IIntersectionScene* hitTestScene);
         void Render(
             RenderCore::IThreadContext& context,
-            RenderCore::Techniques::ParsingContext& parserContext);
+            RenderCore::Techniques::ParsingContext& parserContext,
+            RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators);
 
         const char* GetName() const;
         IteratorRange<const FloatParameter*>  GetFloatParameters() const;
@@ -731,7 +733,8 @@ namespace ToolsRig
 
     void PlaceSingle::Render(
         RenderCore::IThreadContext& context,
-        RenderCore::Techniques::ParsingContext& parserContext)
+        RenderCore::Techniques::ParsingContext& parserContext,
+        RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators)
     {
         ++_rendersSinceHitTest;
         if (_transaction && _transaction->GetObjectCount()) {
@@ -742,7 +745,7 @@ namespace ToolsRig
             }
 
             Placements_RenderHighlight(
-                context, parserContext, *_renderer, _editor->GetCellSet(),
+                context, parserContext, pipelineAccelerators, *_renderer, _editor->GetCellSet(),
                 AsPointer(objects.begin()), AsPointer(objects.end()));
         }
     }
@@ -797,7 +800,8 @@ namespace ToolsRig
             const SceneEngine::IIntersectionScene* hitTestScene);
         void Render(
             RenderCore::IThreadContext& context,
-            RenderCore::Techniques::ParsingContext& parserContext);
+            RenderCore::Techniques::ParsingContext& parserContext,
+            RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators);
 
         const char* GetName() const;
         IteratorRange<const FloatParameter*>  GetFloatParameters() const;
@@ -1224,11 +1228,9 @@ namespace ToolsRig
         for (auto p=noisyPts.begin(); p!=noisyPts.end(); ++p) {
             Float2 pt = *p + Truncate(centre);
             float height = 0.f;
-            auto terrain = hitTestScene.GetTerrain().get();
-            if (terrain) {
-                height = SceneEngine::GetTerrainHeight(
-                    *terrain->GetFormat().get(), terrain->GetConfig(), terrain->GetCoords(), pt);
-            }
+            auto terrainHeightQuery = SceneEngine::Stubs::GetTerrainHeight(hitTestScene, pt);
+            if (terrainHeightQuery.has_value())
+                height = terrainHeightQuery.value();
 
             _spawnPositions.push_back(Expand(pt, height));
         }
@@ -1268,10 +1270,11 @@ namespace ToolsRig
 
     void ScatterPlacements::Render(
         RenderCore::IThreadContext& context,
-        RenderCore::Techniques::ParsingContext& parserContext)
+        RenderCore::Techniques::ParsingContext& parserContext,
+        RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators)
     {
         if (_hasHoverPoint)
-            RenderCylinderHighlight(context, parserContext, _hoverPoint, _radius);
+            RenderCylinderHighlight(context, parserContext, pipelineAccelerators, _hoverPoint, _radius);
     }
 
     const char* ScatterPlacements::GetName() const  { return "ScatterPlace"; }
@@ -1360,7 +1363,10 @@ namespace ToolsRig
         // interactables.Register(Interactables::Widget(selectedRect, Id_SelectedModel));
         
         auto maxSize = layout.GetMaximumSize();
-        const auto previewSize = _browser ? _browser->GetPreviewSize()[1] : 196;
+        int previewSize = 196;
+        auto* modelBrowser = dynamic_cast<Overlays::IModelBrowser*>(_browser.get());
+        if (modelBrowser)
+            previewSize = modelBrowser->GetPreviewSize()[1];
         const auto margin = layout._paddingInternalBorder;
         const Coord2 iconSize(93/2, 88/2);
         const auto iconPadding = layout._paddingBetweenAllocations;
@@ -1472,13 +1478,16 @@ namespace ToolsRig
                 return true;
             }
 
-            auto result = _browser->SpecialProcessInput(interfaceState, inputContext, input);
-            if (!result._selectedModel.empty()) {
-                _selectedModel = result._selectedModel;
-                _browserActive = false; // dismiss browser on select
-            }
+            auto browser = dynamic_cast<Overlays::IModelBrowser*>(_browser.get());
+            if (browser) {
+                auto result = browser->SpecialProcessInput(interfaceState, inputContext, input);
+                if (!result._selectedModel.empty()) {
+                    _selectedModel = result._selectedModel;
+                    _browserActive = false; // dismiss browser on select
+                }
 
-            if (result._consumed) { return true; }
+                if (result._consumed) { return true; }
+            }
         }
 
         if (input.IsRelease_LButton()) {
@@ -1526,9 +1535,10 @@ namespace ToolsRig
 
     void PlacementsWidgets::RenderToScene(
         RenderCore::IThreadContext& context, 
-		RenderCore::Techniques::ParsingContext& parserContext)
+		RenderCore::Techniques::ParsingContext& parserContext,
+        RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators)
     {
-        _manipulators[_activeManipulatorIndex]->Render(context, parserContext);
+        _manipulators[_activeManipulatorIndex]->Render(context, parserContext, pipelineAccelerators);
     }
 
     std::string PlacementsWidgets::GetSelectedModel() const { return _selectedModel; }
@@ -1567,7 +1577,7 @@ namespace ToolsRig
 		const std::shared_ptr<VisCameraSettings>& camera,
 		const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext)
     {
-        auto browser = std::make_shared<ModelBrowser>("game\\model");
+        // auto browser = std::make_shared<ModelBrowser>("game\\model");
         _browserActive = false;
         _activeManipulatorIndex = 0;
         _drawSelectedModel = false;
@@ -1577,7 +1587,6 @@ namespace ToolsRig
 
         _editor = editor;
         _intersectionTestScene = intersectionTestScene;
-        _browser = std::move(browser);
         _manipulators = std::move(manipulators);
 		_camera = camera;
 		_techniqueContext = techniqueContext;
@@ -1601,21 +1610,25 @@ namespace ToolsRig
         std::shared_ptr<DebugScreensSystem>             _screens;
         std::shared_ptr<PlacementsWidgets>              _placementsDispl;
         std::shared_ptr<SceneEngine::IIntersectionScene>     _intersectionTestScene;
+        std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> _immediateDrawables;
+        std::shared_ptr<RenderOverlays::FontRenderingManager> _fontRenderingManager;
     };
 
     void PlacementsManipulatorsManager::RenderWidgets(
-        RenderCore::IThreadContext& device, RenderCore::Techniques::ParsingContext& parsingContext)
+        RenderCore::IThreadContext& device, RenderCore::Techniques::ParsingContext& parsingContext,
+        RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators)
     {
-		auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(device);
+		auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(device, *_pimpl->_immediateDrawables, *_pimpl->_fontRenderingManager);
 		auto viewportDims = device.GetStateDesc()._viewportDimensions;
 		_pimpl->_screens->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ { 0,0 },{ int(viewportDims[0]), int(viewportDims[1]) } });
     }
 
     void PlacementsManipulatorsManager::RenderToScene(
         RenderCore::IThreadContext& device, 
-		RenderCore::Techniques::ParsingContext& parserContext)
+		RenderCore::Techniques::ParsingContext& parserContext,
+        RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators)
     {
-        _pimpl->_placementsDispl->RenderToScene(device, parserContext);
+        _pimpl->_placementsDispl->RenderToScene(device, parserContext, pipelineAccelerators);
     }
 
     auto PlacementsManipulatorsManager::GetInputLister() -> std::shared_ptr<PlatformRig::IInputListener>
@@ -1628,7 +1641,7 @@ namespace ToolsRig
         const std::shared_ptr<SceneEngine::PlacementCellSet>& placementCellSet,
         const std::shared_ptr<SceneEngine::TerrainManager>& terrainManager,
         const std::shared_ptr<VisCameraSettings>& camera,
-		const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext)
+        const std::shared_ptr<RenderCore::Techniques::ImmediateDrawingApparatus>& immediateDrawablesApparatus)
     {
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->_screens = std::make_shared<DebugScreensSystem>();
@@ -1638,8 +1651,10 @@ namespace ToolsRig
             terrainManager, placementCellSet, pimpl->_editor);
         pimpl->_placementsDispl = std::make_shared<PlacementsWidgets>(
             pimpl->_editor, placementsManager->GetRenderer(),
-            pimpl->_intersectionTestScene, camera, techniqueContext);
+            pimpl->_intersectionTestScene, camera, immediateDrawablesApparatus->_mainDrawingApparatus->_techniqueContext);
         pimpl->_screens->Register(pimpl->_placementsDispl, "Placements", DebugScreensSystem::SystemDisplay);
+        pimpl->_immediateDrawables = immediateDrawablesApparatus->_immediateDrawables;
+        pimpl->_fontRenderingManager = immediateDrawablesApparatus->_fontRenderingManager;
         _pimpl = std::move(pimpl);
     }
 

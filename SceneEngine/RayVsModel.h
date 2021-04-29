@@ -45,7 +45,6 @@ namespace SceneEngine
         void SetFrustum(const Float4x4& frustum);
         void ExecuteDrawables(
             RenderCore::Techniques::ParsingContext& parsingContext, 
-            const RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators, 
             RenderCore::Techniques::DrawablesPacket& drawablePkt,
             const RenderCore::Techniques::CameraDesc* cameraForLOD = nullptr);
 

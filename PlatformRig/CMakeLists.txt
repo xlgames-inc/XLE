@@ -60,6 +60,9 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         ../SceneEngine/ExecuteScene.cpp
         ../SceneEngine/RayVsModel.cpp
         ../SceneEngine/IntersectionTest.cpp
+        ../SceneEngine/PlacementsManager.cpp
+        ../SceneEngine/GenericQuadTree.cpp
+        ../SceneEngine/DynamicImposters.cpp
         )
 
     if (WIN32)

@@ -197,9 +197,7 @@
     <ClCompile Include="..\ShaderFragment.cpp" />
     <ClCompile Include="..\ShaderGenerator.cpp" />
     <ClCompile Include="..\SimpleRenderingContext.cpp" />
-    <ClCompile Include="..\ManipulatorsLayer.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
-    </ClCompile>
+    <ClCompile Include="..\ManipulatorsLayer.cpp" />
     <ClCompile Include="..\TerrainLayer.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
     </ClCompile>
@@ -230,9 +228,7 @@
     <ClInclude Include="..\LevelEditorScene.h" />
     <ClInclude Include="..\ManipulatorUtils.h" />
     <ClInclude Include="..\MarshalString.h" />
-    <ClInclude Include="..\ManipulatorsLayer.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">true</ExcludedFromBuild>
-    </ClInclude>
+    <ClInclude Include="..\ManipulatorsLayer.h" />
     <ClInclude Include="..\NativeEngineDevice.h" />
     <ClInclude Include="..\NativeManipulators.h" />
     <ClInclude Include="..\NodeGraph.h" />

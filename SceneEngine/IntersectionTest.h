@@ -94,4 +94,9 @@ namespace SceneEngine
         std::shared_ptr<PlacementCellSet> placements,
         std::shared_ptr<PlacementsEditor> placementsEditor,
         IteratorRange<const std::shared_ptr<SceneEngine::IIntersectionScene>*> extraTesters = {});
+
+    namespace Stubs
+    {
+        std::optional<float> GetTerrainHeight(const IIntersectionScene& scene, Float2 pt);
+    }
 }

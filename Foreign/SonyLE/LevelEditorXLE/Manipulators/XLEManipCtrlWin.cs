@@ -63,6 +63,7 @@ namespace LevelEditorXLE.Manipulators
                     terrainPage.Controls.Add(terrainCtrls);
                     m_controls.m_tabControl.TabPages.Add(terrainPage);
                 }
+#endif
 
                 var s = m as Placements.ScatterPlaceManipulator;
                 if (s != null)
@@ -107,7 +108,6 @@ namespace LevelEditorXLE.Manipulators
                     page.Controls.Add(properties);
                     m_controls.m_tabControl.TabPages.Add(page);
                 }
-#endif
             }
 
 #if GUILAYER_SCENEENGINE

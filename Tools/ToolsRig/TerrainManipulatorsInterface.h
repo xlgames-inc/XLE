@@ -11,9 +11,9 @@
 
 namespace PlatformRig { class InputSnapshot; class IInputListener; }
 namespace RenderOverlays { class IOverlayContext; namespace DebuggingDisplay { class InterfaceState; struct Layout; class Interactables; class DebugScreensSystem; }; class Font; }
-namespace SceneEngine { class TerrainManager; }
+namespace SceneEngine { class TerrainManager; class IIntersectionScene; }
 namespace RenderCore { class IThreadContext; }
-namespace RenderCore { namespace Techniques { class ParsingContext; class TechniqueContext; }}
+namespace RenderCore { namespace Techniques { class ParsingContext; class TechniqueContext; class IPipelineAcceleratorPool; }}
 
 namespace ToolsRig
 {
@@ -25,7 +25,8 @@ namespace ToolsRig
     {
     public:
         void    Render( RenderCore::IThreadContext& context, 
-                        RenderCore::Techniques::ParsingContext& parserContext);
+                        RenderCore::Techniques::ParsingContext& parserContext,
+                        RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators);
         void    Update();
 
         void SelectManipulator(signed relativeIndex);

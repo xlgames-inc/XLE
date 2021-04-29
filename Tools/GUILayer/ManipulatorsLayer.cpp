@@ -10,12 +10,15 @@
 #include "ExportedNativeTypes.h"
 #include "MarshalString.h"
 
+#if defined(GUILAYER_SCENEENGINE)
 #include "../ToolsRig/TerrainManipulators.h"
+#endif
 #include "../ToolsRig/PlacementsManipulators.h"
 #include "../ToolsRig/IManipulator.h"
 
 namespace GUILayer
 {
+#if defined(GUILAYER_SCENEENGINE)
     TerrainManipulatorsPimpl::RegisteredManipulator::~RegisteredManipulator() {}
 
 	clix::shared_ptr<ToolsRig::IManipulator> TerrainManipulators::GetManipulator(System::String^ name)
@@ -76,6 +79,7 @@ namespace GUILayer
     }
 
     TerrainManipulatorContext::~TerrainManipulatorContext() {}
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

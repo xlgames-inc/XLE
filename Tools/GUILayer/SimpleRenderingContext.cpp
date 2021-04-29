@@ -12,6 +12,7 @@
 #include "MathLayer.h"
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/VisualisationUtils.h"
+#include "../ToolsRig/ManipulatorsRender.h"
 #include "../../RenderCore/Types.h"
 #include "../../RenderCore/ResourceDesc.h"
 #include "../../RenderCore/IDevice.h"
@@ -24,6 +25,8 @@
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include <vector>
+
+#include "../../SceneEngine/PlacementsManager.h"        // For some of the code in RenderingUtil below
 
 namespace GUILayer
 {
@@ -274,10 +277,12 @@ namespace GUILayer
         RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
         RetainedRenderResources^ savedRes,
         RenderCore::IThreadContext* threadContext,
+        RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
         void* parsingContext)
     : _retainedRes(savedRes)
     , _immediateDrawables(&immediateDrawables), _parsingContext((RenderCore::Techniques::ParsingContext*)parsingContext)
     , _threadContext(threadContext)
+    , _pipelineAccelerators(&pipelineAccelerators)
     {
     }
     SimpleRenderingContext::~SimpleRenderingContext() {}
@@ -285,7 +290,6 @@ namespace GUILayer
 
 ////////////////////////////////////////////////////////////////////////////////////////////////?//
 
-#if defined(GUILAYER_SCENEENGINE)
     public ref class RenderingUtil
     {
     public:
@@ -294,7 +298,7 @@ namespace GUILayer
             Vector3 centre, float radius)
         {
             ToolsRig::RenderCylinderHighlight(
-                renderingContext->GetThreadContext(), renderingContext->GetParsingContext(),
+                renderingContext->GetThreadContext(), renderingContext->GetParsingContext(), renderingContext->GetPipelineAccelerators(),
                 AsFloat3(centre), radius);
         }
 
@@ -308,7 +312,7 @@ namespace GUILayer
             if (highlight == nullptr) {
 
 				ToolsRig::Placements_RenderHighlight(
-                    threadContext, context->GetParsingContext(), 
+                    threadContext, context->GetParsingContext(), context->GetPipelineAccelerators(),
                     renderer->GetNative(), placements->GetNative().GetCellSet(),
 					nullptr, nullptr,
                     materialGuid);
@@ -317,7 +321,7 @@ namespace GUILayer
                 if (highlight->IsEmpty()) return;
 
                 ToolsRig::Placements_RenderHighlight(
-                    threadContext, context->GetParsingContext(), 
+                    threadContext, context->GetParsingContext(), context->GetPipelineAccelerators(),
                     renderer->GetNative(), placements->GetNative().GetCellSet(),
                     (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cbegin()),
                     (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cend()),
@@ -327,13 +331,14 @@ namespace GUILayer
 
         static void ClearDepthBuffer(SimpleRenderingContext^ context)
         {
+#if defined(GUILAYER_SCENEENGINE)
             auto& metalContext = context->GetDevContext();
             RenderCore::Metal::DepthStencilView dsv(metalContext);
             using ClearFilter = RenderCore::Metal::DeviceContext::ClearFilter;
             metalContext.Clear(dsv, ClearFilter::Depth|ClearFilter::Stencil, 1.f, 0u);
+#endif
         }
     };
-#endif
 
 	public delegate void RenderCallback(GUILayer::SimpleRenderingContext^ context);
 
@@ -351,15 +356,16 @@ namespace GUILayer
             ToolsRig::ConfigureParsingContext(parserContext, *_visCameraSettings.get(), viewportDims);
             parserContext.GetTechniqueContext()._attachmentPool->Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget._renderTarget);
             
-            auto immediateDrawables = EngineDevice::GetInstance()->GetNative().GetImmediateDrawingApparatus()->_immediateDrawables;
-			auto context = gcnew GUILayer::SimpleRenderingContext(*immediateDrawables, RetainedResources, &threadContext, &parserContext);
+            auto& immediateDrawables = *EngineDevice::GetInstance()->GetNative().GetImmediateDrawingApparatus()->_immediateDrawables;
+            auto& pipelineAccelerators = *EngineDevice::GetInstance()->GetNative().GetDrawingApparatus()->_pipelineAccelerators;
+			auto context = gcnew GUILayer::SimpleRenderingContext(immediateDrawables, RetainedResources, &threadContext, pipelineAccelerators, &parserContext);
 			try
 			{
                 OnRender(context);
 
 				{
 					auto rpi = RenderCore::Techniques::RenderPassToPresentationTargetWithDepthStencil(threadContext, renderTarget._renderTarget, parserContext);
-					immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi.GetFrameBufferDesc(), 0, viewportDims);
+					immediateDrawables.ExecuteDraws(threadContext, parserContext, rpi.GetFrameBufferDesc(), 0, viewportDims);
 				}
 				OnRenderPostProcess(context);
 			}

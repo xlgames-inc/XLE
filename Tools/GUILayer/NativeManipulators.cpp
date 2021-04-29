@@ -54,7 +54,7 @@ namespace GUILayer
     {
         auto underlying = _manipContext->GetNativeManipulator();
         if (!underlying) return;
-        underlying->Render(context->GetThreadContext(), context->GetParsingContext());
+        underlying->Render(context->GetThreadContext(), context->GetParsingContext(), context->GetPipelineAccelerators());
     }
 
     bool NativeManipulatorLayer::OnBeginDrag(IViewContext^ vc, Point scrPt) 

@@ -97,11 +97,6 @@ namespace GUILayer
 		SceneEngine::IIntersectionScene& GetNative();
 		IntersectionTestSceneWrapper(
 			const std::shared_ptr<SceneEngine::IIntersectionScene>& scene);
-        IntersectionTestSceneWrapper(
-            const std::shared_ptr<SceneEngine::TerrainManager>& terrainManager,
-            const std::shared_ptr<SceneEngine::PlacementCellSet>& placements,
-            const std::shared_ptr<SceneEngine::PlacementsEditor>& placementsEditor,
-            std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionScene>> extraTesters);
         ~IntersectionTestSceneWrapper();
         !IntersectionTestSceneWrapper();
 	};

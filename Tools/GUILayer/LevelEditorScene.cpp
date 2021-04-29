@@ -9,8 +9,8 @@
 #include "GUILayerUtil.h"
 #include "IOverlaySystem.h"
 #include "EditorInterfaceUtils.h"
-#if defined(GUILAYER_SCENEENGINE)
 #include "ManipulatorsLayer.h"
+#if defined(GUILAYER_SCENEENGINE)
 #include "TerrainLayer.h"
 #endif
 #include "UITypesBinding.h" // for VisCameraSettings
@@ -18,22 +18,22 @@
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "ExportedNativeTypes.h"
-#if defined(GUILAYER_SCENEENGINE)
 #include "../EntityInterface/PlacementEntities.h"
+#if defined(GUILAYER_SCENEENGINE)
 #include "../EntityInterface/TerrainEntities.h"
 #include "../EntityInterface/EnvironmentSettings.h"
 #include "../EntityInterface/VegetationSpawnEntities.h"
 #endif
 #include "../EntityInterface/RetainedEntities.h"
 #include "../EntityInterface/GameObjects.h"
-#if defined(GUILAYER_SCENEENGINE)
 #include "../ToolsRig/PlacementsManipulators.h"     // just needed for destructors referenced in PlacementGobInterface.h
+#if defined(GUILAYER_SCENEENGINE)
 #include "../ToolsRig/TerrainManipulators.h"        // for TerrainManipulatorContext
-#include "../ToolsRig/VisualisationUtils.h"
 #endif
 #include "../ToolsRig/ObjectPlaceholders.h"
-#if defined(GUILAYER_SCENEENGINE)
 #include "../../SceneEngine/PlacementsManager.h"
+#include "../../SceneEngine/IntersectionTest.h"
+#if defined(GUILAYER_SCENEENGINE)
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/TerrainFormat.h"
 #include "../../SceneEngine/TerrainConfig.h"
@@ -44,10 +44,11 @@
 #include "../../SceneEngine/TerrainUberSurface.h"
 #include "../../SceneEngine/TerrainMaterial.h"
 #include "../../SceneEngine/SurfaceHeightsProvider.h"
-#include "../../RenderCore/Techniques/ModelCache.h"
 #include "../../FixedFunctionModel/ModelCache.h"
 #include "../../FixedFunctionModel/SharedStateSet.h"
 #endif
+#include "../../RenderCore/Techniques/ModelCache.h"
+#include "../../Math/MathSerialization.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../OSServices/RawFS.h"
@@ -94,13 +95,6 @@ namespace GUILayer
     {
 #if defined(GUILAYER_SCENEENGINE)
         auto fixedFunctionModelCache = std::make_shared<FixedFunctionModel::ModelCache>();
-		auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
-		auto newModelCache = std::make_shared<RenderCore::Techniques::ModelCache>(pipelineAcceleratorPool);
-        _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(newModelCache);
-        _placementsCells = std::make_shared<SceneEngine::PlacementCellSet>(SceneEngine::WorldPlacementsConfig(), Float3(0.f, 0.f, 0.f));
-        _placementsCellsHidden = std::make_shared<SceneEngine::PlacementCellSet>(SceneEngine::WorldPlacementsConfig(), Float3(0.f, 0.f, 0.f));
-        _placementsEditor = _placementsManager->CreateEditor(_placementsCells);
-		_placementsHidden = _placementsManager->CreateEditor(_placementsCellsHidden);
             // note --  we need to have the terrain manager a default terrain format here... But it's too early
             //          for some settings (like the gradient flags settings!)
         auto defTerrainFormat = std::make_shared<SceneEngine::TerrainFormat>(SceneEngine::GradientFlagsSettings(true));
@@ -108,16 +102,22 @@ namespace GUILayer
         _vegetationSpawnManager = std::make_shared<SceneEngine::VegetationSpawnManager>(fixedFunctionModelCache);
         _volumeFogManager = std::make_shared<SceneEngine::VolumetricFogManager>();
         _shallowSurfaceManager = std::make_shared<SceneEngine::ShallowSurfaceManager>();
-        _flexObjects = std::make_shared<EntityInterface::RetainedEntities>();
-        _placeholders = std::make_shared<ToolsRig::ObjectPlaceholders>(pipelineAcceleratorPool, _flexObjects);
         _dynamicImposters = std::make_shared<SceneEngine::DynamicImposters>(fixedFunctionModelCache->GetSharedStateSet());
         _placementsManager->GetRenderer()->SetImposters(_dynamicImposters);
-        _currentTime = 0.f;
 #else
+        // Base scene aspects
         auto pipelineAcceleratorPool = EngineDevice::GetInstance()->GetNative().GetMainPipelineAcceleratorPool();
         _flexObjects = std::make_shared<EntityInterface::RetainedEntities>();
         _placeholders = std::make_shared<ToolsRig::ObjectPlaceholders>(pipelineAcceleratorPool, _flexObjects);
         _currentTime = 0.f;
+
+        // Placements scene aspects
+        auto newModelCache = std::make_shared<RenderCore::Techniques::ModelCache>(pipelineAcceleratorPool);
+        _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(newModelCache);
+        _placementsCells = std::make_shared<SceneEngine::PlacementCellSet>(SceneEngine::WorldPlacementsConfig(), Float3(0.f, 0.f, 0.f));
+        _placementsCellsHidden = std::make_shared<SceneEngine::PlacementCellSet>(SceneEngine::WorldPlacementsConfig(), Float3(0.f, 0.f, 0.f));
+        _placementsEditor = _placementsManager->CreateEditor(_placementsCells);
+		_placementsHidden = _placementsManager->CreateEditor(_placementsCellsHidden);
 #endif
     }
 
@@ -217,6 +217,7 @@ namespace GUILayer
     { 
         return gcnew TerrainManipulators(_scene->_terrainManager, context->GetNative());
     }
+#endif
 
     IManipulatorSet^ EditorSceneManager::CreatePlacementManipulators(
         IPlacementManipulatorSettingsLayer^ context)
@@ -228,15 +229,6 @@ namespace GUILayer
         }
     }
 
-	IntersectionTestSceneWrapper^ EditorSceneManager::GetIntersectionScene()
-	{
-		return gcnew IntersectionTestSceneWrapper(
-            _scene->_terrainManager,
-            _scene->_placementsCells,
-            _scene->_placementsEditor,
-            {_scene->_placeholders->CreateIntersectionTester()} );
-    }
-
     PlacementsEditorWrapper^ EditorSceneManager::GetPlacementsEditor()
 	{
 		return gcnew PlacementsEditorWrapper(_scene->_placementsEditor);
@@ -246,11 +238,25 @@ namespace GUILayer
     {
         return gcnew PlacementsRendererWrapper(_scene->_placementsManager->GetRenderer());
     }
+
+#if defined(GUILAYER_SCENEENGINE)
+	IntersectionTestSceneWrapper^ EditorSceneManager::GetIntersectionScene()
+	{
+		return gcnew IntersectionTestSceneWrapper(
+            _scene->_terrainManager,
+            _scene->_placementsCells,
+            _scene->_placementsEditor,
+            {_scene->_placeholders->CreateIntersectionTester()} );
+    }
 #else
     IntersectionTestSceneWrapper^ EditorSceneManager::GetIntersectionScene()
 	{
-        assert(0);
-		return nullptr;
+        auto scene = SceneEngine::CreateIntersectionTestScene(
+            nullptr,
+            _scene->_placementsCells,
+            _scene->_placementsEditor,
+            {_scene->_placeholders->CreateIntersectionTester()});
+        return gcnew IntersectionTestSceneWrapper(std::move(scene));
     }
 #endif
 
@@ -375,6 +381,7 @@ namespace GUILayer
             "environment settings",
             std::bind(WriteEnvSettings, _1, docId, _scene->_flexObjects.get()));
     }
+#endif
 
     static auto WritePlacementsCfg(
         OutputStream& stream, 
@@ -462,6 +469,7 @@ namespace GUILayer
         return result;
     }
 
+#if defined(GUILAYER_SCENEENGINE)
     static auto WriteTerrainCfg(OutputStream& stream, SceneEngine::TerrainConfig& cfg) 
         -> StreamWriterResult
     {
@@ -580,9 +588,11 @@ namespace GUILayer
         _scene = std::make_shared<EditorScene>();
 
         using namespace EntityInterface;
+        auto placementsEditor = std::make_shared<PlacementEntities>(_scene->_placementsManager, _scene->_placementsEditor, _scene->_placementsHidden);
         auto flexGobInterface = std::make_shared<RetainedEntityInterface>(_scene->_flexObjects);
 
         auto swtch = std::make_shared<Switch>();
+        swtch->RegisterInterface(placementsEditor);
         swtch->RegisterInterface(flexGobInterface);
         _entities = gcnew EntityLayer(std::move(swtch));
 

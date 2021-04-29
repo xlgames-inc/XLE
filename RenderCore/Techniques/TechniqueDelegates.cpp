@@ -675,7 +675,7 @@ namespace RenderCore { namespace Techniques
 
 			::Assets::WhenAll(_techniqueFileHelper).ThenConstructToFuture<GraphicsPipelineDesc>(
 				*result,
-				[nascentDesc, hasEarlyRejectionTest, hasDeformVertex](const std::shared_ptr<TechniqueFileHelper>& techniqueFileHelper) {
+				[nascentDesc, hasEarlyRejectionTest, hasDeformVertex, testType=_testTypeParameter](const std::shared_ptr<TechniqueFileHelper>& techniqueFileHelper) {
 					std::vector<uint64_t> patchExpansions;
 					const TechniqueEntry* psTechEntry = &techniqueFileHelper->_noPatches;
 					if (hasEarlyRejectionTest) {
@@ -693,6 +693,7 @@ namespace RenderCore { namespace Techniques
 					mergedTechEntry.MergeIn(*psTechEntry);
 
 					PrepareShadersFromTechniqueEntry(nascentDesc, mergedTechEntry);
+					nascentDesc->_manualSelectorFiltering._setValues.SetParameter("INTERSECTION_TEST", testType);
 					return nascentDesc;
 				});			
 			return result;
@@ -701,7 +702,9 @@ namespace RenderCore { namespace Techniques
 		TechniqueDelegate_RayTest(
 			const ::Assets::FuturePtr<TechniqueSetFile>& techniqueSet,
 			const std::shared_ptr<TechniqueSharedResources>& sharedResources,
+			unsigned testTypeParameter,
 			const StreamOutputInitializers& soInit)
+		: _testTypeParameter(testTypeParameter)
 		{
 			_sharedResources = sharedResources;
 			
@@ -716,14 +719,16 @@ namespace RenderCore { namespace Techniques
 		std::shared_ptr<TechniqueSharedResources> _sharedResources;
 		std::vector<InputElementDesc> _soElements;
 		std::vector<unsigned> _soStrides;
+		unsigned _testTypeParameter;
 	};
 
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_RayTest(
 		const ::Assets::FuturePtr<TechniqueSetFile>& techniqueSet,
 		const std::shared_ptr<TechniqueSharedResources>& sharedResources,
+		unsigned testTypeParameter,
 		const StreamOutputInitializers& soInit)
 	{
-		return std::make_shared<TechniqueDelegate_RayTest>(techniqueSet, sharedResources, soInit);
+		return std::make_shared<TechniqueDelegate_RayTest>(techniqueSet, sharedResources, testTypeParameter, soInit);
 	}
 
 	ITechniqueDelegate::~ITechniqueDelegate() {}

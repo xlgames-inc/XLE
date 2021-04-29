@@ -391,7 +391,7 @@ namespace XLEMath
             farOr       |= (projectedCorners[c][2] >  projectedCorners[c][3]);
         }
         
-        if (clipSpaceType == ClipSpaceType::Positive) {
+        if (clipSpaceType == ClipSpaceType::Positive || clipSpaceType == ClipSpaceType::PositiveRightHanded) {
             for (unsigned c=0; c<8; ++c) {
                 nearOr      |= (projectedCorners[c][2] < 0.f);
                 nearAnd     &= (projectedCorners[c][2] < 0.f);

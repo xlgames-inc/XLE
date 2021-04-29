@@ -878,7 +878,7 @@ namespace SceneEngine
         auto& cells = cellSet._pimpl->_cells;
         for (auto i=cells.begin(); i!=cells.end(); ++i) {
 
-            if (!CullAABB_Aligned(view._projection._worldToProjection, i->_aabbMin, i->_aabbMax, RenderCore::Techniques::GetDefaultClipSpaceType()))
+            if (CullAABB_Aligned(view._projection._worldToProjection, i->_aabbMin, i->_aabbMax, RenderCore::Techniques::GetDefaultClipSpaceType()))
 				continue;
 
                 //  We need to look in the "_cellOverride" list first.

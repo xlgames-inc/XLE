@@ -5,24 +5,15 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "IntersectionTest.h"
-
-#if 0
 #include "RayVsModel.h"
-#include "LightingParser.h"
-#include "Terrain.h"
 #include "PlacementsManager.h"
-#include "SceneParser.h"
-#include "LightingParserContext.h"
-#include "RenderStep.h"
-#endif
 
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/State.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/Drawables.h"
 
 #include "../Math/Transformations.h"
 #include "../Math/Vector.h"
@@ -34,8 +25,6 @@
 namespace SceneEngine
 {
 
-#if 0
-
     /// <summary>Resolves ray and box intersections for tools</summary>
     /// This object can calculate intersections of basic primitives against
     /// the scene. This is intended for tools to perform interactive operations
@@ -44,30 +33,27 @@ namespace SceneEngine
     /// that any intersection operation will probably involve a GPU synchronisation.
     /// This isn't intended to be used at runtime in a game, because it may cause
     /// frame-rate hitches. But for tools, it should not be an issue.
-    class IntersectionTestScene
+    class IntersectionTestScene : public IIntersectionScene
     {
     public:
         IntersectionTestResult FirstRayIntersection(
             const IntersectionTestContext& context,
             std::pair<Float3, Float3> worldSpaceRay,
-            IntersectionTestResult::Type::BitField filter = ~IntersectionTestResult::Type::BitField(0)) const;
+            IntersectionTestResult::Type::BitField filter = ~IntersectionTestResult::Type::BitField(0)) const override;
 
-        std::vector<IntersectionTestResult> FrustumIntersection(
+        void FrustumIntersection(
+            std::vector<IntersectionTestResult>& result,
             const IntersectionTestContext& context,
             const Float4x4& worldToProjection,
-            IntersectionTestResult::Type::BitTypeField filter = ~IntersectionTestResult::Type::BitField(0)) const;
-
-        IntersectionTestResult UnderCursor(
-            const IntersectionTestContext& context,
-            Int2 cursorPosition,
-            IntersectionTestResult::Type::BitField filter = ~IntersectionTestResult::Type::BitField(0)) const;
+            IntersectionTestResult::Type::BitField filter = ~IntersectionTestResult::Type::BitField(0)) const override;
 
         const std::shared_ptr<TerrainManager>& GetTerrain() const { return _terrainManager; }
 
         IntersectionTestScene(
             std::shared_ptr<TerrainManager> terrainManager = nullptr,
             std::shared_ptr<PlacementCellSet> placements = nullptr,
-            std::shared_ptr<PlacementsEditor> placementsEditor = nullptr);
+            std::shared_ptr<PlacementsEditor> placementsEditor = nullptr,
+            IteratorRange<const std::shared_ptr<SceneEngine::IIntersectionScene>*> extraTesters = {});
         ~IntersectionTestScene();
     protected:
         std::shared_ptr<TerrainManager> _terrainManager;
@@ -84,6 +70,7 @@ namespace SceneEngine
         TerrainManager& terrainManager,
         std::pair<Float3, Float3> worldSpaceRay)
     {
+#if 0
         CATCH_ASSETS_BEGIN
             TerrainManager::IntersectionResult intersections[8];
             unsigned intersectionCount = terrainManager.CalculateIntersections(
@@ -92,6 +79,7 @@ namespace SceneEngine
             if (intersectionCount > 0)
                 return std::make_pair(intersections[0]._intersectionPoint, true);
         CATCH_ASSETS_END(parserContext)
+#endif
         return std::make_pair(Float3(0,0,0), false);
     }
 
@@ -103,6 +91,7 @@ namespace SceneEngine
         TerrainManager& terrainManager,
         std::pair<Float3, Float3> worldSpaceRay)
     {
+#if 0
             //  create a new device context and lighting parser context, and use
             //  this to find an accurate terrain collision.
         RenderCore::Metal::ViewportDesc newViewport {
@@ -117,14 +106,17 @@ namespace SceneEngine
 			intersectionContext._cameraDesc,
 			UInt2{unsigned(intersectionContext._viewportMaxs[0]-intersectionContext._viewportMins[0]), unsigned(intersectionContext._viewportMaxs[1]-intersectionContext._viewportMins[1])});
 		return FindTerrainIntersection(threadContext, parsingContext, terrainManager, worldSpaceRay);
+#endif
+        return std::make_pair(Float3(0,0,0), false);
     }
 
     static std::vector<ModelIntersectionStateContext::ResultEntry> PlacementsIntersection(
-        RenderCore::IThreadContext& threadContext, 
+        SceneEngine::ModelIntersectionStateContext& intersectionContext, 
 		RenderCore::Techniques::ParsingContext& parsingContext,
 		ModelIntersectionStateContext& stateContext,
         SceneEngine::PlacementsRenderer& placementsRenderer, SceneEngine::PlacementCellSet& cellSet,
-        SceneEngine::PlacementGUID object)
+        SceneEngine::PlacementGUID object,
+        const RenderCore::Techniques::CameraDesc* cameraForLOD)
     {
             // Using the GPU, look for intersections between the ray
             // and the given model. Since we're using the GPU, we need to
@@ -143,16 +135,15 @@ namespace SceneEngine
 		{
 			using namespace RenderCore;
 			using namespace SceneEngine;
-			SceneExecuteContext sceneExeContext;
-			auto viewDelegate = std::make_shared<BasicViewDelegate>();
-			sceneExeContext.AddView({SceneView::Type::Other, parsingContext.GetProjectionDesc()}, viewDelegate);
+            RenderCore::Techniques::DrawablesPacket pkt;
+			ExecuteSceneContext sceneExeContext;
+            sceneExeContext._view = {SceneView::Type::Other, parsingContext.GetProjectionDesc()};
+            sceneExeContext._destinationPkt = &pkt;
+            sceneExeContext._batchFilter = RenderCore::Techniques::BatchFilter::General;
 			placementsRenderer.BuildDrawables(
 				sceneExeContext,
 				cellSet, &object, &object+1);
-			Techniques::Draw(
-				threadContext, parsingContext, 
-				stateContext.MakeRayTestSequencerTechnique(), 
-				viewDelegate->_pkt);
+            intersectionContext.ExecuteDrawables(parsingContext, pkt, cameraForLOD);
 		}
 
         return stateContext.GetResults();
@@ -163,13 +154,13 @@ namespace SceneEngine
     auto IntersectionTestScene::FirstRayIntersection(
         const IntersectionTestContext& context,
         std::pair<Float3, Float3> worldSpaceRay,
-        Type::BitField filter) const -> Result
+        IntersectionTestResult::Type::BitField filter) const -> IntersectionTestResult
     {
-        Result result;
+        IntersectionTestResult result;
+        using Type = IntersectionTestResult::Type;
 
 		auto& threadContext = *RenderCore::Techniques::GetThreadContext();
 		RenderCore::Techniques::ParsingContext parsingContext(*context._techniqueContext);
-		parsingContext._pipelineAcceleratorPool = context._pipelineAcceleratorPool.get();
 
         if ((filter & Type::Terrain) && _terrainManager) {
             auto intersection = FindTerrainIntersection(
@@ -177,7 +168,7 @@ namespace SceneEngine
             if (intersection.second) {
                 float distance = Magnitude(intersection.first - worldSpaceRay.first);
                 if (distance < result._distance) {
-                    result = Result();
+                    result = IntersectionTestResult{};
                     result._type = Type::Terrain;
                     result._worldSpaceCollision = intersection.first;
                     result._distance = distance;
@@ -203,10 +194,6 @@ namespace SceneEngine
                 TRY
                 {
                     float rayLength = Magnitude(worldSpaceRay.second - worldSpaceRay.first);
-                    ModelIntersectionStateContext intersectionContext(
-                        ModelIntersectionStateContext::RayTest,
-                        threadContext, parsingContext, &context._cameraDesc);
-                    intersectionContext.SetRay(worldSpaceRay);
 
                     // note --  we could do this all in a single render call, except that there
                     //          is no way to associate a low level intersection result with a specific
@@ -214,10 +201,15 @@ namespace SceneEngine
                     auto count = trans->GetObjectCount();
                     for (unsigned c=0; c<count; ++c) {
                         auto guid = trans->GetGuid(c);
+
+                        ModelIntersectionStateContext intersectionContext(
+                            ModelIntersectionStateContext::RayTest,
+                            threadContext, *context._pipelineAcceleratorPool);
+                        intersectionContext.SetRay(worldSpaceRay);
                         auto results = PlacementsIntersection(
-                            threadContext, parsingContext, intersectionContext, 
+                            intersectionContext, parsingContext, intersectionContext, 
                             *_placementsEditor->GetManager()->GetRenderer(), *_placements,
-                            guid);
+                            guid, &context._cameraDesc);
 
                         bool gotGoodResult = false;
                         unsigned drawCallIndex = 0;
@@ -233,7 +225,7 @@ namespace SceneEngine
                         }
 
                         if (gotGoodResult && intersectionDistance < result._distance) {
-                            result = Result();
+                            result = IntersectionTestResult{};
                             result._type = Type::Placement;
                             result._worldSpaceCollision = LinearInterpolate(
                                 worldSpaceRay.first, worldSpaceRay.second, 
@@ -272,12 +264,13 @@ namespace SceneEngine
         return result;
     }
 
-    auto IntersectionTestScene::FrustumIntersection(
+    void IntersectionTestScene::FrustumIntersection(
+        std::vector<IntersectionTestResult>& result,
         const IntersectionTestContext& context,
         const Float4x4& worldToProjection,
-        Type::BitField filter) const -> std::vector<Result>
+        IntersectionTestResult::Type::BitField filter) const
     {
-        std::vector<Result> result;
+        using Type = IntersectionTestResult::Type;
 
         auto& threadContext = *RenderCore::Techniques::GetThreadContext();
 
@@ -298,11 +291,6 @@ namespace SceneEngine
                 TRY
                 {
 					RenderCore::Techniques::ParsingContext parsingContext(*context._techniqueContext);
-					parsingContext._pipelineAcceleratorPool = context._pipelineAcceleratorPool.get();
-                    ModelIntersectionStateContext intersectionContext(
-                        ModelIntersectionStateContext::FrustumTest,
-                        threadContext, parsingContext, &context._cameraDesc);
-                    intersectionContext.SetFrustum(worldToProjection);
 
                     // note --  we could do this all in a single render call, except that there
                     //          is no way to associate a low level intersection result with a specific
@@ -323,14 +311,20 @@ namespace SceneEngine
                         
                         bool isInside = boundaryTest == AABBIntersection::Within;
                         if (!isInside) {
+                            ModelIntersectionStateContext intersectionContext(
+                                ModelIntersectionStateContext::FrustumTest,
+                                threadContext, *context._pipelineAcceleratorPool);
+                            intersectionContext.SetFrustum(worldToProjection);
+
                             auto results = PlacementsIntersection(
-                                threadContext, parsingContext, intersectionContext, 
-                                *_placementsEditor->GetManager()->GetRenderer(), *_placements, guid);
+                                intersectionContext, parsingContext, intersectionContext, 
+                                *_placementsEditor->GetManager()->GetRenderer(), *_placements, guid,
+                                &context._cameraDesc);
                             isInside = !results.empty();
                         }
 
                         if (isInside) {
-                            Result r;
+                            IntersectionTestResult r;
                             r._type = Type::Placement;
                             r._worldSpaceCollision = Float3(0.f, 0.f, 0.f);
                             r._distance = 0.f;
@@ -351,23 +345,13 @@ namespace SceneEngine
             if (!(filter & 1<<uint32(c+firstExtraBit))) continue;
             _extraTesters[c]->FrustumIntersection(result, context, worldToProjection);
         }
-
-        return result;
-    }
-
-    auto IntersectionTestScene::UnderCursor(
-        const IntersectionTestContext& context,
-        Int2 cursorPosition, Type::BitField filter) const -> Result
-    {
-        return FirstRayIntersection(
-            context, context.CalculateWorldSpaceRay(cursorPosition), filter);
     }
 
     IntersectionTestScene::IntersectionTestScene(
         std::shared_ptr<TerrainManager> terrainManager,
         std::shared_ptr<PlacementCellSet> placements,
         std::shared_ptr<PlacementsEditor> placementsEditor,
-        std::initializer_list<std::shared_ptr<IIntersectionScene>> extraTesters)
+        IteratorRange<const std::shared_ptr<SceneEngine::IIntersectionScene>*> extraTesters)
     : _terrainManager(std::move(terrainManager))
     , _placements(std::move(placements))
     , _placementsEditor(std::move(placementsEditor))
@@ -378,7 +362,6 @@ namespace SceneEngine
 
     IntersectionTestScene::~IntersectionTestScene()
     {}
-#endif
 
     std::shared_ptr<IIntersectionScene> CreateIntersectionTestScene(
         std::shared_ptr<TerrainManager> terrainManager,
@@ -386,8 +369,8 @@ namespace SceneEngine
         std::shared_ptr<PlacementsEditor> placementsEditor,
         IteratorRange<const std::shared_ptr<SceneEngine::IIntersectionScene>*> extraTesters)
     {
-        assert(0);
-        return nullptr;
+        return std::make_shared<IntersectionTestScene>(
+            std::move(terrainManager), std::move(placements), std::move(placementsEditor), extraTesters);
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -432,6 +415,14 @@ namespace SceneEngine
         return Float2(
             _viewportMins[0] + (projCoords[0] / projCoords[3] * 0.5f + 0.5f) * float(viewport[0]),
             _viewportMins[1] + (projCoords[1] / projCoords[3] * -0.5f + 0.5f) * float(viewport[1]));
+    }
+
+    namespace Stubs
+    {
+        std::optional<float> GetTerrainHeight(const IIntersectionScene& scene, Float2 pt)
+        {
+            return {};
+        }
     }
 
 }

@@ -80,6 +80,7 @@ namespace RenderCore { namespace Techniques
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_RayTest(
 		const ::Assets::FuturePtr<TechniqueSetFile>& techniqueSet,
 		const std::shared_ptr<TechniqueSharedResources>& sharedResources,
+		unsigned testTypeParameter,
 		const StreamOutputInitializers& soInit);
 
 	/** <summary>Backwards compatibility for legacy style techniques</summary>

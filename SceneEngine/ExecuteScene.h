@@ -11,7 +11,7 @@ namespace RenderCore { namespace Techniques
 {
     class IPipelineAcceleratorPool;
     class SequencerContext;
-    class PreregisteredAttachment;
+    struct PreregisteredAttachment;
 }}
 
 namespace RenderCore { namespace LightingEngine 

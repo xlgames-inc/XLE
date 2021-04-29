@@ -19,7 +19,9 @@ using namespace System::Collections::Generic;
 
 namespace SceneEngine 
 {
-    class PlacementsManager; class PlacementsEditor; 
+    class PlacementsManager;
+    class PlacementsEditor;
+    class PlacementCellSet;
     class TerrainManager;
     class VegetationSpawnManager;
     class VolumetricFogManager;
@@ -42,9 +44,9 @@ namespace GUILayer
 {
     ref class VisCameraSettings;
 	ref class IntersectionTestSceneWrapper;
-#if defined(GUILAYER_SCENEENGINE)
     ref class PlacementsEditorWrapper;
     ref class PlacementsRendererWrapper;
+#if defined(GUILAYER_SCENEENGINE)
     ref class ObjectSet;
     ref class TerrainConfig;
     ref class TerrainManipulatorContext;
@@ -54,22 +56,12 @@ namespace GUILayer
     class EditorScene
     {
     public:
-        std::shared_ptr<SceneEngine::PlacementsManager>         _placementsManager;
-        std::shared_ptr<SceneEngine::PlacementsEditor>          _placementsEditor;
-		std::shared_ptr<SceneEngine::PlacementsEditor>          _placementsHidden;
-        std::shared_ptr<SceneEngine::PlacementCellSet>          _placementsCells;
-		std::shared_ptr<SceneEngine::PlacementCellSet>          _placementsCellsHidden;
         std::shared_ptr<SceneEngine::TerrainManager>            _terrainManager;
         std::shared_ptr<SceneEngine::VegetationSpawnManager>    _vegetationSpawnManager;
         std::shared_ptr<SceneEngine::VolumetricFogManager>      _volumeFogManager;
         std::shared_ptr<SceneEngine::ShallowSurfaceManager>     _shallowSurfaceManager;
         std::shared_ptr<SceneEngine::DynamicImposters>          _dynamicImposters;
-        std::shared_ptr<EntityInterface::RetainedEntities>      _flexObjects;
-        std::shared_ptr<ToolsRig::ObjectPlaceholders>			_placeholders;
         std::vector<std::function<void()>>                      _prepareSteps;
-
-        void    IncrementTime(float increment) { _currentTime += increment; }
-        float   _currentTime;
 
         EditorScene();
 		~EditorScene();
@@ -78,11 +70,19 @@ namespace GUILayer
     class EditorScene
     {
     public:
+        // Base scene aspects
         std::shared_ptr<EntityInterface::RetainedEntities>      _flexObjects;
         std::shared_ptr<ToolsRig::ObjectPlaceholders>			_placeholders;
 
         void    IncrementTime(float increment) { _currentTime += increment; }
         float   _currentTime;
+
+        // Placements scene aspects
+        std::shared_ptr<SceneEngine::PlacementsManager>         _placementsManager;
+        std::shared_ptr<SceneEngine::PlacementsEditor>          _placementsEditor;
+		std::shared_ptr<SceneEngine::PlacementsEditor>          _placementsHidden;
+        std::shared_ptr<SceneEngine::PlacementCellSet>          _placementsCells;
+		std::shared_ptr<SceneEngine::PlacementCellSet>          _placementsCellsHidden;
 
         EditorScene();
 		~EditorScene();
@@ -98,9 +98,7 @@ namespace GUILayer
 
     ref class IOverlaySystem;
     ref class IManipulatorSet;
-#if defined(GUILAYER_SCENEENGINE)
     ref class IPlacementManipulatorSettingsLayer;
-#endif
 
     /// <summary>High level manager for level editor interface</summary>
     /// The EditorSceneManager will start up and shutdown the core objects
@@ -136,14 +134,15 @@ namespace GUILayer
         };
 
         PendingExport^ ExportGameObjects(EntityInterface::DocumentId docId);
+        PendingExport^ ExportPlacements(EntityInterface::DocumentId placementsDoc);
 #if defined(GUILAYER_SCENEENGINE)
         PendingExport^ ExportEnv(EntityInterface::DocumentId docId);
-        PendingExport^ ExportPlacements(EntityInterface::DocumentId placementsDoc);
 
         PendingExport^ ExportTerrain(TerrainConfig^ cfg);
         PendingExport^ ExportTerrainCachedData();
         PendingExport^ ExportTerrainMaterialData();
         PendingExport^ ExportVegetationSpawn(EntityInterface::DocumentId docId);
+#endif
 
         value class PlacementCellRef
         {
@@ -154,16 +153,16 @@ namespace GUILayer
             property Vector3 Maxs;
         };
         PendingExport^ ExportPlacementsCfg(IEnumerable<PlacementCellRef>^ cells);
-#endif
 
             //// //// ////   A C C E S S O R S   //// //// ////
 
 #if defined(GUILAYER_SCENEENGINE)
         IManipulatorSet^ CreateTerrainManipulators(TerrainManipulatorContext^ context);
+#endif
         IManipulatorSet^ CreatePlacementManipulators(IPlacementManipulatorSettingsLayer^ context);
         PlacementsEditorWrapper^ GetPlacementsEditor();
         PlacementsRendererWrapper^ GetPlacementsRenderer();
-#endif
+
         IntersectionTestSceneWrapper^ GetIntersectionScene();
         IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera, EditorSceneRenderSettings^ renderSettings);
         EntityLayer^ GetEntityInterface();

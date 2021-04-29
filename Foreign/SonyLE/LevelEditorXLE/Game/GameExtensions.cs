@@ -16,8 +16,8 @@ using Sce.Atf.Dom;
 using LevelEditorCore;
 #if GUILAYER_SCENEENGINE
 using LevelEditorXLE.Environment;
-using LevelEditorXLE.Placements;
 #endif
+using LevelEditorXLE.Placements;
 using LevelEditorXLE.Extensions;
 
 namespace LevelEditorXLE.Game
@@ -43,7 +43,7 @@ namespace LevelEditorXLE.Game
             return  PlacementsFolder.CanAddChild(child)
                 |   EnvSettingsFolder.CanAddChild(child);
 #else
-            return false;
+            return PlacementsFolder.CanAddChild(child);
 #endif
         }
         public bool AddChild(object child)
@@ -53,10 +53,10 @@ namespace LevelEditorXLE.Game
 #if GUILAYER_SCENEENGINE
             if (EnvSettingsFolder.AddChild(child))
                 return true;
+#endif
 
             if (PlacementsFolder.AddChild(child))
                 return true;
-#endif
 
             var domNode = child.As<DomNode>();
             if (domNode != null)
@@ -79,7 +79,7 @@ namespace LevelEditorXLE.Game
 
             return false;
         }
-#endregion
+        #endregion
 
 #if GUILAYER_SCENEENGINE
         public XLEEnvSettingsFolder EnvSettingsFolder
@@ -95,6 +95,7 @@ namespace LevelEditorXLE.Game
                 return result;
             }
         }
+#endif
 
         public Placements.PlacementsFolder PlacementsFolder
         {
@@ -106,6 +107,7 @@ namespace LevelEditorXLE.Game
             set { SetChild(Schema.xleGameType.placementsChild, value); }
         }
 
+#if GUILAYER_SCENEENGINE
         public Terrain.XLETerrainGob Terrain
         {
             get { return DomNode.GetChild(Schema.xleGameType.terrainChild).As<Terrain.XLETerrainGob>(); }
@@ -176,6 +178,7 @@ namespace LevelEditorXLE.Game
                         }
                         break;
                     }
+#endif
 
                 case Command.CreatePlacementsFolder:
                     {
@@ -188,6 +191,7 @@ namespace LevelEditorXLE.Game
                         break;
                     }
 
+#if GUILAYER_SCENEENGINE
                 case Command.CreateEnvironmentSetting:
                     {
                         var envFolder = EnvSettingsFolder;

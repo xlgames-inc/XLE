@@ -12,7 +12,7 @@
 #include <string>
 
 namespace RenderCore { namespace Techniques { class ParsingContext; class DrawablesPacket; class IPipelineAcceleratorPool; } }
-namespace SceneEngine { class IIntersectionScene; }
+namespace SceneEngine { class IIntersectionScene; class ExecuteSceneContext; }
 
 namespace EntityInterface { class RetainedEntities; }
 
@@ -21,7 +21,7 @@ namespace ToolsRig
     class ObjectPlaceholders : public std::enable_shared_from_this<ObjectPlaceholders>
     {
     public:
-		void BuildDrawables(IteratorRange<RenderCore::Techniques::DrawablesPacket** const> pkts);
+		void BuildDrawables(const SceneEngine::ExecuteSceneContext& executeContext);
 
         void AddAnnotation(EntityInterface::ObjectTypeId typeId, const std::string& geoType);
 

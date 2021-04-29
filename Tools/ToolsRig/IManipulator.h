@@ -17,7 +17,7 @@ namespace SceneEngine
 
 namespace PlatformRig { class InputSnapshot; }
 namespace RenderCore { class IThreadContext; }
-namespace RenderCore { namespace Techniques { class ParsingContext; }}
+namespace RenderCore { namespace Techniques { class ParsingContext; class IPipelineAcceleratorPool; }}
 
 namespace ToolsRig
 {
@@ -30,7 +30,8 @@ namespace ToolsRig
             const SceneEngine::IIntersectionScene* hitTestScene) = 0;
         virtual void Render(
             RenderCore::IThreadContext& context, 
-            RenderCore::Techniques::ParsingContext& parserContext) = 0;
+            RenderCore::Techniques::ParsingContext& parserContext,
+            RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators) = 0;
 
         virtual const char* GetName() const = 0;
         virtual std::string GetStatusText() const = 0;

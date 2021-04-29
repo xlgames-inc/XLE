@@ -90,10 +90,8 @@ namespace RenderingInterop
                 }
             }
 
-#if GUILAYER_SCENEENGINE
             using (var placements = GameEngine.GetEditorSceneManager().GetPlacementsEditor())
                 sel.DoFixup(placements);
-#endif
 
             InvalidateViews();
         }

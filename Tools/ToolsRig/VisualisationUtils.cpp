@@ -773,7 +773,7 @@ namespace ToolsRig
             SceneEngine::ModelIntersectionStateContext::RayTest,
             threadContext, pipelineAccelerators };
         stateContext.SetRay(worldSpaceRay);
-		stateContext.ExecuteDrawables(parserContext, pipelineAccelerators, pkt);
+		stateContext.ExecuteDrawables(parserContext, pkt);
 		
         auto results = stateContext.GetResults();
         if (!results.empty()) {

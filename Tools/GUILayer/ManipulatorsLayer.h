@@ -18,6 +18,7 @@ namespace ToolsRig { class IPlacementManipulatorSettings; class TerrainManipulat
 
 namespace GUILayer
 {
+#if defined(GUILAYER_SCENEENGINE)
     class TerrainManipulatorsPimpl
     {
     public:
@@ -71,6 +72,7 @@ namespace GUILayer
         clix::auto_ptr<TerrainManipulatorsPimpl> _pimpl;
         TerrainManipulatorContext^ _context;
     };
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

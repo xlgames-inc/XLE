@@ -155,17 +155,6 @@ namespace GUILayer
 		_scene = std::move(scene);
 	}
 
-    IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(
-        const std::shared_ptr<SceneEngine::TerrainManager>& terrainManager,
-        const std::shared_ptr<SceneEngine::PlacementCellSet>& placements,
-        const std::shared_ptr<SceneEngine::PlacementsEditor>& placementsEditor,
-        std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionScene>> extraTesters)
-    {
-		_scene = SceneEngine::CreateIntersectionTestScene(
-            terrainManager, 
-            placements, placementsEditor, extraTesters);
-    }
-
     IntersectionTestSceneWrapper::~IntersectionTestSceneWrapper()
     {
         _scene.reset();
