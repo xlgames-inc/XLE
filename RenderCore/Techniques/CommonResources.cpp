@@ -87,6 +87,7 @@ namespace RenderCore { namespace Techniques
         std::pair<const char*, unsigned> TryDehash(uint64_t hashValue)
         {
             if ((hashValue - POSITION) < 16) return std::make_pair("POSITION", unsigned(hashValue - POSITION));
+            if ((hashValue - PIXELPOSITION) < 16) return std::make_pair("PIXELPOSITION", unsigned(hashValue - PIXELPOSITION));
             else if ((hashValue - TEXCOORD) < 16) return std::make_pair("TEXCOORD", unsigned(hashValue - TEXCOORD));
             else if ((hashValue - COLOR) < 16) return std::make_pair("COLOR", unsigned(hashValue - COLOR));
             else if ((hashValue - NORMAL) < 16) return std::make_pair("NORMAL", unsigned(hashValue - NORMAL));

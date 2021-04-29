@@ -62,6 +62,7 @@ namespace RenderCore { namespace Techniques
     namespace CommonSemantics
     {        
         static const auto POSITION = Utility::Hash64("POSITION");
+        static const auto PIXELPOSITION = Utility::Hash64("PIXELPOSITION");
         static const auto TEXCOORD = Utility::Hash64("TEXCOORD");
 		static const auto COLOR = Utility::Hash64("COLOR");
 		static const auto NORMAL = Utility::Hash64("NORMAL");

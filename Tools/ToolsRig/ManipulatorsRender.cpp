@@ -441,7 +441,7 @@ namespace ToolsRig
         };
 
         InputElementDesc vertexInputLayout[] = {
-            InputElementDesc( "POSITION", 0, Format::R32G32_FLOAT ),
+            InputElementDesc( "PIXELPOSITION", 0, Format::R32G32_FLOAT ),
             InputElementDesc( "TEXCOORD", 0, Format::R32G32_FLOAT )
         };
 

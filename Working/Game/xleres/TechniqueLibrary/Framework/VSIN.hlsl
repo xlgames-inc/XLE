@@ -7,14 +7,22 @@
 
 #include "../Math/SurfaceAlgorithm.hlsl"
 
+#if !defined(GEO_HAS_POSITION)
+	#define GEO_HAS_POSITION 1
+#endif
+
 struct VSIN //////////////////////////////////////////////////////
 {
-	#if !defined(GEO_NO_POSITION)
-		float3 position : POSITION0;
+	#if GEO_HAS_POSITION
+		float3 position : POSITION;
+	#endif
+
+	#if GEO_HAS_PIXELPOSITION
+		float2 pixelposition : PIXELPOSITION;
 	#endif
 
 	#if GEO_HAS_COLOR>=1
-		float4 color : COLOR0;
+		float4 color : COLOR;
 	#endif
 
 	#if GEO_HAS_TEXCOORD>=1
@@ -71,7 +79,7 @@ struct VSIN //////////////////////////////////////////////////////
 
 float3 VSIN_GetLocalPosition(VSIN input)
 {
-	#if !defined(GEO_NO_POSITION)
+	#if GEO_HAS_POSITION
 		return input.position.xyz;
 	#else
 		return 0.0.xxx;

@@ -582,8 +582,6 @@ namespace RenderCore { namespace Techniques
 				return lhs._semanticIndex > rhs._semanticIndex;	// note -- reversing order
 			});
 
-		bool foundPosition = false;
-
 		// Build up the geometry selectors. 
 		for (auto i = sortedIA.begin(); i!=sortedIA.end(); ++i) {
 			// If we have the same name as the last one, we should just skip (because the
@@ -598,8 +596,6 @@ namespace RenderCore { namespace Techniques
 				buffer[8+c] = (char)std::toupper(i->_semanticName[c]);	// ensure that we're using upper case for the full semantic
 			buffer[8+c] = '\0';
 			_geoSelectors.SetParameter((const utf8*)buffer, i->_semanticIndex+1);
-
-			foundPosition |= XlEqStringI(i->_semanticName, "POSITION");
 		}
 
 		// If we have no IA elements at all, force on GEO_HAS_VERTEX_ID. Shaders will almost always
@@ -607,8 +603,6 @@ namespace RenderCore { namespace Techniques
 		// the next.
 		if (sortedIA.empty())
 			_geoSelectors.SetParameter("GEO_HAS_VERTEX_ID", 1);
-		if (!foundPosition)
-			_geoSelectors.SetParameter("GEO_NO_POSITION", 1);
 	}
 
 	PipelineAccelerator::PipelineAccelerator(
@@ -632,8 +626,6 @@ namespace RenderCore { namespace Techniques
 				return lhs._semanticHash < rhs._semanticHash;
 			});
 
-		bool foundPosition = false;
-
 		// Build up the geometry selectors. 
 		for (auto i = sortedIA.begin(); i!=sortedIA.end(); ++i) {
 			StringMeld<256> meld;
@@ -653,8 +645,6 @@ namespace RenderCore { namespace Techniques
 				meld << "GEO_HAS_" << std::hex << i->_semanticHash;
 				_geoSelectors.SetParameter(meld.AsStringSection(), 1);
 			}
-
-			foundPosition |= (i->_semanticHash - CommonSemantics::POSITION) < 16;
 		}
 
 		// If we have no IA elements at all, force on GEO_HAS_VERTEX_ID. Shaders will almost always
@@ -662,8 +652,6 @@ namespace RenderCore { namespace Techniques
 		// the next.
 		if (sortedIA.empty())
 			_geoSelectors.SetParameter("GEO_HAS_VERTEX_ID", 1);
-		if (!foundPosition)
-			_geoSelectors.SetParameter("GEO_NO_POSITION", 1);
 	}
 
 	PipelineAccelerator::~PipelineAccelerator()

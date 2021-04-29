@@ -465,14 +465,14 @@ namespace RenderCore
         {
             InputElementDesc P2CT_Elements[] =
             {
-                InputElementDesc( "POSITION",   0, Format::R32G32_FLOAT   ),
+                InputElementDesc( "PIXELPOSITION",   0, Format::R32G32_FLOAT   ),
                 InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM ),
                 InputElementDesc( "TEXCOORD",   0, Format::R32G32_FLOAT   )
             };
 
             InputElementDesc P2C_Elements[] = 
             {
-                InputElementDesc( "POSITION",   0, Format::R32G32_FLOAT   ),
+                InputElementDesc( "PIXELPOSITION",   0, Format::R32G32_FLOAT   ),
                 InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM )
             };
 

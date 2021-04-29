@@ -66,12 +66,22 @@ float4 PixelCoordToSVPosition(float2 pixelCoord)
 #endif
 }
 
+float4 TransformPosition(float3 localPosition)
+{
+	float3 worldPosition = localPosition; // mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
+	return mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 VSOUT frameworkEntry(VSIN vsin)
 {
 	VSOUT output;
-	output.position = PixelCoordToSVPosition(VSIN_GetLocalPosition(vsin).xy);
+	#if GEO_HAS_PIXELPOSITION
+		output.position = PixelCoordToSVPosition(vsin.pixelposition.xy);
+	#else
+		output.position = TransformPosition(vsin.position);
+	#endif
 
 	#if VSOUT_HAS_COLOR>=1
 		output.color = VSIN_GetColor0(vsin);
@@ -174,7 +184,7 @@ struct PSInput_Basic
 	float2 _texCoord : TEXCOORD0;
 };
 
-float4 P2C(		float2 iPosition : POSITION0,
+float4 P2C(		float2 iPosition : PIXELPOSITION0,
 				float4 iColor	 : COLOR0,
 				out float4 oColor : COLOR0 ) : SV_POSITION
 {
@@ -182,7 +192,7 @@ float4 P2C(		float2 iPosition : POSITION0,
 	return PixelCoordToSVPosition(iPosition);
 }
 
-float4 P2CR(	float2 iPosition  : POSITION0,
+float4 P2CR(	float2 iPosition  : PIXELPOSITION0,
 				float4 iColor	  : COLOR0,
 				float iRadius	  : RADIUS,
 				out float4 oColor : COLOR0,
@@ -193,7 +203,7 @@ float4 P2CR(	float2 iPosition  : POSITION0,
 	return PixelCoordToSVPosition(iPosition);
 }
 
-PSInput_Basic P2CT(	float2 iPosition : POSITION0,
+PSInput_Basic P2CT(	float2 iPosition : PIXELPOSITION0,
 				float4 iColor	 : COLOR0,
 				float2 iTexCoord : TEXCOORD0 )
 {
@@ -204,7 +214,7 @@ PSInput_Basic P2CT(	float2 iPosition : POSITION0,
 	return output;
 }
 
-void P2T(	float2 iPosition : POSITION0,
+void P2T(	float2 iPosition : PIXELPOSITION0,
 			float2 iTexCoord : TEXCOORD0,
 			out float4 oPosition	: SV_Position,
 			out float2 oTexCoord0	: TEXCOORD0 )
@@ -213,7 +223,7 @@ void P2T(	float2 iPosition : POSITION0,
 	oTexCoord0 = iTexCoord;
 }
 
-void P2CTT(	float2 iPosition	: POSITION0,
+void P2CTT(	float2 iPosition	: PIXELPOSITION0,
 			float4 iColor		: COLOR0,
 			float2 iTexCoord0	: TEXCOORD0,
 			float2 iTexCoord1	: TEXCOORD1,
@@ -231,7 +241,7 @@ void P2CTT(	float2 iPosition	: POSITION0,
 	oOutputDimensions = 1.0f / SysUniform_ReciprocalViewportDimensions().xy;
 }
 
-void P2CCTT(float2 iPosition	: POSITION0,
+void P2CCTT(float2 iPosition	: PIXELPOSITION0,
 			float4 iColor0		: COLOR0,
 			float4 iColor1		: COLOR1,
 			float2 iTexCoord0	: TEXCOORD0,

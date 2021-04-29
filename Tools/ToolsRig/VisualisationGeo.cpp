@@ -15,7 +15,7 @@ namespace ToolsRig
     namespace Internal
     {
         static RenderCore::InputElementDesc Vertex2D_InputLayout_[] = {
-            RenderCore::InputElementDesc( "POSITION", 0, RenderCore::Format::R32G32_FLOAT, 0, offsetof(Internal::Vertex2D, _position) ),
+            RenderCore::InputElementDesc( "PIXELPOSITION", 0, RenderCore::Format::R32G32_FLOAT, 0, offsetof(Internal::Vertex2D, _position) ),
             RenderCore::InputElementDesc( "TEXCOORD", 0, RenderCore::Format::R32G32_FLOAT, 0, offsetof(Internal::Vertex2D, _texCoord) )
         };
 
@@ -32,7 +32,7 @@ namespace ToolsRig
     IteratorRange<const RenderCore::InputElementDesc*> Vertex3D_InputLayout = MakeIteratorRange(Internal::Vertex3D_InputLayout_);
 
 	std::vector<RenderCore::MiniInputElementDesc> Vertex2D_MiniInputLayout {
-		RenderCore::MiniInputElementDesc{ RenderCore::Techniques::CommonSemantics::POSITION, RenderCore::Format::R32G32_FLOAT },
+		RenderCore::MiniInputElementDesc{ RenderCore::Techniques::CommonSemantics::PIXELPOSITION, RenderCore::Format::R32G32_FLOAT },
 		RenderCore::MiniInputElementDesc{ RenderCore::Techniques::CommonSemantics::TEXCOORD, RenderCore::Format::R32G32_FLOAT }
 	};
     std::vector<RenderCore::MiniInputElementDesc> Vertex3D_MiniInputLayout {
