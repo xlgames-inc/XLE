@@ -314,7 +314,6 @@ namespace SceneEngine
     {
 		auto& metalContext = *Metal::DeviceContext::Get(*_pimpl->_threadContext);
 
-		_pimpl->_rpi = Techniques::RenderPassInstance {};
 		if (_pimpl->_pendingUnbind) {
 			_pimpl->_encoder = {};
 			_pimpl->_rpi = {};

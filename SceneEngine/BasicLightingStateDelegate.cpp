@@ -434,17 +434,6 @@ namespace SceneEngine
 
 #if 1
 
-#include "../RenderCore/Techniques/TechniqueDelegates.h"
-#include "../RenderCore/Techniques/Drawables.h"
-#include "../RenderCore/Techniques/Apparatuses.h"
-#include "../RenderCore/Techniques/CommonBindings.h"
-#include "../SceneEngine/RenderStep_PrepareShadows.h"
-#include "../SceneEngine/RenderStepUtils.h"
-#include "../SceneEngine/LightInternal.h"
-#include "../SceneEngine/IntersectionTest.h"
-#include "../Utility/Meta/AccessorSerialize.h"
-#include "../Utility/Meta/ClassAccessors.h"
-
 namespace SceneEngine
 {
     ToneMapSettings::ToneMapSettings() {}

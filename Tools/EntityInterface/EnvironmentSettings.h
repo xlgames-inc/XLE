@@ -10,8 +10,7 @@
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/UTFUtils.h"
 
-namespace SceneEngine { class VolumetricFogManager; class ShallowSurfaceManager; }
-namespace PlatformRig { class EnvironmentSettings; }
+namespace SceneEngine { class VolumetricFogManager; class ShallowSurfaceManager; class EnvironmentSettings; }
 
 namespace Utility 
 { 

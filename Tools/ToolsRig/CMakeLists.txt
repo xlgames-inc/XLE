@@ -24,6 +24,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
 		../EntityInterface/GameObjects.cpp
 		../EntityInterface/RetainedEntities.cpp
 		../EntityInterface/PlacementEntities.cpp
+		../EntityInterface/EnvironmentSettings.cpp
 		)
 	xle_configure_library(ToolsRig-${metal_name})
 	target_link_libraries(ToolsRig-${metal_name} PRIVATE RenderCoreTechniques-${metal_name})

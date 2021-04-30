@@ -8,24 +8,32 @@
 
 #include "EnvironmentSettings.h"
 #include "RetainedEntities.h"
+#include "../../RenderCore/LightingEngine/LightDesc.h"
+#if defined(GUILAYER_SCENEENGINE)
 #include "../../SceneEngine/Ocean.h"
 #include "../../SceneEngine/DeepOceanSim.h"
 #include "../../SceneEngine/VolumetricFog.h"
 #include "../../SceneEngine/ShallowSurface.h"
+#endif
+#include "../../SceneEngine/ShadowConfiguration.h"
 #include "../../SceneEngine/BasicLightingStateDelegate.h"
 #include "../../Math/Transformations.h"
+#include "../../Math/MathSerialization.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/OutputStreamFormatter.h"
 #include "../../Utility/Meta/AccessorSerialize.h"
 #include <memory>
 
+#if defined(GUILAYER_SCENEENGINE)
 namespace SceneEngine 
 {
     extern DeepOceanSimSettings GlobalOceanSettings; 
     extern OceanLightingSettings GlobalOceanLightingSettings;
 }
+#endif
 
 namespace EntityInterface
 {
@@ -33,7 +41,7 @@ namespace EntityInterface
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void ReadTransform(SceneEngine::LightDesc& light, const ParameterBox& props)
+    static void ReadTransform(RenderCore::LightingEngine::LightDesc& light, const ParameterBox& props)
     {
         static const auto transformHash = ParameterBox::MakeParameterNameHash("Transform");
         auto transform = Transpose(props.GetParameter(transformHash, Identity<Float4x4>()));
@@ -44,7 +52,7 @@ namespace EntityInterface
         light._radii = Float2(decomposed._scale[0], decomposed._scale[1]);
 
             // For directional lights we need to normalize the position (it will be treated as a direction)
-        if (light._shape == SceneEngine::LightDesc::Shape::Directional)
+        if (light._shape == RenderCore::LightingEngine::LightDesc::Shape::Directional)
             light._position = (MagnitudeSquared(light._position) > 1e-5f) ? Normalize(light._position) : Float3(0.f, 0.f, 0.f);
     }
 
@@ -75,7 +83,6 @@ namespace EntityInterface
             const RetainedEntity& obj)
     {
         using namespace SceneEngine;
-        using namespace PlatformRig;
 
         const auto typeAmbient = flexGobInterface.GetTypeId(EntityTypeName::AmbientSettings);
         const auto typeDirectionalLight = flexGobInterface.GetTypeId(EntityTypeName::DirectionalLight);
@@ -84,37 +91,37 @@ namespace EntityInterface
         const auto typeShadowFrustumSettings = flexGobInterface.GetTypeId(EntityTypeName::ShadowFrustumSettings);
 
         EnvironmentSettings result;
-        result._globalLightingDesc = DefaultGlobalLightingDesc();
+        result._environmentalLightingDesc = SceneEngine::DefaultEnvironmentalLightingDesc();
         for (const auto& cid : obj._children) {
             const auto* child = flexGobInterface.GetEntity(obj._doc, cid.second);
             if (!child) continue;
 
             if (child->_type == typeAmbient) {
-                result._globalLightingDesc = GlobalLightingDesc(child->_properties);
+                result._environmentalLightingDesc = MakeEnvironmentalLightingDesc(child->_properties);
             }
 
             if (child->_type == typeDirectionalLight || child->_type == typeAreaLight) {
 
                 const auto& props = child->_properties;
-                LightDesc light(props);
+                auto light = SceneEngine::MakeLightDesc(props);
                 if (child->_type == typeDirectionalLight)
-                    light._shape = LightDesc::Shape::Directional;
+                    light._shape = RenderCore::LightingEngine::LightDesc::Shape::Directional;
                 ReadTransform(light, props);
                 
                 if (props.GetParameter(Attribute::Flags, 0u) & (1<<0)) {
 
                         // look for frustum settings that match the "name" parameter
-                    auto frustumSettings = PlatformRig::DefaultShadowFrustumSettings();
-                    auto fsRef = props.GetString<char>(Attribute::Name);
-                    if (!fsRef.empty()) {
+                    auto frustumSettings = SceneEngine::DefaultShadowFrustumSettings{};
+                    auto fsRef = props.GetParameterAsString(Attribute::Name);
+                    if (fsRef.has_value()) {
                         for (const auto& cid2 : obj._children) {
                             const auto* fsSetObj = flexGobInterface.GetEntity(obj._doc, cid2.second);
                             if (!fsSetObj || fsSetObj->_type != typeShadowFrustumSettings) continue;
                             
-                            auto attachedLight = fsSetObj->_properties.GetString<char>(Attribute::AttachedLight);
-                            if (XlCompareStringI(attachedLight.c_str(), fsRef.c_str())!=0) continue;
+                            auto attachedLight = fsSetObj->_properties.GetParameterAsString(Attribute::AttachedLight);
+                            if (!attachedLight.has_value() || XlCompareStringI(attachedLight.value().c_str(), fsRef.value().c_str())!=0) continue;
 
-                            frustumSettings = CreateFromParameters<PlatformRig::DefaultShadowFrustumSettings>(fsSetObj->_properties);
+                            frustumSettings = CreateFromParameters<SceneEngine::DefaultShadowFrustumSettings>(fsSetObj->_properties);
                             break;
                         }
                     }
@@ -144,7 +151,7 @@ namespace EntityInterface
         for (const auto& s : allSettings)
             result.push_back(
                 std::make_pair(
-                    s->_properties.GetString<char>(Attribute::Name),
+                    s->_properties.GetParameterAsString(Attribute::Name).value(),
                     BuildEnvironmentSettings(flexGobInterface, *s)));
 
         return std::move(result);
@@ -171,8 +178,8 @@ namespace EntityInterface
             const RetainedEntity& obj,
             const RetainedEntities& entities)
     {
-        auto name = Conversion::Convert<std::basic_string<CharType>>(entities.GetTypeName(obj._type));
-        auto eleId = formatter.BeginElement(AsPointer(name.cbegin()), AsPointer(name.cend()));
+        auto name = entities.GetTypeName(obj._type);
+        auto eleId = formatter.BeginKeyedElement(name);
         if (!obj._children.empty()) formatter.NewLine();    // properties can continue on the same line, but only if we don't have children
         SerializeBody<CharType>(formatter, obj, entities);
         formatter.EndElement(eleId);
@@ -203,8 +210,8 @@ namespace EntityInterface
         for (const auto& s : allSettings)
             if (s->_doc == docId) {
                 {
-                    auto name = s->_properties.GetString<utf8>(Attribute::Name);
-                    auto eleId = formatter.BeginElement(AsPointer(name.cbegin()), AsPointer(name.cend()));
+                    auto name = s->_properties.GetParameterAsString(Attribute::Name);
+                    auto eleId = formatter.BeginKeyedElement(name.value());
                     formatter.NewLine();
                     SerializeBody<utf8>(formatter, *s, flexGobInterface);
                     formatter.EndElement(eleId);
@@ -221,6 +228,7 @@ namespace EntityInterface
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if defined(GUILAYER_SCENEENGINE)
     static SceneEngine::DeepOceanSimSettings BuildOceanSettings(
         const RetainedEntities& sys, const RetainedEntity& obj)
     {
@@ -232,9 +240,11 @@ namespace EntityInterface
     {
         return SceneEngine::OceanLightingSettings(obj._properties);
     }
+#endif
 
     void EnvEntitiesManager::RegisterEnvironmentFlexObjects()
     {
+#if defined(GUILAYER_SCENEENGINE)
         _flexSys->RegisterCallback(
             _flexSys->GetTypeId("OceanSettings"),
             [](const RetainedEntities& flexSys, const Identifier& obj, RetainedEntities::ChangeType changeType)
@@ -260,10 +270,12 @@ namespace EntityInterface
                     SceneEngine::GlobalOceanLightingSettings = SceneEngine::OceanLightingSettings();
                 }
             });
+#endif
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if defined(GUILAYER_SCENEENGINE)
     static void UpdateVolumetricFog(
         const RetainedEntities& sys, SceneEngine::VolumetricFogManager& mgr)
     {
@@ -284,10 +296,12 @@ namespace EntityInterface
         
         mgr.Load(cfg);
     }
+#endif
 
     void EnvEntitiesManager::RegisterVolumetricFogFlexObjects(
         std::shared_ptr<SceneEngine::VolumetricFogManager> manager)
     {
+#if defined(GUILAYER_SCENEENGINE)
         std::weak_ptr<SceneEngine::VolumetricFogManager> weakPtrToManager = manager;
         const char* types[] = { "FogVolume", "FogVolumeRenderer" };
         for (unsigned c=0; c<dimof(types); ++c) {
@@ -300,6 +314,7 @@ namespace EntityInterface
                     UpdateVolumetricFog(flexSys, *mgr);
                 });
         }
+#endif
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -358,6 +373,7 @@ namespace EntityInterface
         return std::move(result);
     }
 
+#if defined(GUILAYER_SCENEENGINE)
     static void UpdateShallowSurface(
         const RetainedEntities& sys,
         SceneEngine::ShallowSurfaceManager& mgr)
@@ -377,14 +393,14 @@ namespace EntityInterface
         auto markers = sys.FindEntitiesOfType(markerType);
         for (auto s:surfaces) {
             const auto& props = s->_properties;
-            auto markerName = props.GetString<utf8>(Marker);
-            if (markerName.empty()) continue;
+            auto markerName = props.GetParameterAsString(Marker);
+            if (!markerName.has_value()) continue;
 
                 // Look for the marker with the matching name
             const RetainedEntity* marker = nullptr;
             for (auto m:markers) {
-                auto testName = m->_properties.GetString<utf8>(name);
-                if (XlEqStringI(testName, markerName)) {
+                auto testName = m->_properties.GetParameterAsString(name);
+                if (testName.has_value() && XlEqStringI(testName.value(), markerName.value())) {
                     marker = m;
                     break;
                 }
@@ -408,6 +424,7 @@ namespace EntityInterface
             }
         }
     }
+#endif
 
     void EnvEntitiesManager::RegisterShallowSurfaceFlexObjects(
         std::shared_ptr<SceneEngine::ShallowSurfaceManager> manager)
@@ -430,6 +447,7 @@ namespace EntityInterface
 
     void EnvEntitiesManager::FlushUpdates()
     {
+#if defined(GUILAYER_SCENEENGINE)
         if (_pendingShallowSurfaceUpdate) {
             auto mgr = _shallowWaterManager.lock();
             if (mgr) {
@@ -437,6 +455,7 @@ namespace EntityInterface
             }
             _pendingShallowSurfaceUpdate = false;
         }
+#endif
     }
 
     EnvEntitiesManager::EnvEntitiesManager(std::shared_ptr<RetainedEntities> sys)

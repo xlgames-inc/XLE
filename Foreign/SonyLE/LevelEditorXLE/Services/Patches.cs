@@ -161,12 +161,10 @@ namespace LevelEditorXLE
             var ext = gameRoot.As<Game.GameExtensions>();
             if (ext != null)
             {
-#if GUILAYER_SCENEENGINE
                     // Add default environment settings
                 var envFolder = ext.EnvSettingsFolder;
                 if (envFolder.Settings.Count == 0)
                     envFolder.AddChild(Environment.XLEEnvSettings.Create(envFolder.GetNameForNewChild()));
-#endif
 
                 // Add placements folder with an unnamed default placement document
                 if (ext.PlacementsFolder == null)

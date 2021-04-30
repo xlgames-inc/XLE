@@ -24,6 +24,7 @@
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
+#include "../../Math/Transformations.h"
 #include <vector>
 
 #include "../../SceneEngine/PlacementsManager.h"        // For some of the code in RenderingUtil below
@@ -147,6 +148,10 @@ namespace GUILayer
         if (!geo->_vertexStreams[0]._resource) return;
 
         RenderCore::Techniques::ImmediateDrawableMaterial currentState;
+        currentState._uniformStreamInterface = std::make_shared<RenderCore::UniformsStreamInterface>();
+        currentState._uniformStreamInterface->BindImmediateData(0, Hash64("LocalTransform"));
+        currentState._uniforms._immediateData.push_back(
+            RenderCore::Techniques::MakeLocalTransformPacket(Transpose(Float4x4(xform)), ExtractTranslation(_parsingContext->GetProjectionDesc()._cameraToWorld)));
         _immediateDrawables->QueueDraw(
             vertexCount, startVertex,
             geo,
@@ -172,10 +177,15 @@ namespace GUILayer
         geo->_vertexStreams[0]._resource = _retainedRes->GetVertexBuffer(vb);
         geo->_vertexStreamCount = 1;
         geo->_ib = _retainedRes->GetIndexBuffer(ib);
+        geo->_ibFormat = RenderCore::Format::R32_UINT;
 
         if (!geo->_vertexStreams[0]._resource || !geo->_ib) return;
 
         RenderCore::Techniques::ImmediateDrawableMaterial currentState;
+        currentState._uniformStreamInterface = std::make_shared<RenderCore::UniformsStreamInterface>();
+        currentState._uniformStreamInterface->BindImmediateData(0, Hash64("LocalTransform"));
+        currentState._uniforms._immediateData.push_back(
+            RenderCore::Techniques::MakeLocalTransformPacket(Transpose(Float4x4(xform)), ExtractTranslation(_parsingContext->GetProjectionDesc()._cameraToWorld)));
         _immediateDrawables->QueueDraw(
             indexCount, startIndex,
             geo,

@@ -19,9 +19,9 @@
 #include "NativeEngineDevice.h"
 #include "ExportedNativeTypes.h"
 #include "../EntityInterface/PlacementEntities.h"
+#include "../EntityInterface/EnvironmentSettings.h"
 #if defined(GUILAYER_SCENEENGINE)
 #include "../EntityInterface/TerrainEntities.h"
-#include "../EntityInterface/EnvironmentSettings.h"
 #include "../EntityInterface/VegetationSpawnEntities.h"
 #endif
 #include "../EntityInterface/RetainedEntities.h"
@@ -366,7 +366,6 @@ namespace GUILayer
             std::bind(WriteGameObjects, _1, docId, _scene->_flexObjects.get()));
     }
 
-#if defined(GUILAYER_SCENEENGINE)
     static auto WriteEnvSettings(OutputStream& stream, uint64 docId, EntityInterface::RetainedEntities* flexObjects) 
         -> StreamWriterResult
     {
@@ -381,7 +380,6 @@ namespace GUILayer
             "environment settings",
             std::bind(WriteEnvSettings, _1, docId, _scene->_flexObjects.get()));
     }
-#endif
 
     static auto WritePlacementsCfg(
         OutputStream& stream, 
@@ -597,6 +595,13 @@ namespace GUILayer
         _entities = gcnew EntityLayer(std::move(swtch));
 
         _flexGobInterface = flexGobInterface;
+
+        auto envEntitiesManager = std::make_shared<::EntityInterface::EnvEntitiesManager>(_scene->_flexObjects);
+        envEntitiesManager->RegisterEnvironmentFlexObjects();
+        _envEntitiesManager = envEntitiesManager;
+
+        _scene->_prepareSteps.push_back(
+            std::bind(&::EntityInterface::EnvEntitiesManager::FlushUpdates, _envEntitiesManager.get()));
     }
 #endif
 

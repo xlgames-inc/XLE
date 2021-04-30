@@ -478,7 +478,6 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if defined(GUILAYER_SCENEENGINE)
     IEnumerable<String^>^ EnvironmentSettingsSet::Names::get()
     {
         auto result = gcnew List<String^>();
@@ -490,7 +489,7 @@ namespace GUILayer
     void EnvironmentSettingsSet::AddDefault()
     {
         _settings->push_back(
-            std::make_pair(std::string("Default"), PlatformRig::DefaultEnvironmentSettings()));
+            std::make_pair(std::string("Default"), SceneEngine::DefaultEnvironmentSettings()));
     }
 
     const SceneEngine::EnvironmentSettings& EnvironmentSettingsSet::GetSettings(String^ name)
@@ -511,7 +510,6 @@ namespace GUILayer
     }
 
     EnvironmentSettingsSet::~EnvironmentSettingsSet() {}
-#endif
 }
 
 

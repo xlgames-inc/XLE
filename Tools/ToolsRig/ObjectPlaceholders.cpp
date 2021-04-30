@@ -74,13 +74,10 @@ namespace ToolsRig
 			const SimpleModelDrawable& drawable)
 		{
 			auto transformPkt = 
-				Techniques::MakeLocalTransformPacket(
+				Techniques::MakeLocalTransform(
 					drawable._objectToWorld, 
 					ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
-			IteratorRange<const void*> pkts[] = { MakeIteratorRange(transformPkt) };
-			UniformsStream uniforms;
-			uniforms._immediateData = MakeIteratorRange(pkts);
-			drawFnContext.ApplyLooseUniforms(uniforms);
+			drawFnContext.ApplyLooseUniforms(ImmediateDataStream{transformPkt});
 			if (drawable._indexed) {
 				drawFnContext.DrawIndexed(drawable._drawCall._indexCount, drawable._drawCall._firstIndex, drawable._drawCall._firstVertex);
 			} else {
@@ -447,13 +444,10 @@ namespace ToolsRig
 
 		drawable->_drawFn = [](RenderCore::Techniques::ParsingContext& parsingContext, const RenderCore::Techniques::ExecuteDrawableContext& drawFnContext, const RenderCore::Techniques::Drawable& drawable)
 			{
-				auto localTransformConstants = Techniques::MakeLocalTransformPacket(
+				auto localTransform = Techniques::MakeLocalTransform(
 					((CustomDrawable&)drawable)._localTransform,
 					ExtractTranslation(parsingContext.GetProjectionDesc()._cameraToWorld));
-				IteratorRange<const void*> pkts[] = { MakeIteratorRange(localTransformConstants) };
-				UniformsStream uniforms;
-				uniforms._immediateData = MakeIteratorRange(pkts);
-				drawFnContext.ApplyLooseUniforms(uniforms);
+				drawFnContext.ApplyLooseUniforms(ImmediateDataStream{localTransform});
 				drawFnContext.DrawIndexed(((CustomDrawable&)drawable)._indexCount);
 			};
     }

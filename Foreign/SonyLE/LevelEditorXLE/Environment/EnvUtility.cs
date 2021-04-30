@@ -23,6 +23,7 @@ namespace LevelEditorXLE.Environment
     {
         void OnAttributeChanged(object sender, AttributeEventArgs e)
         {
+#if GUILAYER_SCENEENGINE
             if (e.AttributeInfo.Equivalent(Schema.envUtilityType.SunAngleAttribute))
             {
                 float newAngle = (float)(SunAngle * Math.PI / 180.0f);
@@ -44,6 +45,7 @@ namespace LevelEditorXLE.Environment
                     Schema.transformObjectType.translateAttribute,
                     new float[3] { distance * x, distance * y, distance * z });
             }
+#endif
         }
 
         public float SunAngle

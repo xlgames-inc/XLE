@@ -14,9 +14,7 @@ using Sce.Atf.Applications;
 using Sce.Atf.Dom;
 
 using LevelEditorCore;
-#if GUILAYER_SCENEENGINE
 using LevelEditorXLE.Environment;
-#endif
 using LevelEditorXLE.Placements;
 using LevelEditorXLE.Extensions;
 
@@ -39,21 +37,15 @@ namespace LevelEditorXLE.Game
                 }
             }
 
-#if GUILAYER_SCENEENGINE
             return  PlacementsFolder.CanAddChild(child)
                 |   EnvSettingsFolder.CanAddChild(child);
-#else
-            return PlacementsFolder.CanAddChild(child);
-#endif
         }
         public bool AddChild(object child)
         {
             if (child.Is<IGameObject>() || child.Is<IGameObjectFolder>()) return false;
 
-#if GUILAYER_SCENEENGINE
             if (EnvSettingsFolder.AddChild(child))
                 return true;
-#endif
 
             if (PlacementsFolder.AddChild(child))
                 return true;
@@ -81,7 +73,6 @@ namespace LevelEditorXLE.Game
         }
         #endregion
 
-#if GUILAYER_SCENEENGINE
         public XLEEnvSettingsFolder EnvSettingsFolder
         {
             get
@@ -95,7 +86,6 @@ namespace LevelEditorXLE.Game
                 return result;
             }
         }
-#endif
 
         public Placements.PlacementsFolder PlacementsFolder
         {
@@ -191,7 +181,6 @@ namespace LevelEditorXLE.Game
                         break;
                     }
 
-#if GUILAYER_SCENEENGINE
                 case Command.CreateEnvironmentSetting:
                     {
                         var envFolder = EnvSettingsFolder;
@@ -199,7 +188,6 @@ namespace LevelEditorXLE.Game
                             XLEEnvSettings.Create(envFolder.GetNameForNewChild()));
                         break;
                     }
-#endif
 
                 case Command.CreateTriMeshMarker:
                     {

@@ -61,7 +61,6 @@ namespace GUILayer
         std::shared_ptr<SceneEngine::VolumetricFogManager>      _volumeFogManager;
         std::shared_ptr<SceneEngine::ShallowSurfaceManager>     _shallowSurfaceManager;
         std::shared_ptr<SceneEngine::DynamicImposters>          _dynamicImposters;
-        std::vector<std::function<void()>>                      _prepareSteps;
 
         EditorScene();
 		~EditorScene();
@@ -73,6 +72,7 @@ namespace GUILayer
         // Base scene aspects
         std::shared_ptr<EntityInterface::RetainedEntities>      _flexObjects;
         std::shared_ptr<ToolsRig::ObjectPlaceholders>			_placeholders;
+        std::vector<std::function<void()>>                      _prepareSteps;
 
         void    IncrementTime(float increment) { _currentTime += increment; }
         float   _currentTime;
@@ -83,6 +83,7 @@ namespace GUILayer
 		std::shared_ptr<SceneEngine::PlacementsEditor>          _placementsHidden;
         std::shared_ptr<SceneEngine::PlacementCellSet>          _placementsCells;
 		std::shared_ptr<SceneEngine::PlacementCellSet>          _placementsCellsHidden;
+
 
         EditorScene();
 		~EditorScene();
@@ -135,9 +136,9 @@ namespace GUILayer
 
         PendingExport^ ExportGameObjects(EntityInterface::DocumentId docId);
         PendingExport^ ExportPlacements(EntityInterface::DocumentId placementsDoc);
-#if defined(GUILAYER_SCENEENGINE)
         PendingExport^ ExportEnv(EntityInterface::DocumentId docId);
 
+#if defined(GUILAYER_SCENEENGINE)
         PendingExport^ ExportTerrain(TerrainConfig^ cfg);
         PendingExport^ ExportTerrainCachedData();
         PendingExport^ ExportTerrainMaterialData();
@@ -196,9 +197,9 @@ namespace GUILayer
     protected:
         clix::shared_ptr<EditorScene> _scene;
         clix::shared_ptr<::EntityInterface::RetainedEntityInterface> _flexGobInterface;
+        clix::shared_ptr<::EntityInterface::EnvEntitiesManager> _envEntitiesManager;
 #if defined(GUILAYER_SCENEENGINE)
         clix::shared_ptr<::EntityInterface::TerrainEntities> _terrainInterface;
-        clix::shared_ptr<::EntityInterface::EnvEntitiesManager> _envEntitiesManager;
 #endif
         EntityLayer^ _entities;
     };

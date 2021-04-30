@@ -60,6 +60,8 @@
     <Compile Include="AssetMan\AssetProperties.cs" />
     <Compile Include="AssetMan\IExportable.cs" />
     <Compile Include="Camera\XLECamera.cs" />
+    <Compile Include="Environment\EnvUtility.cs" />
+    <Compile Include="Environment\XLEEnvAdapter.cs" />
     <Compile Include="Game\GameExtensions.cs" />
     <Compile Include="Manipulators\ExtraEditCommands.cs" />
     <Compile Include="Manipulators\RandomizeTransformsForm.cs">

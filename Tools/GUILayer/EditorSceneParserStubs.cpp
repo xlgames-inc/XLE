@@ -10,7 +10,11 @@
 #include "ExportedNativeTypes.h"
 
 #include "../ToolsRig/ObjectPlaceholders.h"
+#include "../ToolsRig/ManipulatorsRender.h"
+#include "../EntityInterface/RetainedEntities.h"
+#include "../EntityInterface/EnvironmentSettings.h"
 #include "../../SceneEngine/PlacementsManager.h"
+#include "../../SceneEngine/ExecuteScene.h"
 
 #include "../../RenderCore/LightingEngine/LightingEngine.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
@@ -23,6 +27,8 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/IDevice.h"
+
+#include "../../ConsoleRig/Console.h"
 
 #include "../ToolsRig/VisualisationUtils.h"     // for AsCameraDesc
 
@@ -53,6 +59,17 @@ namespace GUILayer
 		clix::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus> _lightingApparatus;
         EditorSceneRenderSettings^ _renderSettings;
     };
+
+	class EditorLightingParserDelegate : public SceneEngine::BasicLightingStateDelegate
+	{
+	public:
+        void PrepareEnvironmentalSettings(const char envSettings[]);
+
+		EditorLightingParserDelegate(const std::shared_ptr<EditorScene>& editorScene);
+		~EditorLightingParserDelegate();
+	protected:
+		std::shared_ptr<EditorScene> _editorScene;
+	};
 
 	static void BuildDrawables(
 		EditorScene& scene,
@@ -97,10 +114,14 @@ namespace GUILayer
 			
 			parserContext.GetTechniqueContext()._attachmentPool->Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget);
 			{
-				RenderCore::LightingEngine::SceneLightingDesc lightingDesc;
-				auto lightingIterator = RenderCore::LightingEngine::LightingTechniqueInstance{
+				EditorLightingParserDelegate lightingDelegate(_scene.GetNativePtr());
+				lightingDelegate.PrepareEnvironmentalSettings(
+					clix::marshalString<clix::E_UTF8>(_renderSettings->_activeEnvironmentSettings).c_str());
+
+				auto lightingIterator = SceneEngine::BeginLightingTechnique(
 					threadContext, parserContext, *_pipelineAcceleratorPool.get(),
-					lightingDesc, *compiledTechnique};
+					MakeIteratorRange(preregisteredAttachments),
+					lightingDelegate, *compiledTechnique);
 
 				for (;;) {
 					auto next = lightingIterator.GetNextStep();
@@ -112,6 +133,24 @@ namespace GUILayer
 			}
 			parserContext.GetTechniqueContext()._attachmentPool->Unbind(*renderTarget);
 		}
+
+		if (_renderSettings->_selection && _renderSettings->_selection->_nativePlacements->size() > 0) {
+            // Draw a selection highlight for these items
+            // at the moment, only placements can be selected... So we need to assume that 
+            // they are all placements.
+            ToolsRig::Placements_RenderHighlight(
+                threadContext, parserContext, *_pipelineAcceleratorPool.get(),
+                *_scene->_placementsManager->GetRenderer().get(), *_scene->_placementsCells.get(),
+                (const SceneEngine::PlacementGUID*)AsPointer(_renderSettings->_selection->_nativePlacements->cbegin()),
+                (const SceneEngine::PlacementGUID*)AsPointer(_renderSettings->_selection->_nativePlacements->cend()));
+        }
+
+        // render shadow for hidden placements
+        if (::ConsoleRig::Detail::FindTweakable("ShadowHiddenPlacements", true)) {
+            ToolsRig::Placements_RenderShadow(
+                threadContext, parserContext, *_pipelineAcceleratorPool.get(),
+                *_scene->_placementsManager->GetRenderer().get(), *_scene->_placementsCellsHidden.get());
+        }
     }
 
     EditorSceneOverlay::EditorSceneOverlay(
@@ -129,6 +168,46 @@ namespace GUILayer
 
     EditorSceneOverlay::~EditorSceneOverlay() {}
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void EditorLightingParserDelegate::PrepareEnvironmentalSettings(const char envSettings[])
+    {
+        for (const auto& i:_editorScene->_prepareSteps)
+            i();
+
+        using namespace EntityInterface;
+        const auto& objs = *_editorScene->_flexObjects;
+        const RetainedEntity* settings = nullptr;
+        const auto typeSettings = objs.GetTypeId("EnvSettings");
+
+        {
+            static const auto nameHash = ParameterBox::MakeParameterNameHash("Name");
+            auto allSettings = objs.FindEntitiesOfType(typeSettings);
+            for (const auto& s : allSettings)
+                if (!XlCompareStringI(MakeStringSection(s->_properties.GetParameterAsString(nameHash).value()), envSettings)) {
+                    settings = s;
+                    break;
+                }
+        }
+
+        if (settings) {
+            *_envSettings = BuildEnvironmentSettings(objs, *settings);
+        } else {
+            _envSettings->_lights.clear();
+            _envSettings->_shadowProj.clear();
+            _envSettings->_environmentalLightingDesc = SceneEngine::DefaultEnvironmentalLightingDesc();
+        }
+    }
+
+	EditorLightingParserDelegate::EditorLightingParserDelegate(const std::shared_ptr<EditorScene>& editorScene)
+	: BasicLightingStateDelegate(std::make_shared<SceneEngine::EnvironmentSettings>(SceneEngine::DefaultEnvironmentSettings()))
+	, _editorScene(editorScene)
+	{
+	}
+
+	EditorLightingParserDelegate::~EditorLightingParserDelegate() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     namespace Internal
     {

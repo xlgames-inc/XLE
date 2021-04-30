@@ -102,5 +102,8 @@ namespace SceneEngine
     RenderCore::LightingEngine::LightDesc                   DefaultDominantLight();
     RenderCore::LightingEngine::EnvironmentalLightingDesc   DefaultEnvironmentalLightingDesc();
     EnvironmentSettings                                     DefaultEnvironmentSettings();
+
+    RenderCore::LightingEngine::EnvironmentalLightingDesc MakeEnvironmentalLightingDesc(const ParameterBox& props);
+    RenderCore::LightingEngine::LightDesc MakeLightDesc(const Utility::ParameterBox& props);
 }
 

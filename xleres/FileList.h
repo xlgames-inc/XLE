@@ -44,5 +44,5 @@
 
 #define SCENE_ENGINE_RES "xleres/TechniqueLibrary/SceneEngine"
 
-#define AREA_LIGHT_TECH "xleres/TechniqueLibrary/ToolsRig/arealight.hlsl"
+#define AREA_LIGHT_TECH "xleres/TechniqueLibrary/ToolsRig/arealight.material"
 #define MESH_MARKER_TECH "xleres/TechniqueLibrary/Config/Legacy/MeshMarker.tech"

@@ -40,21 +40,19 @@
             this._assetList.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left)));
             this._assetList.FormattingEnabled = true;
-            this._assetList.ItemHeight = 24;
-            this._assetList.Location = new System.Drawing.Point(16, 22);
-            this._assetList.Margin = new System.Windows.Forms.Padding(7, 6, 7, 6);
+            this._assetList.HorizontalScrollbar = true;
+            this._assetList.Location = new System.Drawing.Point(7, 12);
             this._assetList.Name = "_assetList";
-            this._assetList.Size = new System.Drawing.Size(328, 364);
+            this._assetList.Size = new System.Drawing.Size(396, 212);
             this._assetList.TabIndex = 0;
             // 
             // _closeButton
             // 
             this._closeButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this._closeButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this._closeButton.Location = new System.Drawing.Point(16, 426);
-            this._closeButton.Margin = new System.Windows.Forms.Padding(7, 6, 7, 6);
+            this._closeButton.Location = new System.Drawing.Point(7, 231);
             this._closeButton.Name = "_closeButton";
-            this._closeButton.Size = new System.Drawing.Size(333, 46);
+            this._closeButton.Size = new System.Drawing.Size(396, 25);
             this._closeButton.TabIndex = 1;
             this._closeButton.Text = "Close";
             this._closeButton.UseVisualStyleBackColor = true;
@@ -65,25 +63,23 @@
             this._errorDetails.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this._errorDetails.Location = new System.Drawing.Point(362, 22);
-            this._errorDetails.Margin = new System.Windows.Forms.Padding(7, 6, 7, 6);
+            this._errorDetails.Location = new System.Drawing.Point(409, 12);
             this._errorDetails.Multiline = true;
             this._errorDetails.Name = "_errorDetails";
             this._errorDetails.ReadOnly = true;
-            this._errorDetails.Size = new System.Drawing.Size(1464, 446);
+            this._errorDetails.Size = new System.Drawing.Size(1037, 243);
             this._errorDetails.TabIndex = 2;
             this._errorDetails.WordWrap = false;
             // 
             // InvalidAssetDialog
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(13F, 24F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this._closeButton;
-            this.ClientSize = new System.Drawing.Size(1842, 494);
+            this.ClientSize = new System.Drawing.Size(1451, 268);
             this.Controls.Add(this._errorDetails);
             this.Controls.Add(this._closeButton);
             this.Controls.Add(this._assetList);
-            this.Margin = new System.Windows.Forms.Padding(7, 6, 7, 6);
             this.Name = "InvalidAssetDialog";
             this.Text = "InvalidAssetForm";
             this.ResumeLayout(false);

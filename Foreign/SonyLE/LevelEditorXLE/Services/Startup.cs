@@ -23,13 +23,13 @@ namespace LevelEditorXLE
             Schema.terrainCoverageLayer.Type.Define(new ExtensionInfo<Terrain.XLETerrainCoverage>());
             Schema.terrainBaseTextureType.Type.Define(new ExtensionInfo<Terrain.TerrainBaseTexture>());
             Schema.abstractTerrainMaterialDescType.Type.Define(new ExtensionInfo<Terrain.TerrainBaseTextureMaterial>());
+            Schema.vegetationSpawnConfigType.Type.Define(new ExtensionInfo<Terrain.VegetationSpawnConfigGob>());
+            Schema.vegetationSpawnMaterialType.Type.Define(new ExtensionInfo<Terrain.VegetationSpawnMaterialItem>());
+#endif
             Schema.envSettingsFolderType.Type.Define(new ExtensionInfo<Environment.XLEEnvSettingsFolder>());
             Schema.envSettingsType.Type.Define(new ExtensionInfo<Environment.XLEEnvSettings>());
             Schema.envUtilityType.Type.Define(new ExtensionInfo<Environment.EnvUtility>());
             Schema.envObjectType.Type.Define(new ExtensionInfo<Environment.XLEEnvObject>());
-            Schema.vegetationSpawnConfigType.Type.Define(new ExtensionInfo<Terrain.VegetationSpawnConfigGob>());
-            Schema.vegetationSpawnMaterialType.Type.Define(new ExtensionInfo<Terrain.VegetationSpawnMaterialItem>());
-#endif
             Schema.xleGameType.Type.Define(new ExtensionInfo<Game.GameExtensions>());
             Schema.triMeshMarkerType.Type.Define(new ExtensionInfo<Markers.TriMeshMarker>());
             Schema.markerPointType.Type.Define(new ExtensionInfo<Markers.PointMarker>());
@@ -61,8 +61,8 @@ namespace LevelEditorXLE
 
                 typeof(AssetMan.ResourcePreview),
                 typeof(Manipulators.ExtraEditCommands),
-#if GUILAYER_SCENEENGINE
                 typeof(Placements.ScatterPlaceManipulator),
+#if GUILAYER_SCENEENGINE
                 typeof(Terrain.TerrainNamingBridge),
 #endif
 

@@ -68,7 +68,7 @@ float4 PixelCoordToSVPosition(float2 pixelCoord)
 
 float4 TransformPosition(float3 localPosition)
 {
-	float3 worldPosition = localPosition; // mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
+	float3 worldPosition = mul(SysUniform_GetLocalToWorld(), float4(localPosition,1)).xyz;
 	return mul(SysUniform_GetWorldToClip(), float4(worldPosition,1));
 }
 

@@ -1,5 +1,3 @@
-// CompoundDocument:1
-
 // Generate a "tube" geometry in a way that matches the tube light types.
 // We extract the cardinal axes from the local to world, and use this to construct the tube shape
 // The ends are capped with hemispheres (using longitude/latitude arrangement of vertices)
@@ -9,9 +7,8 @@
 // parts of the default technique.
 
 #include "../Framework/SystemUniforms.hlsl"
-#include "../Framework/MainGeometry.hlsl"
+#include "../Framework/VSIN.hlsl"
 #include "../Framework/DeformVertex.hlsl"
-#include "../Math/SurfaceAlgorithm.hlsl"
 #include "../Math/MathConstants.hlsl"
 
 struct GeneratedVertex
@@ -173,28 +170,3 @@ DeformedVertex DeformVertex(DeformedVertex preDeform, VSIN vInput)
 // note -- 	this ensures that that the preprocessor recognizes SHAPE as a required preprocessor macro
 #if defined(SHAPE)
 #endif
-
-/* <<Chunk:RawMaterial:main>>--(
-
-~sphere
-	~Patches
-		~main
-			<.>::DeformVertex
-	~ShaderParams
-		SHAPE=1
-
-~tube
-	~Patches
-		~main
-			<.>::DeformVertex
-	~ShaderParams
-		SHAPE=2
-
-~rectangle
-	~Patches
-		~main
-			<.>::DeformVertex
-	~ShaderParams
-		SHAPE=3
-
-)--*/
