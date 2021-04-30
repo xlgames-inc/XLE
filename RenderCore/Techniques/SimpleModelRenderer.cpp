@@ -71,24 +71,20 @@ namespace RenderCore { namespace Techniques
 		const Techniques::ExecuteDrawableContext& drawFnContext,
         const SimpleModelDrawable& drawable)
 	{
-		IteratorRange<const void*> cbvs[6];
-		auto bindingField = drawFnContext.GetBoundLooseImmediateDatas();
-		auto localTransformPacket = Techniques::MakeLocalTransformPacket(
-			drawable._objectToWorld, 
-			ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
-		DrawCallProperties drawCallProps{drawable._materialGuid, drawable._drawCallIdx};
-		cbvs[0] = MakeOpaqueIteratorRange(localTransformPacket);
-		if (bindingField & (1<<1))
-			cbvs[1] = MakeOpaqueIteratorRange(drawCallProps);
-		assert(drawable._extraUniformBufferDelegates.empty());
-		/*
-		assert(dimof(cbvs) >= 2 + drawable._extraUniformBufferDelegates.size());
-		for (unsigned c=0; c<drawable._extraUniformBufferDelegates.size(); ++c)
-			if (bindingField & ((c+2)<<1))
-				cbvs[c+2] = drawable._extraUniformBufferDelegates[c]->WriteBuffer(parserContext, nullptr);*/
-		UniformsStream us;
-		us._immediateData = MakeIteratorRange(cbvs);
-		drawFnContext.ApplyLooseUniforms(us);
+		if (drawFnContext.GetBoundLooseImmediateDatas()) {
+			auto bindingField = drawFnContext.GetBoundLooseImmediateDatas();
+			auto localTransform = Techniques::MakeLocalTransform(
+				drawable._objectToWorld, 
+				ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
+			DrawCallProperties drawCallProps{drawable._materialGuid, drawable._drawCallIdx};
+			assert(drawable._extraUniformBufferDelegates.empty());
+			/*
+			assert(dimof(cbvs) >= 2 + drawable._extraUniformBufferDelegates.size());
+			for (unsigned c=0; c<drawable._extraUniformBufferDelegates.size(); ++c)
+				if (bindingField & ((c+2)<<1))
+					cbvs[c+2] = drawable._extraUniformBufferDelegates[c]->WriteBuffer(parserContext, nullptr);*/
+			drawFnContext.ApplyLooseUniforms(ImmediateDataStream{localTransform, drawCallProps});
+		}
 
         drawFnContext.DrawIndexed(
 			drawable._drawCall._indexCount, drawable._drawCall._firstIndex, drawable._drawCall._firstVertex);
@@ -1021,7 +1017,9 @@ namespace RenderCore { namespace Techniques
 		}
 
 		_usi = std::make_shared<UniformsStreamInterface>();
+		// HACK --> use the fallback LocalTransform -->
 		_usi->BindImmediateData(0, Techniques::ObjectCB::LocalTransform);
+		// <------------------------------------
 		_usi->BindImmediateData(1, Techniques::ObjectCB::DrawCallProperties);
 
 		unsigned c=2;

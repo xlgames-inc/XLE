@@ -34,7 +34,7 @@ namespace GUILayer
     class VertexFormatRecord
     {
     public:
-        std::vector<RenderCore::MiniInputElementDesc> _inputLayout;
+        std::vector<RenderCore::InputElementDesc> _inputLayout;
     };
 
     class SavedRenderResourcesPimpl
@@ -56,14 +56,21 @@ namespace GUILayer
     {
             //  These are the vertex formats defined by the Sony editor
         using namespace RenderCore;
-        _vfRecord[0]._inputLayout = {GlobalMiniInputLayouts::P.begin(), GlobalMiniInputLayouts::P.end()};
-        _vfRecord[1]._inputLayout = {GlobalMiniInputLayouts::PC.begin(), GlobalMiniInputLayouts::PC.end()};
-        _vfRecord[2]._inputLayout = {GlobalMiniInputLayouts::PN.begin(), GlobalMiniInputLayouts::PN.end()};
-        _vfRecord[3]._inputLayout = {GlobalMiniInputLayouts::PT.begin(), GlobalMiniInputLayouts::PT.end()};
+        _vfRecord[0]._inputLayout = {GlobalInputLayouts::P.begin(), GlobalInputLayouts::P.end()};
+        _vfRecord[1]._inputLayout = {GlobalInputLayouts::PC.begin(), GlobalInputLayouts::PC.end()};
+        _vfRecord[2]._inputLayout = {GlobalInputLayouts::PN.begin(), GlobalInputLayouts::PN.end()};
+        _vfRecord[3]._inputLayout = {GlobalInputLayouts::PT.begin(), GlobalInputLayouts::PT.end()};
 		_vfRecord[4]._inputLayout = {};
-        _vfRecord[5]._inputLayout = {GlobalMiniInputLayouts::PNT.begin(), GlobalMiniInputLayouts::PNT.end()};
-        _vfRecord[6]._inputLayout = {GlobalMiniInputLayouts::PNTT.begin(), GlobalMiniInputLayouts::PNTT.end()};
+        _vfRecord[5]._inputLayout = {GlobalInputLayouts::PNT.begin(), GlobalInputLayouts::PNT.end()};
+        _vfRecord[6]._inputLayout = {GlobalInputLayouts::PNTT.begin(), GlobalInputLayouts::PNTT.end()};
 		_vfRecord[7]._inputLayout = {};
+
+        // formats without a "color" input get color in a per-instance secondary vertex stream
+        _vfRecord[0]._inputLayout.emplace_back("COLOR", 0, Format::R32G32B32A32_FLOAT, 1, 0, InputDataRate::PerInstance);
+        _vfRecord[2]._inputLayout.emplace_back("COLOR", 0, Format::R32G32B32A32_FLOAT, 1, 0, InputDataRate::PerInstance);
+        _vfRecord[3]._inputLayout.emplace_back("COLOR", 0, Format::R32G32B32A32_FLOAT, 1, 0, InputDataRate::PerInstance);
+        _vfRecord[5]._inputLayout.emplace_back("COLOR", 0, Format::R32G32B32A32_FLOAT, 1, 0, InputDataRate::PerInstance);
+        _vfRecord[6]._inputLayout.emplace_back("COLOR", 0, Format::R32G32B32A32_FLOAT, 1, 0, InputDataRate::PerInstance);
     }
 
     /// <summary>Create and maintain rendering resources for SimpleRenderingContext</summary>
@@ -147,11 +154,20 @@ namespace GUILayer
 
         if (!geo->_vertexStreams[0]._resource) return;
 
+        // Color is stored into a per-instance secondary vertex stream
+        auto colorStorage = _immediateDrawables->GetDrawablesPacket()->AllocateStorage(RenderCore::Techniques::DrawablesPacket::Storage::VB, sizeof(Float4));
+        geo->_vertexStreams[1]._vbOffset = colorStorage._startOffset;
+        ++geo->_vertexStreamCount;
+        *(Float4*)colorStorage._data.begin() = color;
+
         RenderCore::Techniques::ImmediateDrawableMaterial currentState;
         currentState._uniformStreamInterface = std::make_shared<RenderCore::UniformsStreamInterface>();
         currentState._uniformStreamInterface->BindImmediateData(0, Hash64("LocalTransform"));
         currentState._uniforms._immediateData.push_back(
             RenderCore::Techniques::MakeLocalTransformPacket(Transpose(Float4x4(xform)), ExtractTranslation(_parsingContext->GetProjectionDesc()._cameraToWorld)));
+        // We're repurposing this flag for depth write disable
+        currentState._stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::WriteMask;
+        currentState._stateSet._writeMask = (unsigned(_depthTestEnable)<<1u) | unsigned(_depthWriteEnable);
         _immediateDrawables->QueueDraw(
             vertexCount, startVertex,
             geo,
@@ -181,11 +197,20 @@ namespace GUILayer
 
         if (!geo->_vertexStreams[0]._resource || !geo->_ib) return;
 
+        // Color is stored into a per-instance secondary vertex stream
+        auto colorStorage = _immediateDrawables->GetDrawablesPacket()->AllocateStorage(RenderCore::Techniques::DrawablesPacket::Storage::VB, sizeof(Float4));
+        geo->_vertexStreams[1]._vbOffset = colorStorage._startOffset;
+        ++geo->_vertexStreamCount;
+        *(Float4*)colorStorage._data.begin() = color;
+
         RenderCore::Techniques::ImmediateDrawableMaterial currentState;
         currentState._uniformStreamInterface = std::make_shared<RenderCore::UniformsStreamInterface>();
         currentState._uniformStreamInterface->BindImmediateData(0, Hash64("LocalTransform"));
         currentState._uniforms._immediateData.push_back(
             RenderCore::Techniques::MakeLocalTransformPacket(Transpose(Float4x4(xform)), ExtractTranslation(_parsingContext->GetProjectionDesc()._cameraToWorld)));
+        // We're repurposing this flag for depth write disable
+        currentState._stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::WriteMask;
+        currentState._stateSet._writeMask = (unsigned(_depthTestEnable)<<1u) | unsigned(_depthWriteEnable);
         _immediateDrawables->QueueDraw(
             indexCount, startIndex,
             geo,
@@ -196,14 +221,8 @@ namespace GUILayer
 
     void SimpleRenderingContext::InitState(bool depthTest, bool depthWrite)
     {
-#if defined(GUILAYER_SCENEENGINE)
-        if (depthWrite) _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadWrite);
-        else if (depthTest) _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadOnly);
-        else _devContext->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
-                
-        _devContext->Bind(RenderCore::Techniques::CommonResources()._blendStraightAlpha);
-        _devContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
-#endif
+        _depthTestEnable = !!depthTest;
+        _depthWriteEnable = !!depthWrite;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -294,6 +313,8 @@ namespace GUILayer
     , _threadContext(threadContext)
     , _pipelineAccelerators(&pipelineAccelerators)
     {
+        _depthWriteEnable = true;
+        _depthTestEnable = true;
     }
     SimpleRenderingContext::~SimpleRenderingContext() {}
     SimpleRenderingContext::!SimpleRenderingContext() {}

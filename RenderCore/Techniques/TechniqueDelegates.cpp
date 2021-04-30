@@ -36,106 +36,6 @@ namespace RenderCore { namespace Techniques
 		return std::make_shared<TechniqueSharedResources>(device);
 	}
 
-#if 0
-	class ShaderPatchFactory : public IShaderVariationFactory
-	{
-	public:
-		::Assets::FuturePtr<CompiledShaderByteCode> MakeByteCodeFuture(
-			ShaderStage stage, StringSection<> initializer, StringSection<> definesTable)
-		{
-			assert(!initializer.IsEmpty());
-
-			char temp[MaxPath];
-			auto meld = StringMeldInPlace(temp);
-			meld << initializer;
-
-			// shader profile
-			{
-				char profileStr[] = "?s_";
-				switch (stage) {
-				case ShaderStage::Vertex: profileStr[0] = 'v'; break;
-				case ShaderStage::Geometry: profileStr[0] = 'g'; break;
-				case ShaderStage::Pixel: profileStr[0] = 'p'; break;
-				case ShaderStage::Domain: profileStr[0] = 'd'; break;
-				case ShaderStage::Hull: profileStr[0] = 'h'; break;
-				case ShaderStage::Compute: profileStr[0] = 'c'; break;
-				default: assert(0); break;
-				}
-				if (!XlFindStringI(initializer, profileStr)) {
-					meld << ":" << profileStr << "*";
-				}
-			}
-
-			auto ret = ::Assets::MakeAsset<CompiledShaderByteCode_InstantiateShaderGraph>(MakeStringSection(temp), definesTable, _patchCollection, _patchExpansions);
-			return std::reinterpret_pointer_cast<::Assets::AssetFuture<CompiledShaderByteCode>>(ret);
-		}
-
-		::Assets::FuturePtr<Metal::ShaderProgram> MakeShaderVariation(StringSection<> defines)
-		{
-			::Assets::FuturePtr<CompiledShaderByteCode> vsCode, psCode, gsCode;
-			vsCode = MakeByteCodeFuture(ShaderStage::Vertex, _entry->_vertexShaderName, defines);
-			psCode = MakeByteCodeFuture(ShaderStage::Pixel, _entry->_pixelShaderName, defines);
-
-			if (!_entry->_geometryShaderName.empty()) {
-				auto finalDefines = defines.AsString() + _soExtraDefines;
-				gsCode = MakeByteCodeFuture(ShaderStage::Geometry, _entry->_geometryShaderName, finalDefines);
-
-				return CreateShaderProgramFromByteCode(
-					_pipelineLayout,
-					vsCode, gsCode, psCode,
-					StreamOutputInitializers {
-						MakeIteratorRange(_soElements), MakeIteratorRange(_soStrides)
-					},
-					"ShaderPatchFactory");
-			} else {
-				return CreateShaderProgramFromByteCode(_pipelineLayout, vsCode, psCode, "ShaderPatchFactory");
-			}
-		}
-
-		ShaderPatchFactory(
-			const std::shared_ptr<ICompiledPipelineLayout>& pipelineLayout,
-			const TechniqueEntry& techEntry, 
-			const std::shared_ptr<CompiledShaderPatchCollection>& patchCollection,
-			IteratorRange<const uint64_t*> patchExpansions,
-			const StreamOutputInitializers& so = {})
-		: _entry(&techEntry)
-		, _patchCollection(patchCollection)
-		, _patchExpansions(patchExpansions.begin(), patchExpansions.end())
-		, _pipelineLayout(pipelineLayout)
-		{
-			_factoryGuid = _patchCollection ? _patchCollection->GetGUID() : 0;
-
-			if (!so._outputElements.empty() && !so._outputBufferStrides.empty()) {
-				std::stringstream str;
-				str << ";SO_OFFSETS=";
-				unsigned rollingOffset = 0;
-				for (const auto&e:so._outputElements) {
-					assert(e._alignedByteOffset == ~0x0u);		// expecting to use packed sequential ordering
-					if (rollingOffset!=0) str << ",";
-					str << Hash64(e._semanticName) + e._semanticIndex << "," << rollingOffset;
-					rollingOffset += BitsPerPixel(e._nativeFormat) / 8;
-				}
-				_soExtraDefines = str.str();
-				_soElements = std::vector<InputElementDesc>(so._outputElements.begin(), so._outputElements.end());
-				_soStrides = std::vector<unsigned>(so._outputBufferStrides.begin(), so._outputBufferStrides.end());
-
-				_factoryGuid = HashCombine(Hash64(_soExtraDefines), _factoryGuid);
-				_factoryGuid = HashCombine(Hash64(so._outputBufferStrides.begin(), so._outputBufferStrides.end()), _factoryGuid);
-			}
-		}
-		ShaderPatchFactory() {}
-	private:
-		const TechniqueEntry* _entry;
-		std::shared_ptr<CompiledShaderPatchCollection> _patchCollection;
-		std::vector<uint64_t> _patchExpansions;
-		std::shared_ptr<ICompiledPipelineLayout> _pipelineLayout;
-
-		std::string _soExtraDefines;
-		std::vector<InputElementDesc> _soElements;
-		std::vector<unsigned> _soStrides;
-	};
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class TechniqueDelegate_Legacy : public ITechniqueDelegate
@@ -475,15 +375,16 @@ namespace RenderCore { namespace Techniques
 			_techniqueFileHelper = std::make_shared<::Assets::AssetFuture<TechniqueFileHelper>>("");
 			::Assets::WhenAll(techniqueSet).ThenConstructToFuture<TechniqueFileHelper>(*_techniqueFileHelper);
 
-			_depthStencil = {};
 			if (flags & TechniqueDelegateForwardFlags::DisableDepthWrite) {
 				_depthStencil = CommonResourceBox::s_dsReadOnly;
+			} else {
+				_depthStencil = {};
 			}
 		}
 	private:
 		::Assets::FuturePtr<TechniqueFileHelper> _techniqueFileHelper;
 		std::shared_ptr<TechniqueSharedResources> _sharedResources;
-		DepthStencilDesc _depthStencil;	
+		DepthStencilDesc _depthStencil;
 	};
 
 	std::shared_ptr<ITechniqueDelegate> CreateTechniqueDelegate_Forward(

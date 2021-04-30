@@ -19,6 +19,7 @@ namespace RenderCore { namespace Techniques
 {
 	class ParsingContext;
 	class DrawableGeo;
+	class DrawablesPacket;
 
 	class RetainedUniformsStream
 	{
@@ -51,6 +52,12 @@ namespace RenderCore { namespace Techniques
 			IteratorRange<const MiniInputElementDesc*> inputAssembly,
 			const ImmediateDrawableMaterial& material = {},
 			Topology topology = Topology::TriangleList) = 0;
+		virtual void QueueDraw(
+			size_t indexOrVertexCount, size_t indexOrVertexStartLocation,
+			std::shared_ptr<DrawableGeo> customGeo,
+			IteratorRange<const InputElementDesc*> inputAssembly,
+			const ImmediateDrawableMaterial& material = {},
+			Topology topology = Topology::TriangleList) = 0;
 		virtual IteratorRange<void*> UpdateLastDrawCallVertexCount(size_t newVertexCount) = 0;
 		virtual void ExecuteDraws(
 			IThreadContext& context,
@@ -61,6 +68,7 @@ namespace RenderCore { namespace Techniques
 		virtual std::shared_ptr<::Assets::IAsyncMarker> PrepareResources(
 			const FrameBufferDesc& fbDesc,
 			unsigned subpassIndex) = 0;
+		virtual DrawablesPacket* GetDrawablesPacket() = 0;
 		virtual ~IImmediateDrawables();
 	};
 

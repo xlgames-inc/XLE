@@ -80,26 +80,46 @@ namespace RenderCore { namespace Techniques
 			const CompiledShaderPatchCollection::Interface& shaderPatches,
 			const RenderCore::Assets::RenderStateSet& renderStates)
 		{
-			return _pipelineDescFuture;
+			unsigned dsMode = 0;
+			// We're re-purposing the _writeMask flag for depth test and write
+			if (renderStates._flag & RenderCore::Assets::RenderStateSet::Flag::WriteMask) {
+				bool depthWrite = renderStates._writeMask & 1<<0;
+				bool depthTest = renderStates._writeMask & 1<<1;
+				if (depthTest) {
+					dsMode = depthWrite ? 0 : 1;
+				} else {
+					dsMode = 2;
+				}
+			}
+			return _pipelineDescFuture[dsMode];
 		}
 
 		ImmediateRendererTechniqueDelegate() 
 		{
-			auto nascentDesc = std::make_shared<GraphicsPipelineDesc>();
-			nascentDesc->_shaders[(unsigned)ShaderStage::Vertex] = BASIC2D_VERTEX_HLSL ":frameworkEntry:vs_*";
-			nascentDesc->_shaders[(unsigned)ShaderStage::Pixel] = BASIC_PIXEL_HLSL ":frameworkEntry:ps_*";
-			nascentDesc->_selectorPreconfigurationFile = "xleres/TechniqueLibrary/Framework/SelectorPreconfiguration.hlsl";
+			auto templateDesc = std::make_shared<GraphicsPipelineDesc>();
+			templateDesc->_shaders[(unsigned)ShaderStage::Vertex] = BASIC2D_VERTEX_HLSL ":frameworkEntry:vs_*";
+			templateDesc->_shaders[(unsigned)ShaderStage::Pixel] = BASIC_PIXEL_HLSL ":frameworkEntry:ps_*";
+			templateDesc->_selectorPreconfigurationFile = "xleres/TechniqueLibrary/Framework/SelectorPreconfiguration.hlsl";
 
-			nascentDesc->_depthStencil = CommonResourceBox::s_dsDisable;
-			nascentDesc->_rasterization = CommonResourceBox::s_rsCullDisable;
-			nascentDesc->_blend.push_back(CommonResourceBox::s_abStraightAlpha);
+			templateDesc->_rasterization = CommonResourceBox::s_rsDefault;
+			templateDesc->_blend.push_back(CommonResourceBox::s_abStraightAlpha);
 
-			_pipelineDescFuture = std::make_shared<::Assets::AssetFuture<GraphicsPipelineDesc>>("immediate-renderer");
-			_pipelineDescFuture->SetAsset(std::move(nascentDesc), {});
+			DepthStencilDesc dsModes[] = {
+				CommonResourceBox::s_dsReadWrite,
+				CommonResourceBox::s_dsReadOnly,
+				CommonResourceBox::s_dsDisable
+			};
+			for (unsigned c=0; c<dimof(dsModes); ++c) {
+				auto nascentDesc = std::make_shared<GraphicsPipelineDesc>(*templateDesc);
+				nascentDesc->_depthStencil = dsModes[c];
+
+				_pipelineDescFuture[c] = std::make_shared<::Assets::AssetFuture<GraphicsPipelineDesc>>("immediate-renderer");
+				_pipelineDescFuture[c]->SetAsset(std::move(nascentDesc), {});
+			}
 		}
 		~ImmediateRendererTechniqueDelegate() {}
 	private:
-		::Assets::FuturePtr<GraphicsPipelineDesc> _pipelineDescFuture;
+		::Assets::FuturePtr<GraphicsPipelineDesc> _pipelineDescFuture[3];
 	};
 
 	struct DrawableWithVertexCount : public Drawable 
@@ -148,7 +168,7 @@ namespace RenderCore { namespace Techniques
 			size_t vertexCount,
 			IteratorRange<const MiniInputElementDesc*> inputAssembly,
 			const ImmediateDrawableMaterial& material,
-			Topology topology)
+			Topology topology) override
 		{
 			auto vStride = CalculateVertexStride(inputAssembly);
 			auto vertexDataSize = vertexCount * vStride;
@@ -201,7 +221,7 @@ namespace RenderCore { namespace Techniques
 			std::shared_ptr<DrawableGeo> customGeo,
 			IteratorRange<const MiniInputElementDesc*> inputAssembly,
 			const ImmediateDrawableMaterial& material = {},
-			Topology topology = Topology::TriangleList)
+			Topology topology = Topology::TriangleList) override
 		{
 			auto* drawable = _workingPkt._drawables.Allocate<DrawableWithVertexCount>();
 			drawable->_geo = std::move(customGeo);
@@ -211,7 +231,7 @@ namespace RenderCore { namespace Techniques
 			drawable->_vertexStride = 0;
 			drawable->_bytesAllocated = 0;
 			DEBUG_ONLY(drawable->_userGeo = true;)
-			bool _indexed = (drawable->_geo->_ib != nullptr) || (drawable->_geo->_dynIBBegin != ~0u);
+			bool _indexed = drawable->_geo->_ibFormat != Format(0);
 			drawable->_drawFn = _indexed ? &DrawableWithVertexCount::IndexedExecuteFn : &DrawableWithVertexCount::ExecuteFn;
 			if (material._uniformStreamInterface) {
 				drawable->_looseUniformsInterface = material._uniformStreamInterface;
@@ -221,7 +241,32 @@ namespace RenderCore { namespace Techniques
 			_lastQueuedDrawVertexCountOffset = 0;
 		}
 
-		IteratorRange<void*> UpdateLastDrawCallVertexCount(size_t newVertexCount)
+		void QueueDraw(
+			size_t indexOrVertexCount, size_t indexOrVertexStartLocation,
+			std::shared_ptr<DrawableGeo> customGeo,
+			IteratorRange<const InputElementDesc*> inputAssembly,
+			const ImmediateDrawableMaterial& material = {},
+			Topology topology = Topology::TriangleList) override
+		{
+			auto* drawable = _workingPkt._drawables.Allocate<DrawableWithVertexCount>();
+			drawable->_geo = std::move(customGeo);
+			drawable->_pipeline = GetPipelineAccelerator(inputAssembly, material._stateSet, topology, material._shaderSelectors);
+			drawable->_vertexCount = indexOrVertexCount;
+			drawable->_vertexStartLocation = indexOrVertexStartLocation;
+			drawable->_vertexStride = 0;
+			drawable->_bytesAllocated = 0;
+			DEBUG_ONLY(drawable->_userGeo = true;)
+			bool _indexed = drawable->_geo->_ibFormat != Format(0);
+			drawable->_drawFn = _indexed ? &DrawableWithVertexCount::IndexedExecuteFn : &DrawableWithVertexCount::ExecuteFn;
+			if (material._uniformStreamInterface) {
+				drawable->_looseUniformsInterface = material._uniformStreamInterface;
+				drawable->_uniforms = material._uniforms;
+			}
+			_lastQueuedDrawable = nullptr;		// this is always null, because we can't modify or extend a user geo
+			_lastQueuedDrawVertexCountOffset = 0;
+		}
+
+		IteratorRange<void*> UpdateLastDrawCallVertexCount(size_t newVertexCount) override
 		{
 			if (!_lastQueuedDrawable)
 				Throw(std::runtime_error("Calling UpdateLastDrawCallVertexCount, but no previous draw call to update"));
@@ -254,7 +299,7 @@ namespace RenderCore { namespace Techniques
 			ParsingContext& parserContext,
 			const FrameBufferDesc& fbDesc,
 			unsigned subpassIndex,
-			Float2 viewportDimensions)
+			Float2 viewportDimensions) override
 		{
 			auto sequencerConfig = _pipelineAcceleratorPool->CreateSequencerConfig(
 				_techniqueDelegate, ParameterBox{},
@@ -279,12 +324,17 @@ namespace RenderCore { namespace Techniques
 
 		std::shared_ptr<::Assets::IAsyncMarker> PrepareResources(
 			const FrameBufferDesc& fbDesc,
-			unsigned subpassIndex)
+			unsigned subpassIndex) override
 		{
 			auto sequencerConfig = _pipelineAcceleratorPool->CreateSequencerConfig(
 				_techniqueDelegate, ParameterBox{},
 				fbDesc, subpassIndex);
 			return Techniques::PrepareResources(*_pipelineAcceleratorPool, *sequencerConfig, _workingPkt);
+		}
+
+		virtual DrawablesPacket* GetDrawablesPacket() override
+		{
+			return &_workingPkt;
 		}
 
 		ImmediateDrawables(
@@ -326,8 +376,9 @@ namespace RenderCore { namespace Techniques
 			return res;
 		}
 
+		template<typename InputAssemblyType>
 		std::shared_ptr<PipelineAccelerator> GetPipelineAccelerator(
-			IteratorRange<const MiniInputElementDesc*> inputAssembly,
+			IteratorRange<const InputAssemblyType*> inputAssembly,
 			const RenderCore::Assets::RenderStateSet& stateSet,
 			Topology topology,
 			const ParameterBox& shaderSelectors)

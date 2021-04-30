@@ -299,6 +299,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			auto byteCount = data.size();
 			auto alignedByteCount = CeilToMultiple((unsigned)byteCount, b._alignment); // (probably pow2, but we don't know for sure)
 			auto space = b._heap.AllocateBack(alignedByteCount);
+			assert((space % b._alignment) == 0);
 			if (space != ~0u) {
 				PushData(_pimpl->_factory->GetDevice().get(), b._buffer, space, data);
 				b._markedDestroys.back()._front = space + alignedByteCount;

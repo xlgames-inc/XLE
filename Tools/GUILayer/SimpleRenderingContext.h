@@ -62,6 +62,8 @@ namespace GUILayer
         RenderCore::Techniques::ParsingContext* _parsingContext;
         RenderCore::Techniques::IPipelineAcceleratorPool* _pipelineAccelerators;
         RenderCore::IThreadContext* _threadContext;     // note -- keeping an unprotected pointer here (SimpleRenderingContext is typically short lived). Create must be careful to manage lifetimes
+        bool _depthWriteEnable = true;
+        bool _depthTestEnable = true;
     };
 }
 
