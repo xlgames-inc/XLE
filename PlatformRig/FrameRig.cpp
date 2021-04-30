@@ -142,12 +142,20 @@ namespace PlatformRig
 			// Bind the presentation target as the default output for the parser context
 			// (including setting the normalized width and height)
 			parserContext.GetTechniqueContext()._attachmentPool->Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, presentationTarget);
+            auto targetDesc = presentationTarget->GetDesc();
+            parserContext._preregisteredAttachments.push_back(
+                RenderCore::Techniques::PreregisteredAttachment {
+                    RenderCore::Techniques::AttachmentSemantics::ColorLDR,
+                    targetDesc,
+                    RenderCore::Techniques::PreregisteredAttachment::State::Uninitialized
+                });
+            parserContext._fbProps = RenderCore::FrameBufferProperties { targetDesc._textureDesc._width, targetDesc._textureDesc._height };
 
 			////////////////////////////////
 
 			TRY {
 				if (_mainOverlaySys) {
-                    _mainOverlaySys->Render(context, presentationTarget, parserContext);
+                    _mainOverlaySys->Render(context, parserContext);
                 } else {
                     // We must at least clear, because the _debugScreenOverlaySystem might have something to render
                     RenderCore::Metal::DeviceContext::Get(context)->Clear(*presentationTarget->CreateTextureView(RenderCore::BindFlag::RenderTarget), Float4(0,0,0,1));
@@ -161,7 +169,7 @@ namespace PlatformRig
 
 			TRY {
 				if (_debugScreenOverlaySystem)
-                    _debugScreenOverlaySystem->Render(context, presentationTarget, parserContext);
+                    _debugScreenOverlaySystem->Render(context, parserContext);
 			}
 			CATCH_ASSETS(parserContext)
 			CATCH(const std::exception& e) {

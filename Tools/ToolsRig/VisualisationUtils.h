@@ -144,7 +144,6 @@ namespace ToolsRig
     public:
         virtual void Render(
             RenderCore::IThreadContext& context,
-			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) override;
 
         void Set(const VisEnvSettings& envSettings);
@@ -168,9 +167,8 @@ namespace ToolsRig
     public:
         virtual void Render(
             RenderCore::IThreadContext& context,
-			const RenderCore::IResourcePtr& renderTarget,
-            RenderCore::Techniques::ParsingContext& parserContext);
-		virtual OverlayState GetOverlayState() const;
+            RenderCore::Techniques::ParsingContext& parserContext) override;
+		virtual OverlayState GetOverlayState() const override;
 
 		void Set(const std::shared_ptr<SceneEngine::IScene>& scene);
 		void Set(const std::shared_ptr<VisCameraSettings>&);
@@ -194,12 +192,11 @@ namespace ToolsRig
     class MouseOverTrackingOverlay : public PlatformRig::IOverlaySystem
     {
     public:
-        virtual std::shared_ptr<PlatformRig::IInputListener> GetInputListener();
+        virtual std::shared_ptr<PlatformRig::IInputListener> GetInputListener() override;
 
         virtual void Render(
             RenderCore::IThreadContext& context, 
-			const RenderCore::IResourcePtr& renderTarget,
-            RenderCore::Techniques::ParsingContext& parserContext);
+            RenderCore::Techniques::ParsingContext& parserContext) override;
 
 		void Set(const std::shared_ptr<SceneEngine::IScene>& scene);
 

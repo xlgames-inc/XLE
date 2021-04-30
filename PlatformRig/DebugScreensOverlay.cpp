@@ -11,6 +11,7 @@
 #include "../RenderCore/Techniques/RenderPassUtils.h"
 #include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Techniques/ImmediateDrawables.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../Math/Vector.h"
 
 namespace PlatformRig
@@ -30,24 +31,21 @@ namespace PlatformRig
         {
         }
 
-        std::shared_ptr<IInputListener> GetInputListener()  { return _inputListener; }
+        std::shared_ptr<IInputListener> GetInputListener() override  { return _inputListener; }
 
         void Render(
             RenderCore::IThreadContext& threadContext,
-			const RenderCore::IResourcePtr& renderTarget,
-            RenderCore::Techniques::ParsingContext& parserContext)
+            RenderCore::Techniques::ParsingContext& parserContext) override
         {
             auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, *_immediateDrawables, *_fontRenderer);
             
-            auto targetDesc = renderTarget->GetDesc();
-            Int2 viewportDims{ targetDesc._textureDesc._width, targetDesc._textureDesc._height };
+            Int2 viewportDims{ parserContext._fbProps._outputWidth, parserContext._fbProps._outputHeight };
+            assert(viewportDims[0] * viewportDims[1]);
             _debugScreensSystem->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ {0,0}, viewportDims });
 
-            auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
-            _immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi.GetFrameBufferDesc(), 0, viewportDims);
+            auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, parserContext);
+            _immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi);
         }
-
-        void SetActivationState(bool) {}
 
     private:
         std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> _debugScreensSystem;

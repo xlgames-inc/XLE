@@ -28,6 +28,7 @@ namespace RenderCore
 
 namespace RenderCore { namespace Techniques
 {
+    struct PreregisteredAttachment;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -67,7 +68,7 @@ namespace RenderCore { namespace Techniques
         void UnbindAll();
 		auto GetBoundResource(uint64_t semantic) -> IResourcePtr;
 
-        std::vector<AttachmentName> Request(const FrameBufferDesc& fbDesc);
+        std::vector<AttachmentName> Request(const FrameBufferDesc& fbDesc, IteratorRange<const PreregisteredAttachment*> = {});
 
         struct GetResourceResult
         {
@@ -110,29 +111,12 @@ namespace RenderCore { namespace Techniques
     ///
     /// This helper class allows client code to simply declare what it needs and the actual management
     /// of the device objects will be handled within the cache.
-    class FrameBufferPool
-    {
-    public:
-        class Result
-        {
-        public:
-            std::shared_ptr<Metal::FrameBuffer> _frameBuffer;
-            IteratorRange<const AttachmentName*> _poolAttachmentsRemapping;
-            std::vector<IResource*> _uncompletedInitializationResources;
-        };
-        Result BuildFrameBuffer(
-            Metal::ObjectFactory& factory,
-            const FrameBufferDesc& desc,
-            AttachmentPool& attachmentPool);
+    class FrameBufferPool;
+    std::shared_ptr<FrameBufferPool> CreateFrameBufferPool();
 
-        void Reset();
+    void ResetFrameBufferPool(FrameBufferPool& fbPool);
 
-        FrameBufferPool();
-        ~FrameBufferPool();
-    private:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-    };
+    class ParsingContext;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -180,6 +164,12 @@ namespace RenderCore { namespace Techniques
             const FrameBufferDesc& layout,
             FrameBufferPool& frameBufferPool,
             AttachmentPool& attachmentPool,
+            IteratorRange<const PreregisteredAttachment*> preregisteredAttachments,
+            const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
+        RenderPassInstance(
+            IThreadContext& context,
+            ParsingContext& parsingContext,
+            const FrameBufferDesc& layout,
             const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
 		RenderPassInstance(
 			const FrameBufferDesc& layout,
@@ -201,16 +191,6 @@ namespace RenderCore { namespace Techniques
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    struct PreregisteredAttachment
-    {
-    public:
-        uint64_t _semantic;
-        AttachmentDesc _desc;
-        enum class State { Uninitialized, Initialized };
-        State _state = State::Uninitialized;
-        State _stencilState = State::Uninitialized;
-    };
 
     class MergeFragmentsResult
     {
@@ -248,7 +228,8 @@ namespace RenderCore { namespace Techniques
 
     void MergeInOutputs(
         std::vector<PreregisteredAttachment>& workingSystemAttachments,
-        const FrameBufferDescFragment& fragment);
+        const FrameBufferDescFragment& fragment,
+        const FrameBufferProperties& fbProps);
 
     bool IsCompatible(const AttachmentDesc& testAttachment, const AttachmentDesc& request, UInt2 dimensions);
 

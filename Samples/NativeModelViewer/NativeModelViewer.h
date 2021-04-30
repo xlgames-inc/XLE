@@ -22,7 +22,6 @@ namespace Sample
 
 		void Render(
             RenderCore::IThreadContext& threadContext,
-			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) override;
 		std::shared_ptr<PlatformRig::IInputListener> GetInputListener() override;
         void SetActivationState(bool newState) override;

@@ -9,10 +9,12 @@
 #include "CommonResources.h"
 #include "CompiledShaderPatchCollection.h"
 #include "Drawables.h"
+#include "RenderPass.h"
 #include "../Assets/MaterialScaffold.h"
 #include "../Assets/AssetFutureContinuation.h"
 #include "../Assets/Assets.h"
 #include "../Format.h"
+#include "../FrameBufferDesc.h"
 #include "../../ShaderParser/AutomaticSelectorFiltering.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/ParameterBox.h"
@@ -298,13 +300,14 @@ namespace RenderCore { namespace Techniques
 			IThreadContext& context,
 			ParsingContext& parserContext,
 			const FrameBufferDesc& fbDesc,
-			unsigned subpassIndex,
-			Float2 viewportDimensions) override
+			unsigned subpassIndex) override
 		{
 			auto sequencerConfig = _pipelineAcceleratorPool->CreateSequencerConfig(
 				_techniqueDelegate, ParameterBox{},
 				fbDesc, subpassIndex);
 
+			assert(fbDesc.GetProperties()._outputWidth * fbDesc.GetProperties()._outputHeight);
+			Float2 viewportDimensions { fbDesc.GetProperties()._outputWidth, fbDesc.GetProperties()._outputHeight };
 			_resourceDelegate->Configure(context, viewportDimensions);
 
 			SequencerContext sequencerContext;
@@ -412,6 +415,11 @@ namespace RenderCore { namespace Techniques
 		const DescriptorSetLayoutAndBinding& sequencerDescSetLayout)
 	{
 		return std::make_shared<ImmediateDrawables>(device, pipelineLayout, matDescSetLayout, sequencerDescSetLayout);
+	}
+
+	void IImmediateDrawables::ExecuteDraws(IThreadContext& threadContext, ParsingContext& parsingContext, const RenderPassInstance& rpi)
+	{
+		ExecuteDraws(threadContext, parsingContext, rpi.GetFrameBufferDesc(), rpi.GetCurrentSubpassIndex());
 	}
 
 	IImmediateDrawables::~IImmediateDrawables() {}

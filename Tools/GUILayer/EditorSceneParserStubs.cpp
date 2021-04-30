@@ -43,7 +43,6 @@ namespace GUILayer
     public:
         void Render(
             RenderCore::IThreadContext& threadContext,
-			const RenderTargetWrapper& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) override;
 
         EditorSceneOverlay(
@@ -89,30 +88,26 @@ namespace GUILayer
     
     void EditorSceneOverlay::Render(
         RenderCore::IThreadContext& threadContext,
-		const RenderTargetWrapper& renderTargetWrapper,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
-		auto& renderTarget = renderTargetWrapper._renderTarget;
-        auto targetDesc = renderTarget->GetDesc();
-		UInt2 viewportDims { targetDesc._textureDesc._width, targetDesc._textureDesc._height };
-
-		RenderCore::Techniques::PreregisteredAttachment preregisteredAttachments[] {
-			RenderCore::Techniques::PreregisteredAttachment {
-				RenderCore::Techniques::AttachmentSemantics::ColorLDR,
-				RenderCore::AsAttachmentDesc(targetDesc),
-				RenderCore::Techniques::PreregisteredAttachment::State::Uninitialized
-			}
-		};
-		RenderCore::FrameBufferProperties fbProps { targetDesc._textureDesc._width, targetDesc._textureDesc._height };
+		assert(parserContext._fbProps._outputWidth * parserContext._fbProps._outputHeight);
+		auto depthBufferDesc = RenderCore::CreateDesc(
+			RenderCore::BindFlag::DepthStencil | RenderCore::BindFlag::ShaderResource,
+			0, RenderCore::GPUAccess::Read | RenderCore::GPUAccess::Write,
+			RenderCore::TextureDesc::Plain2D(
+				parserContext._fbProps._outputWidth, parserContext._fbProps._outputHeight,
+				RenderCore::Format::D24_UNORM_S8_UINT, 1, 0, parserContext._fbProps._samples),
+			"SimpleSceneLayer-depth");
+		parserContext.DefineAttachment(RenderCore::Techniques::AttachmentSemantics::MultisampleDepth, depthBufferDesc);
+        UInt2 viewportDims { parserContext._fbProps._outputWidth, parserContext._fbProps._outputHeight };
 
 		auto compiledTechnique = RenderCore::LightingEngine::CreateForwardLightingTechnique(
 			_pipelineAcceleratorPool.GetNativePtr(), _lightingApparatus.GetNativePtr(),
-			MakeIteratorRange(preregisteredAttachments), fbProps);
+			parserContext._preregisteredAttachments, parserContext._fbProps);
 
         {
-			ToolsRig::ConfigureParsingContext(parserContext, *_camera.get(), UInt2{targetDesc._textureDesc._width, targetDesc._textureDesc._height});
+			ToolsRig::ConfigureParsingContext(parserContext, *_camera.get(), UInt2{parserContext._fbProps._outputWidth, parserContext._fbProps._outputHeight});
 			
-			parserContext.GetTechniqueContext()._attachmentPool->Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget);
 			{
 				EditorLightingParserDelegate lightingDelegate(_scene.GetNativePtr());
 				lightingDelegate.PrepareEnvironmentalSettings(
@@ -120,7 +115,7 @@ namespace GUILayer
 
 				auto lightingIterator = SceneEngine::BeginLightingTechnique(
 					threadContext, parserContext, *_pipelineAcceleratorPool.get(),
-					MakeIteratorRange(preregisteredAttachments),
+					parserContext._preregisteredAttachments,
 					lightingDelegate, *compiledTechnique);
 
 				for (;;) {
@@ -131,7 +126,6 @@ namespace GUILayer
 					BuildDrawables(*_scene.get(), *_camera.get(), viewportDims, next._batch, *next._pkt);
 				}
 			}
-			parserContext.GetTechniqueContext()._attachmentPool->Unbind(*renderTarget);
 		}
 
 		if (_renderSettings->_selection && _renderSettings->_selection->_nativePlacements->size() > 0) {

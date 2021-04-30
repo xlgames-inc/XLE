@@ -218,7 +218,7 @@ namespace UnitTests
 		RenderCore::Techniques::PreregisteredAttachment preregisteredAttachments[] {
 			RenderCore::Techniques::PreregisteredAttachment {
 				RenderCore::Techniques::AttachmentSemantics::ColorLDR,
-				RenderCore::AsAttachmentDesc(targetDesc),
+				targetDesc,
 				RenderCore::Techniques::PreregisteredAttachment::State::Uninitialized
 			}
 		};
@@ -235,7 +235,7 @@ namespace UnitTests
 		auto commonResources = std::make_shared<RenderCore::Techniques::CommonResourceBox>(*testHelper->_device);
 		techniqueContext->_systemUniformsDelegate = std::make_shared<RenderCore::Techniques::SystemUniformsDelegate>(*testHelper->_device, *commonResources);
 		techniqueContext->_attachmentPool = std::make_shared<Techniques::AttachmentPool>(testHelper->_device);
-		techniqueContext->_frameBufferPool = std::make_shared<Techniques::FrameBufferPool>();
+		techniqueContext->_frameBufferPool = Techniques::CreateFrameBufferPool();
 
 		DrawableWriter drawableWriter(*testHelper, *pipelineAcceleratorPool);
 

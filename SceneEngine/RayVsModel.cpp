@@ -11,6 +11,7 @@
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Types.h"
 #include "../RenderCore/IThreadContext.h"
+#include "../RenderCore/BufferView.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Techniques/Techniques.h"
@@ -97,7 +98,7 @@ namespace SceneEngine
 
 		std::shared_ptr<RayDefinitionUniformDelegate> _rayDefinition;
 		Techniques::AttachmentPool _dummyAttachmentPool;
-		Techniques::FrameBufferPool _frameBufferPool;
+		std::shared_ptr<Techniques::FrameBufferPool> _frameBufferPool;
 
         ModelIntersectionResources(const Desc&);
     };
@@ -125,6 +126,8 @@ namespace SceneEngine
 			Metal::QueryPool::QueryType::StreamOutput_Stream0, 4);
 
 		_rayDefinition = std::make_shared<RayDefinitionUniformDelegate>();
+
+		_frameBufferPool = RenderCore::Techniques::CreateFrameBufferPool();
     }
 	
 #if GFXAPI_TARGET == GFXAPI_VULKAN
@@ -290,7 +293,8 @@ namespace SceneEngine
 		_pimpl->_rpi = Techniques::RenderPassInstance {
 			threadContext,
 			box._fbDesc,
-			_pimpl->_res->_frameBufferPool, _pimpl->_res->_dummyAttachmentPool };
+			*_pimpl->_res->_frameBufferPool, _pimpl->_res->_dummyAttachmentPool,
+			{} };
 
 		VertexBufferView sov { _pimpl->_res->_streamOutputBuffer.get() };
 		_pimpl->_encoder = metalContext.BeginStreamOutputEncoder(

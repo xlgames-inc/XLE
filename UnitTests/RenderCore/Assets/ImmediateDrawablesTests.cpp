@@ -120,7 +120,8 @@ namespace UnitTests
 				auto techniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
 				techniqueContext->_drawablesSharedResources = RenderCore::Techniques::CreateDrawablesSharedResources();
 				RenderCore::Techniques::ParsingContext parsingContext { *techniqueContext };
-				immediateDrawables->ExecuteDraws(*threadContext, parsingContext, fbHelper.GetDesc(), 0, Float2(targetDesc._textureDesc._width, targetDesc._textureDesc._height));
+				parsingContext._fbProps = fbHelper.GetDesc().GetProperties();
+				immediateDrawables->ExecuteDraws(*threadContext, parsingContext, fbHelper.GetDesc(), 0);
 			}
 
 			auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);
@@ -168,7 +169,8 @@ namespace UnitTests
 				auto techniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
 				techniqueContext->_drawablesSharedResources = RenderCore::Techniques::CreateDrawablesSharedResources();
 				RenderCore::Techniques::ParsingContext parsingContext { *techniqueContext };
-				immediateDrawables->ExecuteDraws(*threadContext, parsingContext, fbHelper.GetDesc(), 0, Float2(targetDesc._textureDesc._width, targetDesc._textureDesc._height));
+				parsingContext._fbProps = fbHelper.GetDesc().GetProperties();
+				immediateDrawables->ExecuteDraws(*threadContext, parsingContext, fbHelper.GetDesc(), 0);
 			}
 
 			auto breakdown = fbHelper.GetFullColorBreakdown(*threadContext);

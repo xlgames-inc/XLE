@@ -78,7 +78,7 @@ namespace Sample
             [fra = std::weak_ptr<RenderCore::Techniques::FrameRenderingApparatus>{sampleGlobals._frameRenderingApparatus}](unsigned, unsigned) {
                 auto apparatus = fra.lock();
                 if (apparatus)
-                    apparatus->_frameBufferPool->Reset();
+                    RenderCore::Techniques::ResetFrameBufferPool(*apparatus->_frameBufferPool);
             });
         auto v = sampleGlobals._renderDevice->GetDesc();
         sampleGlobals._windowApparatus->_osWindow->SetTitle(StringMeld<128>() << "XLE sample [RenderCore: " << v._buildVersion << ", " << v._buildDate << "]");

@@ -5,9 +5,13 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../../Math/EdgeDetection.hlsl"
+#include "../../Framework/Binding.hlsl"
 
-float3 OutlineColour;
-Texture2D InputTexture;
+cbuffer Settings BIND_NUMERIC_B0
+{
+	float3 OutlineColour;
+}
+Texture2D InputTexture BIND_NUMERIC_T0;
 
 float4 main(float4 pos : SV_Position) : SV_Target0
 {
@@ -41,10 +45,11 @@ float4 main(float4 pos : SV_Position) : SV_Target0
 	return float4(alpha * OutlineColour, alpha);
 }
 
-cbuffer ShadowHighlightSettings
+cbuffer ShadowHighlightSettings BIND_NUMERIC_B0
 {
 	float4 ShadowColor;
 }
+
 float4 main_shadow(float4 pos : SV_Position) : SV_Target0
 {
 		//	using a sharr convolution to find the edges of the shapes in "InputTexture",

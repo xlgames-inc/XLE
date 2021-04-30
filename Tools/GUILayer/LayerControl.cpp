@@ -95,10 +95,9 @@ namespace GUILayer
 
             void Render(
                 RenderCore::IThreadContext& threadContext,
-				const RenderCore::IResourcePtr& renderTarget,
                 RenderCore::Techniques::ParsingContext& parserContext)
             {
-				_managedOverlay->Render(threadContext, GUILayer::RenderTargetWrapper{renderTarget}, parserContext);
+				_managedOverlay->Render(threadContext, parserContext);
             }
 
             void SetActivationState(bool newState)

@@ -173,13 +173,15 @@ namespace RenderOverlays
     {
 		UniformsStreamInterface drawHighlightInterface;
 		drawHighlightInterface.BindImmediateData(0, Hash64("Settings"));
-		_drawHighlightUniforms = Metal::BoundUniforms(*_drawHighlight, {}, {}, drawHighlightInterface);
+        drawHighlightInterface.BindResourceView(0, Hash64("InputTexture"));
+		_drawHighlightUniforms = Metal::BoundUniforms(*_drawHighlight, drawHighlightInterface);
 
         //// ////
         
 		UniformsStreamInterface drawShadowInterface;
 		drawShadowInterface.BindImmediateData(0, Hash64("ShadowHighlightSettings"));
-		_drawShadowUniforms = Metal::BoundUniforms(*_drawShadow, {}, {}, drawShadowInterface);
+        drawShadowInterface.BindResourceView(0, Hash64("InputTexture"));
+		_drawShadowUniforms = Metal::BoundUniforms(*_drawShadow, drawShadowInterface);
 
         //// ////
         _validationCallback = ::Assets::GetDepValSys().Make();
@@ -192,35 +194,32 @@ namespace RenderOverlays
     public:
         IThreadContext*                 _threadContext;
         std::shared_ptr<RenderCore::ICompiledPipelineLayout> _pipelineLayout;
-        Techniques::AttachmentPool*	_namedRes;
         Techniques::RenderPassInstance  _rpi;
-		FrameBufferDesc _fbDesc;
 
-        Pimpl(IThreadContext& threadContext, std::shared_ptr<RenderCore::ICompiledPipelineLayout> pipelineLayout, Techniques::AttachmentPool& namedRes)
-        : _threadContext(&threadContext), _pipelineLayout(std::move(pipelineLayout)), _namedRes(&namedRes) {}
+        Pimpl(IThreadContext& threadContext, std::shared_ptr<RenderCore::ICompiledPipelineLayout> pipelineLayout)
+        : _threadContext(&threadContext), _pipelineLayout(std::move(pipelineLayout)) {}
         ~Pimpl() {}
     };
 
 	const RenderCore::FrameBufferDesc& BinaryHighlight::GetFrameBufferDesc() const
 	{
-		return _pimpl->_fbDesc;
+		return _pimpl->_rpi.GetFrameBufferDesc();
 	}
 
     BinaryHighlight::BinaryHighlight(
         IThreadContext& threadContext, 
         std::shared_ptr<RenderCore::ICompiledPipelineLayout> pipelineLayout,
-		Techniques::FrameBufferPool& fbPool,
-        Techniques::AttachmentPool& namedRes,
-        const FrameBufferProperties& fbProps)
+		Techniques::ParsingContext& parsingContext)
     {
         using namespace RenderCore;
-        _pimpl = std::make_unique<Pimpl>(threadContext, std::move(pipelineLayout), namedRes);
+        _pimpl = std::make_unique<Pimpl>(threadContext, std::move(pipelineLayout));
 
 		Techniques::FrameBufferDescFragment fbDescFrag;
 		auto n_offscreen = fbDescFrag.DefineTemporaryAttachment(
 			AttachmentDesc {
 				Format::R8G8B8A8_UNORM, 1.f, 1.f, 0u,
-				AttachmentDesc::Flags::OutputRelativeDimensions });
+				AttachmentDesc::Flags::OutputRelativeDimensions,
+                BindFlag::ShaderResource });
 		auto n_mainColor = fbDescFrag.DefineAttachment(RenderCore::Techniques::AttachmentSemantics::ColorLDR);
 		const bool doDepthTest = true;
         auto n_depth = doDepthTest ? fbDescFrag.DefineAttachment(RenderCore::Techniques::AttachmentSemantics::MultisampleDepth) : ~0u;
@@ -236,20 +235,17 @@ namespace RenderOverlays
 		fbDescFrag.AddSubpass(std::move(subpass1));
         
 		ClearValue clearValues[] = {MakeClearValue(0.f, 0.f, 0.f, 0.f)};
-		_pimpl->_fbDesc = Techniques::BuildFrameBufferDesc(std::move(fbDescFrag), fbProps);
+		auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(fbDescFrag), parsingContext._fbProps);
         _pimpl->_rpi = Techniques::RenderPassInstance(
-            threadContext, _pimpl->_fbDesc, 
-			fbPool, namedRes,
-            {},
+            threadContext, parsingContext, fbDesc, 
 			{MakeIteratorRange(clearValues)});
     }
 
     void BinaryHighlight::FinishWithOutlineAndOverlay(RenderCore::IThreadContext& threadContext, Float3 outlineColor, unsigned overlayColor)
     {
+        _pimpl->_rpi.NextSubpass();
         auto* srv = _pimpl->_rpi.GetInputAttachmentSRV(0);
         assert(srv);
-
-        _pimpl->_rpi.NextSubpass();
 
         if (srv) {
 			static Float3 highlightColO(1.5f, 1.35f, .7f);
@@ -276,21 +272,23 @@ namespace RenderOverlays
             //  now we can render these objects over the main image, 
             //  using some filtering
 
+        _pimpl->_rpi.NextSubpass();
         auto* srv = _pimpl->_rpi.GetInputAttachmentSRV(0);
         assert(srv);
-        _pimpl->_rpi.NextSubpass();
 
         auto shaders = ::Assets::MakeAsset<HighlightShaders>(_pimpl->_pipelineLayout)->TryActualize();
 		if (srv && shaders) {
 			auto& metalContext = *Metal::DeviceContext::Get(threadContext);
             auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(_pimpl->_pipelineLayout);
-            auto numericUniforms = encoder.BeginNumericUniformsInterface();
-			numericUniforms.Bind(MakeResourceList(*srv));        // (pixel)
-            numericUniforms.Apply(metalContext, encoder);
 
 			struct Constants { Float3 _color; unsigned _dummy; } constants = { outlineColor, 0 };
 
-			shaders->_drawHighlightUniforms.ApplyLooseUniforms(metalContext, encoder, ImmediateDataStream{constants}, 1);
+			IResourceView* rvs[] = { srv };
+            UniformsStream::ImmediateData immd[] = { MakeOpaqueIteratorRange(constants) };
+            UniformsStream us;
+            us._resourceViews = MakeIteratorRange(rvs);
+            us._immediateData = MakeIteratorRange(immd);
+            shaders->_drawHighlightUniforms.ApplyLooseUniforms(metalContext, encoder, us);
 			encoder.Bind(*shaders->_drawHighlight);
 			encoder.Bind(MakeIteratorRange(&Techniques::CommonResourceBox::s_abAlphaPremultiplied, &Techniques::CommonResourceBox::s_abAlphaPremultiplied+1));
 			encoder.Bind(Techniques::CommonResourceBox::s_dsDisable);
@@ -303,9 +301,9 @@ namespace RenderOverlays
 
     void BinaryHighlight::FinishWithShadow(RenderCore::IThreadContext& threadContext, Float4 shadowColor)
     {
+        _pimpl->_rpi.NextSubpass();
         auto* srv = _pimpl->_rpi.GetInputAttachmentSRV(0);
         assert(srv);
-        _pimpl->_rpi.NextSubpass();
 
             //  now we can render these objects over the main image, 
             //  using some filtering
@@ -314,13 +312,14 @@ namespace RenderOverlays
         if (srv && shaders) {
 			auto& metalContext = *Metal::DeviceContext::Get(threadContext);
             auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(_pimpl->_pipelineLayout);
-            auto numericUniforms = encoder.BeginNumericUniformsInterface();
-			numericUniforms.Bind(MakeResourceList(*srv));            // (pixel)
-            numericUniforms.Apply(metalContext, encoder);
-
 			struct Constants { Float4 _shadowColor; } constants = { shadowColor };
 
-			shaders->_drawShadowUniforms.ApplyLooseUniforms(metalContext, encoder, ImmediateDataStream{constants}, 1);
+            IResourceView* rvs[] = { srv };
+            UniformsStream::ImmediateData immd[] = { MakeOpaqueIteratorRange(constants) };
+            UniformsStream us;
+            us._resourceViews = MakeIteratorRange(rvs);
+            us._immediateData = MakeIteratorRange(immd);
+			shaders->_drawShadowUniforms.ApplyLooseUniforms(metalContext, encoder, us);
 			encoder.Bind(*shaders->_drawShadow);
 			encoder.Bind(MakeIteratorRange(&Techniques::CommonResourceBox::s_abStraightAlpha, &Techniques::CommonResourceBox::s_abStraightAlpha+1));
 			encoder.Bind(Techniques::CommonResourceBox::s_dsDisable);

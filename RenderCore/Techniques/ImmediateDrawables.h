@@ -20,6 +20,7 @@ namespace RenderCore { namespace Techniques
 	class ParsingContext;
 	class DrawableGeo;
 	class DrawablesPacket;
+	class RenderPassInstance;
 
 	class RetainedUniformsStream
 	{
@@ -63,8 +64,8 @@ namespace RenderCore { namespace Techniques
 			IThreadContext& context,
 			ParsingContext& parserContext,
 			const FrameBufferDesc& fbDesc,
-			unsigned subpassIndex,
-			Float2 viewportDimensions) = 0;
+			unsigned subpassIndex) = 0;
+		void ExecuteDraws(IThreadContext&, ParsingContext&, const RenderPassInstance&);
 		virtual std::shared_ptr<::Assets::IAsyncMarker> PrepareResources(
 			const FrameBufferDesc& fbDesc,
 			unsigned subpassIndex) = 0;

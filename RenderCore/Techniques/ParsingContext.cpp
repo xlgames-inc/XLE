@@ -5,6 +5,7 @@
 #include "ParsingContext.h"
 #include "Techniques.h"
 #include "SystemUniformsDelegate.h"
+#include "RenderPass.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/StringFormat.h"
 #include <memory>
@@ -88,6 +89,17 @@ namespace RenderCore { namespace Techniques
 				_shaderResourceDelegates.begin(), _shaderResourceDelegates.end(),
 				[&dele](const std::shared_ptr<IShaderResourceDelegate>& p) { return p.get() == &dele; }),
 			_shaderResourceDelegates.end());
+	}
+
+	void ParsingContext::DefineAttachment(uint64_t semantic, const ResourceDesc& resourceDesc, PreregisteredAttachment::State state, PreregisteredAttachment::State stencilState)
+	{
+		auto i = std::find_if(
+			_preregisteredAttachments.begin(), _preregisteredAttachments.end(),
+			[semantic](const auto& c) { return c._semantic == semantic; });
+		if (i != _preregisteredAttachments.end())
+			Throw(std::runtime_error("Attempting to define an attachment that has already been defined"));
+		_preregisteredAttachments.push_back(
+			RenderCore::Techniques::PreregisteredAttachment{semantic, resourceDesc, state, stencilState});
 	}
 
 	SystemUniformsDelegate& ParsingContext::GetSystemUniformsDelegate() const

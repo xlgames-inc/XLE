@@ -143,6 +143,7 @@ namespace RenderCore { namespace LightingEngine
 	{
 		// Generate a FrameBufferDesc from the input
 		UInt2 dimensionsForCompatibilityTests { _fbProps._outputWidth, _fbProps._outputHeight };
+		assert(dimensionsForCompatibilityTests[0] * dimensionsForCompatibilityTests[1]);
 		auto merged = Techniques::MergeFragments(
 			MakeIteratorRange(_workingAttachments),
 			MakeIteratorRange(&fragments.GetFrameBufferDescFragment(), &fragments.GetFrameBufferDescFragment()+1),
@@ -150,14 +151,14 @@ namespace RenderCore { namespace LightingEngine
 
 		auto linkResults = LinkFragmentOutputsToSystemAttachments(merged, MakeIteratorRange(_workingAttachments));
 
-		#if defined(_DEBUG)
+		#if 0 // defined(_DEBUG)
 			Log(Warning) << "Merged fragment in lighting technique:" << std::endl << merged._log << std::endl;
 			if (RenderCore::Techniques::CanBeSimplified(merged._mergedFragment, _workingAttachments))
 				Log(Warning) << "Detected a frame buffer fragment which be simplified while building lighting technique. This usually means one or more of the attachments can be reused, thereby reducing the total number of attachments required." << std::endl;
 		#endif
 
 		// Update _workingAttachments
-		RenderCore::Techniques::MergeInOutputs(_workingAttachments, merged._mergedFragment);
+		RenderCore::Techniques::MergeInOutputs(_workingAttachments, merged._mergedFragment, _fbProps);
 
 		auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment), _fbProps);
 
@@ -274,6 +275,12 @@ namespace RenderCore { namespace LightingEngine
 		friend class LightingTechniqueInstance;
 	};
 
+	static void Remove(std::vector<Techniques::PreregisteredAttachment>& prereg, uint64_t semantic)
+	{
+		auto i = std::find_if(prereg.begin(), prereg.end(), [semantic](const auto& c) { return c._semantic == semantic; });
+		if (i != prereg.end()) prereg.erase(i);
+	}
+
 	auto LightingTechniqueInstance::GetNextStep() -> Step
 	{
 		while (_iterator->_stepIterator != _iterator->_steps.end()) {
@@ -295,7 +302,7 @@ namespace RenderCore { namespace LightingEngine
 					if (next->_shaderResourceDelegate)
 						context._sequencerResources.push_back(next->_shaderResourceDelegate);
 
-					auto preparation = Techniques::PrepareResources(*_iterator->_pipelineAcceleratorPool, *context._sequencerConfig, _iterator->_drawablePkt);
+					/*auto preparation = Techniques::PrepareResources(*_iterator->_pipelineAcceleratorPool, *context._sequencerConfig, _iterator->_drawablePkt);
 					if (preparation) {
 						auto state = preparation->StallWhilePending();
 						if (state.value() == ::Assets::AssetState::Invalid) {
@@ -307,7 +314,7 @@ namespace RenderCore { namespace LightingEngine
 							}
 						}
 						assert(state.has_value() && state.value() == ::Assets::AssetState::Ready);
-					}
+					}*/
 
 					Techniques::Draw(
 						*_iterator->_threadContext,
@@ -325,7 +332,8 @@ namespace RenderCore { namespace LightingEngine
 						*_iterator->_threadContext,
 						next->_fbDesc,
 						*_iterator->_frameBufferPool,
-						*_iterator->_attachmentPool};
+						*_iterator->_attachmentPool,
+						MakeIteratorRange(_iterator->_parsingContext->_preregisteredAttachments)};
 				}
 				break;
 
@@ -336,9 +344,14 @@ namespace RenderCore { namespace LightingEngine
 					for (auto consumed:next->_fragmentLinkResults._consumedAttachments) {
 						auto* bound = attachmentPool.GetBoundResource(consumed).get();
 						if (bound) attachmentPool.Unbind(*bound);
+						Remove(_iterator->_parsingContext->_preregisteredAttachments, consumed);
 					}
-					for (auto generated:next->_fragmentLinkResults._generatedAttachments)
-						attachmentPool.Bind(generated.first, _iterator->_rpi.GetResourceForAttachmentName(generated.second));
+					for (auto generated:next->_fragmentLinkResults._generatedAttachments) {
+						auto res = _iterator->_rpi.GetResourceForAttachmentName(generated.second);
+						attachmentPool.Bind(generated.first, res);
+						Remove(_iterator->_parsingContext->_preregisteredAttachments, generated.first);
+						_iterator->_parsingContext->_preregisteredAttachments.push_back({generated.first, res->GetDesc(), Techniques::PreregisteredAttachment::State::Initialized, Techniques::PreregisteredAttachment::State::Initialized});
+					}
 					_iterator->_rpi = {};
 				}
 				break;
@@ -451,7 +464,8 @@ namespace RenderCore { namespace LightingEngine
 
 		AttachmentDesc msDepthDesc =
             {   Format::D24_UNORM_S8_UINT, 1.f, 1.f, 0u,
-                AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::OutputRelativeDimensions };
+                AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::OutputRelativeDimensions,
+				BindFlag::ShaderResource };
 
 		RenderStepFragmentInterface result(PipelineType::Graphics);
         AttachmentName output;
@@ -498,7 +512,7 @@ namespace RenderCore { namespace LightingEngine
 		auto lightingTechnique = std::make_shared<CompiledLightingTechnique>(pipelineAccelerators, fbProps, preregisteredAttachments);
 		auto captures = std::make_shared<ForwardLightingCaptures>();
 		captures->_shadowGenAttachmentPool = std::make_shared<Techniques::AttachmentPool>(device);
-		captures->_shadowGenFrameBufferPool = std::make_shared<Techniques::FrameBufferPool>();
+		captures->_shadowGenFrameBufferPool = Techniques::CreateFrameBufferPool();
 		captures->_uniformsDelegate = std::make_shared<ForwardLightingCaptures::UniformsDelegate>(*captures.get());
 
 		// Reset captures

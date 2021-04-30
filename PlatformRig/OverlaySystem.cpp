@@ -74,10 +74,10 @@ namespace PlatformRig
     }
 
     void OverlaySystemSwitch::Render(
-        RenderCore::IThreadContext& device, const RenderCore::IResourcePtr& renderTarget, RenderCore::Techniques::ParsingContext& parserContext) 
+        RenderCore::IThreadContext& device, RenderCore::Techniques::ParsingContext& parserContext) 
     {
         if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
-            _childSystems[_activeChildIndex].second->Render(device, renderTarget, parserContext);
+            _childSystems[_activeChildIndex].second->Render(device, parserContext);
         }
     }
 
@@ -141,11 +141,10 @@ namespace PlatformRig
 
     void OverlaySystemSet::Render(
         RenderCore::IThreadContext& device,
-		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parsingContext) 
     {
         for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i) {
-            (*i)->Render(device, renderTarget, parsingContext);
+            (*i)->Render(device, parsingContext);
         }
     }
 
@@ -206,12 +205,11 @@ namespace PlatformRig
     class ConsoleOverlaySystem : public IOverlaySystem
     {
     public:
-        std::shared_ptr<IInputListener> GetInputListener();
+        std::shared_ptr<IInputListener> GetInputListener() override;
         void Render(
             RenderCore::IThreadContext& device,
-			const RenderCore::IResourcePtr& renderTarget,
-            RenderCore::Techniques::ParsingContext& parserContext);
-        void SetActivationState(bool);
+            RenderCore::Techniques::ParsingContext& parserContext) override;
+        void SetActivationState(bool) override;
 
         ConsoleOverlaySystem(
             std::shared_ptr<RenderCore::Techniques::IImmediateDrawables> immediateDrawables,
@@ -232,17 +230,16 @@ namespace PlatformRig
 
     void ConsoleOverlaySystem::Render(
         RenderCore::IThreadContext& threadContext,
-		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
 		auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, *_immediateDrawables, *_fontRenderer);
 
-        auto targetDesc = renderTarget->GetDesc();
-        Int2 viewportDims{ targetDesc._textureDesc._width, targetDesc._textureDesc._height };
+        Int2 viewportDims{ parserContext._fbProps._outputWidth, parserContext._fbProps._outputHeight };
+        assert(viewportDims[0] * viewportDims[1]);
         _screens->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ {0,0}, viewportDims });
 
-		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
-        _immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi.GetFrameBufferDesc(), 0, viewportDims);
+		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, parserContext);
+        _immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi);
     }
 
     void ConsoleOverlaySystem::SetActivationState(bool) {}

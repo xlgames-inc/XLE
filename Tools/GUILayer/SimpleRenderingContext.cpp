@@ -378,14 +378,11 @@ namespace GUILayer
     public:
         virtual void Render(
             RenderCore::IThreadContext& threadContext,
-			const GUILayer::RenderTargetWrapper& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) override
         {
-            auto targetDesc = renderTarget._renderTarget->GetDesc();
-            Int2 viewportDims{ targetDesc._textureDesc._width, targetDesc._textureDesc._height };
+            Int2 viewportDims{ parserContext._fbProps._outputWidth, parserContext._fbProps._outputHeight };
             
             ToolsRig::ConfigureParsingContext(parserContext, *_visCameraSettings.get(), viewportDims);
-            parserContext.GetTechniqueContext()._attachmentPool->Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget._renderTarget);
             
             auto& immediateDrawables = *EngineDevice::GetInstance()->GetNative().GetImmediateDrawingApparatus()->_immediateDrawables;
             auto& pipelineAccelerators = *EngineDevice::GetInstance()->GetNative().GetDrawingApparatus()->_pipelineAccelerators;
@@ -395,8 +392,8 @@ namespace GUILayer
                 OnRender(context);
 
 				{
-					auto rpi = RenderCore::Techniques::RenderPassToPresentationTargetWithDepthStencil(threadContext, renderTarget._renderTarget, parserContext);
-					immediateDrawables.ExecuteDraws(threadContext, parserContext, rpi.GetFrameBufferDesc(), 0, viewportDims);
+					auto rpi = RenderCore::Techniques::RenderPassToPresentationTargetWithDepthStencil(threadContext, parserContext);
+					immediateDrawables.ExecuteDraws(threadContext, parserContext, rpi);
 				}
 				OnRenderPostProcess(context);
 			}
@@ -404,8 +401,6 @@ namespace GUILayer
 			{
 				delete context;
 			}
-
-            parserContext.GetTechniqueContext()._attachmentPool->Unbind(*renderTarget._renderTarget);
         }
 
         property VisCameraSettings^ CameraSettings {

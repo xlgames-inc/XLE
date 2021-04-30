@@ -108,7 +108,7 @@ namespace RenderCore { namespace LightingEngine
 		assert(!_fbDesc.GetSubpasses().empty());
 		_savedProjectionDesc = parsingContext.GetProjectionDesc();
 		parsingContext.GetProjectionDesc()._worldToProjection = frustum._worldToClip;
-		return Techniques::RenderPassInstance{threadContext, _fbDesc, shadowGenFrameBufferPool, shadowGenAttachmentPool};
+		return Techniques::RenderPassInstance{threadContext, _fbDesc, shadowGenFrameBufferPool, shadowGenAttachmentPool, {}};
 	}
 
 	PreparedShadowFrustum CompiledShadowPreparer::End(

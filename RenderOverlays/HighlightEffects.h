@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../../RenderCore/Metal/Forward.h"
 #include "../../Math/Vector.h"
 
 namespace RenderCore { namespace Techniques { class ParsingContext; class AttachmentPool; class FrameBufferPool; } }
@@ -55,8 +54,7 @@ namespace RenderOverlays
         BinaryHighlight(
             RenderCore::IThreadContext& threadContext,
             std::shared_ptr<RenderCore::ICompiledPipelineLayout> pipelineLayout,
-            RenderCore::Techniques::FrameBufferPool& fbPool, RenderCore::Techniques::AttachmentPool& namedRes, 
-            const RenderCore::FrameBufferProperties& fbProps);
+            RenderCore::Techniques::ParsingContext& parsingContext);
         ~BinaryHighlight();
     protected:
         class Pimpl;

@@ -116,15 +116,11 @@ namespace ToolsRig
         const SceneEngine::PlacementGUID* filterEnd,
         uint64_t materialGuid)
     {
-        assert(0);  // fill in fbProps
-        RenderCore::FrameBufferProperties fbProps;
         CATCH_ASSETS_BEGIN
             RenderOverlays::BinaryHighlight highlight(
                 threadContext,
                 pipelineAccelerators.GetPipelineLayout(),
-                *parserContext.GetTechniqueContext()._frameBufferPool,
-                *parserContext.GetTechniqueContext()._attachmentPool,
-                fbProps);
+                parserContext);
 			RenderCore::Techniques::SequencerContext seqContext;
 			auto sequencerCfg = pipelineAccelerators.CreateSequencerConfig(
 				ConsoleRig::FindCachedBoxDep2<TechniqueBox>()._forwardIllumDelegate, ParameterBox{}, 
@@ -148,15 +144,11 @@ namespace ToolsRig
         const SceneEngine::PlacementGUID* filterEnd,
         uint64_t materialGuid)
     {
-        assert(0);  // fill in fbProps
-        RenderCore::FrameBufferProperties fbProps;
 		CATCH_ASSETS_BEGIN
             RenderOverlays::BinaryHighlight highlight(
                 threadContext,
                 pipelineAccelerators.GetPipelineLayout(),
-                *parserContext.GetTechniqueContext()._frameBufferPool,
-                *parserContext.GetTechniqueContext()._attachmentPool,
-                fbProps);
+                parserContext);
 			RenderCore::Techniques::SequencerContext seqContext;
 			auto sequencerCfg = pipelineAccelerators.CreateSequencerConfig(
 				ConsoleRig::FindCachedBoxDep2<TechniqueBox>()._forwardIllumDelegate, ParameterBox{}, 
@@ -184,15 +176,11 @@ namespace ToolsRig
         const SceneEngine::PlacementGUID* filterEnd,
         uint64_t materialGuid)
     {
-        assert(0);  // fill in fbProps
-        RenderCore::FrameBufferProperties fbProps;
         CATCH_ASSETS_BEGIN
             RenderOverlays::BinaryHighlight highlight(
                 threadContext,
                 pipelineAccelerators.GetPipelineLayout(),
-                *parserContext.GetTechniqueContext()._frameBufferPool,
-                *parserContext.GetTechniqueContext()._attachmentPool,
-                fbProps);
+                parserContext);
             RenderCore::Techniques::SequencerContext seqContext;
 			auto sequencerCfg = pipelineAccelerators.CreateSequencerConfig(
 				ConsoleRig::FindCachedBoxDep2<TechniqueBox>()._forwardIllumDelegate, ParameterBox{}, 
@@ -243,10 +231,7 @@ namespace ToolsRig
 		mainPass.AppendOutput(0);
 		mainPass.AppendInput(1);
 		FrameBufferDesc fbDesc{ std::move(attachments), {mainPass} };
-		Techniques::RenderPassInstance rpi {
-			threadContext, fbDesc, 
-			*parserContext.GetTechniqueContext()._frameBufferPool,
-			*parserContext.GetTechniqueContext()._attachmentPool };
+		Techniques::RenderPassInstance rpi { threadContext, parserContext, fbDesc }; 
 
         auto depthSrv = rpi.GetInputAttachmentSRV(0, TextureViewDesc{{TextureViewDesc::Aspect::Depth}});
         if (!depthSrv) return;
@@ -304,10 +289,7 @@ namespace ToolsRig
 		mainPass.AppendOutput(0);
 		mainPass.AppendInput(1);
 		FrameBufferDesc fbDesc{ std::move(attachments), {mainPass} };
-		Techniques::RenderPassInstance rpi {
-			threadContext, fbDesc, 
-			*parserContext.GetTechniqueContext()._frameBufferPool,
-			*parserContext.GetTechniqueContext()._attachmentPool };
+		Techniques::RenderPassInstance rpi { threadContext, parserContext, fbDesc }; 
 
         auto depthSrv = rpi.GetInputAttachmentSRV(0, TextureViewDesc{{TextureViewDesc::Aspect::Depth}});
         if (!depthSrv) return;

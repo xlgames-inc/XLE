@@ -30,6 +30,7 @@
 #include "../../RenderCore/Techniques/Apparatuses.h"
 #include "../../RenderCore/Techniques/ImmediateDrawables.h"
 #include "../../RenderCore/IThreadContext.h"
+#include "../../RenderCore/ResourceDesc.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/Assets.h"
@@ -209,7 +210,6 @@ namespace ToolsRig
 
     void SimpleSceneLayer::Render(
         RenderCore::IThreadContext& threadContext,
-		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
         using namespace SceneEngine;
@@ -229,21 +229,9 @@ namespace ToolsRig
 			}
 		}
 
-		auto targetDesc = renderTarget->GetDesc();
-		UInt2 viewportDims { targetDesc._textureDesc._width, targetDesc._textureDesc._height };
-
-		RenderCore::Techniques::PreregisteredAttachment preregisteredAttachments[] {
-			RenderCore::Techniques::PreregisteredAttachment {
-				RenderCore::Techniques::AttachmentSemantics::ColorLDR,
-				RenderCore::AsAttachmentDesc(targetDesc),
-				RenderCore::Techniques::PreregisteredAttachment::State::Uninitialized
-			}
-		};
-		RenderCore::FrameBufferProperties fbProps { targetDesc._textureDesc._width, targetDesc._textureDesc._height };
-
 		auto compiledTechnique = RenderCore::LightingEngine::CreateForwardLightingTechnique(
 			_pimpl->_pipelineAccelerators, _pimpl->_lightingApparatus,
-			MakeIteratorRange(preregisteredAttachments), fbProps);
+			MakeIteratorRange(parserContext._preregisteredAttachments), parserContext._fbProps);
 
 		// _pimpl->_envSettings is our SceneEngine::BasicLightingStateDelegate
 
@@ -266,15 +254,24 @@ namespace ToolsRig
 			}
 		}
 
+		assert(parserContext._fbProps._outputWidth * parserContext._fbProps._outputHeight);
+		auto depthBufferDesc = RenderCore::CreateDesc(
+			RenderCore::BindFlag::DepthStencil | RenderCore::BindFlag::ShaderResource,
+			0, RenderCore::GPUAccess::Read | RenderCore::GPUAccess::Write,
+			RenderCore::TextureDesc::Plain2D(
+				parserContext._fbProps._outputWidth, parserContext._fbProps._outputHeight,
+				RenderCore::Format::D24_UNORM_S8_UINT, 1, 0, parserContext._fbProps._samples),
+			"SimpleSceneLayer-depth");
+		parserContext.DefineAttachment(RenderCore::Techniques::AttachmentSemantics::MultisampleDepth, depthBufferDesc);
+
 		if (!_pimpl->_preparingEnvSettings && !_pimpl->_preparingScene && !_pimpl->_preparingPipelineAccelerators) {
 
 			auto cam = AsCameraDesc(*_pimpl->_camera);
 			SceneEngine::SceneView sceneView {
 				SceneEngine::SceneView::Type::Normal,
-				RenderCore::Techniques::BuildProjectionDesc(cam, {targetDesc._textureDesc._width, targetDesc._textureDesc._height})
+				RenderCore::Techniques::BuildProjectionDesc(cam, {parserContext._fbProps._outputWidth, parserContext._fbProps._outputHeight})
 			};
 			
-			parserContext.GetTechniqueContext()._attachmentPool->Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget);
 			parserContext.GetProjectionDesc() = sceneView._projection;
 			{
 				auto lightingIterator = SceneEngine::BeginLightingTechnique(
@@ -290,7 +287,6 @@ namespace ToolsRig
 					_pimpl->_scene->ExecuteScene(threadContext, SceneEngine::ExecuteSceneContext{SceneEngine::SceneView{}, next._batch, next._pkt});
 				}
 			}
-			parserContext.GetTechniqueContext()._attachmentPool->Unbind(*renderTarget);
 
 			// Draw debugging overlays -- 
 			{
@@ -302,16 +298,17 @@ namespace ToolsRig
 			using namespace RenderOverlays::DebuggingDisplay;
 			RenderOverlays::ImmediateOverlayContext overlays(threadContext, *_pimpl->_immediateDrawables, *_pimpl->_fontRenderingManager);
 			overlays.CaptureState();
-			Rect rect { Coord2{0, 0}, Coord2(viewportDims[0], viewportDims[1]) };
+			auto viewportDims = Coord2(parserContext._fbProps._outputWidth, parserContext._fbProps._outputHeight);
+			Rect rect { Coord2{0, 0}, viewportDims };
 			RenderLoadingIndicator(overlays, rect, _pimpl->_loadingIndicatorCounter++);
 			overlays.ReleaseState();
 
-			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext, RenderCore::LoadStore::Clear);
-			_pimpl->_immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi.GetFrameBufferDesc(), 0, viewportDims);
+			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, parserContext, RenderCore::LoadStore::Clear);
+			_pimpl->_immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi);
 		}
 
 		if (!_pimpl->_envSettingsErrorMessage.empty()) {
-			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
+			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, parserContext);
 			if (!_pimpl->_envSettingsErrorMessage.empty()) {
 				assert(0);
 				// SceneEngine::DrawString(threadContext, RenderOverlays::GetDefaultFont(), _pimpl->_envSettingsErrorMessage);
@@ -528,21 +525,16 @@ namespace ToolsRig
 
     void VisualisationOverlay::Render(
         RenderCore::IThreadContext& threadContext, 
-		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
         using namespace RenderCore;
-		parserContext.GetTechniqueContext()._attachmentPool->Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget);
-		
 		if (!parserContext.GetTechniqueContext()._attachmentPool->GetBoundResource(Techniques::AttachmentSemantics::MultisampleDepth))		// we need this attachment to continue
 			return;
 
 		if (!_pimpl->_scene || !_pimpl->_cameraSettings || GetAsyncSceneState(*_pimpl->_scene) == ::Assets::AssetState::Pending) return;
 
-		auto colorLDRDesc = renderTarget->GetDesc();
-		UInt2 viewportDims { colorLDRDesc._textureDesc._width, colorLDRDesc._textureDesc._height };
-		RenderCore::FrameBufferProperties fbProps { colorLDRDesc._textureDesc._width, colorLDRDesc._textureDesc._height };
-
+		UInt2 viewportDims(parserContext._fbProps._outputWidth, parserContext._fbProps._outputHeight);
+		assert(viewportDims[0] && viewportDims[1]);
 		RenderCore::Techniques::SequencerContext sequencerTechnique;
 		auto cam = AsCameraDesc(*_pimpl->_cameraSettings);
 		SceneEngine::SceneView sceneView {
@@ -556,21 +548,16 @@ namespace ToolsRig
 
 		if (_pimpl->_settings._drawWireframe || _pimpl->_settings._drawNormals || _pimpl->_settings._skeletonMode || doColorByMaterial) {
 			
-			AttachmentDesc depthAttachmentDesc { Format::D24_UNORM_S8_UINT };
-			depthAttachmentDesc._bindFlagsForFinalLayout = BindFlag::ShaderResource;
 			std::vector<FrameBufferDesc::Attachment> attachments {
-				{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(colorLDRDesc) },
-				{ Techniques::AttachmentSemantics::MultisampleDepth, depthAttachmentDesc }
+				{ Techniques::AttachmentSemantics::ColorLDR },
+				{ Techniques::AttachmentSemantics::MultisampleDepth }
 			};
 			SubpassDesc mainPass;
 			mainPass.SetName("VisualisationOverlay");
 			mainPass.AppendOutput(0);
 			mainPass.SetDepthStencil(1, LoadStore::Retain_ClearStencil);		// ensure stencil is cleared (but ok to keep depth)
-			FrameBufferDesc fbDesc{ std::move(attachments), std::vector<SubpassDesc>{mainPass}, fbProps };
-			Techniques::RenderPassInstance rpi {
-				threadContext, fbDesc, 
-				*parserContext.GetTechniqueContext()._frameBufferPool,
-				*parserContext.GetTechniqueContext()._attachmentPool };
+			FrameBufferDesc fbDesc{ std::move(attachments), std::vector<SubpassDesc>{mainPass}, parserContext._fbProps };
+			Techniques::RenderPassInstance rpi { threadContext, parserContext, fbDesc }; 
 
 			static auto visWireframeDelegate =
 				RenderCore::Techniques::CreateTechniqueDelegateLegacy(
@@ -589,7 +576,7 @@ namespace ToolsRig
 					Techniques::TechniqueIndex::DepthOnly, {}, {}, ds);
 
 			if (_pimpl->_settings._drawWireframe) {
-				auto sequencerConfig = _pimpl->_pipelineAccelerators->CreateSequencerConfig(visWireframeDelegate, ParameterBox{}, fbDesc);
+				auto sequencerConfig = _pimpl->_pipelineAccelerators->CreateSequencerConfig(visWireframeDelegate, ParameterBox{}, rpi.GetFrameBufferDesc());
 				sequencerTechnique._sequencerConfig = sequencerConfig.get();
 				SceneEngine::ExecuteSceneRaw(
 					threadContext, parserContext, *_pimpl->_pipelineAccelerators,
@@ -599,7 +586,7 @@ namespace ToolsRig
 			}
 
 			if (_pimpl->_settings._drawNormals) {
-				auto sequencerConfig = _pimpl->_pipelineAccelerators->CreateSequencerConfig(visNormals, ParameterBox{}, fbDesc);
+				auto sequencerConfig = _pimpl->_pipelineAccelerators->CreateSequencerConfig(visNormals, ParameterBox{}, rpi.GetFrameBufferDesc());
 				sequencerTechnique._sequencerConfig = sequencerConfig.get();
 				SceneEngine::ExecuteSceneRaw(
 					threadContext, parserContext, *_pimpl->_pipelineAccelerators,
@@ -625,7 +612,7 @@ namespace ToolsRig
 				if (visContent)
 					oldDelegate = visContent->SetPreDrawDelegate(_pimpl->_stencilPrimeDelegate);
 				// Prime the stencil buffer with draw call indices
-				auto sequencerCfg = _pimpl->_pipelineAccelerators->CreateSequencerConfig(primeStencilBuffer, ParameterBox{}, fbDesc);
+				auto sequencerCfg = _pimpl->_pipelineAccelerators->CreateSequencerConfig(primeStencilBuffer, ParameterBox{}, rpi.GetFrameBufferDesc());
 				sequencerTechnique._sequencerConfig = sequencerCfg.get();
 				SceneEngine::ExecuteSceneRaw(
 					threadContext, parserContext, *_pimpl->_pipelineAccelerators,
@@ -648,14 +635,12 @@ namespace ToolsRig
 				// buffer values mean the same thing. We don't need it right now though, we can just do a
 				// direct mapping here --
 				auto marker = _pimpl->_mouseOver->_drawCallIndex;
-				settings._highlightedMarker = UInt4(marker, marker, marker, marker);
-				settings._stencilToMarkerMap[0] = UInt4(~0u, ~0u, ~0u, ~0u);
-				for (unsigned c=1; c<dimof(settings._stencilToMarkerMap); c++)
-					settings._stencilToMarkerMap[c] = UInt4(c-1, c-1, c-1, c-1);
+				settings._highlightedMarker = marker+1;
+				settings._backgroundMarker = marker;
 
                 ExecuteHighlightByStencil(
                     threadContext, parserContext, 
-					_pimpl->_pipelineAccelerators->GetPipelineLayout(), fbProps,
+					_pimpl->_pipelineAccelerators->GetPipelineLayout(),
                     settings, _pimpl->_settings._colourByMaterial==2);
             CATCH_ASSETS_END(parserContext)
         }
@@ -667,17 +652,15 @@ namespace ToolsRig
 
 			CATCH_ASSETS_BEGIN
 
-				{
-					using namespace RenderOverlays::DebuggingDisplay;
-					RenderOverlays::ImmediateOverlayContext overlays(threadContext, *_pimpl->_immediateDrawables, *_pimpl->_fontRenderingManager);
-					overlays.CaptureState();
-					Rect rect { Coord2{0, 0}, Coord2(viewportDims[0], viewportDims[1]) };
-					RenderTrackingOverlay(overlays, rect, *_pimpl->_mouseOver, *_pimpl->_scene);
-					overlays.ReleaseState();
+				using namespace RenderOverlays::DebuggingDisplay;
+				RenderOverlays::ImmediateOverlayContext overlays(threadContext, *_pimpl->_immediateDrawables, *_pimpl->_fontRenderingManager);
+				overlays.CaptureState();
+				Rect rect { Coord2{0, 0}, Coord2(viewportDims[0], viewportDims[1]) };
+				RenderTrackingOverlay(overlays, rect, *_pimpl->_mouseOver, *_pimpl->_scene);
+				overlays.ReleaseState();
 
-					auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
-					_pimpl->_immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi.GetFrameBufferDesc(), 0, viewportDims);
-				}
+				auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, parserContext);
+				_pimpl->_immediateDrawables->ExecuteDraws(threadContext, parserContext, rpi);
 
 			CATCH_ASSETS_END(parserContext)
 		}
@@ -926,7 +909,6 @@ namespace ToolsRig
 
     void MouseOverTrackingOverlay::Render(
         RenderCore::IThreadContext& threadContext,
-		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parsingContext) 
     {
     }
@@ -957,12 +939,11 @@ namespace ToolsRig
 	class InputLayer : public PlatformRig::IOverlaySystem
     {
     public:
-        std::shared_ptr<PlatformRig::IInputListener> GetInputListener();
+        std::shared_ptr<PlatformRig::IInputListener> GetInputListener() override;
 
         void Render(
             RenderCore::IThreadContext& context,
-			const RenderCore::IResourcePtr& renderTarget,
-            RenderCore::Techniques::ParsingContext& parserContext); 
+            RenderCore::Techniques::ParsingContext& parserContext) override; 
 
         InputLayer(std::shared_ptr<PlatformRig::IInputListener> listener);
         ~InputLayer();
@@ -977,7 +958,6 @@ namespace ToolsRig
 
     void InputLayer::Render(
         RenderCore::IThreadContext&,
-		const RenderCore::IResourcePtr&,
 		RenderCore::Techniques::ParsingContext&) {}
 
     InputLayer::InputLayer(std::shared_ptr<PlatformRig::IInputListener> listener) : _listener(listener) {}

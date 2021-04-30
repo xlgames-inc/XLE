@@ -215,7 +215,6 @@ namespace GUILayer
     public:
         void Render(
             RenderCore::IThreadContext& threadContext,
-			const RenderTargetWrapper& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) override;
 
         EditorSceneOverlay(

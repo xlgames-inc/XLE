@@ -27,6 +27,11 @@ namespace RenderCore { namespace Techniques
 
 	RenderPassInstance RenderPassToPresentationTargetWithDepthStencil(
 		IThreadContext& context,
+        ParsingContext& parserContext,
+		LoadStore loadOperation = LoadStore::Retain);
+	
+	RenderPassInstance RenderPassToPresentationTargetWithDepthStencil(
+		IThreadContext& context,
 		const std::shared_ptr<RenderCore::IResource>& presentationTarget,
         ParsingContext& parserContext,
 		LoadStore loadOperation = LoadStore::Retain);

@@ -26,7 +26,6 @@ namespace PlatformRig
     public:
 		virtual void Render(
             RenderCore::IThreadContext& threadContext,
-			const RenderCore::IResourcePtr& renderTarget,
 			RenderCore::Techniques::ParsingContext& parserContext) = 0; 
 
         virtual std::shared_ptr<IInputListener> GetInputListener();
@@ -46,14 +45,13 @@ namespace PlatformRig
     class OverlaySystemSwitch : public IOverlaySystem
     {
     public:
-        std::shared_ptr<IInputListener> GetInputListener();
+        std::shared_ptr<IInputListener> GetInputListener() override;
 
         void Render(
             RenderCore::IThreadContext& threadContext,
-			const RenderCore::IResourcePtr& renderTarget,
-            RenderCore::Techniques::ParsingContext& parserContext);
-        void SetActivationState(bool newState);
-		OverlayState GetOverlayState() const;
+            RenderCore::Techniques::ParsingContext& parserContext) override;
+        void SetActivationState(bool newState) override;
+		OverlayState GetOverlayState() const override;
 
         void AddSystem(uint32 activator, std::shared_ptr<IOverlaySystem> system);
 
@@ -72,14 +70,13 @@ namespace PlatformRig
     class OverlaySystemSet : public IOverlaySystem
     {
     public:
-        std::shared_ptr<IInputListener> GetInputListener();
+        std::shared_ptr<IInputListener> GetInputListener() override;
 
         void Render(
             RenderCore::IThreadContext& threadContext,
-			const RenderCore::IResourcePtr& renderTarget,
-            RenderCore::Techniques::ParsingContext& parserContext);
-        void SetActivationState(bool newState);
-		virtual OverlayState GetOverlayState() const;
+            RenderCore::Techniques::ParsingContext& parserContext) override;
+        void SetActivationState(bool newState) override;
+		virtual OverlayState GetOverlayState() const override;
 
         void AddSystem(std::shared_ptr<IOverlaySystem> system);
 		void RemoveSystem(IOverlaySystem& system);

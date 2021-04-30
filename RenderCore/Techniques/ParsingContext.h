@@ -5,28 +5,31 @@
 #pragma once
 
 #include "TechniqueUtils.h"
-#include "../UniformsStream.h"
-#include "../BufferView.h"
-#include "../Metal/Forward.h"
-#include "../../Utility/MemoryUtils.h"
-#include "../../Utility/ParameterBox.h"
+#include "../FrameBufferDesc.h"
 #include <vector>
 #include <memory>
 #include <functional>
 
 namespace Assets { namespace Exceptions { class RetrievalError; }}
 namespace Utility { class ParameterBox; }
-namespace RenderCore { class IResource; }
+namespace RenderCore { class IResource; class IThreadContext; }
 
 namespace RenderCore { namespace Techniques 
 {
     class TechniqueContext;
 	class IUniformBufferDelegate;
     class IShaderResourceDelegate;
-    class AttachmentPool;
-	class FrameBufferPool;
-	class IPipelineAcceleratorPool;
     class SystemUniformsDelegate;
+    
+    struct PreregisteredAttachment
+    {
+    public:
+        uint64_t _semantic;
+        ResourceDesc _desc;
+        enum class State { Uninitialized, Initialized };
+        State _state = State::Uninitialized;
+        State _stencilState = State::Uninitialized;
+    };
     
     /// <summary>Manages critical shader state</summary>
     /// Certain system variables are bound to the shaders, and managed by higher
@@ -60,8 +63,14 @@ namespace RenderCore { namespace Techniques
 
         SystemUniformsDelegate& GetSystemUniformsDelegate() const;
 
+			//  ----------------- Frame buffer / render pass state -----------------
+        std::vector<PreregisteredAttachment> _preregisteredAttachments;
+        FrameBufferProperties _fbProps;
+
+        void DefineAttachment(uint64_t semantic, const ResourceDesc&, PreregisteredAttachment::State state = PreregisteredAttachment::State::Uninitialized, PreregisteredAttachment::State stencilState = PreregisteredAttachment::State::Uninitialized);
+
 			//  ----------------- Overlays for late rendering -----------------
-        typedef std::function<void(RenderCore::Metal::DeviceContext&, ParsingContext&)> PendingOverlay;
+        typedef std::function<void(IThreadContext&, ParsingContext&)> PendingOverlay;
         std::vector<PendingOverlay> _pendingOverlays;
 
             //  ----------------- Exception reporting -----------------

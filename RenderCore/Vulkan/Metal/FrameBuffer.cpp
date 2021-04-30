@@ -277,6 +277,7 @@ namespace RenderCore { namespace Metal_Vulkan
             desc.stencilLoadOp = AsLoadOpStencil(originalLoad);
 			desc.storeOp = AsStoreOp(finalStore);
             desc.stencilStoreOp = AsStoreOpStencil(finalStore);
+			assert(desc.format != VK_FORMAT_UNDEFINED);
 
 			// If the attachment explicitly requests a specific final layout, let's use that
 			// This needs to mirror the logic for "steady state" layouts for resources
