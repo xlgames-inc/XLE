@@ -141,6 +141,10 @@ namespace RenderCore { namespace Assets
 				set = Sequencer
 				setIndex = 0
 				mapping = 0..6
+			b13..14=~
+				set = Draw
+				setIndex = 2
+				mapping = 10..11
 		)--";
 
 		LegacyRegisterBindingDesc result;

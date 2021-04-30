@@ -24,7 +24,7 @@ float 		SysUniform_GetFarClip() { return FarClip; }
 float4 		SysUniform_GetMinimalProjection() { return MinimalProjection; }
 float4x4 	SysUniform_GetCameraBasis() { return CameraBasis; }
 
-cbuffer LocalTransform BIND_SEQ_B1
+cbuffer LocalTransform BIND_DRAW_B0
 {
 	row_major float3x4 LocalToWorld;
 	float3 LocalSpaceView;

@@ -466,7 +466,9 @@ namespace UnitTests
 			{DescriptorType::SampledTexture},
 			{DescriptorType::SampledTexture},
 			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture}
+			{DescriptorType::SampledTexture},
+
+			{DescriptorType::UniformBuffer}
 		};
 
 		RenderCore::DescriptorSetSignature numericSet {
@@ -543,6 +545,10 @@ namespace UnitTests
 		result->AppendEntry(
 			RegisterType::Sampler, RegisterQualifier::None,
 			Entry{7, 8, Hash64("Material"), 1, 12, 13});
+
+		result->AppendEntry(
+			RegisterType::ConstantBuffer, RegisterQualifier::None,
+			Entry{13, 14, Hash64("Draw"), 2, 10, 11});
 		return result;
 	}
 }

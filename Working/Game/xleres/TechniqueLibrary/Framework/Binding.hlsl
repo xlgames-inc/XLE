@@ -87,6 +87,8 @@
 #define BIND_NUMERIC_B2 : register(b2)
 #define BIND_NUMERIC_B3 : register(b3)
 
+#define BIND_DRAW_B0 : register(b13)
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define BIND_NUMERIC_U0 : register(u0)

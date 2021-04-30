@@ -13,6 +13,12 @@ DescriptorSet Draw
 	SampledTexture tex7;					// 7
 	SampledTexture tex8;					// 8
 	SampledTexture tex9;					// 9
+
+	UniformBuffer LocalTransform			// 10
+	{
+		float3x4 LocalToWorld;
+		float3 LocalSpaceView;
+	};
 };
 
 DescriptorSet Material
