@@ -7,9 +7,12 @@
 #include "../../Math/EdgeDetection.hlsl"
 #include "../../Utility/DistinctColors.hlsl"
 
-float3 OutlineColour;
-uint4 HighlightMarker;
-uint4 StencilToMarkerMap[256];
+cbuffer Settings BIND_NUMERIC_B0
+{
+	float3 OutlineColour;
+	uint HighlightedMarker;
+    uint BackgroundMarker;
+}
 
 #if !defined(INPUT_MODE)
 	#define INPUT_MODE 1
@@ -31,19 +34,18 @@ static const uint DummyMarker = 0xffffffff;
 
 uint GetHighlightMarker()
 {
-	return HighlightMarker.x;
+	return HighlightedMarker;
 }
 
 uint Marker(uint2 pos)
 {
 	#if INPUT_MODE == 0
-		uint stencilValue = StencilInput.Load(uint3(pos, 0)).g;
+		uint result = StencilInput.Load(uint3(pos, 0)).g;
 	#elif INPUT_MODE == 1
-		uint stencilValue = uint(255.f * StencilInput.Load(uint3(pos, 0)).a);
+		uint result = uint(255.f * StencilInput.Load(uint3(pos, 0)).a);
 	#endif
-	if (stencilValue == 0) { return DummyMarker; }
+	if (result == BackgroundMarker) { return DummyMarker; }
 
-	uint result = StencilToMarkerMap[stencilValue%256].x;
 	#if ONLY_HIGHLIGHTED!=0
 			// in this mode, we ignore every material except the highlighted one
 		if (result != GetHighlightMarker()) {

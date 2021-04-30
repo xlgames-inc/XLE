@@ -38,15 +38,11 @@ namespace RenderOverlays
             vs, ps, definesTable);
 	}
 
-    const UInt4 HighlightByStencilSettings::NoHighlight = UInt4(0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff);
-
     HighlightByStencilSettings::HighlightByStencilSettings()
     {
         _outlineColor = Float3(1.5f, 1.35f, .7f);
-
-        _highlightedMarker = NoHighlight;
-        for (unsigned c=0; c<dimof(_stencilToMarkerMap); ++c) 
-            _stencilToMarkerMap[c] = NoHighlight;
+        _highlightedMarker = 0;
+        _backgroundMarker = 0;
     }
 
     static void ExecuteHighlightByStencil(
@@ -58,7 +54,6 @@ namespace RenderOverlays
     {
         assert(stencilSrv);
         UniformsStream::ImmediateData cbData[] = {
-            {},
             MakeOpaqueIteratorRange(settings)
         };
         auto numericUniforms = encoder.BeginNumericUniformsInterface();
@@ -85,7 +80,7 @@ namespace RenderOverlays
             encoder.GetPipelineLayout(),
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
             HIGHLIGHT_VIS_PIXEL_HLSL ":HighlightByStencil:ps_*",
-            (const ::Assets::ResChar*)params)->TryActualize();
+            params.AsStringSection())->TryActualize();
         if (highlightShader) {
             encoder.Bind(*highlightShader);
             encoder.Draw(4);
@@ -95,7 +90,7 @@ namespace RenderOverlays
             encoder.GetPipelineLayout(),
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
             HIGHLIGHT_VIS_PIXEL_HLSL ":OutlineByStencil:ps_*",
-            (const ::Assets::ResChar*)params)->TryActualize();
+            params.AsStringSection())->TryActualize();
         if (outlineShader) {                
             encoder.Bind(*outlineShader);
             encoder.Draw(4);
@@ -106,25 +101,19 @@ namespace RenderOverlays
         IThreadContext& threadContext,
         Techniques::ParsingContext& parsingContext,
         std::shared_ptr<ICompiledPipelineLayout> pipelineLayout,
-        const RenderCore::FrameBufferProperties& fbProps,
         const HighlightByStencilSettings& settings,
         bool onlyHighlighted)
     {
-        // Verbose.SetConfiguration({});
-        
 		std::vector<FrameBufferDesc::Attachment> attachments {
-			{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(parsingContext.GetTechniqueContext()._attachmentPool->GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()) },
-			{ Techniques::AttachmentSemantics::MultisampleDepth, Format::D24_UNORM_S8_UINT }
+			{ Techniques::AttachmentSemantics::ColorLDR },
+			{ Techniques::AttachmentSemantics::MultisampleDepth }
 		};
 		SubpassDesc mainPass;
 		mainPass.SetName("VisualisationOverlay");
 		mainPass.AppendOutput(0);
 		mainPass.AppendInput(1);
-		FrameBufferDesc fbDesc{ std::move(attachments), {mainPass}, fbProps };
-		Techniques::RenderPassInstance rpi {
-			threadContext, fbDesc, 
-			*parsingContext.GetTechniqueContext()._frameBufferPool,
-			*parsingContext.GetTechniqueContext()._attachmentPool };
+		FrameBufferDesc fbDesc{ std::move(attachments), {mainPass}, parsingContext._fbProps };
+		Techniques::RenderPassInstance rpi { threadContext, parsingContext, fbDesc };
 
         auto stencilSrv = rpi.GetInputAttachmentSRV(
             0,
@@ -137,8 +126,6 @@ namespace RenderOverlays
         auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
         auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(pipelineLayout);
         ExecuteHighlightByStencil(metalContext, encoder, stencilSrv, settings, onlyHighlighted);
-
-        // Verbose.SetConfiguration(OSServices::MessageTargetConfiguration{ std::string(), 0, OSServices::MessageTargetConfiguration::Sink::Console });
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -185,7 +172,7 @@ namespace RenderOverlays
     , _drawShadow(std::move(drawShadow))
     {
 		UniformsStreamInterface drawHighlightInterface;
-		drawHighlightInterface.BindImmediateData(0, Hash64("$Globals"));
+		drawHighlightInterface.BindImmediateData(0, Hash64("Settings"));
 		_drawHighlightUniforms = Metal::BoundUniforms(*_drawHighlight, {}, {}, drawHighlightInterface);
 
         //// ////
@@ -229,24 +216,14 @@ namespace RenderOverlays
         using namespace RenderCore;
         _pimpl = std::make_unique<Pimpl>(threadContext, std::move(pipelineLayout), namedRes);
 
-		const bool doDepthTest = true;
-
 		Techniques::FrameBufferDescFragment fbDescFrag;
 		auto n_offscreen = fbDescFrag.DefineTemporaryAttachment(
 			AttachmentDesc {
 				Format::R8G8B8A8_UNORM, 1.f, 1.f, 0u,
 				AttachmentDesc::Flags::OutputRelativeDimensions });
-		auto n_mainColor = fbDescFrag.DefineAttachment(
-			RenderCore::Techniques::AttachmentSemantics::ColorLDR,
-			AsAttachmentDesc(namedRes.GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()));
-		AttachmentName n_depth = ~0u;
-		if (doDepthTest) {
-			AttachmentDesc depthAttachment { Format::D24_UNORM_S8_UINT };
-			auto* existingDepthAttachment = namedRes.GetBoundResource(RenderCore::Techniques::AttachmentSemantics::MultisampleDepth).get();
-			if (existingDepthAttachment)
-				depthAttachment = AsAttachmentDesc(existingDepthAttachment->GetDesc());
-			n_depth = fbDescFrag.DefineAttachment(RenderCore::Techniques::AttachmentSemantics::MultisampleDepth, depthAttachment);
-		}
+		auto n_mainColor = fbDescFrag.DefineAttachment(RenderCore::Techniques::AttachmentSemantics::ColorLDR);
+		const bool doDepthTest = true;
+        auto n_depth = doDepthTest ? fbDescFrag.DefineAttachment(RenderCore::Techniques::AttachmentSemantics::MultisampleDepth) : ~0u;
 
 		SubpassDesc subpass0;
 		subpass0.AppendOutput(n_offscreen, LoadStore::Clear, LoadStore::Retain);
@@ -263,6 +240,7 @@ namespace RenderOverlays
         _pimpl->_rpi = Techniques::RenderPassInstance(
             threadContext, _pimpl->_fbDesc, 
 			fbPool, namedRes,
+            {},
 			{MakeIteratorRange(clearValues)});
     }
 
@@ -284,8 +262,6 @@ namespace RenderOverlays
 
 			HighlightByStencilSettings settings;
 			settings._outlineColor = outlineColor;
-			for (unsigned c=1; c<dimof(settings._stencilToMarkerMap); ++c)
-				settings._stencilToMarkerMap[c] = UInt4(overlayColor, overlayColor, overlayColor, overlayColor);
             auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(_pimpl->_pipelineLayout);
 			ExecuteHighlightByStencil(
 				metalContext, encoder, srv, 

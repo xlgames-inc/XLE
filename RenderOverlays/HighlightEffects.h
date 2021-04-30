@@ -17,11 +17,9 @@ namespace RenderOverlays
     class HighlightByStencilSettings
     {
     public:
-        Float3 _outlineColor; float _dummy;
-        UInt4 _highlightedMarker;
-        UInt4 _stencilToMarkerMap[256];
-
-        static const UInt4 NoHighlight;
+        Float3 _outlineColor;
+        unsigned _highlightedMarker;
+        unsigned _backgroundMarker;
 
         HighlightByStencilSettings();
     };
@@ -30,7 +28,6 @@ namespace RenderOverlays
         RenderCore::IThreadContext& threadContext,
         RenderCore::Techniques::ParsingContext& parsingContext,
         std::shared_ptr<RenderCore::ICompiledPipelineLayout> pipelineLayout,
-        const RenderCore::FrameBufferProperties& fbProps,
         const HighlightByStencilSettings& settings,
         bool onlyHighlighted);
 
