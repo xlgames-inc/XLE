@@ -27,6 +27,7 @@ add_library(RenderCore_Vulkan STATIC ${Src} ${Headers})
 xle_configure_library(RenderCore_Vulkan)
 target_link_libraries(RenderCore_Vulkan PRIVATE ForeignMisc)
 target_sources(RenderCore_Vulkan INTERFACE ${CMAKE_CURRENT_LIST_DIR}/RegisterVulkan.cpp)
+target_link_libraries(RenderCore_Vulkan PRIVATE libHLSLcc)
 
 ############################################################################################################################################
 set(XLE_VULKAN_SDK_DIR "" CACHE PATH "Vulkan SDK directory")
@@ -80,7 +81,7 @@ find_vulkan()
 target_link_libraries(RenderCore_Vulkan PUBLIC ${INTERNAL_FOUND_VULKAN_LIBRARY})
 target_include_directories(RenderCore_Vulkan PUBLIC ${INTERNAL_FOUND_VULKAN_INCLUDE_DIR})
 
-message("todo -- nicer way to find vulkan & libHLSLcc lib files!")
+message("todo -- nicer way to find vulkan files!")
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 	target_link_libraries(
 		RenderCore_Vulkan PUBLIC 
@@ -112,8 +113,3 @@ else ()
 endif ()
 
 target_link_libraries(RenderCore_Vulkan PUBLIC dxguid.lib)
-
-target_link_libraries(
-	RenderCore_Vulkan PUBLIC 
-		${CMAKE_CURRENT_LIST_DIR}/../../Foreign/HLSLCC/lib64/Debug/libHLSLcc.lib
-	)

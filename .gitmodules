@@ -40,3 +40,6 @@
 [submodule "Foreign/freetype"]
 	path = Foreign/freetype
 	url = git@github.com:freetype/freetype
+[submodule "Foreign/HLSLCC"]
+	path = Foreign/HLSLCC
+	url = git@github.com:djewsbury/HLSLCrossCompiler
