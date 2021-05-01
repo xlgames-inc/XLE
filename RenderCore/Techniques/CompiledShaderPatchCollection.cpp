@@ -317,15 +317,20 @@ namespace RenderCore { namespace Techniques
 
 		auto assembledShader = AssembleShader(patchCollection, redirectedPatchFunctions, definesTable);
 
-		// For simplicity, we'll just append the entry point file using an #include directive
+		// For simplicity, we'll just pre-append the entry point file using an #include directive
 		// This will ensure we go through the normal mechanisms to find and load this file.
 		// Note that this relies on the underlying shader compiler supporting #includes, however
 		//   -- in cases  (like GLSL) that don't have #include support, we would need another
 		//	changed preprocessor to handle the include expansions.
+		//
+		// Preappending might be better here, because when writing the entry point function itself,
+		// it can be confusing if there is other code injected before the start of the file. Since
+		// the entry points should have signatures for the patch functions anyway, it should work
+		// fine
 		{
 			std::stringstream str ;
 			str << "#include \"" << resId._filename << "\"" << std::endl;
-			assembledShader._processedSource += str.str();
+			assembledShader._processedSource = str.str() + assembledShader._processedSource;
 		}
 
 		auto result = internalShaderSource.CompileFromMemory(
