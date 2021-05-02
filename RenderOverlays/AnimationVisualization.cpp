@@ -3,25 +3,18 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "AnimationVisualization.h"
-
-#if 0 
-
 #include "OverlayContext.h"
 #include "../RenderCore/Assets/SkeletonScaffoldInternal.h"
-#include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/Metal/Shader.h"
-#include "../RenderCore/Metal/ObjectFactory.h"
+#include "../RenderCore/Techniques/ImmediateDrawables.h"
+#include "../RenderOverlays/Font.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Types.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/ResourceBox.h"
-#include "../xleres/FileList.h"
 
 namespace RenderOverlays
 {
@@ -34,67 +27,46 @@ namespace RenderOverlays
 		unsigned    _color;
 	};
 
-	static InputElementDesc s_vertexInputLayout[] = {
-        InputElementDesc( "POSITION",   0, Format::R32G32B32_FLOAT ),
-        InputElementDesc( "COLOR",      0, Format::R8G8B8A8_UNORM )
+	static MiniInputElementDesc s_vertexInputLayout[] = {
+        MiniInputElementDesc{ Techniques::CommonSemantics::POSITION, Format::R32G32B32_FLOAT },
+        MiniInputElementDesc{ Techniques::CommonSemantics::COLOR, Format::R8G8B8A8_UNORM }
     };
 
 	class SkeletonPreviewResourceBox
 	{
 	public:
-		Metal::BoundUniforms _boundUniforms;
-		Metal::BoundInputLayout _boundLayout;
-		std::shared_ptr<Metal::ShaderProgram> _shader;
-
 		std::shared_ptr<Font> _font;
-
-		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _shader->GetDependencyValidation(); }
+		::Assets::DependencyValidation _depVal;
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
 
 		class Desc {};
 		SkeletonPreviewResourceBox(const Desc&)
 		{
-			_shader = ::Assets::ActualizePtr<Metal::ShaderProgram>( 
-				ILLUM_FORWARD_VERTEX_HLSL ":main:" VS_DefShaderModel, 
-				ILLUM_FORWARD_UNLIT_PIXEL_HLSL ":main", "GEO_HAS_COLOR=1");
-
-			UniformsStreamInterface usi;
-			usi.BindConstantBuffer(0, {Techniques::ObjectCB::LocalTransform});
-
-			_boundUniforms = Metal::BoundUniforms(
-				*_shader,
-				{},
-				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
-				usi);
-
-			_boundLayout = Metal::BoundInputLayout(MakeIteratorRange(s_vertexInputLayout), *_shader);
-
 			_font = RenderOverlays::GetX2Font("Vera", 12);
 		}
 	};
 
 	void    RenderSkeleton(
-        IThreadContext& context, 
-        Techniques::ParsingContext& parserContext, 
+        IOverlayContext& overlayContext, 
+		RenderCore::Techniques::ParsingContext& parserContext,
 		const RenderCore::Assets::SkeletonMachine& skeleton,
 		const RenderCore::Assets::TransformationParameterSet& params,
 		const Float4x4& localToWorld, 
 		bool drawBoneNames)
     {
-        auto& metalContext = *Metal::DeviceContext::Get(context);
 		auto& box = ConsoleRig::FindCachedBoxDep2<SkeletonPreviewResourceBox>();
-        metalContext.Bind(*box._shader);
-		
-        box._boundUniforms.Apply(metalContext, 0, parserContext.GetGlobalUniformsStream());
 
-		auto transformPkt = Techniques::MakeLocalTransformPacket(
-            Identity<Float4x4>(),		// we do the local-to-world transform on CPU side to make the screenspace axes code a little easier to manage
-            ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
-		ConstantBufferView cbvs[] = { transformPkt };
-		box._boundUniforms.Apply(metalContext, 1, UniformsStream{MakeIteratorRange(cbvs)});
+		auto outputMatrixCount = skeleton.GetOutputMatrixCount();
+        auto vertexCount = outputMatrixCount * 2 * 3;
+		Techniques::ImmediateDrawableMaterial material;
+		material._stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::WriteMask;
+		material._stateSet._writeMask = 0;		// disable depth read & write
+		auto workingVertices = overlayContext.GetImmediateDrawables().QueueDraw(
+			vertexCount, MakeIteratorRange(s_vertexInputLayout), 
+			material, Topology::TriangleList).Cast<Vertex_PC*>();
+		size_t workingVertexIterator = 0;
 
-        std::vector<Vertex_PC> workingVertices;
-
-		std::vector<Float4x4> outputMatrices(skeleton.GetOutputMatrixCount());
+		std::vector<Float4x4> outputMatrices(outputMatrixCount);
 		skeleton.GenerateOutputTransforms(MakeIteratorRange(outputMatrices), &params);
 
 		// Draw a sprite for each output matrix location
@@ -103,7 +75,6 @@ namespace RenderOverlays
 		auto cameraForward = Normalize(ExtractForward_Cam(parserContext.GetProjectionDesc()._cameraToWorld));
 		auto worldToProjection = parserContext.GetProjectionDesc()._worldToProjection;
 		auto s = XlTan(.5f * parserContext.GetProjectionDesc()._verticalFov);
-		workingVertices.reserve(outputMatrices.size() * 6);
 		for (const auto&o:outputMatrices) {
 			auto position = TransformPoint(localToWorld, ExtractTranslation(o));
 			float scale = 0.01f * (worldToProjection * Expand(position, 1.0f))[3] * s;	// normalize scale for screen space
@@ -115,17 +86,16 @@ namespace RenderOverlays
 				position + scale * cameraUp + scale * cameraRight
 			};
 
-			workingVertices.push_back({corners[0], 0x00af00});
-			workingVertices.push_back({corners[1], 0x00af00});
-			workingVertices.push_back({corners[2], 0x00af00});
-			workingVertices.push_back({corners[2], 0x00af00});
-			workingVertices.push_back({corners[1], 0x00af00});
-			workingVertices.push_back({corners[3], 0x00af00});
+			workingVertices[workingVertexIterator++] = {corners[0], 0x00af00};
+			workingVertices[workingVertexIterator++] = {corners[1], 0x00af00};
+			workingVertices[workingVertexIterator++] = {corners[2], 0x00af00};
+			workingVertices[workingVertexIterator++] = {corners[2], 0x00af00};
+			workingVertices[workingVertexIterator++] = {corners[1], 0x00af00};
+			workingVertices[workingVertexIterator++] = {corners[3], 0x00af00};
 		}
 
-		std::vector<uint32_t> parents(skeleton.GetOutputMatrixCount());
+		std::vector<uint32_t> parents(outputMatrixCount);
 		skeleton.CalculateParentPointers(MakeIteratorRange(parents));
-		workingVertices.reserve(workingVertices.size() + parents.size() * 6);
 		for (unsigned c=0; c<parents.size(); ++c) {
 			if (parents[c] >= outputMatrices.size()) continue;
 
@@ -147,29 +117,16 @@ namespace RenderOverlays
 				parentPosition + scaleP * tangent
 			};
 
-			workingVertices.push_back({corners[0], 0x00af00});
-			workingVertices.push_back({corners[1], 0x00af00});
-			workingVertices.push_back({corners[2], 0x00af00});
-			workingVertices.push_back({corners[2], 0x00af00});
-			workingVertices.push_back({corners[1], 0x00af00});
-			workingVertices.push_back({corners[3], 0x00af00});
+			workingVertices[workingVertexIterator++] = {corners[0], 0x00af00};
+			workingVertices[workingVertexIterator++] = {corners[1], 0x00af00};
+			workingVertices[workingVertexIterator++] = {corners[2], 0x00af00};
+			workingVertices[workingVertexIterator++] = {corners[2], 0x00af00};
+			workingVertices[workingVertexIterator++] = {corners[1], 0x00af00};
+			workingVertices[workingVertexIterator++] = {corners[3], 0x00af00};
 		}
 
-        auto vertexBuffer = Metal::MakeVertexBuffer(Metal::GetObjectFactory(), MakeIteratorRange(workingVertices));
-		
-		VertexBufferView vbs[] = { {&vertexBuffer} };
-		box._boundLayout.Apply(metalContext, MakeIteratorRange(vbs));
-
-        metalContext.Bind(Techniques::CommonResources()._dssDisable);
-        metalContext.Bind(Techniques::CommonResources()._blendOpaque);
-        metalContext.Bind(Topology::TriangleList);
-        metalContext.Draw((unsigned)workingVertices.size());
-
 		if (drawBoneNames) {
-			RenderOverlays::ImmediateOverlayContext overlayContext(context);
-            overlayContext.CaptureState();
-
-			auto contextStateDesc = context.GetStateDesc();
+			auto viewport = parserContext.GetViewport();
 			auto outputMatrixNames = skeleton.GetOutputMatrixNames();
 
 			std::vector<Float2> screenspacePositions;
@@ -184,8 +141,8 @@ namespace RenderOverlays
 
 				Float2 viewportSpace { hposition[0] / hposition[3], hposition[1] / hposition[3] };
 				Float2 screenSpace {
-					(viewportSpace[0] *  0.5f + 0.5f) * contextStateDesc._viewportDimensions[0],
-					(viewportSpace[1] * -0.5f + 0.5f) * contextStateDesc._viewportDimensions[1] };
+					(viewportSpace[0] *  0.5f + 0.5f) * viewport._width + viewport._x,
+					(viewportSpace[1] *  0.5f + 0.5f) * viewport._height + viewport._y };
 
 				for (;;) {
 					bool foundOverlap = false;
@@ -213,7 +170,7 @@ namespace RenderOverlays
     }
 
 	void    RenderSkeleton(
-        IThreadContext& context, 
+        IOverlayContext& context, 
         Techniques::ParsingContext& parserContext, 
 		const RenderCore::Assets::SkeletonMachine& skeleton,
 		const Float4x4& localToWorld,
@@ -222,33 +179,3 @@ namespace RenderOverlays
 		RenderSkeleton(context, parserContext, skeleton, skeleton.GetDefaultParameters(), localToWorld, drawBoneNames);
 	}
 }
-
-#else
-
-namespace RenderOverlays
-{
-	using namespace RenderCore;
-
-	void    RenderSkeleton(
-        IThreadContext& context, 
-        Techniques::ParsingContext& parserContext, 
-		const RenderCore::Assets::SkeletonMachine& skeleton,
-		const RenderCore::Assets::TransformationParameterSet& params,
-		const Float4x4& localToWorld, 
-		bool drawBoneNames)
-    {
-		assert(0);
-	}
-
-	void    RenderSkeleton(
-        IThreadContext& context, 
-        Techniques::ParsingContext& parserContext, 
-		const RenderCore::Assets::SkeletonMachine& skeleton,
-		const Float4x4& localToWorld,
-		bool drawBoneNames)
-	{
-		assert(0);
-	}
-}
-
-#endif

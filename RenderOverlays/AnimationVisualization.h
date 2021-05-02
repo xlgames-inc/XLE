@@ -12,8 +12,10 @@ namespace RenderCore { namespace Assets { class SkeletonMachine; class Transform
 
 namespace RenderOverlays
 {
+	class IOverlayContext;
+
 	void    RenderSkeleton(
-        RenderCore::IThreadContext& context, 
+        IOverlayContext& overlayContext, 
         RenderCore::Techniques::ParsingContext& parserContext, 
 		const RenderCore::Assets::SkeletonMachine& skeleton,
 		const RenderCore::Assets::TransformationParameterSet& params,
@@ -21,7 +23,7 @@ namespace RenderOverlays
 		bool drawBoneNames = false);
 
 	void    RenderSkeleton(
-        RenderCore::IThreadContext& context, 
+        IOverlayContext& overlayContext, 
         RenderCore::Techniques::ParsingContext& parserContext, 
 		const RenderCore::Assets::SkeletonMachine& skeleton,
 		const Float4x4& localToWorld,
