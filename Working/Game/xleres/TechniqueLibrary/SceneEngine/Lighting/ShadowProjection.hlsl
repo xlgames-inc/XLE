@@ -10,7 +10,6 @@
 #define SHADOW_CASCADE_MODE_ARBITRARY 1
 #define SHADOW_CASCADE_MODE_ORTHOGONAL 2
 
-#include "../../Framework/VSIN.hlsl"
 #include "../../Framework/Binding.hlsl"
 
 static const uint ShadowMaxSubProjections = 6;
@@ -78,15 +77,6 @@ float4 ShadowProjection_GetOutput(float3 position, uint cascadeIndex, uint casca
     } else {
         return 0.0.xxxx;
     }
-}
-
-float4 ShadowProjection_GetOutputGeo(VSIN geo, uint cascadeIndex, uint cascadeMode)
-{
-	#if defined(GEO_HAS_POSITION)
-		return ShadowProjection_GetOutput(geo.position, cascadeIndex, cascadeMode);
-	#else
-		return 0.0.xxxx;
-	#endif
 }
 
 float4 ShadowProjection_GetMiniProj_NotNear(uint cascadeIndex, uint cascadeMode)
