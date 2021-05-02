@@ -193,7 +193,7 @@ namespace SceneEngine
                 //  Note that we might not need colour information in
                 //  our OIT targets (maybe just depth). By
 
-            Metal::ViewportDesc mainViewport = context->GetBoundViewport();
+            ViewportDesc mainViewport = context->GetBoundViewport();
             SavedTargets prevTargets(*context);
             Metal::ShaderResourceView duplicatedDepthBuffer;
 

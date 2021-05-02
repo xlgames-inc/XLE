@@ -749,7 +749,7 @@ namespace PlatformRig { namespace Overlays
 
         RTV _bufferRTV;
         SRV _bufferSRV;
-        Metal::ViewportDesc _viewport;
+        ViewportDesc _viewport;
 
         CRTBox(const Desc&);
         ~CRTBox();
@@ -768,7 +768,7 @@ namespace PlatformRig { namespace Overlays
                 TextureDesc::Plain2D(64, 64, Format::R8_UNORM), "ConsRasterTest"));
         _bufferRTV = RTV(buffer);
         _bufferSRV = SRV(buffer);
-        _viewport = Metal::ViewportDesc(0.f, 0.f, float(width), float(height), 0.f, 1.f);
+        _viewport = ViewportDesc(0.f, 0.f, float(width), float(height), 0.f, 1.f);
     }
 
     CRTBox::~CRTBox() {}
@@ -792,7 +792,7 @@ namespace PlatformRig { namespace Overlays
         //
 
         auto& commonResources = Techniques::CommonResources();
-        Metal::ViewportDesc mainViewport(*metalContext);
+        ViewportDesc mainViewport(*metalContext);
         const float scale = XlFloor((mainViewport.Height - 150.f) / box._viewport.Height);
         const Float2 base(5.f, 100.f);
         Float2 triPoints[] = 

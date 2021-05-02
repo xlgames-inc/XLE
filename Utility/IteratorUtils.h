@@ -20,6 +20,8 @@
     }
 #endif
 
+namespace RenderCore { class SharedPkt; }
+
 namespace Utility
 {
         //
@@ -313,12 +315,14 @@ namespace Utility
 	template<typename Type>
 		IteratorRange<void*> MakeOpaqueIteratorRange(Type& object)
 		{
+            static_assert(!std::is_same_v<std::decay_t<Type>, RenderCore::SharedPkt>);
 			return MakeIteratorRange(&object, PtrAdd(&object, sizeof(Type)));
 		}
 		
 	template<typename Type>
 		IteratorRange<const void*> MakeOpaqueIteratorRange(const Type& object)
 		{
+            static_assert(!std::is_same_v<std::decay_t<Type>, RenderCore::SharedPkt>);
 			return MakeIteratorRange(&object, PtrAdd(&object, sizeof(Type)));
 		}
 

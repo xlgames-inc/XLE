@@ -1115,7 +1115,7 @@ namespace RenderCore { namespace ImplVulkan
         _swapChain = CreateUnderlyingSwapChain(_device.get(), _surface.get(), props);
         _bufferDesc = TextureDesc::Plain2D(props._extent.width, props._extent.height, Metal_Vulkan::AsFormat(props._fmt));    
 
-        *_desc = { _bufferDesc._width, _bufferDesc._height, _bufferDesc._format, _bufferDesc._samples };
+        *_desc = { _bufferDesc._width, _bufferDesc._height, _bufferDesc._format, _bufferDesc._samples, BindFlag::RenderTarget | BindFlag::PresentationSrc };
 
         BuildImages();
     }
@@ -1256,7 +1256,7 @@ namespace RenderCore { namespace ImplVulkan
 		_desc->_height = _bufferDesc._height;
         _desc->_format = _bufferDesc._format;
 		_desc->_samples = _bufferDesc._samples;
-		_desc->_bindFlags = BindFlag::RenderTarget;
+		_desc->_bindFlags = BindFlag::RenderTarget | BindFlag::PresentationSrc;
 
         // We need to get pointers to each image and build the synchronization semaphores
         BuildImages();

@@ -242,7 +242,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Bind RasterizationState");
     }
 
-    void DeviceContext::SetViewportAndScissorRects(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects)
+    void DeviceContext::SetViewportAndScissorRects(IteratorRange<const ViewportDesc*> viewports, IteratorRange<const ScissorRect*> scissorRects)
     {
         CheckGLError("Before Bind Viewport");
 

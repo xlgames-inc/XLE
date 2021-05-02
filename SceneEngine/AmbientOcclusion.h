@@ -66,7 +66,7 @@ namespace SceneEngine
                                     AmbientOcclusionResources& resources,
                                     const RenderCore::Metal::ShaderResourceView& depthBuffer,
                                     const RenderCore::Metal::ShaderResourceView* normalsBuffer,
-                                    const RenderCore::Metal::ViewportDesc& mainViewport);
+                                    const RenderCore::ViewportDesc& mainViewport);
     /// @}
 }
 

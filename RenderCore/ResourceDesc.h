@@ -6,8 +6,7 @@
 
 #pragma once
 
-#include "Types_Forward.h"
-#include "../Core/Types.h"
+#include "Format.h"
 #include "../Core/Prefix.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/IteratorUtils.h"   // for VectorPattern
@@ -114,14 +113,15 @@ namespace RenderCore
         unsigned _structureByteSize;
 
         static LinearBufferDesc Create(unsigned sizeInBytes, unsigned structureByteSize=0);
+        uint64_t CalculateHash() const;
     };
 
     class TextureSamples
     {
 	public:
-        uint8 _sampleCount;
-        uint8 _samplingQuality;
-        static TextureSamples Create(uint8 sampleCount=1, uint8 samplingQuality=0)
+        uint8_t _sampleCount;
+        uint8_t _samplingQuality;
+        static TextureSamples Create(uint8_t sampleCount=1, uint8_t samplingQuality=0)
         {
             TextureSamples result;
             result._sampleCount = sampleCount;
@@ -134,23 +134,25 @@ namespace RenderCore
     class TextureDesc
     {
 	public:
-        uint32 _width, _height, _depth;
+        uint32_t _width, _height, _depth;
         Format _format;
         enum class Dimensionality { Undefined, T1D, T2D, T3D, CubeMap };
         Dimensionality _dimensionality;
-        uint8 _mipCount;
-        uint16 _arrayCount;
+        uint8_t _mipCount;
+        uint16_t _arrayCount;
         TextureSamples _samples;
 
         static TextureDesc Plain1D(
-            uint32 width, Format format, 
-            uint8 mipCount=1, uint16 arrayCount=0);
+            uint32_t width, Format format, 
+            uint8_t mipCount=1, uint16_t arrayCount=0);
         static TextureDesc Plain2D(
-            uint32 width, uint32 height, Format format, 
-            uint8 mipCount=1, uint16 arrayCount=0, const TextureSamples& samples = TextureSamples::Create());
+            uint32_t width, uint32_t height, Format format, 
+            uint8_t mipCount=1, uint16_t arrayCount=0, const TextureSamples& samples = TextureSamples::Create());
         static TextureDesc Plain3D(
-            uint32 width, uint32 height, uint32 depth, Format format, uint8 mipCount=1);
+            uint32_t width, uint32_t height, uint32_t depth, Format format, uint8_t mipCount=1);
         static TextureDesc Empty();
+
+        uint64_t CalculateHash() const;
     };
 
     /// <summary>Description of a buffer</summary>
@@ -161,8 +163,8 @@ namespace RenderCore
     {
     public:
             // following the D3D11 style; let's use a "type" member, with a union
-        struct Type { enum Enum { LinearBuffer, Texture, Unknown, Max }; };
-        Type::Enum _type;
+        enum class Type { LinearBuffer, Texture, Unknown, Max };
+        Type _type;
         BindFlag::BitField _bindFlags;
         CPUAccess::BitField _cpuAccess; 
         GPUAccess::BitField _gpuAccess;
@@ -172,6 +174,8 @@ namespace RenderCore
             TextureDesc _textureDesc;
         };
         char _name[48];
+
+        uint64_t CalculateHash() const;
 
 		ResourceDesc();
     };
@@ -277,8 +281,8 @@ namespace RenderCore
     }
 
 	inline TextureDesc TextureDesc::Plain1D(
-		uint32 width, Format format,
-		uint8 mipCount, uint16 arrayCount)
+		uint32_t width, Format format,
+		uint8_t mipCount, uint16_t arrayCount)
 	{
 		TextureDesc result;
 		result._width = width;
@@ -293,8 +297,8 @@ namespace RenderCore
 	}
 
 	inline TextureDesc TextureDesc::Plain2D(
-		uint32 width, uint32 height, Format format,
-		uint8 mipCount, uint16 arrayCount,
+		uint32_t width, uint32_t height, Format format,
+		uint8_t mipCount, uint16_t arrayCount,
 		const TextureSamples& samples)
 	{
 		TextureDesc result;
@@ -310,8 +314,8 @@ namespace RenderCore
 	}
 
 	inline TextureDesc TextureDesc::Plain3D(
-		uint32 width, uint32 height, uint32 depth,
-		Format format, uint8 mipCount)
+		uint32_t width, uint32_t height, uint32_t depth,
+		Format format, uint8_t mipCount)
 	{
 		TextureDesc result;
 		result._width = width;

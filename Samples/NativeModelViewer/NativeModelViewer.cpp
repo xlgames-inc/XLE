@@ -53,7 +53,7 @@ namespace Sample
 		auto lightingEngineApparatus = std::make_shared<RenderCore::LightingEngine::LightingEngineApparatus>(globals._drawingApparatus);
 		auto techniqueContext = globals._drawingApparatus->_techniqueContext;
 
-		auto modelLayer = std::make_shared<ToolsRig::SimpleSceneLayer>(
+		auto modelLayer = ToolsRig::CreateSimpleSceneLayer(
 			globals._immediateDrawingApparatus,
 			lightingEngineApparatus);
 
@@ -107,6 +107,13 @@ namespace Sample
         RenderCore::Techniques::ParsingContext& parserContext)
 	{
 		OverlaySystemSet::Render(threadContext, parserContext);
+	}
+
+	void NativeModelViewerOverlay::OnRenderTargetUpdate(
+		IteratorRange<const RenderCore::Techniques::PreregisteredAttachment*> preregAttachments,
+		const RenderCore::FrameBufferProperties& fbProps)
+	{
+		OverlaySystemSet::OnRenderTargetUpdate(preregAttachments, fbProps);
 	}
 
 	NativeModelViewerOverlay::NativeModelViewerOverlay()

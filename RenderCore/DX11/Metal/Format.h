@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../../Types_Forward.h"
+#include "../../Format.h"
 
 typedef enum DXGI_FORMAT DXGI_FORMAT;
 

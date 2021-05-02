@@ -7,11 +7,11 @@
 #pragma once
 
 #include "VulkanCore.h"
-#include "../../Types_Forward.h"
 #include "../../FrameBufferDesc.h"
+#include "../../StateDesc.h"
 #include <memory>
 
-namespace RenderCore { class IResourceView; }
+namespace RenderCore { class IResourceView; class ViewportDesc; }
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -22,6 +22,8 @@ namespace RenderCore { namespace Metal_Vulkan
     class FrameBuffer
 	{
 	public:
+        ViewportDesc GetDefaultViewport() const { return _defaultViewport; }
+
 		VkFramebuffer GetUnderlying() const { return _underlying.get(); }
         VkRenderPass GetLayout() const { return _layout.get(); }
 
@@ -46,6 +48,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		unsigned _subpassCount;
         VectorPattern<int, 2> _defaultOffset;
         VectorPattern<unsigned, 2> _defaultExtent;
+        ViewportDesc _defaultViewport;
         std::vector<std::shared_ptr<IResourceView>> _retainedViews;
 
         friend void BeginRenderPass(DeviceContext&, FrameBuffer&, IteratorRange<const ClearValue*>);

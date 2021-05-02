@@ -276,6 +276,6 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-	using ViewportDesc = RenderCore::Viewport;
+	using ViewportDesc = RenderCore::ViewportDesc;
 }}
 

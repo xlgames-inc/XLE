@@ -21,6 +21,7 @@ namespace RenderCore
     class TextureViewDesc;
     class TextureSamples;
     class FrameBufferProperties;
+    class ViewportDesc;
     using AttachmentName = uint32_t;
     class IResource;
     using IResourcePtr = std::shared_ptr<IResource>;
@@ -141,6 +142,7 @@ namespace RenderCore { namespace Techniques
         Metal::FrameBuffer& GetFrameBuffer() { return *_frameBuffer; }
         const Metal::FrameBuffer& GetFrameBuffer() const { return *_frameBuffer; }
         const FrameBufferDesc& GetFrameBufferDesc() const { return _layout; }
+        ViewportDesc GetDefaultViewport() const;
 
         auto GetInputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
         auto GetInputAttachmentSRV(unsigned inputAttachmentSlot) const -> IResourceView*;

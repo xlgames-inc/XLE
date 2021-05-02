@@ -167,7 +167,7 @@ namespace ToolsRig
             // configure rendering for the shadow shader
         const auto& settings = _pimpl->_settings;
         const auto& commonRes = Techniques::CommonResources();
-        Metal::ViewportDesc viewport(
+        ViewportDesc viewport(
             0.f, 0.f, float(settings._renderResolution), float(settings._renderResolution), 
             0.f, 1.f);
         metalContext.Bind(viewport);

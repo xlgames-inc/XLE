@@ -6,7 +6,9 @@
 
 #pragma once
 
-#include "../../RenderCore/Types.h"
+#include "../ResourceDesc.h"
+#include "../Types.h"
+#include "../StateDesc.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/Streams/SerializationUtils.h"

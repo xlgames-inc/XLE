@@ -7,13 +7,18 @@
 #pragma once
 
 #include "../../RenderCore/IDevice_Forward.h"
+#include "../../RenderCore/FrameBufferDesc.h"
 #include "../../Math/Matrix.h"
-#include "../../Core/Types.h"
+#include "../../Utility/IteratorUtils.h"
 #include <memory>
 #include <vector>
 
-namespace RenderCore { class IThreadContext; }
-namespace RenderCore { namespace Techniques { class ProjectionDesc; class ParsingContext; class IImmediateDrawables; class ImmediateDrawingApparatus; } }
+namespace RenderCore { class IThreadContext; class FrameBufferProperties; }
+namespace RenderCore { namespace Techniques 
+{ 
+    class ProjectionDesc; class ParsingContext; class IImmediateDrawables; class ImmediateDrawingApparatus;
+    struct PreregisteredAttachment;
+}}
 namespace RenderOverlays { class FontRenderingManager; }
 
 namespace PlatformRig
@@ -38,6 +43,10 @@ namespace PlatformRig
 		};
 		virtual OverlayState GetOverlayState() const;
 
+        virtual void OnRenderTargetUpdate(
+            IteratorRange<const RenderCore::Techniques::PreregisteredAttachment*> preregAttachments,
+            const RenderCore::FrameBufferProperties& fbProps);
+
         virtual ~IOverlaySystem();
     };
 
@@ -53,7 +62,11 @@ namespace PlatformRig
         void SetActivationState(bool newState) override;
 		OverlayState GetOverlayState() const override;
 
-        void AddSystem(uint32 activator, std::shared_ptr<IOverlaySystem> system);
+        virtual void OnRenderTargetUpdate(
+            IteratorRange<const RenderCore::Techniques::PreregisteredAttachment*> preregAttachments,
+            const RenderCore::FrameBufferProperties& fbProps) override;
+
+        void AddSystem(uint32_t activator, std::shared_ptr<IOverlaySystem> system);
 
         OverlaySystemSwitch();
         ~OverlaySystemSwitch();
@@ -62,8 +75,11 @@ namespace PlatformRig
         class InputListener;
 
         signed _activeChildIndex;
-        std::vector<std::pair<uint32,std::shared_ptr<IOverlaySystem>>> _childSystems;
+        std::vector<std::pair<uint32_t,std::shared_ptr<IOverlaySystem>>> _childSystems;
         std::shared_ptr<InputListener> _inputListener;
+
+        std::vector<RenderCore::Techniques::PreregisteredAttachment> _preregisteredAttachments;
+        RenderCore::FrameBufferProperties _fbProps;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -78,6 +94,10 @@ namespace PlatformRig
         void SetActivationState(bool newState) override;
 		virtual OverlayState GetOverlayState() const override;
 
+        virtual void OnRenderTargetUpdate(
+            IteratorRange<const RenderCore::Techniques::PreregisteredAttachment*> preregAttachments,
+            const RenderCore::FrameBufferProperties& fbProps) override;
+
         void AddSystem(std::shared_ptr<IOverlaySystem> system);
 		void RemoveSystem(IOverlaySystem& system);
 
@@ -90,6 +110,9 @@ namespace PlatformRig
         signed _activeChildIndex;
         std::vector<std::shared_ptr<IOverlaySystem>> _childSystems;
         std::shared_ptr<InputListener> _inputListener;
+
+        std::vector<RenderCore::Techniques::PreregisteredAttachment> _preregisteredAttachments;
+        RenderCore::FrameBufferProperties _fbProps;
     };
 
     std::shared_ptr<IOverlaySystem> CreateConsoleOverlaySystem(

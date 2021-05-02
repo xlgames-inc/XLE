@@ -11,14 +11,15 @@
 #include "DX11.h"
 #include "../../IDevice_Forward.h"
 #include "../../ResourceList.h"
-#include "../../Types_Forward.h"
+#include "../../Format.h"
+#include "../../StateDesc.h"
 #include "../../../Utility/Threading/ThreadingUtils.h"
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Utility/IteratorUtils.h"
 #include "../../../Core/Prefix.h"
 #include <functional>
 
-namespace RenderCore { enum class ShaderStage; class Viewport; class ScissorRect; class IndexBufferView; class AttachmentBlendDesc; class RasterizationDesc; class DepthStencilDesc; class VertexBufferView; }
+namespace RenderCore { enum class ShaderStage; class ViewportDesc; class ScissorRect; class IndexBufferView; class AttachmentBlendDesc; class RasterizationDesc; class DepthStencilDesc; class VertexBufferView; }
 namespace Assets { class DependencyValidation; }
 
 namespace RenderCore { namespace Metal_DX11
@@ -135,10 +136,10 @@ namespace RenderCore { namespace Metal_DX11
 		///////////////////////////////////////////////////////////////////////////////////////////////////
 		// Viewport & scissor states
 		///////////////////////////////////////////////////////////////////////////////////////////////////
-		void SetViewportAndScissorRects(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects);
-		Viewport GetBoundViewport();
+		void SetViewportAndScissorRects(IteratorRange<const ViewportDesc*> viewports, IteratorRange<const ScissorRect*> scissorRects);
+		ViewportDesc GetBoundViewport();
 
-		DEPRECATED_ATTRIBUTE void		Bind(const Viewport& viewport);
+		DEPRECATED_ATTRIBUTE void		Bind(const ViewportDesc& viewport);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////
 		// pre-GraphicsPipelineBuilder binding functions

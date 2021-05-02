@@ -773,7 +773,7 @@ namespace SceneEngine
             SCENE_ENGINE_RES "/postprocess/debugging.pixel.hlsl:LuminanceValue:vs_*", 
             METRICS_RENDER_GEO_HLSL ":main:gs_*",
             METRICS_RENDER_PIXEL_HLSL ":main:ps_*", ""));
-        Metal::ViewportDesc mainViewportDesc = context.GetBoundViewport();
+        ViewportDesc mainViewportDesc = context.GetBoundViewport();
         unsigned dimensions[4] = { (unsigned)mainViewportDesc.Width, (unsigned)mainViewportDesc.Height, 0, 0 };
         context.GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(MakeMetalCB(dimensions, sizeof(dimensions))));
         context.GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(resources._propertiesBuffer.SRV()));
@@ -920,7 +920,7 @@ namespace SceneEngine
 
 		auto& context = *RenderCore::Metal::DeviceContext::Get(threadContext);
 
-        Metal::ViewportDesc viewport = context.GetBoundViewport();
+        ViewportDesc viewport = context.GetBoundViewport();
         SavedTargets savedTargets(context);
         auto targetsReset = savedTargets.MakeResetMarker(context);
 
@@ -935,7 +935,7 @@ namespace SceneEngine
             auto& resources = ConsoleRig::FindCachedBoxDep2<AtmosphereBlurResources>(
                 blurBufferWidth, blurBufferHeight, Format::R16G16B16A16_FLOAT);
 
-            Metal::ViewportDesc newViewport(0, 0, float(blurBufferWidth), float(blurBufferHeight), 0.f, 1.f);
+            ViewportDesc newViewport(0, 0, float(blurBufferWidth), float(blurBufferHeight), 0.f, 1.f);
             context.Bind(newViewport);
             context.Bind(MakeResourceList(resources._blurBufferRTV[1]), nullptr);
             context.Bind(resources._noBlending);

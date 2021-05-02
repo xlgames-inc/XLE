@@ -186,8 +186,8 @@ namespace UnitTests
 
 		auto SetScissorRect = [&](RenderCore::Metal::GraphicsEncoder_ProgressivePipeline& encoder, float x, float y, float w, float h, bool originIsUpperLeft)
 		{
-			RenderCore::Viewport viewports[1];
-			viewports[0] = RenderCore::Viewport{ 0.f, 0.f, (float)targetDesc._textureDesc._width, (float)targetDesc._textureDesc._height };
+			RenderCore::ViewportDesc viewports[1];
+			viewports[0] = RenderCore::ViewportDesc{ 0.f, 0.f, (float)targetDesc._textureDesc._width, (float)targetDesc._textureDesc._height };
 			viewports[0]._originIsUpperLeft = originIsUpperLeft;
 			RenderCore::ScissorRect scissorRects[1];
 			scissorRects[0] = RenderCore::ScissorRect{ (int)x, (int)y, (unsigned)w, (unsigned)h };

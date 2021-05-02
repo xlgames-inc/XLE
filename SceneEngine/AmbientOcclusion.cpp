@@ -192,7 +192,7 @@ namespace SceneEngine
                                     AmbientOcclusionResources& resources,
                                     const Metal::ShaderResourceView& depthBuffer,
                                     const Metal::ShaderResourceView* normalsBuffer,
-                                    const Metal::ViewportDesc& mainViewport)
+                                    const ViewportDesc& mainViewport)
     {
             // Not working for orthogonal projection matrices
         if (IsOrthogonalProjection(parserContext.GetProjectionDesc()._cameraToProjection))

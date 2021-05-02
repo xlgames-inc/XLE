@@ -74,12 +74,6 @@ namespace Sample
         sampleGlobals._immediateDrawingApparatus = std::make_shared<RenderCore::Techniques::ImmediateDrawingApparatus>(sampleGlobals._drawingApparatus);
         sampleGlobals._primaryResourcesApparatus = std::make_shared<RenderCore::Techniques::PrimaryResourcesApparatus>(sampleGlobals._renderDevice);
         sampleGlobals._frameRenderingApparatus = std::make_shared<RenderCore::Techniques::FrameRenderingApparatus>(sampleGlobals._renderDevice);
-        sampleGlobals._windowApparatus->_windowHandler->_onResize.Bind(
-            [fra = std::weak_ptr<RenderCore::Techniques::FrameRenderingApparatus>{sampleGlobals._frameRenderingApparatus}](unsigned, unsigned) {
-                auto apparatus = fra.lock();
-                if (apparatus)
-                    RenderCore::Techniques::ResetFrameBufferPool(*apparatus->_frameBufferPool);
-            });
         auto v = sampleGlobals._renderDevice->GetDesc();
         sampleGlobals._windowApparatus->_osWindow->SetTitle(StringMeld<128>() << "XLE sample [RenderCore: " << v._buildVersion << ", " << v._buildDate << "]");
 
@@ -107,6 +101,17 @@ namespace Sample
 
         Log(Verbose) << "Call OnStartup and start the frame loop" << std::endl;
         sampleOverlay->OnStartup(sampleGlobals);
+        frameRig.UpdatePresentationChain(*sampleGlobals._windowApparatus->_presentationChain);
+        sampleGlobals._windowApparatus->_windowHandler->_onResize.Bind(
+            [fra = std::weak_ptr<RenderCore::Techniques::FrameRenderingApparatus>{sampleGlobals._frameRenderingApparatus},
+             ps = std::weak_ptr<RenderCore::IPresentationChain>(sampleGlobals._windowApparatus->_presentationChain), &frameRig](unsigned, unsigned) {
+                auto apparatus = fra.lock();
+                if (apparatus)
+                    RenderCore::Techniques::ResetFrameBufferPool(*apparatus->_frameBufferPool);
+                auto presChain = ps.lock();
+                if (presChain)
+                    frameRig.UpdatePresentationChain(*presChain);
+            });
 
         auto techContext = sampleGlobals._drawingApparatus->_techniqueContext;
         techContext->_attachmentPool = sampleGlobals._frameRenderingApparatus->_attachmentPool;
@@ -119,7 +124,7 @@ namespace Sample
                 // ------- Render ----------------------------------------
             RenderCore::Techniques::ParsingContext parserContext(*sampleGlobals._drawingApparatus->_techniqueContext);
             auto frameResult = frameRig.ExecuteFrame(
-                *sampleGlobals._windowApparatus->_immediateContext, sampleGlobals._windowApparatus->_presentationChain.get(), 
+                *sampleGlobals._windowApparatus->_immediateContext, *sampleGlobals._windowApparatus->_presentationChain, 
                 parserContext, &cpuProfiler);
 
                 // ------- Update ----------------------------------------

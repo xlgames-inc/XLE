@@ -26,6 +26,10 @@ namespace Sample
 		std::shared_ptr<PlatformRig::IInputListener> GetInputListener() override;
         void SetActivationState(bool newState) override;
 
+		virtual void OnRenderTargetUpdate(
+            IteratorRange<const RenderCore::Techniques::PreregisteredAttachment*> preregAttachments,
+            const RenderCore::FrameBufferProperties& fbProps) override;
+
 		NativeModelViewerOverlay();
 		~NativeModelViewerOverlay();
 	};

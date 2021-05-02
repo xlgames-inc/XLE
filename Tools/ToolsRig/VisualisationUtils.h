@@ -20,7 +20,6 @@ namespace RenderCore { namespace Techniques {
 	class IPipelineAcceleratorPool;
     class ImmediateDrawingApparatus;
     class IPreDrawDelegate;
-    class LightingEngineApparatus;
 }}
 namespace RenderCore { namespace LightingEngine { class LightingEngineApparatus; }}
 namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
@@ -124,7 +123,7 @@ namespace ToolsRig
 		virtual std::shared_ptr<RenderCore::Techniques::IPreDrawDelegate> SetPreDrawDelegate(
 			const std::shared_ptr<RenderCore::Techniques::IPreDrawDelegate>&) = 0;
 		virtual void RenderSkeleton(
-			RenderCore::IThreadContext& context, 
+			RenderOverlays::IOverlayContext& overlayContext, 
 			RenderCore::Techniques::ParsingContext& parserContext, 
 			bool drawBoneNames) const = 0;
 
@@ -139,28 +138,19 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class SimpleSceneLayer : public PlatformRig::IOverlaySystem
+    class ISimpleSceneLayer : public PlatformRig::IOverlaySystem
     {
     public:
-        virtual void Render(
-            RenderCore::IThreadContext& context,
-            RenderCore::Techniques::ParsingContext& parserContext) override;
-
-        void Set(const VisEnvSettings& envSettings);
-		void Set(const std::shared_ptr<SceneEngine::IScene>& scene);
-
-		const std::shared_ptr<VisCameraSettings>& GetCamera();
-		void ResetCamera();
-		virtual OverlayState GetOverlayState() const override;
-
-        SimpleSceneLayer(
-            const std::shared_ptr<RenderCore::Techniques::ImmediateDrawingApparatus>& immediateDrawingApparatus,
-            const std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus>& lightingEngineApparatus);
-        ~SimpleSceneLayer();
-    protected:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
+        virtual void Set(const VisEnvSettings& envSettings) = 0;
+		virtual void Set(const std::shared_ptr<SceneEngine::IScene>& scene) = 0;
+        virtual const std::shared_ptr<VisCameraSettings>& GetCamera() = 0;
+		virtual void ResetCamera() = 0;
+        virtual ~ISimpleSceneLayer() = default;
     };
+
+    std::shared_ptr<ISimpleSceneLayer> CreateSimpleSceneLayer(
+        const std::shared_ptr<RenderCore::Techniques::ImmediateDrawingApparatus>& immediateDrawingApparatus,
+        const std::shared_ptr<RenderCore::LightingEngine::LightingEngineApparatus>& lightingEngineApparatus);
 
 	class VisualisationOverlay : public PlatformRig::IOverlaySystem
     {

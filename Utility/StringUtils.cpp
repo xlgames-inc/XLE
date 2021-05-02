@@ -31,7 +31,7 @@
 namespace Utility
 {
 
-static const uint8 __alphanum_table[] = {
+static const uint8_t __alphanum_table[] = {
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -49,7 +49,7 @@ static const uint8 __alphanum_table[] = {
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 };
-static const uint8 __hex_table[] = {
+static const uint8_t __hex_table[] = {
 	0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
 	0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
 	0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
@@ -67,7 +67,7 @@ static const uint8 __hex_table[] = {
 	0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
 	0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
 };
-static const uint8 __lower_table[] = {
+static const uint8_t __lower_table[] = {
 	0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,
 	0x10,0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18,0x19,0x1A,0x1B,0x1C,0x1D,0x1E,0x1F,
 	0x20,0x21,0x22,0x23,0x24,0x25,0x26,0x27,0x28,0x29,0x2A,0x2B,0x2C,0x2D,0x2E,0x2F,
@@ -85,7 +85,7 @@ static const uint8 __lower_table[] = {
 	0xE0,0xE1,0xE2,0xE3,0xE4,0xE5,0xE6,0xE7,0xE8,0xE9,0xEA,0xEB,0xEC,0xED,0xEE,0xEF,
 	0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7,0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF,
 };
-static const uint8 __upper_table[] = {
+static const uint8_t __upper_table[] = {
 	0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,
 	0x10,0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18,0x19,0x1A,0x1B,0x1C,0x1D,0x1E,0x1F,
 	0x20,0x21,0x22,0x23,0x24,0x25,0x26,0x27,0x28,0x29,0x2A,0x2B,0x2C,0x2D,0x2E,0x2F,
@@ -274,7 +274,7 @@ void XlCopyString_SafeUtf(utf8* dst, size_t size_, const utf8* src)
     *dst = 0;
 }
 
-void XlCopyString_SafeUtfN(utf8* dst, size_t size_, const utf8* src, const uint32 numSeq)
+void XlCopyString_SafeUtfN(utf8* dst, size_t size_, const utf8* src, const uint32_t numSeq)
 {
     if (!size_)
         return;
@@ -284,7 +284,7 @@ void XlCopyString_SafeUtfN(utf8* dst, size_t size_, const utf8* src, const uint3
     --size; // reserve null
 
 	utf8 c;
-    uint32 n = 0;
+    uint32_t n = 0;
     while ((c = *src)) {
         if (n >= numSeq) {
             break;
@@ -1003,7 +1003,7 @@ void XlCompactString(ucs4* dst, size_t count, const ucs4* src)
 
 bool XlIsValidAscii(const char* str)
 {
-    while (uint8 c = (uint8)*str++) {
+    while (uint8_t c = (uint8_t)*str++) {
         if (c >= 0x80)
             return false;
     }
@@ -1017,8 +1017,8 @@ bool XlIsValidUtf8(const utf8* str, size_t count)
     if (XlHasUtf8Bom(s))
         s += 3;
 
-    uint32 c;
-    while ((count == size_t(-1) || size_t(s - str) < count) && (c = (uint8)*s++) != 0) {
+    uint32_t c;
+    while ((count == size_t(-1) || size_t(s - str) < count) && (c = (uint8_t)*s++) != 0) {
         if (c < 0x80) {
         } else if (c == 0xc0 || c == 0xc1 || (c >= 0xf5 && c <= 0xff)) {
             return false;
@@ -1038,7 +1038,7 @@ bool XlIsValidUtf8(const utf8* str, size_t count)
 
 bool XlHasUtf8Bom(const utf8* str)
 {
-    return (uint8)str[0] == 0xef && (uint8)str[1] == 0xbb && (uint8)str[2] == 0xbf;
+    return (uint8_t)str[0] == 0xef && (uint8_t)str[1] == 0xbb && (uint8_t)str[2] == 0xbf;
 }
 
 size_t XlGetOffset(const char* s, size_t index)
@@ -1046,7 +1046,7 @@ size_t XlGetOffset(const char* s, size_t index)
     size_t l = 0;
 
     for (size_t i = 0; i < index; ++i) {
-        uint32 c = (uint8)s[l];
+        uint32_t c = (uint8_t)s[l];
         if (!c) break;
 
         if (c < 0x80) {
@@ -1163,42 +1163,42 @@ size_t XlDecodeUrl(char* dst, size_t count, const char* encoded)
 
 bool XlIsAlnum(char c)
 {
-	return __alphanum_table[(uint8)c] != 0x00;
+	return __alphanum_table[(uint8_t)c] != 0x00;
 }
 
 bool XlIsEngAlpha(char c)
 {
-	return __alphanum_table[(uint8)c] > 0x01;
+	return __alphanum_table[(uint8_t)c] > 0x01;
 }
 
 bool XlIsAlNumSpace(char c)
 {
-    return (__alphanum_table[(uint8)c] != 0x00) || (c == ' ');
+    return (__alphanum_table[(uint8_t)c] != 0x00) || (c == ' ');
 }
 
 bool XlIsDigit(utf8 c)
 {
-	return __alphanum_table[(uint8)c] == 0x01;
+	return __alphanum_table[(uint8_t)c] == 0x01;
 }
 
 bool XlIsHex(char c)
 {
-	return __hex_table[(uint8)c] != 0xFF;
+	return __hex_table[(uint8_t)c] != 0xFF;
 }
 
 bool XlIsLower(char c)
 {
-	return __alphanum_table[(uint8)c] == 0x02;
+	return __alphanum_table[(uint8_t)c] == 0x02;
 }
 
 bool XlIsUpper(char c)
 {
-	return __alphanum_table[(uint8)c] == 0x03;
+	return __alphanum_table[(uint8_t)c] == 0x03;
 }
 
 bool XlIsPrint(char c)
 {
-    return (uint8)c >= ' ';
+    return (uint8_t)c >= ' ';
 }
 
 bool XlIsSpace(char c)
@@ -1208,12 +1208,12 @@ bool XlIsSpace(char c)
 
 utf8 XlToLower(utf8 c)
 {
-	return (utf8)__lower_table[(uint8)c];
+	return (utf8)__lower_table[(uint8_t)c];
 }
 
 utf8 XlToUpper(utf8 c)
 {
-	return (utf8)__upper_table[(uint8)c];
+	return (utf8)__upper_table[(uint8_t)c];
 }
 
 wchar_t XlToLower(wchar_t c) { return std::tolower(c, std::locale()); }
@@ -1223,7 +1223,7 @@ wchar_t XlToUpper(wchar_t c) { return std::toupper(c, std::locale()); }
 ucs2 XlToLower(ucs2 c)
 {
     if (c <= 0x7F) {
-        return (ucs2)__lower_table[(uint8)c];
+        return (ucs2)__lower_table[(uint8_t)c];
     } 
     return c;
 }
@@ -1231,7 +1231,7 @@ ucs2 XlToLower(ucs2 c)
 ucs2 XlToUpper(ucs2 c)
 {
     if (c <= 0x7F) {
-        return (ucs2)__upper_table[(uint8)c];
+        return (ucs2)__upper_table[(uint8_t)c];
     }
     return c;
 }
@@ -1239,7 +1239,7 @@ ucs2 XlToUpper(ucs2 c)
 utf16 XlToLower(utf16 c)
 {
     if (c <= 0x7F) {
-        return (utf16)__lower_table[(uint8)c];
+        return (utf16)__lower_table[(uint8_t)c];
     } 
     return c;
 }
@@ -1247,7 +1247,7 @@ utf16 XlToLower(utf16 c)
 utf16 XlToUpper(utf16 c)
 {
     if (c <= 0x7F) {
-        return (utf16)__upper_table[(uint8)c];
+        return (utf16)__upper_table[(uint8_t)c];
     }
     return c;
 }
@@ -1256,7 +1256,7 @@ struct UnicharEng {
 	UnicharEng(ucs4 c_) : c(c_) {}
     union {
         struct { 
-            uint8 l1, l2, l3;
+            uint8_t l1, l2, l3;
             char ascii;
         } e;
         ucs4 c;
@@ -1380,7 +1380,7 @@ int XlFromHex(char c)
 
 char XlToHex(int n)
 {   
-    uint32 u = (uint32)n;
+    uint32_t u = (uint32_t)n;
     if (u < 10) return '0' + char(u);
     else return 'a' + char(u - 10);
 }
@@ -1545,14 +1545,14 @@ int64 XlAtoI64(const char* str, const char** end_ptr, int radix)
 	return tpl_atoi<int64>(str, end_ptr, radix);
 }
 
-uint32 XlAtoUI32(const char* str, const char** end_ptr, int radix)
+uint32_t XlAtoUI32(const char* str, const char** end_ptr, int radix)
 {
-	return (uint32)tpl_atoi<int32>(str, end_ptr, radix);
+	return (uint32_t)tpl_atoi<int32>(str, end_ptr, radix);
 }
 
-uint64 XlAtoUI64(const char* str, const char** end_ptr, int radix)
+uint64_t XlAtoUI64(const char* str, const char** end_ptr, int radix)
 {
-	return (uint64)tpl_atoi<int64>(str, end_ptr, radix);
+	return (uint64_t)tpl_atoi<int64>(str, end_ptr, radix);
 }
 
 float XlAtoF32(const char* str, const char** end_ptr)
@@ -1702,11 +1702,11 @@ char* XlI32toA(int32 value, char* buffer, size_t dim, int radix)
 
 	if (radix == 10 && value < 0) {
 		*buffer = '-';
-		tpl_itoa<uint32>((uint32)(-value), buffer + 1, 10);
+		tpl_itoa<uint32_t>((uint32_t)(-value), buffer + 1, 10);
 		return buffer;
 	}
 
-	return tpl_itoa<uint32>((uint32)value, buffer, radix);	
+	return tpl_itoa<uint32_t>((uint32_t)value, buffer, radix);	
 }
 
 char* XlI64toA(int64 value, char* buffer, size_t dim, int radix)
@@ -1717,29 +1717,29 @@ char* XlI64toA(int64 value, char* buffer, size_t dim, int radix)
 
 	if (radix == 10 && value < 0) {
 		*buffer = '-';
-		tpl_itoa<uint64>((uint64)(-value), buffer + 1, 10);
+		tpl_itoa<uint64_t>((uint64_t)(-value), buffer + 1, 10);
 		return buffer;
 	}
 
-	return tpl_itoa<uint64>(value, buffer, radix);
+	return tpl_itoa<uint64_t>(value, buffer, radix);
 }
 
-char* XlUI32toA(uint32 value, char* buffer, size_t dim, int radix)
+char* XlUI32toA(uint32_t value, char* buffer, size_t dim, int radix)
 {
     if (!IsValidDimForI32(dim, radix)) {
         return 0;
     }
 
-	return tpl_itoa<uint32>((uint32)value, buffer, radix);	
+	return tpl_itoa<uint32_t>((uint32_t)value, buffer, radix);	
 }
 
-char* XlUI64toA(uint64 value, char* buffer, size_t dim, int radix)
+char* XlUI64toA(uint64_t value, char* buffer, size_t dim, int radix)
 {
     if (!IsValidDimForI64(dim, radix)) {
         return 0;
     }
 
-    return tpl_itoa<uint64>(value, buffer, radix);
+    return tpl_itoa<uint64_t>(value, buffer, radix);
 }
 
 int XlI32toA_s(int32 value, char* buffer, size_t dim, int radix)
@@ -1750,11 +1750,11 @@ int XlI32toA_s(int32 value, char* buffer, size_t dim, int radix)
 
 	if (radix == 10 && value < 0) {
 		*buffer = '-';
-		tpl_itoa<uint32>((uint32)(-value), buffer + 1, 10);
+		tpl_itoa<uint32_t>((uint32_t)(-value), buffer + 1, 10);
 		return 0;
 	}
 
-	tpl_itoa<uint32>((uint32)value, buffer, radix);	
+	tpl_itoa<uint32_t>((uint32_t)value, buffer, radix);	
 	return 0;
 }
 
@@ -1766,31 +1766,31 @@ int XlI64toA_s(int64 value, char* buffer, size_t dim, int radix)
 
 	if (radix == 10 && value < 0) {
 		*buffer = '-';
-		tpl_itoa<uint64>((uint64)(-value), buffer + 1, 10);
+		tpl_itoa<uint64_t>((uint64_t)(-value), buffer + 1, 10);
 		return 0;
 	}
 
-	tpl_itoa<uint64>(value, buffer, radix);
+	tpl_itoa<uint64_t>(value, buffer, radix);
 	return 0;
 }
 
-int XlUI32toA_s(uint32 value, char* buffer, size_t dim, int radix)
+int XlUI32toA_s(uint32_t value, char* buffer, size_t dim, int radix)
 {
 	if (!IsValidDimForI32(dim, radix)) {
 		return EINVAL;
 	}
 
-	tpl_itoa<uint32>((uint32)value, buffer, radix);	
+	tpl_itoa<uint32_t>((uint32_t)value, buffer, radix);	
 	return 0;
 }
 
-int XlUI64toA_s(uint64 value, char* buffer, size_t dim, int radix)
+int XlUI64toA_s(uint64_t value, char* buffer, size_t dim, int radix)
 {
 	if (!IsValidDimForI64(dim, radix)) {
 		return EINVAL;
 	}
 
-	tpl_itoa<uint64>(value, buffer, radix);
+	tpl_itoa<uint64_t>(value, buffer, radix);
 	return 0;
 }
 
@@ -1798,32 +1798,32 @@ char* XlI32toA_ns(int32 value, char* buffer, int radix)
 {
 	if (radix == 10 && value < 0) {
 		*buffer = '-';
-		tpl_itoa<uint32>((uint32)(-value), buffer + 1, 10);
+		tpl_itoa<uint32_t>((uint32_t)(-value), buffer + 1, 10);
 		return buffer;
 	}
 
-	return tpl_itoa<uint32>((uint32)value, buffer, radix);	
+	return tpl_itoa<uint32_t>((uint32_t)value, buffer, radix);	
 }
 
 char* XlI64toA_ns(int64 value, char* buffer, int radix)
 {
 	if (radix == 10 && value < 0) {
 		*buffer = '-';
-		tpl_itoa<uint64>((uint64)(-value), buffer + 1, 10);
+		tpl_itoa<uint64_t>((uint64_t)(-value), buffer + 1, 10);
 		return buffer;
 	}
 
-	return tpl_itoa<uint64>((uint64)value, buffer, radix);	
+	return tpl_itoa<uint64_t>((uint64_t)value, buffer, radix);	
 }
 
-char* XlUI32toA_ns(uint32 value, char* buffer, int radix)
+char* XlUI32toA_ns(uint32_t value, char* buffer, int radix)
 {
-	return tpl_itoa<uint32>((uint32)value, buffer, radix);
+	return tpl_itoa<uint32_t>((uint32_t)value, buffer, radix);
 }
 
-char* XlUI64toA_ns(uint64 value, char* buffer, int radix)
+char* XlUI64toA_ns(uint64_t value, char* buffer, int radix)
 {
-	return tpl_itoa<uint64>(value, buffer, radix);
+	return tpl_itoa<uint64_t>(value, buffer, radix);
 }
 
 bool XlMatchWildcard(const char* str, const char* pat, bool nocase)
@@ -1876,8 +1876,8 @@ bool XlToHexStr(const char* x, size_t xlen, char* y, size_t ylen)
     }
 
     for (size_t i = 0; i < xlen; i++) {
-        *y++ = hexchars[(uint8)x[i] >> 4];
-        *y++ = hexchars[(uint8)x[i] & 0x0f];
+        *y++ = hexchars[(uint8_t)x[i] >> 4];
+        *y++ = hexchars[(uint8_t)x[i] & 0x0f];
     }
     *y = '\0';
 
@@ -1892,11 +1892,11 @@ bool XlHexStrToBin(const char* x, char* y)
     char b = 0;
 
     while (*c) {
-        b = (__hex_table[(uint8)*c++]) << 4;
+        b = (__hex_table[(uint8_t)*c++]) << 4;
         if (*c == '\0') {
             return false;
         }
-        b |= (__hex_table[(uint8)*c++]) & 0x0f;
+        b |= (__hex_table[(uint8_t)*c++]) & 0x0f;
         *y++ = b;
     }
     return true;
@@ -1911,7 +1911,7 @@ size_t XlMultiToWide(ucs4* dst, size_t count, const utf8* src)
 
     size_t i = 0;
     while (i < count-1) {
-        uint32 c = (uint8)*src++;
+        uint32_t c = (uint8_t)*src++;
         if (c == 0)
             break;
 

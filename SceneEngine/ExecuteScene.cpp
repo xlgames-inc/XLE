@@ -29,7 +29,6 @@ namespace SceneEngine
 		RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parsingContext,
 		RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAccelerators,
-		IteratorRange<const RenderCore::Techniques::PreregisteredAttachment*> preregisteredAttachment,
 		SceneEngine::ILightingStateDelegate& lightingState,
 		RenderCore::LightingEngine::CompiledLightingTechnique& compiledTechnique)
 	{

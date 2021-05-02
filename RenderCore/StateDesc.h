@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <iosfwd>
+#include <assert.h>
 
 namespace RenderCore
 {
@@ -257,6 +258,40 @@ namespace RenderCore
 		PatchList15 = 47,   // D3D11_PRIMITIVE_TOPOLOGY_15_CONTROL_POINT_PATCHLIST	= 47,
 		PatchList16 = 48    // D3D11_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST	= 48
 	};
+
+	class ViewportDesc
+    {
+    public:
+        float _x, _y;
+        float _width, _height;
+        float _minDepth, _maxDepth;
+        bool _originIsUpperLeft;
+
+        ViewportDesc(float x=0.f, float y=0.f, float width=0.f, float height=0.f, float minDepth=0.f, float maxDepth=1.f, bool originIsUpperLeft=true)
+        : _x(x), _y(y)
+        , _width(width), _height(height)
+        , _minDepth(minDepth), _maxDepth(maxDepth)
+        , _originIsUpperLeft(originIsUpperLeft)
+        {
+            // To avoid confusion that might stem from flipped viewports, disallow them.  Viewport size must be non-negative.
+            assert(_width >= 0.f);
+            assert(_height >= 0.f);
+        }
+    };
+
+    class ScissorRect
+    {
+    public:
+        int _x, _y;
+        unsigned _width, _height;
+        bool _originIsUpperLeft;
+
+        ScissorRect(int x=0, int y=0, unsigned width=0, unsigned height=0, bool originIsUpperLeft=true)
+        : _x(x), _y(y)
+        , _width(width), _height(height)
+        , _originIsUpperLeft(originIsUpperLeft)
+        {}
+    };
 
     const char* AsString(AddressMode);
 	const char* AsString(FilterMode);

@@ -111,7 +111,7 @@ namespace SceneEngine
         // We need to bind the render targets and blend modes for the initial accumulation pass
         // We can use a downsampled translucency buffer here -- when the loss of resolution doesn't
         // matter.
-        Metal::ViewportDesc viewport = _context->GetBoundViewport();
+        ViewportDesc viewport = _context->GetBoundViewport();
         auto& box = ConsoleRig::FindCachedBox2<DepthWeightedTransparencyBox>(
             unsigned(viewport.Width), unsigned(viewport.Height));
 

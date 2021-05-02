@@ -20,7 +20,6 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         FontRectanglePacking.h
         FT_Font.h
         HighlightEffects.h
-        IOverlayContext_Forward.h
         IOverlayContext.h
         OverlayContext.h
         OverlayPrimitives.h

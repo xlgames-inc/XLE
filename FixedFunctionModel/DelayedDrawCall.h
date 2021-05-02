@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "../RenderCore/Types_Forward.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 #include "../Core/Types.h"

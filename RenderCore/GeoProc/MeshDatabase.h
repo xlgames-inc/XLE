@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../Types_Forward.h"
+#include "../Format.h"
 #include "../VertexUtil.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Core/Types.h"

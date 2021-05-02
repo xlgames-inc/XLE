@@ -7,7 +7,7 @@
 #include "Resource.h"
 #include "VulkanCore.h"
 #include "../../IDevice.h"
-#include "../../Types_Forward.h"
+#include "../../Types.h"
 #include "../../ResourceDesc.h"
 #include <memory>
 

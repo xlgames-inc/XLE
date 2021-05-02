@@ -34,7 +34,7 @@ namespace GUILayer
     {
     public:
         std::shared_ptr<ToolsRig::VisualisationOverlay> _visOverlay;
-		std::shared_ptr<ToolsRig::SimpleSceneLayer> _modelLayer;
+		std::shared_ptr<ToolsRig::ISimpleSceneLayer> _modelLayer;
 		std::shared_ptr<PlatformRig::IOverlaySystem> _manipulatorLayer;
 		std::shared_ptr<ToolsRig::MouseOverTrackingOverlay> _trackingLayer;
 		std::shared_ptr<ToolsRig::VisMouseOver> _mouseOver;
@@ -155,7 +155,7 @@ namespace GUILayer
 		_pimpl->_mouseOver = std::make_shared<ToolsRig::VisMouseOver>();
 		_pimpl->_animState = std::make_shared<ToolsRig::VisAnimationState>();
 
-		_pimpl->_modelLayer = std::make_shared<ToolsRig::SimpleSceneLayer>(immediateDrawableApparatus, lightingEngineApparatus);
+		_pimpl->_modelLayer = ToolsRig::CreateSimpleSceneLayer(immediateDrawableApparatus, lightingEngineApparatus);
 		_pimpl->_modelLayer->Set(ToolsRig::VisEnvSettings{});
 
 		_pimpl->_visOverlay = std::make_shared<ToolsRig::VisualisationOverlay>(

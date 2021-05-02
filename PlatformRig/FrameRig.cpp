@@ -35,6 +35,10 @@
 
 #include "../RenderCore/Metal/DeviceContext.h"
 
+#include "../Assets/CompileAndAsyncManager.h"
+#include "../Assets/IntermediatesStore.h"
+#include "../Assets/AssetServices.h"
+
 namespace PlatformRig
 {
     using namespace RenderOverlays;
@@ -60,13 +64,15 @@ namespace PlatformRig
     public:
         AccumulatedAllocations::Snapshot _prevFrameAllocationCount;
         FrameRateRecorder _frameRate;
-        uint64_t      _prevFrameStartTime;
-        float       _timerToSeconds;
-        unsigned    _frameRenderCount;
-        uint64_t      _frameLimiter;
-        uint64_t      _timerFrequency;
+        uint64_t _prevFrameStartTime;
+        float _timerToSeconds;
+        unsigned _frameRenderCount;
+        uint64_t _frameLimiter;
+        uint64_t _timerFrequency;
 
-        
+        uint64_t _mainOverlayRigTargetConfig = 0;
+        uint64_t _debugScreensTargetConfig = 0; 
+
         Pimpl()
         : _prevFrameStartTime(0) 
         , _timerFrequency(OSServices::GetPerformanceCounterFrequency())
@@ -104,13 +110,11 @@ namespace PlatformRig
 
     auto FrameRig::ExecuteFrame(
         RenderCore::IThreadContext& context,
-        RenderCore::IPresentationChain* presChain,
+        RenderCore::IPresentationChain& presChain,
 		RenderCore::Techniques::ParsingContext& parserContext,
         HierarchicalCPUProfiler* cpuProfiler) -> FrameResult
     {
         CPUProfileEvent_Conditional pEvnt("FrameRig::ExecuteFrame", cpuProfiler);
-
-        assert(presChain);
 
         uint64_t startTime = OSServices::GetPerformanceCounter();
         if (_pimpl->_frameLimiter) {
@@ -121,13 +125,25 @@ namespace PlatformRig
             }
         }
 
+        #if defined(_DEBUG)
+            const bool intermittentlyCommitAssets = true;
+            if (intermittentlyCommitAssets) {
+                using namespace std::chrono_literals;
+                static auto startTime = std::chrono::steady_clock::now();
+                if ((std::chrono::steady_clock::now() - startTime) > 20s) {
+                    ::Assets::Services::GetAsyncMan().GetIntermediateStore()->FlushToDisk();
+                    startTime = std::chrono::steady_clock::now();
+                }
+            }
+        #endif
+
         float frameElapsedTime = 1.f/60.f;
         if (_pimpl->_prevFrameStartTime!=0) {
             frameElapsedTime = (startTime - _pimpl->_prevFrameStartTime) * _pimpl->_timerToSeconds;
         }
         _pimpl->_prevFrameStartTime = startTime;
 
-		auto presentationTarget = context.BeginFrame(*presChain);
+		auto presentationTarget = context.BeginFrame(presChain);
 		auto presentationTargetDesc = presentationTarget->GetDesc();
 
 		context.GetAnnotator().Frame_Begin(_pimpl->_frameRenderCount);		// (on Vulkan, we must do this after IThreadContext::BeginFrame(), because that primes the command list in the vulkan device)
@@ -150,11 +166,15 @@ namespace PlatformRig
                     RenderCore::Techniques::PreregisteredAttachment::State::Uninitialized
                 });
             parserContext._fbProps = RenderCore::FrameBufferProperties { targetDesc._textureDesc._width, targetDesc._textureDesc._height };
+            parserContext.GetViewport() = RenderCore::ViewportDesc { 0.f, 0.f, (float)targetDesc._textureDesc._width, (float)targetDesc._textureDesc._height };
 
 			////////////////////////////////
 
 			TRY {
 				if (_mainOverlaySys) {
+                    #if defined(_DEBUG)
+                        assert(_pimpl->_mainOverlayRigTargetConfig == RenderCore::Techniques::HashPreregisteredAttachments(MakeIteratorRange(parserContext._preregisteredAttachments), parserContext._fbProps));
+                    #endif
                     _mainOverlaySys->Render(context, parserContext);
                 } else {
                     // We must at least clear, because the _debugScreenOverlaySystem might have something to render
@@ -204,7 +224,7 @@ namespace PlatformRig
 
 			{
 				CPUProfileEvent_Conditional pEvnt2("Present", cpuProfiler);
-				context.Present(*presChain);
+				context.Present(presChain);
 			}
 
             if (_subFrameEvents)
@@ -234,6 +254,47 @@ namespace PlatformRig
         }
 
         return { frameElapsedTime, parserContext.HasPendingAssets() };
+    }
+
+    void FrameRig::UpdatePresentationChain(RenderCore::IPresentationChain& presChain)
+    {
+        auto desc = presChain.GetDesc();
+
+        using namespace RenderCore;
+        auto targetDesc = CreateDesc(
+            desc->_bindFlags, 
+            0, GPUAccess::Write,
+            TextureDesc::Plain2D(desc->_width, desc->_height, desc->_format, 1, 0, desc->_samples),
+            "presentation-target");
+
+        auto fbProps = RenderCore::FrameBufferProperties { desc->_width, desc->_height, desc->_samples };
+        if (_mainOverlaySys) {
+            std::vector<RenderCore::Techniques::PreregisteredAttachment> preregisteredAttachments;
+            preregisteredAttachments.push_back(
+                RenderCore::Techniques::PreregisteredAttachment {
+                    RenderCore::Techniques::AttachmentSemantics::ColorLDR,
+                    targetDesc,
+                    RenderCore::Techniques::PreregisteredAttachment::State::Uninitialized
+                });
+            _mainOverlaySys->OnRenderTargetUpdate(MakeIteratorRange(preregisteredAttachments), fbProps);
+            _pimpl->_mainOverlayRigTargetConfig = RenderCore::Techniques::HashPreregisteredAttachments(MakeIteratorRange(preregisteredAttachments), fbProps);
+        } else {
+            _pimpl->_mainOverlayRigTargetConfig = 0;
+        }
+
+        if (_debugScreenOverlaySystem) {
+            std::vector<RenderCore::Techniques::PreregisteredAttachment> preregisteredAttachments;
+            preregisteredAttachments.push_back(
+                RenderCore::Techniques::PreregisteredAttachment {
+                    RenderCore::Techniques::AttachmentSemantics::ColorLDR,
+                    targetDesc,
+                    RenderCore::Techniques::PreregisteredAttachment::State::Initialized
+                });
+            _debugScreenOverlaySystem->OnRenderTargetUpdate(MakeIteratorRange(preregisteredAttachments), fbProps);
+            _pimpl->_debugScreensTargetConfig = RenderCore::Techniques::HashPreregisteredAttachments(MakeIteratorRange(preregisteredAttachments), fbProps);
+        } else {
+            _pimpl->_debugScreensTargetConfig = 0;
+        }
     }
 
     void FrameRig::SetFrameLimiter(unsigned maxFPS)

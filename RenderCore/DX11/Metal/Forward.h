@@ -8,7 +8,7 @@
 
 #include <utility>      // for std::pair
 
-namespace RenderCore { class SharedPkt; class Viewport; }
+namespace RenderCore { class SharedPkt; class ViewportDesc; }
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -40,6 +40,5 @@ namespace RenderCore { namespace Metal_DX11
 
     using ConstantBufferPacket = SharedPkt;
 	using ConstantBuffer = Buffer;
-	using ViewportDesc = RenderCore::Viewport;
 }}
 

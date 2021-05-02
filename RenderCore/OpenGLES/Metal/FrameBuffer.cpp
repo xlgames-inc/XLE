@@ -384,8 +384,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             context.BeginSubpass(width, height);
 
-            Viewport viewports[1];
-            viewports[0] = Viewport{0.f, 0.f, (float)width, (float)height};
+            ViewportDesc viewports[1];
+            viewports[0] = ViewportDesc{0.f, 0.f, (float)width, (float)height};
             // origin of viewport doesn't matter because it is full-size
             ScissorRect scissorRects[1];
             scissorRects[0] = ScissorRect{0, 0, (unsigned)width, (unsigned)height};

@@ -50,7 +50,7 @@ namespace SceneEngine
         void        ResetToOldTargets(RenderCore::Metal::DeviceContext& context);
         ID3D::DepthStencilView*     GetDepthStencilView() { return _oldDepthTarget; }
         ID3D::RenderTargetView**    GetRenderTargets() { return _oldTargets; }
-        const RenderCore::Metal::ViewportDesc*       GetViewports() { return _oldViewports; }
+        const RenderCore::ViewportDesc*       GetViewports() { return _oldViewports; }
         
         void SetDepthStencilView(ID3D::DepthStencilView* dsv);
 
@@ -78,7 +78,7 @@ namespace SceneEngine
     private:
         ID3D::RenderTargetView* _oldTargets[MaxSimultaneousRenderTargetCount];
         ID3D::DepthStencilView* _oldDepthTarget;
-        RenderCore::Metal::ViewportDesc _oldViewports[MaxViewportAndScissorRectCount];
+        RenderCore::ViewportDesc _oldViewports[MaxViewportAndScissorRectCount];
         unsigned _oldViewportCount;
     };
 #else
@@ -94,7 +94,7 @@ namespace SceneEngine
 		void        ResetToOldTargets(RenderCore::Metal::DeviceContext& context);
 		const RenderCore::Metal::DepthStencilView&		GetDepthStencilView() { return *(RenderCore::Metal::DepthStencilView*)nullptr; }
 		RenderCore::Metal::RenderTargetView*			GetRenderTargets() { return nullptr; }
-		const RenderCore::Metal::ViewportDesc*       GetViewports() { return nullptr; }
+		const RenderCore::ViewportDesc*       GetViewports() { return nullptr; }
     
 		void SetDepthStencilView(const RenderCore::Metal::DepthStencilView& dsv);
     
@@ -282,7 +282,7 @@ namespace SceneEngine
 
 			RenderCore::Metal::RasterizerState _rasterizerState;
 
-			RenderCore::Metal::ViewportDesc _viewports;
+			RenderCore::ViewportDesc _viewports;
 
 			unsigned _topology;     // D3D11_PRIMITIVE_TOPOLOGY
 		#endif

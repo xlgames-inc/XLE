@@ -111,9 +111,8 @@ namespace GUILayer
         EngineDevice::SetDefaultWorkingDirectory();
 
 		_assetServices = std::make_shared<::Assets::Services>();
-        _mountId0 = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
-        _mountId1 = ::Assets::MainFileSystem::GetMountingTree()->Mount("res", ::Assets::CreateFileSystem_OS("C:/code/XLEExt/res"));
-        _mountId2 = ::Assets::MainFileSystem::GetMountingTree()->Mount("", ::Assets::MainFileSystem::GetDefaultFileSystem());
+        _mountId0 = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres", _services->GetPollingThread()));
+        _mountId1 = ::Assets::MainFileSystem::GetMountingTree()->Mount("", ::Assets::MainFileSystem::GetDefaultFileSystem());
 
         _renderDevice = RenderCore::CreateDevice(RenderCore::Techniques::GetTargetAPI());
         _immediateContext = _renderDevice->GetImmediateContext();
@@ -152,7 +151,6 @@ namespace GUILayer
 		PlatformRig::SetOSRunLoop(nullptr);
         // ::Assets::Services::GetAssetSets().Clear();
 		_services->UnloadDefaultPlugins();
-        ::Assets::MainFileSystem::GetMountingTree()->Unmount(_mountId2);
         ::Assets::MainFileSystem::GetMountingTree()->Unmount(_mountId1);
         ::Assets::MainFileSystem::GetMountingTree()->Unmount(_mountId0);
     }

@@ -9,7 +9,7 @@
 #include "DX11.h"
 #include "../../ResourceDesc.h"
 #include "../../../Utility/IntrusivePtr.h"
-#include "../../Types_Forward.h"
+#include "../../Format.h"
 #include <memory>
 
 namespace RenderCore { class IResource; }

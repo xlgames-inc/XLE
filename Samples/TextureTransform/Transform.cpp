@@ -243,7 +243,7 @@ namespace TextureTransform
             for (unsigned m=0; m<mipCount; ++m)
                 for (unsigned a=0; a<arrayCount; ++a) {
                     UInt2 mipDims(std::max(1u, viewDims[0] >> m), std::max(1u, viewDims[1] >> m));
-                    metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(mipDims[0]), float(mipDims[1])));
+                    metalContext->Bind(ViewportDesc(0.f, 0.f, float(mipDims[0]), float(mipDims[1])));
                     Metal::RenderTargetView rtv(
                         dstTexture->GetUnderlying(),
                         TextureViewDesc{

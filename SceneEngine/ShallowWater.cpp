@@ -1213,7 +1213,7 @@ namespace SceneEngine
             // calculate a world space ray underneath the mouse cursor
         auto cursorPos = GetCursorPos();
 
-        Metal::ViewportDesc viewport = context.GetBoundViewport();
+        ViewportDesc viewport = context.GetBoundViewport();
         float A = Clamp(cursorPos[0] / viewport.Width, 0.f, 1.f);
         float B = Clamp(cursorPos[1] / viewport.Height, 0.f, 1.f);
 

@@ -8,7 +8,6 @@
 
 #include "TextureView.h"
 #include "../../FrameBufferDesc.h"
-#include "../../Types_Forward.h"
 #include <memory>
 
 namespace RenderCore { namespace Metal_DX11

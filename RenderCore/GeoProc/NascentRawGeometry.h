@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../Assets/ModelScaffoldInternal.h"
-#include "../../RenderCore/Types_Forward.h"
+#include "../Format.h"
 #include <vector>
 
 namespace Assets { class NascentBlockSerializer; }

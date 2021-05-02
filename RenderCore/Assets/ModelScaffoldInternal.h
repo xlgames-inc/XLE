@@ -6,7 +6,9 @@
 
 #pragma once
 
-#include "../Types_Forward.h"
+#include "../Format.h"
+#include "../StateDesc.h"
+#include "../Types.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Assets/BlockSerializer.h"

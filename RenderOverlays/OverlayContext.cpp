@@ -8,6 +8,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ImmediateDrawables.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
+#include "../RenderCore/Techniques/Apparatuses.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Types.h"
 #include "../RenderCore/StateDesc.h"
@@ -70,14 +71,14 @@ namespace RenderOverlays
 		StringSection<>			_shaderSelectorTable;
 	};
 	
-	void ImmediateOverlayContext::DrawPoint      (ProjectionMode proj, const Float3& v,     const ColorB& col,      uint8 size)
+	void ImmediateOverlayContext::DrawPoint      (ProjectionMode proj, const Float3& v,     const ColorB& col,      uint8_t size)
 	{
 		typedef Vertex_PCR Vertex;
 		auto data = BeginDrawCall(DrawCall{1, Topology::PointList, MakeIteratorRange(Vertex::inputElements), proj}).Cast<Vertex*>();
 		data[0] = Vertex(v, HardwareColor(col), float(size));
 	}
 
-	void ImmediateOverlayContext::DrawPoints     (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB& col,    uint8 size)
+	void ImmediateOverlayContext::DrawPoints     (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB& col,    uint8_t size)
 	{
 		typedef Vertex_PCR Vertex;
 		auto data = BeginDrawCall(DrawCall{numPoints, Topology::PointList, MakeIteratorRange(Vertex::inputElements), proj}).Cast<Vertex*>();
@@ -85,7 +86,7 @@ namespace RenderOverlays
 			data[c] = Vertex(v[c], HardwareColor(col), float(size));
 	}
 
-	void ImmediateOverlayContext::DrawPoints     (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB col[],   uint8 size)
+	void ImmediateOverlayContext::DrawPoints     (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB col[],   uint8_t size)
 	{
 		typedef Vertex_PCR Vertex;
 		auto data = BeginDrawCall(DrawCall{numPoints, Topology::PointList, MakeIteratorRange(Vertex::inputElements), proj}).Cast<Vertex*>();
@@ -436,6 +437,14 @@ namespace RenderOverlays
 			FontRenderingManager& fontRenderingManager)
 	{
 		return std::make_unique<ImmediateOverlayContext>(threadContext, immediateDrawables, fontRenderingManager);
+	}
+
+	std::unique_ptr<ImmediateOverlayContext>
+		MakeImmediateOverlayContext(
+            RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ImmediateDrawingApparatus& apparatus)
+	{
+		return MakeImmediateOverlayContext(threadContext, *apparatus._immediateDrawables, *apparatus._fontRenderingManager);
 	}
 
 	IOverlayContext::~IOverlayContext() {}

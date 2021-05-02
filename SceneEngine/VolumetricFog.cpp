@@ -608,7 +608,7 @@ namespace SceneEngine
             const auto gridDims = rendererCfg._gridDimensions;
 
             SavedTargets savedTargets(context);
-            Metal::ViewportDesc newViewport(0, 0, float(blurredShadowSize), float(blurredShadowSize), 0.f, 1.f);
+            ViewportDesc newViewport(0, 0, float(blurredShadowSize), float(blurredShadowSize), 0.f, 1.f);
             context.Bind(newViewport);
             context.Bind(Techniques::CommonResources()._blendOpaque);
             SetupVertexGeneratorShader(context);

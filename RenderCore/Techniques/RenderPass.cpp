@@ -354,6 +354,11 @@ namespace RenderCore { namespace Techniques
 		}
     }
 
+    ViewportDesc RenderPassInstance::GetDefaultViewport() const
+    {
+        return _frameBuffer->GetDefaultViewport();
+    }
+
     auto RenderPassInstance::GetResourceForAttachmentName(AttachmentName resName) const -> IResourcePtr
     {
         assert(_attachmentPool);
@@ -987,8 +992,6 @@ namespace RenderCore { namespace Techniques
                 }
                 semantic = (inputFrag._inputSemanticBinding != 0) ? inputFrag._inputSemanticBinding : inputFrag._outputSemanticBinding;
             }
-            /*if (inputFrag._desc._format == Format::Unknown)
-                Throw(std::runtime_error("Cannot construct FrameBufferDesc because input fragment because an attachment doesn't have a fully specified format. Before we transform into the FrameBufferDesc version, we must have resolved the format to a concrete value."));*/
             fbAttachments.push_back({semantic, inputFrag._desc});
         }
 

@@ -224,7 +224,7 @@ namespace SceneEngine
 
 		auto& context = *RenderCore::Metal::DeviceContext::Get(threadContext);
         SavedTargets savedTargets(context);
-        Metal::ViewportDesc savedViewport = context.GetBoundViewport();
+        ViewportDesc savedViewport = context.GetBoundViewport();
         
         CATCH_ASSETS_BEGIN
 
@@ -258,7 +258,7 @@ namespace SceneEngine
             const auto& res = ConsoleRig::FindCachedBoxDep2<SunFlareRes>(singlePass, rowsOptimisation, UInt2(resX, resY));
             if (!doDirectBlur) {
                 context.Bind(Techniques::CommonResources()._blendOpaque);
-                context.Bind(Metal::ViewportDesc(0.f, 0.f, float(resX), float(resY), 0.f, 1.f));
+                context.Bind(ViewportDesc(0.f, 0.f, float(resX), float(resY), 0.f, 1.f));
 
                 if (!singlePass) {
                     context.Bind(MakeResourceList(res._tempRTV[1]), nullptr);
@@ -276,7 +276,7 @@ namespace SceneEngine
                 }
 
                 if (rowsOptimisation)
-                    context.Bind(Metal::ViewportDesc(0.f, 0.f, float(resX), float(1), 0.f, 1.f));
+                    context.Bind(ViewportDesc(0.f, 0.f, float(resX), float(1), 0.f, 1.f));
 
                 {
                     context.Bind(MakeResourceList(res._tempRTV[0]), nullptr);

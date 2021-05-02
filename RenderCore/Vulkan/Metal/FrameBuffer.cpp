@@ -642,6 +642,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		_defaultOffset = {0,0};
 		_defaultExtent = {maxDims._width, maxDims._height};
+		_defaultViewport = ViewportDesc { 0.f, 0.f, (float)maxDims._width, (float)maxDims._height };
     }
 
 	FrameBuffer::FrameBuffer() : _subpassCount(0) {}

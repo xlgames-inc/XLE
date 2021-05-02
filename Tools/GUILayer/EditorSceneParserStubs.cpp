@@ -115,7 +115,6 @@ namespace GUILayer
 
 				auto lightingIterator = SceneEngine::BeginLightingTechnique(
 					threadContext, parserContext, *_pipelineAcceleratorPool.get(),
-					parserContext._preregisteredAttachments,
 					lightingDelegate, *compiledTechnique);
 
 				for (;;) {

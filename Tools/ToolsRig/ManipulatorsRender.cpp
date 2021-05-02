@@ -445,7 +445,7 @@ namespace ToolsRig
         boundVertexInputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
         metalContext.Bind(shaderProgram);
 
-        Metal::ViewportDesc viewport = metalContext.GetBoundViewport();
+        ViewportDesc viewport = metalContext.GetBoundViewport();
         float constants[] = { 1.f / viewport.Width, 1.f / viewport.Height, 0.f, 0.f };
         auto reciprocalViewportDimensions = MakeSharedPkt(constants);
         const Metal::ShaderResourceView* resources[] = { &srv };

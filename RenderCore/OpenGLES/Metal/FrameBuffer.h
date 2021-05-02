@@ -6,7 +6,7 @@
 
 #include "TextureView.h"
 #include "../../FrameBufferDesc.h"
-#include "../../Types_Forward.h"
+#include "../../Format.h"
 #include <memory>
 
 namespace RenderCore { namespace Metal_OpenGLES

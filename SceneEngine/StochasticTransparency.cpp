@@ -183,7 +183,7 @@ namespace SceneEngine
     void StochasticTransparencyOp::PrepareFirstPass(const Metal::ShaderResourceView& mainDSV)
     {
             // Bind the resources we'll need for the initial passes
-        Metal::ViewportDesc viewport = _context->GetBoundViewport();
+        ViewportDesc viewport = _context->GetBoundViewport();
         #if defined(_DEBUG)
             const auto enableMetrics = true;
         #else

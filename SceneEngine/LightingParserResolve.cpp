@@ -380,7 +380,7 @@ namespace SceneEngine
                             resourceBindRes._skyTextureProjection, resourceBindRes._hasDiffuseIBL && resourceBindRes._hasSpecularIBL,
                             globalLightDesc._doRangeFog, Tweakable("IBLRef", false));
 
-                    Metal::ViewportDesc vdesc = metalContext.GetBoundViewport();
+                    ViewportDesc vdesc = metalContext.GetBoundViewport();
                     struct AmbientResolveCBuffer
                     {
                         ShaderLightDesc::Ambient light;
@@ -486,7 +486,7 @@ namespace SceneEngine
 
         Metal::ConstantBuffer debuggingCB;
         if (debugging) {
-            Metal::ViewportDesc vdesc = context.GetBoundViewport();
+            ViewportDesc vdesc = context.GetBoundViewport();
             struct DebuggingGlobals
             {
                 UInt2 viewportSize; 

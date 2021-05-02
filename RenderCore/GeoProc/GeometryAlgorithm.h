@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../Types_Forward.h"
 #include "../Format.h"
 #include "../../Math/Matrix.h"
 #include "../../Utility/IteratorUtils.h"

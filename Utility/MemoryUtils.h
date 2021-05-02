@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../Core/Types.h"
 #include "../Core/SelectConfiguration.h"
 #include "Detail/API.h"
 #include <string>
@@ -75,20 +74,20 @@ namespace Utility
 
         ////////////   H A S H I N G   ////////////
 
-    static const uint64 DefaultSeed64 = 0xE49B0E3F5C27F17Eull;
-    XL_UTILITY_API uint64 Hash64(const void* begin, const void* end, uint64 seed = DefaultSeed64);
+    static const uint64_t DefaultSeed64 = 0xE49B0E3F5C27F17Eull;
+    XL_UTILITY_API uint64_t Hash64(const void* begin, const void* end, uint64_t seed = DefaultSeed64);
 
-    static const uint64 DefaultSeed32 = 0xB0F57EE3;
-    XL_UTILITY_API uint32 Hash32(const void* begin, const void* end, uint32 seed = DefaultSeed32);
-    XL_UTILITY_API uint32 Hash32(const std::string& str, uint32 seed = DefaultSeed32);
+    static const uint64_t DefaultSeed32 = 0xB0F57EE3;
+    XL_UTILITY_API uint32_t Hash32(const void* begin, const void* end, uint32_t seed = DefaultSeed32);
+    XL_UTILITY_API uint32_t Hash32(const std::string& str, uint32_t seed = DefaultSeed32);
 
-    XL_UTILITY_API uint64 Hash64(const char str[], uint64 seed = DefaultSeed64);
-    XL_UTILITY_API uint64 Hash64(const std::string& str, uint64 seed = DefaultSeed64);
+    XL_UTILITY_API uint64_t Hash64(const char str[], uint64_t seed = DefaultSeed64);
+    XL_UTILITY_API uint64_t Hash64(const std::string& str, uint64_t seed = DefaultSeed64);
 
 	template <typename CharType> class StringSection;
-	XL_UTILITY_API uint64 Hash64(StringSection<char> str, uint64 seed = DefaultSeed64);
+	XL_UTILITY_API uint64_t Hash64(StringSection<char> str, uint64_t seed = DefaultSeed64);
 
-	inline uint64 HashCombine(uint64 high, uint64 low)
+	inline uint64_t HashCombine(uint64_t high, uint64_t low)
 	{
 		// This code based on "FarmHash"... which was in-turn
 		// inspired by Murmur Hash. See:
@@ -106,8 +105,8 @@ namespace Utility
 		return b;
 	}
 
-    uint32 IntegerHash32(uint32 key);
-    uint64 IntegerHash64(uint64 key);
+    uint32_t IntegerHash32(uint32_t key);
+    uint64_t IntegerHash64(uint64_t key);
 
         ////////////   C O M P I L E  -  T I M E  -  H A S H I N G   ////////////
 
@@ -123,7 +122,7 @@ namespace Utility
     ///
     /// Usage:
     /// <code>\code
-    ///     static const uint64 HashValue = ConstHash64<'Skel', 'eton'>::Value
+    ///     static const uint64_t HashValue = ConstHash64<'Skel', 'eton'>::Value
     /// \endcode</code>
     ///
     /// Note that a better implementation would be possible with with a compiler that
@@ -136,7 +135,7 @@ namespace Utility
         struct ConstHash64
     {
     public:
-        template<unsigned NewValue, uint64 CumulativeHash>
+        template<unsigned NewValue, uint64_t CumulativeHash>
             struct Calc
             {
                     // Here is the hash algorithm --
@@ -145,14 +144,14 @@ namespace Utility
                     //  It might be OK, but no real testing has gone into it.
                     //  Note that since we're building a 64 bit hash value, any strings with
                     //  8 or fewer characters can be stored in their entirety, anyway
-                static constexpr const uint64 Value = (NewValue == 0) ? CumulativeHash : (((CumulativeHash << 21ull) | (CumulativeHash >> 43ull)) ^ uint64(NewValue));
+                static constexpr const uint64_t Value = (NewValue == 0) ? CumulativeHash : (((CumulativeHash << 21ull) | (CumulativeHash >> 43ull)) ^ uint64_t(NewValue));
             };
 
-        static constexpr const uint64 Seed = 0xE49B0E3F5C27F17Eull;
-        static constexpr const uint64 Value = Calc<S3, Calc<S2, Calc<S1, Calc<S0, Seed>::Value>::Value>::Value>::Value;
+        static constexpr const uint64_t Seed = 0xE49B0E3F5C27F17Eull;
+        static constexpr const uint64_t Value = Calc<S3, Calc<S2, Calc<S1, Calc<S0, Seed>::Value>::Value>::Value>::Value;
     };
 
-    uint64 ConstHash64FromString(const char* begin, const char* end);
+    uint64_t ConstHash64FromString(const char* begin, const char* end);
 
         ////////////   I N L I N E   I M P L E M E N T A T I O N S   ////////////
 
@@ -172,9 +171,9 @@ namespace Utility
         memcpy(dest, src, size);
     }
 
-    template<typename Type> std::unique_ptr<uint8[]> DuplicateMemory(const Type& input)
+    template<typename Type> std::unique_ptr<uint8_t[]> DuplicateMemory(const Type& input)
     {
-        auto result = std::make_unique<uint8[]>(sizeof(Type));
+        auto result = std::make_unique<uint8_t[]>(sizeof(Type));
         XlCopyMemory(result.get(), &input, sizeof(Type));
         return result;
     }

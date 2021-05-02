@@ -136,7 +136,7 @@ namespace ToolsRig
 		}
 
 		void RenderSkeleton(
-			RenderCore::IThreadContext& context, 
+			RenderOverlays::IOverlayContext& overlayContext, 
 			RenderCore::Techniques::ParsingContext& parserContext, 
 			bool drawBoneNames) const override
 		{
@@ -162,7 +162,7 @@ namespace ToolsRig
 					MakeIteratorRange(animData._curves));
 
 				RenderOverlays::RenderSkeleton(
-					context,
+					overlayContext,
 					parserContext,
 					*skeletonMachine,
 					params,
@@ -170,7 +170,7 @@ namespace ToolsRig
 					drawBoneNames);
 			} else {
 				RenderOverlays::RenderSkeleton(
-					context,
+					overlayContext,
 					parserContext,
 					*skeletonMachine,
 					Identity<Float4x4>(),

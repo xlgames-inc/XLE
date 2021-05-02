@@ -68,7 +68,6 @@ namespace GUILayer
 
         uint32_t _mountId0 = ~0u;
         uint32_t _mountId1 = ~0u;
-        uint32_t _mountId2 = ~0u;
         
         ConsoleRig::AttachablePtr<ToolsRig::IPreviewSceneRegistry> _previewSceneRegistry;
         std::unique_ptr<ToolsRig::DivergentAssetManager> _divAssets;

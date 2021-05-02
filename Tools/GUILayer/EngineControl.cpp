@@ -107,7 +107,7 @@ namespace GUILayer
     }
 
 	void EngineControl::OnResize()
-    {
+    {        
 	}
 
 	PlatformRig::InputContext EngineControl::MakeInputContext(System::Windows::Forms::Control^ control)

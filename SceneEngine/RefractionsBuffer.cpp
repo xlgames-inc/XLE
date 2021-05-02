@@ -75,7 +75,7 @@ namespace SceneEngine
 
                 // Build a refractions texture
             SavedTargets oldTargets(metalContext);
-            Metal::ViewportDesc newViewport(0, 0, float(_width), float(_height), 0.f, 1.f);
+            ViewportDesc newViewport(0, 0, float(_width), float(_height), 0.f, 1.f);
             metalContext.Bind(newViewport);
 
             metalContext.Bind(Techniques::CommonResources()._blendOpaque);

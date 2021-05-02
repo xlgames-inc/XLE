@@ -76,7 +76,7 @@ namespace SceneEngine
         IResourcePtr			_triangleBufferVB;
         SRV                     _triangleBufferSRV;
 
-        Metal::ViewportDesc _gridBufferViewport;
+        ViewportDesc _gridBufferViewport;
 
         RTShadowsBox(const Desc&);
         ~RTShadowsBox();
@@ -142,7 +142,7 @@ namespace SceneEngine
                 "RTShadowsDummy"));
         _dummyRTV = RTV(_dummyTarget->GetUnderlying());
 
-        _gridBufferViewport = Metal::ViewportDesc { 0.f, 0.f, float(desc._width), float(desc._height), 0.f, 1.f };
+        _gridBufferViewport = ViewportDesc { 0.f, 0.f, float(desc._width), float(desc._height), 0.f, 1.f };
     }
 
     RTShadowsBox::~RTShadowsBox() {}

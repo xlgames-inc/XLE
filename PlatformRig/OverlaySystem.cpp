@@ -98,9 +98,26 @@ namespace PlatformRig
         return {};
 	}
 
-    void OverlaySystemSwitch::AddSystem(uint32 activator, std::shared_ptr<IOverlaySystem> system)
+    void OverlaySystemSwitch::AddSystem(uint32_t activator, std::shared_ptr<IOverlaySystem> system)
     {
+        auto* sys = system.get();
         _childSystems.push_back(std::make_pair(activator, std::move(system)));
+
+        if (!_preregisteredAttachments.empty())
+            sys->OnRenderTargetUpdate(_preregisteredAttachments, _fbProps);
+    }
+
+    void OverlaySystemSwitch::OnRenderTargetUpdate(
+        IteratorRange<const RenderCore::Techniques::PreregisteredAttachment*> preregAttachments,
+        const RenderCore::FrameBufferProperties& fbProps)
+    {
+        // We could potentially avoid calling this on inactive children; but we would then have to 
+        // call it when they become active
+        for (const auto&c:_childSystems)
+            c.second->OnRenderTargetUpdate(preregAttachments, fbProps);
+
+        _preregisteredAttachments = {preregAttachments.begin(), preregAttachments.end()};
+        _fbProps = fbProps;
     }
 
     OverlaySystemSwitch::OverlaySystemSwitch() 
@@ -168,8 +185,12 @@ namespace PlatformRig
 
     void OverlaySystemSet::AddSystem(std::shared_ptr<IOverlaySystem> system)
     {
+        auto* sys = system.get();
         _childSystems.push_back(std::move(system));
             // todo -- do we need to call SetActivationState() here?
+
+        if (!_preregisteredAttachments.empty())
+            sys->OnRenderTargetUpdate(_preregisteredAttachments, _fbProps);
     }
 
 	void OverlaySystemSet::RemoveSystem(IOverlaySystem& system)
@@ -180,6 +201,17 @@ namespace PlatformRig
 				return;
 			}
 	}
+
+    void OverlaySystemSet::OnRenderTargetUpdate(
+        IteratorRange<const RenderCore::Techniques::PreregisteredAttachment*> preregAttachments,
+        const RenderCore::FrameBufferProperties& fbProps)
+    {
+        for (const auto&c:_childSystems)
+            c->OnRenderTargetUpdate(preregAttachments, fbProps);
+
+        _preregisteredAttachments = {preregAttachments.begin(), preregAttachments.end()};
+        _fbProps = fbProps;
+    }
 
     OverlaySystemSet::OverlaySystemSet() 
     : _activeChildIndex(-1)
@@ -198,6 +230,9 @@ namespace PlatformRig
 	std::shared_ptr<IInputListener> IOverlaySystem::GetInputListener() { return nullptr; }
 	void IOverlaySystem::SetActivationState(bool newState) {}
 	auto IOverlaySystem::GetOverlayState() const -> OverlayState { return {}; }
+    void IOverlaySystem::OnRenderTargetUpdate(
+        IteratorRange<const RenderCore::Techniques::PreregisteredAttachment*> preregAttachments,
+        const RenderCore::FrameBufferProperties& fbProps) {}
     IOverlaySystem::~IOverlaySystem() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

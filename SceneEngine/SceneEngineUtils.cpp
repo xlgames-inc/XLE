@@ -124,7 +124,7 @@ namespace SceneEngine
 				_oldTargets[c] = moveFrom._oldTargets[c];
 				_oldViewports[c] = moveFrom._oldViewports[c];
 				moveFrom._oldTargets[c] = nullptr;
-				moveFrom._oldViewports[c] = Metal::ViewportDesc();
+				moveFrom._oldViewports[c] = ViewportDesc();
 			}
 			_oldDepthTarget = moveFrom._oldDepthTarget; moveFrom._oldDepthTarget = nullptr;
 		#endif
@@ -138,7 +138,7 @@ namespace SceneEngine
 				_oldTargets[c] = moveFrom._oldTargets[c];
 				_oldViewports[c] = moveFrom._oldViewports[c];
 				moveFrom._oldTargets[c] = nullptr;
-				moveFrom._oldViewports[c] = Metal::ViewportDesc();
+				moveFrom._oldViewports[c] = ViewportDesc();
 			}
 			_oldDepthTarget = moveFrom._oldDepthTarget; moveFrom._oldDepthTarget = nullptr;
 		#endif
@@ -620,7 +620,7 @@ namespace SceneEngine
         ProtectState savedStates(context, effectedStates & protectStates);
 
 		auto desc = Metal::ExtractDesc(dest);
-        context.Bind(Metal::ViewportDesc(0.f, 0.f, float(desc._textureDesc._width), float(desc._textureDesc._height)));
+        context.Bind(ViewportDesc(0.f, 0.f, float(desc._textureDesc._width), float(desc._textureDesc._height)));
 
         context.Bind(ResourceList<Metal::RenderTargetView, 0>(), &dest);
         context.Bind(Techniques::CommonResources()._dssWriteOnly);
@@ -714,7 +714,7 @@ namespace SceneEngine
 
 		auto dstDesc = Metal::ExtractDesc(dest);
 		auto srcDesc = Metal::ExtractDesc(src);
-        context.Bind(Metal::ViewportDesc(0.f, 0.f, float(dstDesc._textureDesc._width), float(dstDesc._textureDesc._height)));
+        context.Bind(ViewportDesc(0.f, 0.f, float(dstDesc._textureDesc._width), float(dstDesc._textureDesc._height)));
 
         Float2 coords[6] = 
         {

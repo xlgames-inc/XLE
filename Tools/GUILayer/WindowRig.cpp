@@ -61,6 +61,7 @@ namespace GUILayer
         for (auto i=_windowHandlers.begin(); i!=_windowHandlers.end(); ++i) {
             (*i)->OnResize(newWidth, newHeight);
         }
+        _frameRig->UpdatePresentationChain(*_presentationChain);
     }
 
     PlatformRig::OverlaySystemSet& WindowRig::GetMainOverlaySystemSet()
@@ -84,6 +85,8 @@ namespace GUILayer
 
         _mainOverlaySystemSet = std::make_shared<PlatformRig::OverlaySystemSet>();
         _frameRig->SetMainOverlaySystem(_mainOverlaySystemSet);
+
+        _frameRig->UpdatePresentationChain(*_presentationChain);
 
         /*{
             auto overlaySwitch = std::make_shared<PlatformRig::OverlaySystemSwitch>();

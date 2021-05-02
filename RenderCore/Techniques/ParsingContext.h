@@ -6,13 +6,15 @@
 
 #include "TechniqueUtils.h"
 #include "../FrameBufferDesc.h"
+#include "../StateDesc.h"
+#include "../../Utility/MemoryUtils.h"
 #include <vector>
 #include <memory>
 #include <functional>
 
 namespace Assets { namespace Exceptions { class RetrievalError; }}
 namespace Utility { class ParameterBox; }
-namespace RenderCore { class IResource; class IThreadContext; }
+namespace RenderCore { class IResource; class IThreadContext; class ViewportDesc; }
 
 namespace RenderCore { namespace Techniques 
 {
@@ -29,6 +31,8 @@ namespace RenderCore { namespace Techniques
         enum class State { Uninitialized, Initialized };
         State _state = State::Uninitialized;
         State _stencilState = State::Uninitialized;
+
+        uint64_t CalculateHash() const;
     };
     
     /// <summary>Manages critical shader state</summary>
@@ -48,6 +52,8 @@ namespace RenderCore { namespace Techniques
             //  ----------------- Active projection context -----------------
         ProjectionDesc&         GetProjectionDesc()         { return *_projectionDesc; }
         const ProjectionDesc&   GetProjectionDesc() const   { return *_projectionDesc; }
+        ViewportDesc&           GetViewport()               { return _viewportDesc; }
+        const ViewportDesc&     GetViewport() const         { return _viewportDesc; }
 
             //  ----------------- Working technique context -----------------
         TechniqueContext&		GetTechniqueContext()               { return *_techniqueContext; }
@@ -99,6 +105,7 @@ namespace RenderCore { namespace Techniques
     protected:
         TechniqueContext*                   _techniqueContext;
         std::unique_ptr<ProjectionDesc>     _projectionDesc;
+        ViewportDesc                        _viewportDesc;
 
 		ParameterBox                        _subframeShaderSelectors;
 
@@ -133,14 +140,9 @@ namespace RenderCore { namespace Techniques
     #define CATCH_ASSETS_END(parserContext) } CATCH_ASSETS(parserContext) CATCH_END
     /// @}
 
-
-	/*inline UniformsStream ParsingContext::GetGlobalUniformsStream() const
-	{
-		return {
-			MakeIteratorRange(_globalCBVs),
-			{},
-			{}
-		};
-	}*/
+    uint64_t HashPreregisteredAttachments(
+        IteratorRange<const PreregisteredAttachment*> attachments,
+        const FrameBufferProperties& fbProps,
+        uint64_t seed = DefaultSeed64);
 }}
 

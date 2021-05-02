@@ -305,7 +305,7 @@ namespace SceneEngine
         auto& commonResources = Techniques::CommonResources();
         context.Bind(commonResources._blendOpaque);
         context.Bind(commonResources._cullDisable);
-        Metal::ViewportDesc newViewport(0, 0, float(cfg._width), float(cfg._height), 0.f, 1.f);
+        ViewportDesc newViewport(0, 0, float(cfg._width), float(cfg._height), 0.f, 1.f);
         context.Bind(newViewport);
 
             //  
@@ -410,7 +410,7 @@ namespace SceneEngine
         context.InvalidateCachedState();
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(gbufferDiffuse, gbufferNormals, gbufferParam, depthsSRV));
 
-        Metal::ViewportDesc mainViewportDesc = context.GetBoundViewport();
+        ViewportDesc mainViewportDesc = context.GetBoundViewport();
                             
         auto cursorPos = GetCursorPos();
         unsigned globalConstants[4] = { unsigned(mainViewportDesc.Width), unsigned(mainViewportDesc.Height), unsigned(cursorPos[0]), unsigned(cursorPos[1]) };

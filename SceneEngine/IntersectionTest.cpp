@@ -94,7 +94,7 @@ namespace SceneEngine
 #if 0
             //  create a new device context and lighting parser context, and use
             //  this to find an accurate terrain collision.
-        RenderCore::Metal::ViewportDesc newViewport {
+        RenderCore::ViewportDesc newViewport {
             float(intersectionContext._viewportMins[0]), float(intersectionContext._viewportMins[1]),
 			float(intersectionContext._viewportMaxs[0]-intersectionContext._viewportMins[0]),
 			float(intersectionContext._viewportMaxs[1]-intersectionContext._viewportMins[1]),

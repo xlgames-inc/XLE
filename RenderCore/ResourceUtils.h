@@ -7,7 +7,8 @@
 #pragma once
 
 #include "ResourceDesc.h"       // actually only needed for TexturePitches
-#include "Types_Forward.h"
+#include "Format.h"
+#include "StateDesc.h"
 #include "../Utility/MemoryUtils.h"
 #include <memory>
 #include <iostream>

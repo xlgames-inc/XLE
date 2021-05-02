@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "Types_Forward.h"
 #include "ResourceDesc.h"
 #include "IDevice_Forward.h"
 #include "../Utility/IteratorUtils.h"

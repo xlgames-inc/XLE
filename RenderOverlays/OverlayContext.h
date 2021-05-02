@@ -5,13 +5,7 @@
 #pragma once
 
 #include "IOverlayContext.h"
-// #include "Font.h"
-// #include "../RenderCore/Metal/DeviceContext.h"
-// #include "../RenderCore/Techniques/TechniqueUtils.h"
-// #include "../RenderCore/Types.h"
-// #include "../RenderCore/UniformsStream.h"
-// #include "../Math/Matrix.h"
-// #include "../Utility/MemoryUtils.h"
+#include "../RenderCore/StateDesc.h"
 #include "../Utility/IteratorUtils.h"
 #include <vector>
 #include <memory>
@@ -19,7 +13,7 @@
 #pragma warning(disable:4324)
 
 namespace RenderCore { class VertexBufferView; class IThreadContext; }
-namespace RenderCore { namespace Techniques { class IImmediateDrawables; } }
+namespace RenderCore { namespace Techniques { class IImmediateDrawables; class ImmediateDrawingApparatus; } }
 
 namespace RenderOverlays
 {
@@ -28,9 +22,9 @@ namespace RenderOverlays
     class ImmediateOverlayContext : public IOverlayContext
     {
     public:
-        void    DrawPoint      (ProjectionMode proj, const Float3& v,     const ColorB& col,      uint8 size);
-        void    DrawPoints     (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB& col,    uint8 size);
-        void    DrawPoints     (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB col[],   uint8 size);
+        void    DrawPoint      (ProjectionMode proj, const Float3& v,     const ColorB& col,      uint8_t size);
+        void    DrawPoints     (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB& col,    uint8_t size);
+        void    DrawPoints     (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB col[],   uint8_t size);
 
         void    DrawLine       (ProjectionMode proj, const Float3& v0,    const ColorB& colV0,    const Float3& v1,     const ColorB& colV1, float thickness);
         void    DrawLines      (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB& col,    float thickness);
@@ -66,6 +60,8 @@ namespace RenderOverlays
             const std::shared_ptr<Font>& font, const TextStyle& textStyle, 
             ColorB col, TextAlignment alignment, StringSection<char> text);
 
+        RenderCore::Techniques::IImmediateDrawables& GetImmediateDrawables() { return *_immediateDrawables; }
+
         void CaptureState();
         void ReleaseState();
         void SetState(const OverlayState& state);
@@ -97,7 +93,9 @@ namespace RenderOverlays
             RenderCore::IThreadContext& threadContext,
 			RenderCore::Techniques::IImmediateDrawables& immediateDrawables,
             FontRenderingManager& fontRenderingManager);
+
+    std::unique_ptr<ImmediateOverlayContext>
+		MakeImmediateOverlayContext(
+            RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ImmediateDrawingApparatus& apparatus);
 }
-
-
-

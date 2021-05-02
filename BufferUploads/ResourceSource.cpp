@@ -78,29 +78,6 @@ namespace BufferUploads
 
     #endif
 
-    static DescHash Hash(const TextureDesc& desc)
-    {
-        DescHash result = 0;
-        if (IsPowerOfTwo(desc._width) && IsPowerOfTwo(desc._height)
-            && desc._width >= 64 && desc._width <= 16384
-            && desc._height >= 64 && desc._height <= 16384) {
-            result |= 0x1;  // set the bottom "type" bit
-            result |= (unsigned(desc._dimensionality) & 0x1) << 1;
-            result |= desc._arrayCount << 2;
-            unsigned int widthPower = IntegerLog2(desc._width)-6;
-            unsigned int heightPower = IntegerLog2(desc._height)-6;
-            result |= widthPower << 8;
-            result |= heightPower << 16;
-            result |= DescHash(desc._format) << 24;
-            result ^= DescHash(desc._mipCount) << 50;   // (gets interleaved with the pixel format -- could be trouble?)
-        } else {
-            uint32_t temp = Hash32(&desc, PtrAdd(&desc, sizeof(desc)));
-            result = DescHash(temp)<<8;
-            result &= ~0x1; // clear the bottom "type" bit
-        }
-        return result;
-    }
-
     static unsigned RoundUpBufferSize(unsigned input)
     {
         unsigned log2 = IntegerLog2(input);
@@ -116,21 +93,6 @@ namespace BufferUploads
             return (1<<log2)|nextBit;
         }
         return 1<<(log2+1);
-    }
-
-    static DescHash Hash(const ResourceDesc& desc)
-    {
-        DescHash result = 0;
-        result |= desc._type&0x1;
-        result |= (desc._cpuAccess&0x7)<<1;
-        result |= (desc._gpuAccess&0x3)<<4;
-        result |= (desc._bindFlags&0x3)<<6;     // "Shader Resource" gets ignored here. We need more room for more advanced bind flags
-        if (desc._type == ResourceDesc::Type::Texture) {
-            result |= Hash(desc._textureDesc) << 8;
-        } else if (desc._type == ResourceDesc::Type::LinearBuffer) {
-            result |= desc._linearBufferDesc._sizeInBytes << 8;
-        }
-        return result;
     }
 
     // ~~~~~~~~~~~~ // ~~~~~~<   >~~~~~~ // ~~~~~~~~~~~~ //
@@ -244,7 +206,7 @@ namespace BufferUploads
     tdesc ResourceLocator   ResourcesPool<Desc>::CreateResource(
             const Desc& desc, unsigned realSize, bool allowDeviceCreation)
         {
-            DescHash hashValue = Hash(desc);
+            DescHash hashValue = desc.CalculateHash();
             {
                 unsigned hashTableIndex = _hashTableIndex;
                 ++_readerCount[hashTableIndex];

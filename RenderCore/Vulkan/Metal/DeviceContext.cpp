@@ -26,7 +26,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static VkViewport AsVkViewport(const Viewport& viewport, const float renderTargetHeight)
+	static VkViewport AsVkViewport(const ViewportDesc& viewport, const float renderTargetHeight)
 	{
 		VkViewport vp;
 		vp.x = viewport._x;
@@ -111,7 +111,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	};
 
 	void        GraphicsEncoder::Bind(
-		IteratorRange<const Viewport*> viewports,
+		IteratorRange<const ViewportDesc*> viewports,
 		IteratorRange<const ScissorRect*> scissorRects)
 	{
 		// maxviewports: VkPhysicalDeviceLimits::maxViewports
@@ -292,6 +292,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void GraphicsEncoder_ProgressivePipeline::LogPipeline()
 	{
+		return;
 		#if defined(_DEBUG)
 			if (!Verbose.IsEnabled()) return;
 
@@ -316,6 +317,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void GraphicsEncoder_Optimized::LogPipeline(const GraphicsPipeline& pipeline)
 	{
+		return;
 		#if defined(_DEBUG)
 			if (!Verbose.IsEnabled()) return;
 
@@ -360,7 +362,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void GraphicsEncoder_ProgressivePipeline::Bind(const ShaderProgram& shaderProgram)
 	{
-		assert(&shaderProgram.GetPipelineLayout() == _pipelineLayout.get());
+		assert(shaderProgram.GetPipelineLayout().get() == _pipelineLayout.get());
 		GraphicsPipelineBuilder::Bind(shaderProgram);
 	}
 
@@ -932,9 +934,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		_sharedState->_renderPass = fb.GetLayout();
 		_sharedState->_renderPassSamples = samples;
 		_sharedState->_renderPassSubpass = 0u;
+		_sharedState->_renderTargetHeight = extent[1];
 
 		// Set the default viewport & scissor
-		VkViewport defaultViewport { (float)offset[0], (float)offset[1], (float)extent[0], (float)extent[1], 0.f, 1.0f };
+		VkViewport defaultViewport = AsVkViewport(fb.GetDefaultViewport(), _sharedState->_renderTargetHeight);
 		VkRect2D defaultScissor { offset[0], offset[1], extent[0], extent[1] };
 		vkCmdSetViewport(_sharedState->_commandList.GetUnderlying().get(), 0, 1, &defaultViewport);
 		vkCmdSetScissor(_sharedState->_commandList.GetUnderlying().get(), 0, 1, &defaultScissor);

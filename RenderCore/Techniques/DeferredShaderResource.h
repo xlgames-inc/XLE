@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../Types_Forward.h"
 #include "../IDevice_Forward.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/StringUtils.h"

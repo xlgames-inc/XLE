@@ -113,8 +113,6 @@ namespace PlatformRig
 
     void ResizePresentationChain::OnResize(unsigned newWidth, unsigned newHeight)
     {
-        _onResize.Invoke(newWidth, newHeight);
-
 		auto chain = _presentationChain.lock();
         if (chain) {
                 //  When we become an icon, we'll end up with zero width and height.
@@ -124,6 +122,8 @@ namespace PlatformRig
 				chain->Resize(newWidth, newHeight);
             }
         }
+
+        _onResize.Invoke(newWidth, newHeight);
     }
 
     ResizePresentationChain::ResizePresentationChain(

@@ -7,6 +7,7 @@
 #include "NascentObjectGuid.h"
 #include "../Format.h"
 #include "../Types.h"
+#include "../StateDesc.h"
 #include "../Assets/TransformationCommands.h"		// for ITransformationMachineOptimizer
 #include "../../Assets/ICompileOperation.h"
 #include "../../Math/Matrix.h"

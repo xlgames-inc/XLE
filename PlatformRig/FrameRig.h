@@ -30,11 +30,12 @@ namespace PlatformRig
 
         FrameResult ExecuteFrame(
             RenderCore::IThreadContext& context,
-            RenderCore::IPresentationChain* presChain,
+            RenderCore::IPresentationChain& presChain,
 			RenderCore::Techniques::ParsingContext& parserContext,
             Utility::HierarchicalCPUProfiler* profiler);
 
         void SetFrameLimiter(unsigned maxFPS);
+        void UpdatePresentationChain(RenderCore::IPresentationChain& presChain);
 
         void SetMainOverlaySystem(std::shared_ptr<IOverlaySystem>);
 		void SetDebugScreensOverlaySystem(std::shared_ptr<IOverlaySystem>);

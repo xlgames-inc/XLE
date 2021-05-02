@@ -51,7 +51,7 @@ namespace GUILayer
             auto& frameRig = windowRig.GetFrameRig();
 			RenderCore::Techniques::ParsingContext parserContext(*EngineDevice::GetInstance()->GetNative().GetTechniqueContext());
             auto frResult = frameRig.ExecuteFrame(
-                threadContext, windowRig.GetPresentationChain().get(), 
+                threadContext, *windowRig.GetPresentationChain(), 
                 parserContext, nullptr);
 
             // return false if when we have pending resources (encourage another redraw)

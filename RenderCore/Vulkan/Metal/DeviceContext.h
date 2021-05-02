@@ -13,7 +13,6 @@
 #include "../../ResourceDesc.h"
 #include "../../FrameBufferDesc.h"
 #include "../../IDevice_Forward.h"
-#include "../../Types_Forward.h"
 #include "../../Utility/IteratorUtils.h"
 #include <memory>
 #include <sstream>
@@ -249,7 +248,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		//	------ Non-pipeline states (that can be changed mid-render pass) -------
 		void        Bind(IteratorRange<const VertexBufferView*> vbViews, const IndexBufferView& ibView);
 		void		SetStencilRef(unsigned frontFaceStencilRef, unsigned backFaceStencilRef);
-		void 		Bind(IteratorRange<const Viewport*> viewports, IteratorRange<const ScissorRect*> scissorRects);
+		void 		Bind(IteratorRange<const ViewportDesc*> viewports, IteratorRange<const ScissorRect*> scissorRects);
 
 		const std::shared_ptr<CompiledPipelineLayout>& GetPipelineLayout() { return _pipelineLayout; }
 

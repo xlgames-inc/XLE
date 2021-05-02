@@ -6,7 +6,8 @@
 
 #pragma once
 
-#include "../../Types_Forward.h"
+#include "../../Format.h"
+#include <stdint.h>
 
 using VkFormat_ = uint32_t;
 

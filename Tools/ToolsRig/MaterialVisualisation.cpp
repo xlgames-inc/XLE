@@ -170,7 +170,7 @@ namespace ToolsRig
 		DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex, uint64_t materialGuid) const override { return { {}, {} }; }
 		std::shared_ptr<RenderCore::Techniques::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<RenderCore::Techniques::IPreDrawDelegate>& delegate) override { return nullptr; }
 		void RenderSkeleton(
-			RenderCore::IThreadContext& context, 
+			RenderOverlays::IOverlayContext& overlayContext, 
 			RenderCore::Techniques::ParsingContext& parserContext, 
 			bool drawBoneNames) const override {}
 		void BindAnimationState(const std::shared_ptr<VisAnimationState>& animState) override {}

@@ -28,7 +28,9 @@ namespace RenderCore { namespace Techniques
 			std::vector<SubpassDesc>{subpass},
 			parserContext._fbProps
 		};
-        return RenderPassInstance{context, parserContext, fbDesc};
+        auto rpi =  RenderPassInstance{context, parserContext, fbDesc};
+		parserContext.GetViewport() = rpi.GetDefaultViewport();
+		return rpi;
 	}
 
 	RenderPassInstance RenderPassToPresentationTarget(
@@ -78,7 +80,9 @@ namespace RenderCore { namespace Techniques
 			std::vector<SubpassDesc>{std::move(subpass)},
 			parserContext._fbProps
 		};
-        return RenderPassInstance{context, parserContext, fbDesc};
+        auto rpi = RenderPassInstance{context, parserContext, fbDesc};
+		parserContext.GetViewport() = rpi.GetDefaultViewport();
+		return rpi;
 	}
 
 	RenderPassInstance RenderPassToPresentationTargetWithDepthStencil(

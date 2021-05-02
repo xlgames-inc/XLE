@@ -313,7 +313,7 @@ namespace SceneEngine
     public:
         RenderCore::Metal::Buffer			_tileConstantsBuffer;
         RenderCore::Metal::Buffer			_localTransformConstantsBuffer;
-        RenderCore::Metal::ViewportDesc		_currentViewport;
+        RenderCore::ViewportDesc		_currentViewport;
         unsigned        _indexDrawCount;
 
         enum class PriorityMode { None, All, JustHeights };

@@ -7,7 +7,6 @@
 #pragma once
 
 #include "Detail/API.h"
-#include "../Core/Types.h"
 #include "UTFUtils.h"
 #include "PtrUtils.h"	// for AsPointer
 #include "Optional.h"
@@ -82,7 +81,7 @@ namespace Utility
     XL_UTILITY_API void     XlCopyNString       (wchar_t* dst, size_t count, const wchar_t*src, size_t length);
 
     XL_UTILITY_API void     XlCopyString_SafeUtf       (utf8* dst, size_t size, const utf8* src);
-    XL_UTILITY_API void     XlCopyString_SafeUtfN      (utf8* dst, size_t size, const utf8* src, const uint32 numSeq);
+    XL_UTILITY_API void     XlCopyString_SafeUtfN      (utf8* dst, size_t size, const utf8* src, const uint32_t numSeq);
     XL_UTILITY_API void     XlCatSafeUtf        (utf8* dst, size_t size, const utf8* src);
 
 
@@ -183,7 +182,7 @@ namespace Utility
     XL_UTILITY_API int      XlExtractInt        (const char* buf, int* arr, int length);
     XL_UTILITY_API bool     XlSafeAtoi          (const char* str, int* n);
     XL_UTILITY_API bool     XlSafeAtoi64        (const char* str, int64* n);
-    XL_UTILITY_API bool     XlSafeAtoui64       (const char* str, uint64* n);
+    XL_UTILITY_API bool     XlSafeAtoui64       (const char* str, uint64_t* n);
 
     XL_UTILITY_API void     XlCompactString     (char* dst, size_t size, const char* src);
     XL_UTILITY_API const char*  XlLowerCase     (char* str);
@@ -209,7 +208,7 @@ namespace Utility
     XL_UTILITY_API bool     XlIsValidUtf8(const utf8* str, size_t count = -1);
     XL_UTILITY_API bool     XlHasUtf8Bom(const utf8* str);
     XL_UTILITY_API size_t   XlGetOffset(const char* str, size_t index);              // return byte offset for index's character.
-    inline int              XlCountUtfSequence(uint8 c);
+    inline int              XlCountUtfSequence(uint8_t c);
 
         ////////////   C H A R A C T E R   C L A S S I F I C A T I O N   A N D   C O N V E R S I O N   ////////////
     XL_UTILITY_API bool     XlIsAlnum(char c);
@@ -256,27 +255,27 @@ namespace Utility
     XL_UTILITY_API bool     XlAtoBool(const char* str, const char** end_ptr = 0);
     XL_UTILITY_API int32    XlAtoI32 (const char* str, const char** end_ptr = 0, int radix = 10);
     XL_UTILITY_API int64    XlAtoI64 (const char* str, const char** end_ptr = 0, int radix = 10);
-    XL_UTILITY_API uint32   XlAtoUI32(const char* str, const char** end_ptr = 0, int radix = 10);
-    XL_UTILITY_API uint64   XlAtoUI64(const char* str, const char** end_ptr = 0, int radix = 10);
+    XL_UTILITY_API uint32_t   XlAtoUI32(const char* str, const char** end_ptr = 0, int radix = 10);
+    XL_UTILITY_API uint64_t   XlAtoUI64(const char* str, const char** end_ptr = 0, int radix = 10);
     XL_UTILITY_API f32      XlAtoF32 (const char* str, const char** end_ptr = 0);
     XL_UTILITY_API f64      XlAtoF64 (const char* str, const char** end_ptr = 0);
 
     XL_UTILITY_API char*    XlI32toA(int32 value, char* buffer, size_t dim, int radix);
     XL_UTILITY_API char*    XlI64toA(int64 value, char* buffer, size_t dim, int radix);
-    XL_UTILITY_API char*    XlUI32toA(uint32 value, char* buffer, size_t dim, int radix);
-    XL_UTILITY_API char*    XlUI64toA(uint64 value, char* buffer, size_t dim, int radix);
+    XL_UTILITY_API char*    XlUI32toA(uint32_t value, char* buffer, size_t dim, int radix);
+    XL_UTILITY_API char*    XlUI64toA(uint64_t value, char* buffer, size_t dim, int radix);
 
 	    // ms secure version compatible
     XL_UTILITY_API int      XlI32toA_s(int32 value, char* buffer, size_t dim, int radix);
     XL_UTILITY_API int      XlI64toA_s(int64 value, char* buffer, size_t dim, int radix);
-    XL_UTILITY_API int      XlUI32toA_s(uint32 value, char* buffer, size_t dim, int radix);
-    XL_UTILITY_API int      XlUI64toA_s(uint64 value, char* buffer, size_t dim, int radix);
+    XL_UTILITY_API int      XlUI32toA_s(uint32_t value, char* buffer, size_t dim, int radix);
+    XL_UTILITY_API int      XlUI64toA_s(uint64_t value, char* buffer, size_t dim, int radix);
 
 	    // non-secure version
     XL_UTILITY_API char*    XlI32toA_ns(int32 value, char* buffer, int radix);
     XL_UTILITY_API char*    XlI64toA_ns(int64 value, char* buffer, int radix);
-    XL_UTILITY_API char*    XlUI32toA_ns(uint32 value, char* buffer, int radix);
-    XL_UTILITY_API char*    XlUI64toA_ns(uint64 value, char* buffer, int radix);
+    XL_UTILITY_API char*    XlUI32toA_ns(uint32_t value, char* buffer, int radix);
+    XL_UTILITY_API char*    XlUI64toA_ns(uint64_t value, char* buffer, int radix);
 
     XL_UTILITY_API bool     XlToHexStr(const char* x, size_t xlen, char* y, size_t ylen);
     XL_UTILITY_API bool     XlHexStrToBin(const char* x, char* y);
@@ -636,7 +635,7 @@ namespace Utility
 
         #define  itoa(v, b, r)    XlI32toA_ns((int32)v, b, r)
         #define  ltoa(v, b, r)    XlI32toA_ns((int32)v, b, r)
-        #define ultoa(v, b, r)    XlUI32toA_ns((uint32)v, b, r)
+        #define ultoa(v, b, r)    XlUI32toA_ns((uint32_t)v, b, r)
         #define _ui64toa(v, b, r) XlUI64toA_ns(v, b, r)
         #define _i64toa(v, b, r)  XlI64toA_ns(v, b, r)
         #define _itoa_s           XlI32toA_s
@@ -653,7 +652,7 @@ namespace Utility
 
     #endif
 
-    inline int XlCountUtfSequence(uint8 c)
+    inline int XlCountUtfSequence(uint8_t c)
     {
         if (c < 0x80) {
             return 1;

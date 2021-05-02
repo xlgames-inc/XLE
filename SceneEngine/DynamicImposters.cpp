@@ -247,7 +247,7 @@ namespace SceneEngine
             Techniques::ParsingContext& parserContext,
             const QueuedObject& ob, 
             const Float4x4& cameraToWorld,
-            const Metal::ViewportDesc& viewport,
+            const ViewportDesc& viewport,
             const Float4x4& projMatrix) const;
         void CopyToAltas(
             Metal::DeviceContext& context,
@@ -660,7 +660,7 @@ namespace SceneEngine
         Float4x4 finalProj = adjustmentMatrix * virtualProj;
         RenderObject(
             context, parserContext, ob,
-            camToWorld, Metal::ViewportDesc(0.f, 0.f, float(maxCoords[0] - minCoords[0]), float(maxCoords[1] - minCoords[1])),
+            camToWorld, ViewportDesc(0.f, 0.f, float(maxCoords[0] - minCoords[0]), float(maxCoords[1] - minCoords[1])),
             finalProj);
 
             // Now we want to copy the rendered sprite into the atlas
@@ -758,7 +758,7 @@ namespace SceneEngine
         Techniques::ParsingContext& parserContext,
         const QueuedObject& ob, 
         const Float4x4& cameraToWorld,
-        const Metal::ViewportDesc& viewport,
+        const ViewportDesc& viewport,
         const Float4x4& cameraToProjection) const
     {
         StringMeldAppend(parserContext._stringHelpers->_errorString)

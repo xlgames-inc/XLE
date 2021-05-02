@@ -8,6 +8,7 @@
 #include "DeviceContext.h"
 #include "../../ShaderService.h"
 #include "../../ShaderLangUtil.h"
+#include "../../StateDesc.h"
 #include "../../../Assets/AssetUtils.h"
 #include "../../../Assets/ConfigFileContainer.h"
 #include "../../../Assets/Assets.h"

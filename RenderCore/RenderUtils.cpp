@@ -22,6 +22,7 @@
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/Threading/ThreadLocalPtr.h"
 #include "../Utility/ArithmeticUtils.h"
+#include "../Utility/BitUtils.h"
 #include <cctype>
 
 namespace RenderCore
@@ -448,6 +449,66 @@ namespace RenderCore
         }
 
         return *MainHeap;
+    }
+
+    uint64_t LinearBufferDesc::CalculateHash() const
+    {
+        return (uint64_t(_structureByteSize) << 32ull) | uint64_t(_sizeInBytes);
+    }
+
+    uint64_t TextureDesc::CalculateHash() const
+    {
+        assert((unsigned(_dimensionality) & ((1<<4)-1)) == unsigned(_dimensionality));
+        assert((_mipCount & ((1<<8)-1)) == _mipCount);
+        assert((_arrayCount & ((1<<16)-1)) == _arrayCount);
+        assert((_samples._sampleCount & ((1<<8)-1)) == _samples._sampleCount);
+        assert((_samples._samplingQuality & ((1<<8)-1)) == _samples._samplingQuality);
+        assert((unsigned(_format) & ((1<<8)-1)) == unsigned(_format));
+
+        if (IsPowerOfTwo(_width) && IsPowerOfTwo(_height) && _depth == 1
+            && _width >= 64 && _width <= 16384
+            && _height >= 64 && _height <= 16384) {
+            uint64_t result = 0x1;  // set the bottom "type" bit
+            result |= (unsigned(_dimensionality) & ((1<<4)-1)) << 1;
+            result |= _arrayCount << 5;
+            uint64_t widthPower = IntegerLog2(_width)-6;
+            uint64_t heightPower = IntegerLog2(_height)-6;
+            result |= widthPower << 21ull;
+            result |= heightPower << 29ull;
+            result |= uint64_t(_format) << 37ull;
+            result |= uint64_t(_mipCount) << 45ull;
+            return result;
+        } else {
+            uint64_t h0 = (uint64_t(_width) << 32ull) | uint64_t(_height);
+            uint64_t h1 = (uint64_t(_depth) << 32ull) | uint64_t(_format);
+            uint64_t h2 = 
+                uint64_t(_dimensionality)
+                | (uint64_t(_mipCount) << 4ull)
+                | (uint64_t(_arrayCount) << 12ull)
+                | (uint64_t(_samples._sampleCount) << 28ull)
+                | (uint64_t(_samples._samplingQuality) << 36ull)
+                ;
+            return HashCombine(h0, HashCombine(h1, h2));
+        }
+    }
+
+    uint64_t ResourceDesc::CalculateHash() const
+    {
+        assert((unsigned(_type) & ((1<<2)-1)) == unsigned(_type));
+        assert((_bindFlags & ((1<<16)-1)) == _bindFlags);
+        assert((_cpuAccess & ((1<<3)-1)) == _cpuAccess);
+        assert((_gpuAccess & ((1<<3)-1)) == _gpuAccess);
+        assert((_allocationRules & ((1<<3)-1)) == _allocationRules);
+        uint64_t h0 = 
+            uint64_t(_type)
+            | (uint64_t(_bindFlags) << 2ull)
+            | (uint64_t(_cpuAccess) << 18ull)
+            | (uint64_t(_gpuAccess) << 21ull)
+            | (uint64_t(_allocationRules) << 24ull)
+            ;
+        if (_type == Type::Texture) h0 = HashCombine(_textureDesc.CalculateHash(), h0);
+        else if (_type == Type::LinearBuffer) h0 = HashCombine(_linearBufferDesc.CalculateHash(), h0);
+        return h0;
     }
 
 	ResourceDesc::ResourceDesc()

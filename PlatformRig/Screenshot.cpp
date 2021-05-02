@@ -208,7 +208,7 @@ namespace PlatformRig
                     // now we can just render, using the normal process.
                 parserContext.Reset();
                 metalContext->Bind(MakeResourceList(target.RTV()), nullptr);
-                metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(rtDesc._width), float(rtDesc._height)));
+                metalContext->Bind(ViewportDesc(0.f, 0.f, float(rtDesc._width), float(rtDesc._height)));
                 LightingParser_SetGlobalTransform(*metalContext, parserContext, projDesc);
                 sceneParser.PrepareScene(context, parserContext, sceneMarker.GetPreparedScene());
                 LightingParser_ExecuteScene(context, parserContext, tileQualSettings, sceneMarker.GetPreparedScene());
@@ -362,7 +362,7 @@ namespace PlatformRig
                 SceneEngine::ProtectState::States::RenderTargets | SceneEngine::ProtectState::States::Viewports);
 
             metalContext->Bind(MakeResourceList(postToneMap.RTV()), nullptr);
-            metalContext->Bind(Metal::ViewportDesc(0, 0, float(dimensions[0]), float(dimensions[1])));
+            metalContext->Bind(ViewportDesc(0, 0, float(dimensions[0]), float(dimensions[1])));
             ToneMap_Execute(
                 *metalContext, parserContext,
                 luminanceRes, toneMapSettings,

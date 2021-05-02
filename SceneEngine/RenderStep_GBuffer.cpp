@@ -197,7 +197,7 @@ namespace SceneEngine
                     context, fb, fbDescBox._createGBuffer,
                     parsingContext.GetNamedResources(),
                     (Techniques::RenderPassBeginDesc)MakeIteratorRange(clearValues));
-                metalContext.Bind(Metal::ViewportDesc(0.f, 0.f, (float)qualitySettings._dimensions[0], (float)qualitySettings._dimensions[1]));
+                metalContext.Bind(ViewportDesc(0.f, 0.f, (float)qualitySettings._dimensions[0], (float)qualitySettings._dimensions[1]));
 	*/
 
 	void RenderStep_GBuffer::Execute(

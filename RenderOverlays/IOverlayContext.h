@@ -6,14 +6,12 @@
 
 #pragma once
 
-#include "IOverlayContext_Forward.h"
 #include "OverlayPrimitives.h"
-#include "../Core/Types.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 #include "../Utility/StringUtils.h"
 
-namespace RenderCore { namespace Techniques { class ProjectionDesc; class AttachmentPool; } }
+namespace RenderCore { namespace Techniques { class IImmediateDrawables; } }
 
 namespace RenderOverlays
 {
@@ -57,9 +55,9 @@ namespace RenderOverlays
     class IOverlayContext
     {
     public:
-        virtual void    DrawPoint       (ProjectionMode proj, const Float3& v,       const ColorB& col,      uint8 size = 1) = 0;
-        virtual void    DrawPoints      (ProjectionMode proj, const Float3 v[],      uint32 numPoints,       const ColorB& col,    uint8 size = 1) = 0;
-        virtual void    DrawPoints      (ProjectionMode proj, const Float3 v[],      uint32 numPoints,       const ColorB col[],   uint8 size = 1) = 0;
+        virtual void    DrawPoint       (ProjectionMode proj, const Float3& v,       const ColorB& col,      uint8_t size = 1) = 0;
+        virtual void    DrawPoints      (ProjectionMode proj, const Float3 v[],      uint32 numPoints,       const ColorB& col,    uint8_t size = 1) = 0;
+        virtual void    DrawPoints      (ProjectionMode proj, const Float3 v[],      uint32 numPoints,       const ColorB col[],   uint8_t size = 1) = 0;
 
         virtual void    DrawLine        (ProjectionMode proj, const Float3& v0,      const ColorB& colV0,    const Float3& v1,     const ColorB& colV1,        float thickness = 1.0f) = 0;
         virtual void    DrawLines       (ProjectionMode proj, const Float3 v[],      uint32 numPoints,       const ColorB& col,    float thickness = 1.0f) = 0;
@@ -101,6 +99,8 @@ namespace RenderOverlays
         virtual void    CaptureState    () = 0;
         virtual void    ReleaseState    () = 0;
         virtual void    SetState        (const OverlayState& state) = 0;
+
+        virtual RenderCore::Techniques::IImmediateDrawables& GetImmediateDrawables() = 0;
 
         virtual ~IOverlayContext();
     };
