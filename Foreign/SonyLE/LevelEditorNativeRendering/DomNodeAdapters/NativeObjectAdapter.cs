@@ -262,18 +262,21 @@ namespace RenderingInterop
             IList<PropertyInitializer> properties,
             System.IO.UnmanagedMemoryStream stream)
         {
-            var length = str.Length;
-            properties.Add(GameEngine.CreateInitializer(
-                propId, stream.PositionPointer, stream.PositionPointer + sizeof(char) * length,
-                typeof(char), (uint)length, true));
+            // Go to utf8 here, so the native code doesn't have to care about whatever character
+            // encoding C# is using
+            var utf8 = System.Text.Encoding.UTF8;
+            byte[] utfBytes = utf8.GetBytes(str);
 
-                // copy in string data with no string formatting or changes to encoding
-            fixed (char* raw = str)
-                for (uint c = 0; c < length; ++c)
-                    ((char*)stream.PositionPointer)[c] = raw[c];
+            var length = utfBytes.Length;
+            properties.Add(GameEngine.CreateInitializer(
+                propId, stream.PositionPointer, stream.PositionPointer + length,
+                typeof(byte), (uint)length, true));
+
+            for (uint c = 0; c < length; ++c)
+                stream.PositionPointer[c] = utfBytes[c];
 
                 // just advance the stream position over what we've just written
-            stream.Position += sizeof(char) * length;
+            stream.Position += length;
         }
 
         unsafe private static void SetBasicProperty<T>(

@@ -144,9 +144,9 @@ namespace GUILayer
             if (mappedId != 0) {
                 std::string geoType;
                 auto p = GetFirst(initializers);
+                assert(p._elementType == (unsigned)ImpliedTyping::TypeCat::UInt8);
                 if (p._srcBegin && p._srcBegin != p._srcEnd)
-                    geoType = Conversion::Convert<std::string>(
-                        std::basic_string<ucs2>((const ucs2*)p._srcBegin, (const ucs2*)p._srcEnd));
+                    geoType = {(const char*)p._srcBegin, (const char*)p._srcEnd};
                 
                 _scene->_placeholders->AddAnnotation(mappedId, geoType);
             }

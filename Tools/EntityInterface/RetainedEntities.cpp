@@ -26,7 +26,7 @@ namespace EntityInterface
         const auto& propertyName = type._properties[prop._prop-1];
 		ImpliedTyping::TypeDesc typeDesc{(ImpliedTyping::TypeCat)prop._elementType, (uint16)prop._arrayCount, typeHint};
         dest._properties.SetParameter(
-            MakeStringSection(propertyName).Cast<utf8>(), prop._src, 
+            MakeStringSection(propertyName), prop._src, 
             typeDesc);
         return true;
     }

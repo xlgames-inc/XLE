@@ -74,12 +74,10 @@ namespace EntityInterface
     {
         if (prop._prop == Property_UberSurfaceDir) {
 
-            ::Assets::ResChar buffer[MaxPath];
-            ucs2_2_utf8((const ucs2*)prop._src.begin(), prop._arrayCount, (utf8*)buffer, dimof(buffer));
-            _uberSurfaceDir = buffer;
+            _uberSurfaceDir = {(const char*)prop._src.begin(), (const char*)prop._src.end()};
 
             if (!_uberSurfaceDir.empty())
-                _terrainManager->LoadUberSurface(buffer);
+                _terrainManager->LoadUberSurface(_uberSurfaceDir);
             return true;
 
         } else if (prop._prop == Property_Offset) {

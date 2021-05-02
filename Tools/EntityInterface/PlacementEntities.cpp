@@ -86,19 +86,15 @@ namespace EntityInterface
 			}
 		}
 		else if (prop._prop == Property_Model || prop._prop == Property_Material || prop._prop == Property_Supplements) {
-			Assets::ResChar buffer[MaxPath];
-			ucs2_2_utf8(
-				(const ucs2*)prop._src.begin(), prop._arrayCount,
-				(utf8*)buffer, dimof(buffer));
-
+			std::string value = {(const char*)prop._src.begin(), (const char*)prop._src.end()};
 			if (prop._prop == Property_Model) {
-				obj._model = buffer;
+				obj._model = value;
 			}
 			else if (prop._prop == Property_Supplements) {
-				obj._supplements = buffer;
+				obj._supplements = value;
 			}
 			else {
-				obj._material = buffer;
+				obj._material = value;
 			}
 			return true;
 		}
