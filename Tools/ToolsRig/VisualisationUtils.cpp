@@ -6,6 +6,7 @@
 
 #include "VisualisationUtils.h"
 #include "../../RenderCore/LightingEngine/LightDesc.h"
+#include "../../RenderCore/LightingEngine/ForwardLightingDelegate.h"
 #include "../../SceneEngine/RayVsModel.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/BasicLightingStateDelegate.h"

@@ -6,8 +6,7 @@
 
 #include "../Techniques/Drawables.h"		// for Techniques::BatchFilter
 
-namespace RenderCore { class IDevice; class IThreadContext; class FrameBufferProperties; }
-namespace RenderCore { namespace Techniques { class ParsingContext; class AttachmentPool; class FrameBufferPool; struct PreregisteredAttachment; } }
+namespace RenderCore { class IThreadContext; }
 
 namespace RenderCore { namespace LightingEngine
 {
@@ -41,16 +40,4 @@ namespace RenderCore { namespace LightingEngine
 		std::unique_ptr<LightingTechniqueIterator> _iterator;
 	};
 
-	std::shared_ptr<CompiledLightingTechnique> CreateForwardLightingTechnique(
-		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-		const std::shared_ptr<LightingEngineApparatus>& apparatus,
-		IteratorRange<const Techniques::PreregisteredAttachment*> preregisteredAttachments,
-		const FrameBufferProperties& fbProps);
-
-	std::shared_ptr<CompiledLightingTechnique> CreateForwardLightingTechnique(
-		const std::shared_ptr<IDevice>& device,
-		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-		const std::shared_ptr<SharedTechniqueDelegateBox>& techDelBox,
-		IteratorRange<const Techniques::PreregisteredAttachment*> preregisteredAttachments,
-		const FrameBufferProperties& fbProps);
 }}
