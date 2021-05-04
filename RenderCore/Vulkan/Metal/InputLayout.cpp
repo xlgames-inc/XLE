@@ -714,7 +714,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			bool requiresTemporaryBufferBarrier = false;
 
 			// -------- write descriptor set --------
-			ProgressiveDescriptorSetBuilder builder { MakeIteratorRange(adaptiveSet._sig) };
+			ProgressiveDescriptorSetBuilder builder { MakeIteratorRange(adaptiveSet._sig), ProgressiveDescriptorSetBuilder::Flags::ValidateVisibilityOnBind };
 			auto cbBindingFlag = BindingHelper::WriteImmediateDataBindings(
 				builder,
 				context.GetTemporaryBufferSpace(),

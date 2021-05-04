@@ -15,6 +15,7 @@
 #include "../../../RenderCore/Techniques/ParsingContext.h"
 #include "../../../RenderCore/Techniques/SimpleModelRenderer.h"
 #include "../../../RenderCore/Techniques/Techniques.h"
+#include "../../../RenderCore/Techniques/SequencerDescriptorSet.h"
 #include "../../../RenderCore/Assets/MaterialCompiler.h"
 #include "../../../RenderCore/MinimalShaderSource.h"
 #include "../../../RenderCore/Format.h"
@@ -200,12 +201,12 @@ namespace UnitTests
 		layout->_slots = {
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{"GlobalTransform"}, RenderCore::DescriptorType::UniformBuffer },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{"LocalTransform"}, RenderCore::DescriptorType::UniformBuffer },
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::UniformBuffer },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{"SeqBuffer0"}, RenderCore::DescriptorType::UniformBuffer },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::UniformBuffer },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::UniformBuffer },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::UniformBuffer },
 			
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{"SeqTex0"}, RenderCore::DescriptorType::SampledTexture },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
@@ -213,7 +214,7 @@ namespace UnitTests
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
 
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Sampler },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{"SeqSampler0"}, RenderCore::DescriptorType::Sampler },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Sampler },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Sampler },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::Sampler }
@@ -410,5 +411,173 @@ namespace UnitTests
 
 		::Assets::MainFileSystem::GetMountingTree()->Unmount(utdatamnt);
 		::Assets::MainFileSystem::GetMountingTree()->Unmount(xlresmnt);
+	}
+
+	using namespace RenderCore;
+	using namespace RenderCore::Techniques;
+
+	class ShaderResourceDel : public RenderCore::Techniques::IShaderResourceDelegate
+	{
+	public:
+		virtual const UniformsStreamInterface& GetInterface() override
+		{
+			return _interf; 
+		}
+
+        virtual void WriteResourceViews(ParsingContext& context, const void* objectContext, uint64_t bindingFlags, IteratorRange<IResourceView**> dst) override
+		{
+			++_resViewQueryCount;
+			REQUIRE(bindingFlags == 1ull<<uint64_t(_realTextureSlot));
+			REQUIRE(dst.size() == _interf._resourceViewBindings.size());
+			dst[_realTextureSlot] = _textureResource.get();
+		}
+
+        virtual void WriteSamplers(ParsingContext& context, const void* objectContext, uint64_t bindingFlags, IteratorRange<ISampler**> dst) override
+		{
+			++_samplerQueryCount;
+			REQUIRE(bindingFlags == 1ull<<uint64_t(_realSamplerSlot));
+			REQUIRE(dst.size() == _interf._samplerBindings.size());
+			dst[0] = _sampler.get();
+		}
+
+		virtual void WriteImmediateData(ParsingContext& context, const void* objectContext, unsigned idx, IteratorRange<void*> dst) override
+		{
+			++_immediateDataQueryCount;
+			REQUIRE(idx == _realImmediateDataSlot);
+			REQUIRE(dst.size() == 134);
+			std::memset(dst.begin(), 0xff, dst.size());
+		}
+
+		virtual size_t GetImmediateDataSize(ParsingContext& context, const void* objectContext, unsigned idx) override
+		{
+			if (idx != _realImmediateDataSlot) return 0;
+			return 134;
+		}
+
+		ShaderResourceDel(IDevice& dev, std::string name, unsigned dummySlots)
+		{
+			for (unsigned c=0; c<dummySlots; ++c)
+				_interf.BindResourceView(c, Hash64("slot-doesnt-exist-" + std::to_string(c)));
+			_realTextureSlot = dummySlots;
+			_interf.BindResourceView(_realTextureSlot, Hash64("SeqTex0"));
+			_realSamplerSlot = 0;
+			_interf.BindSampler(_realSamplerSlot, Hash64("SeqSampler0"));
+			for (unsigned c=0; c<dummySlots; ++c)
+				_interf.BindImmediateData(c, Hash64("imm-slot-doesnt-exist-" + std::to_string(c)));
+			_realImmediateDataSlot = dummySlots;
+			_interf.BindImmediateData(_realImmediateDataSlot, Hash64("SeqBuffer0"));
+
+			std::vector<uint8_t> dummyData(32*32, 0);
+			auto textureResource = dev.CreateResource(
+				CreateDesc(
+					BindFlag::ShaderResource, 
+					0, GPUAccess::Read,
+					TextureDesc::Plain2D(32, 32, RenderCore::Format::R8G8B8A8_UNORM),
+					name + "-tex0"),
+				SubResourceInitData{MakeIteratorRange(dummyData)});
+			_textureResource = textureResource->CreateTextureView();
+
+			_sampler = dev.CreateSampler(SamplerDesc{});
+		}
+
+		UniformsStreamInterface _interf;
+		std::shared_ptr<IResourceView> _textureResource;
+		std::shared_ptr<ISampler> _sampler;
+
+		unsigned _realTextureSlot = 0, _realSamplerSlot = 0, _realImmediateDataSlot = 0;
+
+		unsigned _resViewQueryCount = 0;
+		unsigned _samplerQueryCount = 0;
+		unsigned _immediateDataQueryCount = 0;
+	};
+
+	class UniformDel : public RenderCore::Techniques::IUniformBufferDelegate
+	{
+	public:
+		virtual void WriteImmediateData(ParsingContext& context, const void* objectContext, IteratorRange<void*> dst) override
+		{
+			std::memset(dst.begin(), 0xff, dst.size());
+			++_queryCount;
+		}
+
+        virtual size_t GetSize() override { return 36; }		// odd size should get rounded up
+
+		unsigned _queryCount = 0;
+	};
+
+	TEST_CASE( "Drawables-SequencerDescriptorSet", "[rendercore_techniques]" )
+	{
+		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
+		auto testHelper = MakeTestHelper();
+
+		auto del0 = std::make_shared<ShaderResourceDel>(*testHelper->_device, "del0", 6);
+		auto del1 = std::make_shared<ShaderResourceDel>(*testHelper->_device, "del1", 3);
+		auto del2 = std::make_shared<ShaderResourceDel>(*testHelper->_device, "del2", 8);
+		auto udel0 = std::make_shared<UniformDel>();
+		auto udel1 = std::make_shared<UniformDel>();
+		
+		TechniqueContext techContext;
+		ParsingContext parsingContext(techContext);
+		parsingContext.AddShaderResourceDelegate(del0);
+		parsingContext.AddShaderResourceDelegate(del1);
+		parsingContext.AddUniformDelegate(Hash64("slot-doesnt-exist-0"), udel0);
+		parsingContext.AddUniformDelegate(Hash64("slot-doesnt-exist-1"), udel0);
+		parsingContext.AddUniformDelegate(Hash64("GlobalTransform"), udel0);
+		parsingContext.AddUniformDelegate(Hash64("LocalTransform"), udel0);
+		parsingContext.AddUniformDelegate(Hash64("slot-doesnt-exist-2"), udel0);
+		SequencerContext seqContext;
+		seqContext._sequencerResources.push_back(del2);
+		seqContext._sequencerUniforms.push_back(std::make_pair(Hash64("LocalTransform"), udel1));
+
+		auto matDescSet = MakeMaterialDescriptorSetLayout();
+		auto seqDescSet = MakeSequencerDescriptorSetLayout();
+		auto pipelineAccelerators = CreatePipelineAcceleratorPool(
+			testHelper->_device,
+			testHelper->_pipelineLayout,
+			0,
+			matDescSet,
+			seqDescSet);
+		
+		// When multiple delegate bind to the same slot, we should only query the one
+		// with the highest priority. Delegates in the SequencerContext override the
+		// ParsingContext, and delegates later in each array take precidence over earlier
+		// ones
+		SequencerUniformsHelper helper0{parsingContext, seqContext};
+		auto descSet0 = CreateSequencerDescriptorSet(
+			*testHelper->_device,
+			parsingContext,
+			helper0,
+			*seqDescSet.GetLayout());
+		REQUIRE(del2->_resViewQueryCount == 1);
+		REQUIRE(del1->_resViewQueryCount == 0);
+		REQUIRE(del0->_resViewQueryCount == 0);
+		REQUIRE(del2->_samplerQueryCount == 1);
+		REQUIRE(del1->_samplerQueryCount == 0);
+		REQUIRE(del0->_samplerQueryCount == 0);
+		REQUIRE(del2->_immediateDataQueryCount == 1);
+		REQUIRE(del1->_immediateDataQueryCount == 0);
+		REQUIRE(del0->_immediateDataQueryCount == 0);
+		REQUIRE(udel0->_queryCount == 1);		// once for GlobalTransform
+		REQUIRE(udel1->_queryCount == 1);		// once for LocalTransform
+
+		seqContext._sequencerResources.clear();
+		seqContext._sequencerUniforms.clear();
+		SequencerUniformsHelper helper1{parsingContext, seqContext};
+		auto descSet1 = CreateSequencerDescriptorSet(
+			*testHelper->_device,
+			parsingContext,
+			helper1,
+			*seqDescSet.GetLayout());
+		REQUIRE(del2->_resViewQueryCount == 1);
+		REQUIRE(del1->_resViewQueryCount == 1);
+		REQUIRE(del0->_resViewQueryCount == 0);
+		REQUIRE(del2->_samplerQueryCount == 1);
+		REQUIRE(del1->_samplerQueryCount == 1);
+		REQUIRE(del0->_samplerQueryCount == 0);
+		REQUIRE(del2->_immediateDataQueryCount == 1);
+		REQUIRE(del1->_immediateDataQueryCount == 1);
+		REQUIRE(del0->_immediateDataQueryCount == 0);
+		REQUIRE(udel0->_queryCount == 3);		// twice more for GlobalTransform & LocalTransform
+		REQUIRE(udel1->_queryCount == 1);		// removed from binding
 	}
 }

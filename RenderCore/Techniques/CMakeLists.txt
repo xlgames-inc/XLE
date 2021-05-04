@@ -27,6 +27,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         Services.cpp
         ModelCache.cpp
         TextureLoaders.cpp
+        SequencerDescriptorSet.cpp
         )
     set(Headers
         Apparatuses.h

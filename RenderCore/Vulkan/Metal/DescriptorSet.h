@@ -58,8 +58,15 @@ namespace RenderCore { namespace Metal_Vulkan
 			std::vector<uint64_t>& resourceVisibilityList
 			VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo& description));
 
+		struct Flags
+		{
+			enum Enum { ValidateVisibilityOnBind };
+			using BitField = unsigned;
+		};
+
 		ProgressiveDescriptorSetBuilder(
-			IteratorRange<const DescriptorSlot*> signature);
+			IteratorRange<const DescriptorSlot*> signature,
+			Flags::BitField flags);
 		~ProgressiveDescriptorSetBuilder();
 		ProgressiveDescriptorSetBuilder(ProgressiveDescriptorSetBuilder&&);
 		ProgressiveDescriptorSetBuilder& operator=(ProgressiveDescriptorSetBuilder&&);
@@ -77,6 +84,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         uint64_t	_sinceLastFlush = 0;
 		std::vector<DescriptorSlot> _signature;
+
+		Flags::BitField _flags = 0;
 
 		#if defined(VULKAN_VERBOSE_DEBUG)
 			DescriptorSetDebugInfo _verboseDescription;

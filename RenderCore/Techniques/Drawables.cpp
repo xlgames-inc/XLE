@@ -5,10 +5,9 @@
 #include "Drawables.h"
 #include "DrawableDelegates.h"
 #include "DrawablesInternal.h"
+#include "SequencerDescriptorSet.h"
 #include "Techniques.h"
-#include "TechniqueUtils.h"
 #include "ParsingContext.h"
-#include "RenderStateResolver.h"
 #include "PipelineAccelerator.h"
 #include "DescriptorSetAccelerator.h"
 #include "BasicDelegates.h"
@@ -19,22 +18,10 @@
 #include "../IThreadContext.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/InputLayout.h"
-#include "../Metal/State.h"
-#include "../Metal/Shader.h"
-#include "../Metal/Resource.h"
-#include "../Metal/TextureView.h"
-#include "../Assets/ShaderPatchCollection.h"
-#include "../Assets/AsyncMarkerGroup.h"
+#include "../../Assets/AsyncMarkerGroup.h"
 
 namespace RenderCore { namespace Techniques
 {
-	static std::shared_ptr<IDescriptorSet> CreateSequencerDescriptorSet(
-		IDevice& device,
-		ParsingContext& parsingContext,
-		const IPipelineAcceleratorPool& pipelineAccelerators,
-		const SequencerContext& sequencerTechnique,
-		const DescriptorSetSignature& sequenceDescSetSignature);
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class DrawablesSharedResources
@@ -110,6 +97,11 @@ namespace RenderCore { namespace Techniques
 		sequencerUSI.BindFixedDescriptorSet(1, materialDescSetName, &matDescSetLayout);
 
 		auto sequencerDescriptorSet = CreateSequencerDescriptorSet(*pipelineAccelerators.GetDevice(), parserContext, pipelineAccelerators, sequencerTechnique, sequencerDescSetLayout);
+
+		SequencerUniformsHelper uniformHelper(parserContext, sequencerTechnique);
+		auto sequencerDescriptorSet = CreateSequencerDescriptorSet(
+			*pipelineAccelerators.GetDevice(), parserContext,
+			uniformHelper, *pipelineAccelerators.GetSequencerDescriptorSetLayout().GetLayout());
 
 		for (auto d=drawablePkt._drawables.begin(); d!=drawablePkt._drawables.end(); ++d) {
 			const auto& drawable = *(Drawable*)d.get();
@@ -224,218 +216,6 @@ namespace RenderCore { namespace Techniques
 		}
 
 		return result;
-	}
-
-	std::shared_ptr<IDescriptorSet> CreateSequencerDescriptorSet(
-		IDevice& device,
-		ParsingContext& parsingContext,
-		const IPipelineAcceleratorPool& pipelineAccelerators,
-		const SequencerContext& sequencerTechnique,
-		const DescriptorSetSignature& sequenceDescSetSignature)
-	{
-		// Create a temporary descriptor set, with per-sequencer bindings
-		// We need to look for something providing data for this:
-		// * parsingContext uniform buffer delegate
-		// * sequencer technique uniform buffer delegate
-		// * sequencer technique shader resource delegate
-		// Unfortunately we have to do a make a lot of small temporary allocations in order to
-		// calculate how the various delegates map onto the descriptor set layout. It might be
-		// worth considering caching this result, because there should actually only be a finite
-		// number of different configurations in most use cases
-		const auto& layout = *pipelineAccelerators.GetSequencerDescriptorSetLayout().GetLayout();
-
-		struct ShaderResourceDelegateBinding
-		{
-			IShaderResourceDelegate* _delegate = nullptr;
-			const UniformsStreamInterface* _usi = nullptr;
-			uint64_t _resourceViewBindingFlags = 0ull;
-			uint64_t _immediateDataBindingFlags = 0ull;
-			uint64_t _samplerBindingFlags = 0ull;
-			std::vector<unsigned> _resourceInterfaceToDescSet;
-			std::vector<unsigned> _immediateDataInterfaceToDescSet;
-			std::vector<size_t> _immediateDataSizes;
-			std::vector<unsigned> _samplerInterfaceToDescSet;
-		};
-		std::vector<ShaderResourceDelegateBinding> srBindings;
-		srBindings.reserve(parsingContext.GetShaderResourceDelegates().size() + sequencerTechnique._sequencerResources.size());
-		for (const auto& sr:parsingContext.GetShaderResourceDelegates()) {
-			ShaderResourceDelegateBinding b;
-			b._delegate = sr.get();
-			b._usi = &sr->GetInterface();
-			assert(b._usi->_fixedDescriptorSetBindings.empty());
-			b._resourceInterfaceToDescSet.resize(b._usi->_resourceViewBindings.size(), ~0u);
-			b._immediateDataInterfaceToDescSet.resize(b._usi->_immediateDataBindings.size(), ~0u);
-			b._immediateDataSizes.resize(b._usi->_immediateDataBindings.size(), 0);
-			b._samplerInterfaceToDescSet.resize(b._usi->_samplerBindings.size(), ~0u);
-			srBindings.push_back(std::move(b));
-		}
-		for (const auto& sr:sequencerTechnique._sequencerResources) {
-			ShaderResourceDelegateBinding b;
-			b._delegate = sr.get();
-			b._usi = &sr->GetInterface();
-			assert(b._usi->_fixedDescriptorSetBindings.empty());
-			b._resourceInterfaceToDescSet.resize(b._usi->_resourceViewBindings.size(), ~0u);
-			b._immediateDataInterfaceToDescSet.resize(b._usi->_immediateDataBindings.size(), ~0u);
-			b._immediateDataSizes.resize(b._usi->_immediateDataBindings.size(), 0);
-			b._samplerInterfaceToDescSet.resize(b._usi->_samplerBindings.size(), ~0u);
-			srBindings.push_back(std::move(b));
-		}
-
-		struct UniformBufferDelegateBinding
-		{
-			IUniformBufferDelegate* _delegate = nullptr;
-			size_t _size = 0;
-			unsigned _descSetSlot;
-		};
-		std::vector<UniformBufferDelegateBinding> uBindings;
-		auto uniformBufferInput0 = parsingContext.GetUniformDelegates();
-		auto uniformBufferInput1 = MakeIteratorRange(sequencerTechnique._sequencerUniforms);
-
-		for (unsigned slotIdx=0; slotIdx<layout._slots.size(); ++slotIdx) {
-			auto hashName = Hash64(layout._slots[slotIdx]._name);
-			bool foundBinding = false;
-			for (signed c=srBindings.size()-1; c>=0; --c) {
-				auto& binding = srBindings[c];
-
-				auto ri = std::find(binding._usi->_resourceViewBindings.begin(), binding._usi->_resourceViewBindings.end(), hashName);
-				if (ri != binding._usi->_resourceViewBindings.end()) {
-					auto idx = std::distance(binding._usi->_resourceViewBindings.begin(), ri);
-					binding._resourceViewBindingFlags |= 1ull<<uint64_t(idx);
-					binding._resourceInterfaceToDescSet[idx] = slotIdx;
-					foundBinding = true;
-					break;
-				}
-
-				auto ii = std::find(binding._usi->_immediateDataBindings.begin(), binding._usi->_immediateDataBindings.end(), hashName);
-				if (ii != binding._usi->_immediateDataBindings.end()) {
-					auto idx = std::distance(binding._usi->_immediateDataBindings.begin(), ii);
-					binding._immediateDataBindingFlags |= 1ull<<uint64_t(idx);
-					binding._immediateDataInterfaceToDescSet[idx] = slotIdx;
-					binding._immediateDataSizes[idx] = binding._delegate->GetImmediateDataSize(parsingContext, nullptr, idx);
-					foundBinding = true;
-					break;
-				}
-
-				auto si = std::find(binding._usi->_samplerBindings.begin(), binding._usi->_samplerBindings.end(), hashName);
-				if (si != binding._usi->_samplerBindings.end()) {
-					auto idx = std::distance(binding._usi->_samplerBindings.begin(), si);
-					binding._samplerBindingFlags |= 1ull<<uint64_t(idx);
-					binding._samplerInterfaceToDescSet[idx] = slotIdx;
-					foundBinding = true;
-					break;
-				}
-			}
-
-			if (foundBinding) continue;
-
-			auto i = std::find_if(uniformBufferInput1.begin(), uniformBufferInput1.end(), [hashName](const auto& c) { return c.first == hashName; });
-			if (i == uniformBufferInput1.end()) {
-				i = std::find_if(uniformBufferInput0.begin(), uniformBufferInput0.end(), [hashName](const auto& c) { return c.first == hashName; });
-				if (i == uniformBufferInput0.end()) continue;
-			}
-
-			UniformBufferDelegateBinding b;
-			b._delegate = i->second.get();
-			b._size = i->second->GetSize();
-			b._descSetSlot = slotIdx;
-			uBindings.push_back(b);
-		}
-
-		std::vector<DescriptorSetInitializer::BindTypeAndIdx> bindTypesAndIdx;
-		std::vector<const IResourceView*> finalResourceViews;
-		std::vector<const ISampler*> finalSamplers;
-		std::vector<UniformsStream::ImmediateData> finalImmediateData;
-		bindTypesAndIdx.resize(layout._slots.size());
-		finalResourceViews.reserve(layout._slots.size());
-		finalSamplers.reserve(layout._slots.size());
-		finalImmediateData.reserve(layout._slots.size());
-
-		size_t totalImmediateDataSize = 0;
-		for (const auto&srDelegate:srBindings)
-			for (const auto&s:srDelegate._immediateDataSizes)
-				totalImmediateDataSize += s;
-		for (const auto&u:uBindings)
-			totalImmediateDataSize += u._size;
-
-		std::vector<uint8_t> tempDataBuffer;
-		tempDataBuffer.resize(totalImmediateDataSize);
-		totalImmediateDataSize = 0;
-
-		std::vector<void*> temporaryBuffer(16);
-		
-		for (const auto&srDelegate:srBindings) {
-			if (srDelegate._resourceViewBindingFlags) {
-				if (temporaryBuffer.size() < srDelegate._resourceInterfaceToDescSet.size()) temporaryBuffer.resize(srDelegate._resourceInterfaceToDescSet.size());
-				IteratorRange<IResourceView**> range { (IResourceView**)AsPointer(temporaryBuffer.begin()), (IResourceView**)AsPointer(temporaryBuffer.begin() + srDelegate._resourceInterfaceToDescSet.size()) };
-				srDelegate._delegate->WriteResourceViews(parsingContext, nullptr, srDelegate._resourceViewBindingFlags, range);
-				for (unsigned c=0; c<srDelegate._resourceInterfaceToDescSet.size(); ++c) {
-					auto b = srDelegate._resourceInterfaceToDescSet[c];
-					if (b == ~0u) continue;
-					assert(bindTypesAndIdx[b]._type == DescriptorSetInitializer::BindType::Empty);
-					bindTypesAndIdx[b] = DescriptorSetInitializer::BindTypeAndIdx{
-						DescriptorSetInitializer::BindType::ResourceView,
-						(unsigned)finalResourceViews.size()
-					};
-					finalResourceViews.push_back(range[c]);
-				}
-			}
-
-			if (srDelegate._samplerBindingFlags) {
-				if (temporaryBuffer.size() < srDelegate._samplerInterfaceToDescSet.size()) temporaryBuffer.resize(srDelegate._samplerInterfaceToDescSet.size());
-				IteratorRange<ISampler**> range { (ISampler**)AsPointer(temporaryBuffer.begin()), (ISampler**)AsPointer(temporaryBuffer.begin() + srDelegate._samplerInterfaceToDescSet.size()) };
-				srDelegate._delegate->WriteSamplers(parsingContext, nullptr, srDelegate._samplerBindingFlags, range);
-				for (unsigned c=0; c<srDelegate._samplerInterfaceToDescSet.size(); ++c) {
-					auto b = srDelegate._samplerInterfaceToDescSet[c];
-					if (b == ~0u) continue;
-					assert(bindTypesAndIdx[b]._type == DescriptorSetInitializer::BindType::Empty);
-					bindTypesAndIdx[b] = DescriptorSetInitializer::BindTypeAndIdx{
-						DescriptorSetInitializer::BindType::Sampler,
-						(unsigned)finalSamplers.size()
-					};
-					finalSamplers.push_back(range[c]);
-				}
-			}
-
-			if (srDelegate._immediateDataBindingFlags) {
-				for (unsigned c=0; c<srDelegate._immediateDataInterfaceToDescSet.size(); ++c) {
-					auto b = srDelegate._immediateDataInterfaceToDescSet[c];
-					if (b == ~0u) continue;
-					auto size = srDelegate._immediateDataSizes[c];
-					auto targetRange = MakeIteratorRange(tempDataBuffer.data() + totalImmediateDataSize, tempDataBuffer.data() + totalImmediateDataSize + size);
-					srDelegate._delegate->WriteImmediateData(parsingContext, nullptr, c, targetRange);
-					totalImmediateDataSize += size;
-
-					assert(bindTypesAndIdx[b]._type == DescriptorSetInitializer::BindType::Empty);
-					bindTypesAndIdx[b] = DescriptorSetInitializer::BindTypeAndIdx{
-						DescriptorSetInitializer::BindType::ImmediateData,
-						(unsigned)finalImmediateData.size()
-					};
-					finalImmediateData.push_back(targetRange);
-				}
-			}
-		}
-
-		for (const auto&uDelegate:uBindings) {
-			auto targetRange = MakeIteratorRange(tempDataBuffer.data() + totalImmediateDataSize, tempDataBuffer.data() + totalImmediateDataSize + uDelegate._size);
-			uDelegate._delegate->WriteImmediateData(parsingContext, nullptr, targetRange);
-			totalImmediateDataSize += uDelegate._size;
-
-			auto b = uDelegate._descSetSlot;
-			assert(bindTypesAndIdx[b]._type == DescriptorSetInitializer::BindType::Empty);
-			bindTypesAndIdx[b] = DescriptorSetInitializer::BindTypeAndIdx{
-				DescriptorSetInitializer::BindType::ImmediateData,
-				(unsigned)finalImmediateData.size()
-			};
-			finalImmediateData.push_back(targetRange);
-		}
-
-		DescriptorSetInitializer initializer;
-		initializer._slotBindings = MakeIteratorRange(bindTypesAndIdx);
-		initializer._bindItems._resourceViews = MakeIteratorRange(finalResourceViews);
-		initializer._bindItems._samplers = MakeIteratorRange(finalSamplers);
-		initializer._bindItems._immediateData = MakeIteratorRange(finalImmediateData);
-		initializer._signature = &sequenceDescSetSignature;
-		return device.CreateDescriptorSet(initializer);
 	}
 
 	DescriptorSetSignature AsDescriptorSetSignature(const RenderCore::Assets::PredefinedDescriptorSetLayout& layout)

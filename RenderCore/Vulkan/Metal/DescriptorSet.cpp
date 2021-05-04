@@ -410,8 +410,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		void ProgressiveDescriptorSetBuilder::ValidateResourceVisibility(IResource& res)
 		{
 			auto& vres = *checked_cast<Resource*>(&res);
-			if (vres._pendingInitialization)
-				Throw(std::runtime_error("Attempting to use a resource while it still has a pending initialization function. Call Metal::CompleteInitialization() to complete initialization for this resource. Resource: " + std::string{res.GetDesc()._name}));
+			if (_flags & Flags::ValidateVisibilityOnBind) {
+				if (vres._pendingInitialization)
+					Throw(std::runtime_error("Attempting to use a resource while it still has a pending initialization function. Call Metal::CompleteInitialization() to complete initialization for this resource. Resource: " + std::string{res.GetDesc()._name}));
+			}
 
 			if (!vres.GetImage())		// we only care about images; they are the ones with awkward rules
 				return;
@@ -444,9 +446,11 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	ProgressiveDescriptorSetBuilder::ProgressiveDescriptorSetBuilder(
-		IteratorRange<const DescriptorSlot*> signature)
+		IteratorRange<const DescriptorSlot*> signature,
+		Flags::BitField flags)
 	: _signature(signature.begin(), signature.end())
 	{
+		_flags = flags;
 		_sinceLastFlush = 0;
 		XlZeroMemory(_bufferInfo);
 		XlZeroMemory(_imageInfo);
@@ -467,6 +471,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _pendingImageInfos = moveFrom._pendingImageInfos; moveFrom._pendingImageInfos = 0;
         _pendingBufferInfos = moveFrom._pendingBufferInfos; moveFrom._pendingBufferInfos = 0;
         _sinceLastFlush = moveFrom._sinceLastFlush; moveFrom._sinceLastFlush = 0;
+		_flags = moveFrom._flags; moveFrom._flags = 0;
 
 		std::memcpy(_bufferInfo, moveFrom._bufferInfo, sizeof(_bufferInfo));
 		std::memcpy(_imageInfo, moveFrom._imageInfo, sizeof(_imageInfo));
@@ -487,6 +492,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _pendingImageInfos = moveFrom._pendingImageInfos; moveFrom._pendingImageInfos = 0;
         _pendingBufferInfos = moveFrom._pendingBufferInfos; moveFrom._pendingBufferInfos = 0;
         _sinceLastFlush = moveFrom._sinceLastFlush; moveFrom._sinceLastFlush = 0;
+		_flags = moveFrom._flags; moveFrom._flags = 0;
 
 		std::memcpy(_bufferInfo, moveFrom._bufferInfo, sizeof(_bufferInfo));
 		std::memcpy(_imageInfo, moveFrom._imageInfo, sizeof(_imageInfo));
@@ -716,7 +722,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		uint64_t writtenMask = 0ull;
 		size_t linearBufferIterator = 0;
 		unsigned offsetMultiple = std::max(1u, (unsigned)factory.GetPhysicalDeviceProperties().limits.minUniformBufferOffsetAlignment);
-		ProgressiveDescriptorSetBuilder builder { _layout->GetDescriptorSlots() };
+		ProgressiveDescriptorSetBuilder builder { _layout->GetDescriptorSlots(), 0 };
 		for (unsigned c=0; c<binds.size(); ++c) {
 			if (binds[c]._type == DescriptorSetInitializer::BindType::ResourceView) {
 				auto* view = checked_cast<const ResourceView*>(uniforms._resourceViews[binds[c]._uniformsStreamIdx]);
