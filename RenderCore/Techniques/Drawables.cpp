@@ -22,6 +22,15 @@
 
 namespace RenderCore { namespace Techniques
 {
+
+	static void ApplyLooseUniforms(
+		Metal::DeviceContext& metalContext,
+		Metal::GraphicsEncoder_Optimized& encoder,
+		ParsingContext& parsingContext,
+		Metal::BoundUniforms& boundUniforms,
+		unsigned groupIdx,
+		SequencerUniformsHelper& uniformHelper);
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class DrawablesSharedResources
@@ -90,18 +99,16 @@ namespace RenderCore { namespace Techniques
 		const auto materialDescriptorSetSlot = 1;
 		static const auto sequencerDescSetName = Hash64("Sequencer");
 		static const auto materialDescSetName = Hash64("Material");
-		UniformsStreamInterface sequencerUSI;
-		auto sequencerDescSetLayout = AsDescriptorSetSignature(*pipelineAccelerators.GetSequencerDescriptorSetLayout().GetLayout());
-		auto matDescSetLayout = AsDescriptorSetSignature(*pipelineAccelerators.GetMaterialDescriptorSetLayout().GetLayout());
-		sequencerUSI.BindFixedDescriptorSet(0, sequencerDescSetName, &sequencerDescSetLayout);
-		sequencerUSI.BindFixedDescriptorSet(1, materialDescSetName, &matDescSetLayout);
-
-		auto sequencerDescriptorSet = CreateSequencerDescriptorSet(*pipelineAccelerators.GetDevice(), parserContext, pipelineAccelerators, sequencerTechnique, sequencerDescSetLayout);
-
+		
 		SequencerUniformsHelper uniformHelper(parserContext, sequencerTechnique);
 		auto sequencerDescriptorSet = CreateSequencerDescriptorSet(
 			*pipelineAccelerators.GetDevice(), parserContext,
 			uniformHelper, *pipelineAccelerators.GetSequencerDescriptorSetLayout().GetLayout());
+
+		UniformsStreamInterface sequencerUSI = std::move(uniformHelper._finalUSI);
+		auto matDescSetLayout = AsDescriptorSetSignature(*pipelineAccelerators.GetMaterialDescriptorSetLayout().GetLayout());
+		sequencerUSI.BindFixedDescriptorSet(0, sequencerDescSetName, &sequencerDescriptorSet.second);
+		sequencerUSI.BindFixedDescriptorSet(1, materialDescSetName, &matDescSetLayout);
 
 		for (auto d=drawablePkt._drawables.begin(); d!=drawablePkt._drawables.end(); ++d) {
 			const auto& drawable = *(Drawable*)d.get();
@@ -146,11 +153,14 @@ namespace RenderCore { namespace Techniques
 				drawable._looseUniformsInterface ? *drawable._looseUniformsInterface : UniformsStreamInterface{});
 
 			const IDescriptorSet* descriptorSets[2];
-			descriptorSets[0] = sequencerDescriptorSet.get();
+			descriptorSets[0] = sequencerDescriptorSet.first.get();
 			descriptorSets[1] = matDescSet;
 			boundUniforms->ApplyDescriptorSets(
 				metalContext, encoder,
 				MakeIteratorRange(descriptorSets), 0);
+			if (__builtin_expect(boundUniforms->GetBoundLooseImmediateDatas(0) | boundUniforms->GetBoundLooseResources(0) | boundUniforms->GetBoundLooseResources(0), 0ull)) {
+				ApplyLooseUniforms(metalContext, encoder, parserContext, *boundUniforms, 0, uniformHelper);
+			}
 
 			//////////////////////////////////////////////////////////////////////////////
 
@@ -335,6 +345,24 @@ namespace RenderCore { namespace Techniques
 			assert(storageType == Storage::VB);
 			return MakeIteratorRange(_vbStorage);
 		}
+	}
+
+	void ApplyLooseUniforms(
+		Metal::DeviceContext& metalContext,
+		Metal::GraphicsEncoder_Optimized& encoder,
+		ParsingContext& parsingContext,
+		Metal::BoundUniforms& boundUniforms,
+		unsigned groupIdx,
+		SequencerUniformsHelper& uniformHelper)
+	{
+		uniformHelper.QueryResources(parsingContext, boundUniforms.GetBoundLooseResources(groupIdx));
+		uniformHelper.QuerySamplers(parsingContext, boundUniforms.GetBoundLooseSamplers(groupIdx));
+		uniformHelper.QueryImmediateDatas(parsingContext, boundUniforms.GetBoundLooseImmediateDatas(groupIdx));
+		UniformsStream us {
+			uniformHelper._queriedResources,
+			uniformHelper._queriedImmediateDatas,
+			uniformHelper._queriedSamplers };
+		boundUniforms.ApplyLooseUniforms(metalContext, encoder, us, 0);
 	}
 
 }}

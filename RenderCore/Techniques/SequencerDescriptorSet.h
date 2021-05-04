@@ -72,7 +72,7 @@ namespace RenderCore { namespace Techniques
 		SequencerUniformsHelper(ParsingContext& parsingContext, const SequencerContext& sequencerTechnique);
 	};
 
-	std::shared_ptr<IDescriptorSet> CreateSequencerDescriptorSet(
+	std::pair<std::shared_ptr<IDescriptorSet>, DescriptorSetSignature> CreateSequencerDescriptorSet(
 		IDevice& device,
 		ParsingContext& parsingContext,
 		SequencerUniformsHelper& uniformHelper,

@@ -224,7 +224,7 @@ namespace RenderCore { namespace Techniques
 		_tempDataBuffer.resize(_workingTempBufferSize, 0);
 	}
 	
-	std::shared_ptr<IDescriptorSet> CreateSequencerDescriptorSet(
+	std::pair<std::shared_ptr<IDescriptorSet>, DescriptorSetSignature> CreateSequencerDescriptorSet(
 		IDevice& device,
 		ParsingContext& parsingContext,
 		SequencerUniformsHelper& uniformHelper,
@@ -304,7 +304,8 @@ namespace RenderCore { namespace Techniques
 		initializer._bindItems._immediateData = MakeIteratorRange(uniformHelper._queriedImmediateDatas);
 		auto sig = descSetLayout.MakeDescriptorSetSignature();		// todo -- we probably have this stored somewhere else, it might not be a great idea to keep rebuilding it
 		initializer._signature = &sig;
-		return device.CreateDescriptorSet(initializer);
+		auto set = device.CreateDescriptorSet(initializer);
+		return std::make_pair(std::move(set), std::move(sig));
 	}
 }}
 
