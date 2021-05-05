@@ -14,6 +14,7 @@
 namespace Assets
 {
 	class DependentFileState;
+	class IFileSystem;
 
 	class LooseFilesStorage
 	{
@@ -29,11 +30,14 @@ namespace Assets
 			const std::shared_ptr<StoreReferenceCounts>& storeRefCounts,
 			uint64_t refCountHashCode);
 
-		LooseFilesStorage(StringSection<> baseDirectory, const ConsoleRig::LibVersionDesc& compilerVersionInfo);
+		LooseFilesStorage(
+			std::shared_ptr<IFileSystem> filesystem,
+			StringSection<> baseDirectory, const ConsoleRig::LibVersionDesc& compilerVersionInfo);
 		~LooseFilesStorage();
 	private:
 		std::string _baseDirectory;
 		ConsoleRig::LibVersionDesc _compilerVersionInfo;
+		std::shared_ptr<IFileSystem> _filesystem;
 		std::string MakeProductsFileName(StringSection<>);
 	};
 }

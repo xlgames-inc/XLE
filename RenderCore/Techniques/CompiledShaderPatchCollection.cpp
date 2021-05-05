@@ -299,7 +299,7 @@ namespace RenderCore { namespace Techniques
 		result._dependencies.push_back(::Assets::IntermediatesStore::GetDependentFileState(filename));
 
 		size_t sizeResult = 0;
-		auto blob = ::Assets::TryLoadFileAsMemoryBlock_TolerateSharingErrors(filename, &sizeResult);
+		auto blob = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock_TolerateSharingErrors(filename, &sizeResult);
 		result._processedSource = std::string((char*)blob.get(), (char*)PtrAdd(blob.get(), sizeResult));
 		result._lineMarkers.push_back(ILowLevelCompiler::SourceLineMarker{filename.AsString(), 0, 0});
 		return result;

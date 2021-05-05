@@ -385,7 +385,7 @@ namespace ToolsRig
             XlCatString(inputFile, dimof(inputFile), ".hdr");
 
             size_t fileSize = 0;
-            auto block = ::Assets::TryLoadFileAsMemoryBlock(inputFile, &fileSize);
+            auto block = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock(inputFile, &fileSize);
             if (block.get() && fileSize) {
                 std::string configAsString(block.get(), &block[fileSize]);
                 std::regex parse("^(\\S+)\\s+(.*)");

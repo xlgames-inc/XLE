@@ -88,7 +88,7 @@ namespace Assets
 		ConfigFileContainer<Formatter>::ConfigFileContainer(StringSection<ResChar> initializer)
 	{
         DependentFileState fileState;
-		_fileData = ::Assets::TryLoadFileAsBlob_TolerateSharingErrors(initializer, &fileState);
+		_fileData = ::Assets::MainFileSystem::TryLoadFileAsBlob_TolerateSharingErrors(initializer, &fileState);
         _validationCallback = GetDepValSys().Make(fileState);
 		if (!_fileData)
 			Throw(Exceptions::ConstructionError(Exceptions::ConstructionError::Reason::MissingFile, _validationCallback, "Error loading config file container for %s", initializer.AsString().c_str()));

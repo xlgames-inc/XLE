@@ -72,7 +72,7 @@ namespace UnitTests
 		GraphLanguage::GraphSyntaxFile graphFile;
 		{
 			size_t fileSize = 0;
-			auto blob = ::Assets::TryLoadFileAsMemoryBlock_TolerateSharingErrors(fileName, &fileSize);
+			auto blob = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock_TolerateSharingErrors(fileName, &fileSize);
 			graphFile = GraphLanguage::ParseGraphSyntax(MakeStringSection((char*)blob.get(), (char*)PtrAdd(blob.get(), fileSize)));
 		}
 		
@@ -100,7 +100,7 @@ namespace UnitTests
 		} else {
 			// consider this a shader file, and extract 
 			size_t fileSize = 0;
-			auto blob = ::Assets::TryLoadFileAsMemoryBlock_TolerateSharingErrors(filename, &fileSize);
+			auto blob = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock_TolerateSharingErrors(filename, &fileSize);
 
 			auto expanded = ShaderSourceParser::ExpandIncludes(
 				MakeStringSection((char*)blob.get(), (char*)PtrAdd(blob.get(), fileSize)),

@@ -291,7 +291,7 @@ namespace RenderCore { namespace Techniques
 
 		TRY {
 			size_t sourceFileSize = 0;
-			auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(resourceName, &sourceFileSize);
+			auto sourceFile = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock(resourceName, &sourceFileSize);
 		
 			if (sourceFile && sourceFileSize) {
 				auto searchRules = ::Assets::DefaultDirectorySearchRules(resourceName);

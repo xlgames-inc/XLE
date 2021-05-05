@@ -8,6 +8,7 @@
 #include "../../Assets/IArtifact.h"
 #include "../../Assets/ICompileOperation.h"
 #include "../../Assets/DepVal.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/AttachablePtr.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include <stdexcept>
@@ -116,7 +117,7 @@ namespace UnitTests
 		ConsoleRig::LibVersionDesc dummyVersionDesc { "unit-test-version-str", "unit-test-build-date-string" };
 		auto archiveFileName = (tempDirPath / "ArchiveCacheTests" / "archive").string();
 		{
-			::Assets::ArchiveCacheSet cacheSet(dummyVersionDesc);
+			::Assets::ArchiveCacheSet cacheSet(::Assets::MainFileSystem::GetDefaultFileSystem(), dummyVersionDesc);
 			auto archive = cacheSet.GetArchive(archiveFileName);
 
 			uint64_t objectOneId = Hash64("ObjectOne");
@@ -210,7 +211,7 @@ namespace UnitTests
 
 		{
 			// When we close and reopen the cache set, we should still be able to get out the same results
-			::Assets::ArchiveCacheSet cacheSet(dummyVersionDesc);
+			::Assets::ArchiveCacheSet cacheSet(::Assets::MainFileSystem::GetDefaultFileSystem(), dummyVersionDesc);
 			auto archive = cacheSet.GetArchive(archiveFileName);
 
 			auto artifactCollection = archive->TryOpenFromCache(Hash64("ObjectOne"));

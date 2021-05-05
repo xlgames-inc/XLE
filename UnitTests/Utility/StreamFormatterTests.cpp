@@ -252,7 +252,7 @@ Value0 = value; Value1 = value2
 
         /*{
             auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>();
-            auto blob = ::Assets::TryLoadFileAsBlob("/home/davidj/code/XLE/Working/Game/Model/Galleon/Galleon.DAE");
+            auto blob = ::Assets::MainFileSystem::TryLoadFileAsBlob("/home/davidj/code/XLE/Working/Game/Model/Galleon/Galleon.DAE");
             MemoryMappedInputStream inputStream  { AsPointer(blob->begin()), AsPointer(blob->end()) };
             XmlInputStreamFormatter<utf8> formatter ( inputStream );
             StreamDOM<XmlInputStreamFormatter<utf8>> dom ( formatter );

@@ -44,7 +44,7 @@ namespace ShaderScan
 
         std::cout << "Scanning file: " << inputFile.AsString().c_str() << std::endl;
         size_t inputFileSize;
-        auto inputFileBlock = ::Assets::TryLoadFileAsMemoryBlock(inputFile.AsString().c_str(), &inputFileSize);
+        auto inputFileBlock = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock(inputFile.AsString().c_str(), &inputFileSize);
 
         TRY {
             ShaderSourceParser::ParseHLSL(MakeStringSection((const char*)inputFileBlock.get(), (const char*)PtrAdd(inputFileBlock.get(), inputFileSize)));

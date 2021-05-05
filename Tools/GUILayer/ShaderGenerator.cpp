@@ -308,7 +308,7 @@ namespace GUILayer
         // if the caller just passes in a filename
         auto nativeFilename = clix::marshalString<clix::E_UTF8>(filename);
 		size_t size = 0;
-        auto block = ::Assets::TryLoadFileAsMemoryBlock(MakeStringSection(nativeFilename), &size);
+        auto block = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock(MakeStringSection(nativeFilename), &size);
         if (!block.get() || !size)
             throw gcnew System::Exception(System::String::Format("Missing or empty file {0}", filename));
 

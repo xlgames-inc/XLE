@@ -95,7 +95,7 @@ namespace GUILayer
         {
 			Name = System::IO::Path::GetFileNameWithoutExtension(sourceFile);
 			nativeFilename = clix::marshalString<clix::E_UTF8>(sourceFile);
-            file = ::Assets::TryLoadFileAsMemoryBlock(nativeFilename, &size);
+            file = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock(nativeFilename, &size);
         } catch (System::IO::IOException^) {
 
                 //      Hit an exception! Most likely, the file just doesn't

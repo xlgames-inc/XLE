@@ -161,7 +161,7 @@ static const int NonPreprocessorLine0 = 0;
 				&&  !XlEqStringI(splitter.Extension(), "h"))
 				continue;
 
-			auto memBlock = ::Assets::TryLoadFileAsBlob(MakeStringSection("xleres/" + i));
+			auto memBlock = ::Assets::MainFileSystem::TryLoadFileAsBlob(MakeStringSection("xleres/" + i));
 			const char* flgId = "FunctionLinkingGraph";
 			if (XlFindString(MakeStringSection((const char*)AsPointer(memBlock->begin()), (const char*)AsPointer(memBlock->end())), flgId))
 				continue;
@@ -183,7 +183,7 @@ static const int NonPreprocessorLine0 = 0;
 		LocalHelper localHelper;
 
 		{
-			auto outerShader = ::Assets::TryLoadFileAsBlob("ut-data/outershader.hlsl");
+			auto outerShader = ::Assets::MainFileSystem::TryLoadFileAsBlob("ut-data/outershader.hlsl");
 			REQUIRE(outerShader != nullptr);
 			REQUIRE(outerShader->size() != (size_t)0);
 			auto expanded = ShaderSourceParser::ExpandIncludes(
@@ -198,7 +198,7 @@ static const int NonPreprocessorLine0 = 0;
 			// In the following test, none of the #include statements should actually be followed
 			// We will probably get an exception if they are (inside the files don't exist).
 			// But we can also check the output
-			auto outerShader = ::Assets::TryLoadFileAsBlob("ut-data/outershader-noincludes.hlsl");
+			auto outerShader = ::Assets::MainFileSystem::TryLoadFileAsBlob("ut-data/outershader-noincludes.hlsl");
 			REQUIRE(outerShader != nullptr);
 			REQUIRE(outerShader->size() != (size_t)0);
 			auto expanded = ShaderSourceParser::ExpandIncludes(

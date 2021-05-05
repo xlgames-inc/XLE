@@ -141,7 +141,7 @@ namespace ShaderSourceParser
     ParameterMachine::ParameterMachine()
     {
 		size_t fileSize = 0;
-        auto buildInterpolatorsSource = ::Assets::TryLoadFileAsMemoryBlock("xleres/TechniqueLibrary/ToolsRig/MaterialTool/BuildInterpolators.h", &fileSize);
+        auto buildInterpolatorsSource = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock("xleres/TechniqueLibrary/ToolsRig/MaterialTool/BuildInterpolators.h", &fileSize);
         _systemHeader = ShaderSourceParser::ParseHLSL(
 			MakeStringSection(
 				(const char*)buildInterpolatorsSource.get(),

@@ -143,15 +143,15 @@ namespace Assets
 		}
 	}
 
-	static bool LoadArtifactBlockList(const utf8 filename[], std::vector<ArtifactDirectoryBlock>& blocks)
+	static bool LoadArtifactBlockList(IFileSystem& fs, StringSection<> filename, std::vector<ArtifactDirectoryBlock>& blocks)
 	{
 		using namespace Assets::ChunkFile;
 		std::unique_ptr<IFileInterface> directoryFile;
-		if (MainFileSystem::TryOpen(directoryFile, filename, "rb") != MainFileSystem::IOReason::Success)
+		if (TryOpen(directoryFile, fs, filename, "rb") != MainFileSystem::IOReason::Success)
 			return false;
 
 		auto chunkTable = LoadChunkTable(*directoryFile);
-		auto chunk = FindChunk(filename, chunkTable, ChunkType_ArchiveDirectory, ArchiveHeaderChunkVersion);
+		auto chunk = FindChunk(filename.AsString().c_str(), chunkTable, ChunkType_ArchiveDirectory, ArchiveHeaderChunkVersion);
 
 		DirectoryChunk dirHdr;
 		directoryFile->Seek(chunk._fileOffset);
@@ -169,7 +169,7 @@ namespace Assets
 	{
 		if (!_cachedBlockListValid) {
 			// note that on failure, we will continue to attempt to open the file each time
-			if (!LoadArtifactBlockList(_directoryFileName.c_str(), _cachedBlockList))
+			if (!LoadArtifactBlockList(*_filesystem, _directoryFileName.c_str(), _cachedBlockList))
 				return nullptr;
 
 			_cachedBlockListValid = true;
@@ -177,15 +177,15 @@ namespace Assets
 		return &_cachedBlockList;
 	}
 
-	static bool LoadCollectionBlockList(const utf8 filename[], std::vector<CollectionDirectoryBlock>& collections)
+	static bool LoadCollectionBlockList(IFileSystem& fs, StringSection<> filename, std::vector<CollectionDirectoryBlock>& collections)
 	{
 		using namespace Assets::ChunkFile;
 		std::unique_ptr<IFileInterface> directoryFile;
-		if (MainFileSystem::TryOpen(directoryFile, filename, "rb") != MainFileSystem::IOReason::Success)
+		if (TryOpen(directoryFile, fs, filename, "rb") != MainFileSystem::IOReason::Success)
 			return false;
 
 		auto chunkTable = LoadChunkTable(*directoryFile);
-		auto chunk = FindChunk(filename, chunkTable, ChunkType_ArchiveDirectory, ArchiveHeaderChunkVersion);
+		auto chunk = FindChunk(filename.AsString().c_str(), chunkTable, ChunkType_ArchiveDirectory, ArchiveHeaderChunkVersion);
 
 		DirectoryChunk dirHdr;
 		directoryFile->Seek(chunk._fileOffset);
@@ -202,7 +202,7 @@ namespace Assets
 	{
 		if (!_cachedCollectionBlockListValid) {
 			// note that on failure, we will continue to attempt to open the file each time
-			if (!LoadCollectionBlockList(_directoryFileName.c_str(), _cachedCollectionBlockList))
+			if (!LoadCollectionBlockList(*_filesystem, _directoryFileName.c_str(), _cachedCollectionBlockList))
 				return nullptr;
 
 			_cachedCollectionBlockListValid = true;
@@ -270,7 +270,26 @@ namespace Assets
 		}
 
 		return result;
+	}
 
+	static std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(IFileSystem& fs, StringSection<char> sourceFileName, size_t* sizeResult)
+	{
+		std::unique_ptr<IFileInterface> file;
+		if (TryOpen(file, fs, sourceFileName, "rb", OSServices::FileShareMode::Read) == IFileSystem::IOReason::Success) {
+			size_t size = file->GetSize();
+			if (size) {
+				auto result = std::make_unique<uint8[]>(size);
+				file->Read(result.get(), 1, size);
+				if (sizeResult) {
+					*sizeResult = size;
+				}
+				return result;
+			}
+		}
+
+		// on missing file (or failed load), we return the equivalent of an empty file
+		if (sizeResult) { *sizeResult = 0; }
+		return nullptr;
 	}
 
 	auto ArchiveCache::GetDependencyTable() const -> const DependencyTable*
@@ -281,7 +300,7 @@ namespace Assets
 			XlCatString(depsFilename, ".deps");
 			
 			size_t existingFileSize = 0;
-			auto existingFile = ::Assets::TryLoadFileAsMemoryBlock(depsFilename, &existingFileSize);
+			auto existingFile = TryLoadFileAsMemoryBlock(*_filesystem, depsFilename, &existingFileSize);
 			_cachedDependencyTable = TryParseDependenciesTable(MakeIteratorRange(existingFile.get(), PtrAdd(existingFile.get(), existingFileSize)));
 			_cachedDependencyTableValid = true;
 		}
@@ -321,7 +340,7 @@ namespace Assets
 			bool directoryFileOpened = false;
 
 			// using a soft "TryOpen" to prevent annoying exception messages when the file is being created for the first time
-			if (MainFileSystem::TryOpen(directoryFile, _directoryFileName.c_str(), "r+b") == MainFileSystem::IOReason::Success) {
+			if (TryOpen(directoryFile, *_filesystem, MakeStringSection(_directoryFileName), "r+b") == MainFileSystem::IOReason::Success) {
 				TRY {
 					auto chunkTable = LoadChunkTable(*directoryFile);
 					auto chunk = FindChunk(_directoryFileName.c_str(), chunkTable, ChunkType_ArchiveDirectory, ArchiveHeaderChunkVersion);
@@ -343,7 +362,9 @@ namespace Assets
 
 			if (!directoryFileOpened) {
 				directoryFile.reset();
-				directoryFile = MainFileSystem::OpenFileInterface(_directoryFileName.c_str(), "wb");
+				TryOpen(directoryFile, *_filesystem, MakeStringSection(_directoryFileName), "wb");
+				if (!directoryFile)
+					Throw(std::runtime_error("Failed while opening archive cache directory file: " + _directoryFileName));
 			}
 
 			// Merge in new collection data
@@ -433,9 +454,12 @@ namespace Assets
 				[](const PendingCommit& lhs, const PendingCommit& rhs) { return lhs._pendingCommitPtr < rhs._pendingCommitPtr; });
 			{
 				OSServices::BasicFile dataFile;
-				bool good = MainFileSystem::TryOpen(dataFile, _mainFileName.c_str(), "r+b") == MainFileSystem::IOReason::Success;
-				if (!good)
-					dataFile = MainFileSystem::OpenBasicFile(_mainFileName.c_str(), "wb");
+				bool good = TryOpen(dataFile, *_filesystem, MakeStringSection(_mainFileName), "r+b") == MainFileSystem::IOReason::Success;
+				if (!good) {
+					good = TryOpen(dataFile, *_filesystem, MakeStringSection(_mainFileName), "wb") == MainFileSystem::IOReason::Success;
+					if (!good)
+						Throw(std::runtime_error("Failed while opening archive cache data file: " + _mainFileName));
+				}
 				for (auto i=_pendingCommits.begin(); i!=_pendingCommits.end(); ++i) {
 					dataFile.Seek(i->_pendingCommitPtr);
 
@@ -499,7 +523,7 @@ namespace Assets
 			// try to open an existing file -- but if there are any errors, we can just discard the
 			// old contents
 			size_t existingFileSize = 0;
-			auto existingFile = ::Assets::TryLoadFileAsMemoryBlock(debugFilename, &existingFileSize);
+			auto existingFile = TryLoadFileAsMemoryBlock(*_filesystem, debugFilename, &existingFileSize);
 			auto attachedStrings = TryParseStringTable(MakeIteratorRange(existingFile.get(), PtrAdd(existingFile.get(), existingFileSize)));
 
 					// merge in the new strings
@@ -537,7 +561,7 @@ namespace Assets
 					// write the new debugging file
 			TRY {
 				std::unique_ptr<IFileInterface> outputFile;
-				if (MainFileSystem::TryOpen(outputFile, debugFilename, "wb") == MainFileSystem::IOReason::Success) {
+				if (TryOpen(outputFile, *_filesystem, MakeStringSection(debugFilename), "wb") == MainFileSystem::IOReason::Success) {
 					FileOutputStream stream(std::move(outputFile));
 					OutputStreamFormatter formatter(stream);
 					for (const auto&i:attachedStrings)
@@ -555,7 +579,7 @@ namespace Assets
 			XlCatString(depsFilename, ".deps");
 			
 			size_t existingFileSize = 0;
-			auto existingFile = ::Assets::TryLoadFileAsMemoryBlock(depsFilename, &existingFileSize);
+			auto existingFile = TryLoadFileAsMemoryBlock(*_filesystem, depsFilename, &existingFileSize);
 			auto depsData = TryParseDependenciesTable(MakeIteratorRange(existingFile.get(), PtrAdd(existingFile.get(), existingFileSize)));
 
 			for (auto i=_pendingCommits.begin(); i!=_pendingCommits.end(); ++i) {
@@ -580,7 +604,7 @@ namespace Assets
 					// Write the new .deps file
 			TRY {
 				std::unique_ptr<IFileInterface> outputFile;
-				if (MainFileSystem::TryOpen(outputFile, depsFilename, "wb") == MainFileSystem::IOReason::Success) {
+				if (TryOpen(outputFile, *_filesystem, MakeStringSection(depsFilename), "wb") == MainFileSystem::IOReason::Success) {
 					FileOutputStream stream(std::move(outputFile));
 					OutputStreamFormatter formatter(stream);
 					for (auto i=depsData.begin(); i!=depsData.end();) {
@@ -625,7 +649,10 @@ namespace Assets
 		////////////////////////////////////////////////////////////////////////////////////
 		std::vector<ArtifactDirectoryBlock> fileBlocks;
 		TRY {
-			auto directoryFile = MainFileSystem::OpenFileInterface(_directoryFileName.c_str(), "rb");
+			std::unique_ptr<IFileInterface> directoryFile; 
+			TryOpen(directoryFile, *_filesystem, MakeStringSection(_directoryFileName), "rb");
+			if (!directoryFile)
+				Throw(std::runtime_error("Failed while opening directory file: " + _directoryFileName));
 
 			auto chunkTable = LoadChunkTable(*directoryFile);
 			auto chunk = FindChunk(_directoryFileName.c_str(), chunkTable, ChunkType_ArchiveDirectory, ArchiveHeaderChunkVersion);
@@ -648,7 +675,7 @@ namespace Assets
 			XlCatString(debugFilename, ".debug");
 
 			size_t debugFileSize = 0;
-			auto debugFile = ::Assets::TryLoadFileAsMemoryBlock((char*)debugFilename, &debugFileSize);
+			auto debugFile = TryLoadFileAsMemoryBlock(*_filesystem, debugFilename, &debugFileSize);
 			if (debugFile)
 				attachedStrings = TryParseStringTable({debugFile.get(), PtrAdd(debugFile.get(), debugFileSize)});
 		} CATCH (...) {
@@ -702,7 +729,7 @@ namespace Assets
 		Metrics result;
 		result._blocks = std::move(blocks);
 		result._usedSpace = usedSpace;
-		result._allocatedFileSize = unsigned(MainFileSystem::TryGetDesc(_mainFileName.c_str())._size);
+		result._allocatedFileSize = unsigned(TryGetDesc(*_filesystem, MakeStringSection(_mainFileName))._size);
 		return result;
 	}
 
@@ -830,7 +857,7 @@ namespace Assets
 				XlCopyString(debugFilename, _archiveCache->_mainFileName);
 				XlCatString(debugFilename, ".debug");
 				size_t fileSize = 0;
-				auto fileData = ::Assets::TryLoadFileAsMemoryBlock(debugFilename, &fileSize);
+				auto fileData = TryLoadFileAsMemoryBlock(*_archiveCache->_filesystem, debugFilename, &fileSize);
 				attachedStrings = TryParseStringTable(MakeIteratorRange(fileData.get(), PtrAdd(fileData.get(), fileSize)));
 
 				auto idLookup = (StringMeld<128>() << std::hex << _objectId).AsString();
@@ -841,7 +868,10 @@ namespace Assets
 					Throw(std::runtime_error("Attempting to load log or metrics data for an object, but no attached strings exist for this object"));
 			}
 
-			auto archiveFile = MainFileSystem::OpenFileInterface(_archiveCache->_mainFileName, "rb");
+			std::unique_ptr<IFileInterface> archiveFile; 
+			TryOpen(archiveFile, *_archiveCache->_filesystem, MakeStringSection(_archiveCache->_mainFileName), "rb");
+			if (!archiveFile)
+				Throw(std::runtime_error("Failed while opening archive cache data file: " + _archiveCache->_mainFileName));
 
 			for (const auto& r:requests) {
 				ArtifactRequestResult chunkResult;
@@ -876,7 +906,10 @@ namespace Assets
 						chunkResult._reopenFunction = [offset=i->_start, archiveCache=_archiveCache, objectId=_objectId, changeId=_changeId]() -> std::shared_ptr<IFileInterface> {
 							ScopedLock(archiveCache->_pendingCommitsLock);
 							VerifyChangeId_AlreadyLocked(*archiveCache, objectId, changeId);
-							auto archiveFile = MainFileSystem::OpenFileInterface(archiveCache->_mainFileName, "rb");
+							std::unique_ptr<IFileInterface> archiveFile;
+							TryOpen(archiveFile, *archiveCache->_filesystem, MakeStringSection(archiveCache->_mainFileName), "rb");
+							if (!archiveFile)
+								Throw(std::runtime_error("Failed while opening archive cache data file: " + archiveCache->_mainFileName));
 							archiveFile->Seek(offset);
 							return archiveFile;
 						};
@@ -979,6 +1012,7 @@ namespace Assets
 	}
 	
 	ArchiveCache::ArchiveCache(
+		std::shared_ptr<IFileSystem> filesystem,
 		StringSection<> archiveName, 
 		const ConsoleRig::LibVersionDesc& versionDesc) 
 	: _mainFileName(archiveName.AsString())
@@ -987,6 +1021,7 @@ namespace Assets
 	, _cachedBlockListValid(false)
 	, _cachedCollectionBlockListValid(false)
 	, _cachedDependencyTableValid(false)
+	, _filesystem(std::move(filesystem))
 	{
 		_directoryFileName = _mainFileName + ".dir";
 
@@ -1017,7 +1052,7 @@ namespace Assets
 		if (existing != _archives.cend() && existing->first == hashedName)
 			return existing->second;
 
-		auto newArchive = std::make_shared<::Assets::ArchiveCache>(archiveFilename, _versionDesc);
+		auto newArchive = std::make_shared<::Assets::ArchiveCache>(_filesystem, archiveFilename, _versionDesc);
 		_archives.insert(existing, std::make_pair(hashedName, newArchive));
 		return newArchive;
 	}
@@ -1029,7 +1064,7 @@ namespace Assets
 			a.second->FlushToDisk();
 	}
 
-	ArchiveCacheSet::ArchiveCacheSet(const ConsoleRig::LibVersionDesc& versionDesc) : _versionDesc(versionDesc) {}
+	ArchiveCacheSet::ArchiveCacheSet(std::shared_ptr<IFileSystem> filesystem, const ConsoleRig::LibVersionDesc& versionDesc) : _versionDesc(versionDesc), _filesystem(std::move(filesystem)) {}
 	ArchiveCacheSet::~ArchiveCacheSet() {}
 }
 

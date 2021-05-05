@@ -130,24 +130,6 @@ namespace ConsoleRig
         } else {
             Console::SetInstance(serv.Call<Console*>(Fn_GetConsole));
         }
-
-		std::shared_ptr<::Assets::MountingTree> mountingTree;
-		if (!serv.Has<std::shared_ptr<::Assets::MountingTree>()>(typeid(::Assets::MountingTree).hash_code())) {
-			mountingTree = std::make_shared<::Assets::MountingTree>(s_defaultFilenameRules);
-			serv.Add(typeid(::Assets::MountingTree).hash_code(), [mountingTree]() { return mountingTree; });
-		} else {
-			mountingTree = serv.Call<std::shared_ptr<::Assets::MountingTree>>(typeid(::Assets::MountingTree).hash_code());
-		}
-
-        std::shared_ptr<::Assets::IFileSystem> defaultFileSystem;
-		if (!serv.Has<std::shared_ptr<::Assets::IFileSystem>()>(Fn_DefaultFileSystem)) {
-			defaultFileSystem = ::Assets::CreateFileSystem_OS({}, GlobalServices::GetInstance().GetPollingThread());
-			serv.Add(Fn_DefaultFileSystem, [defaultFileSystem]() { return defaultFileSystem; });
-		} else {
-			defaultFileSystem = serv.Call<std::shared_ptr<::Assets::IFileSystem>>(Fn_DefaultFileSystem);
-		}
-
-		::Assets::MainFileSystem::Init(mountingTree, defaultFileSystem);
     }
 
     static void MainRig_Detach()
@@ -167,7 +149,6 @@ namespace ConsoleRig
 
 		ResourceBoxes_Shutdown();
 		DebugUtil_Shutdown();
-        ::Assets::MainFileSystem::Shutdown();
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -182,9 +163,11 @@ namespace ConsoleRig
 		StartupConfig _cfg;
 		std::unique_ptr<PluginSet> _pluginSet;
 
-        AttachablePtr<::Assets::AssetSetManager> _assetsSetsManager;
-        AttachablePtr<::Assets::CompileAndAsyncManager> _compileAndAsyncManager;
         AttachablePtr<::Assets::IDependencyValidationSystem> _depValSys;
+        std::shared_ptr<::Assets::IFileSystem> _defaultFilesystem;
+        std::shared_ptr<::Assets::MountingTree> _mountingTree;
+        AttachablePtr<::Assets::CompileAndAsyncManager> _compileAndAsyncManager;
+        AttachablePtr<::Assets::AssetSetManager> _assetsSetsManager;
 	};
 
     GlobalServices* GlobalServices::s_instance = nullptr;
@@ -203,11 +186,14 @@ namespace ConsoleRig
         if (!_pimpl->_depValSys)
             _pimpl->_depValSys = ::Assets::CreateDepValSys();
 
-        if (!_pimpl->_assetsSetsManager)
-            _pimpl->_assetsSetsManager = std::make_shared<::Assets::AssetSetManager>();
+        _pimpl->_defaultFilesystem = ::Assets::CreateFileSystem_OS({}, _pimpl->_pollingThread);
+        _pimpl->_mountingTree = std::make_shared<::Assets::MountingTree>(s_defaultFilenameRules);
 
         if (!_pimpl->_compileAndAsyncManager)
-            _pimpl->_compileAndAsyncManager = std::make_shared<::Assets::CompileAndAsyncManager>();
+            _pimpl->_compileAndAsyncManager = std::make_shared<::Assets::CompileAndAsyncManager>(_pimpl->_defaultFilesystem);
+
+        if (!_pimpl->_assetsSetsManager)
+            _pimpl->_assetsSetsManager = std::make_shared<::Assets::AssetSetManager>();
 
             // add "nsight" marker to global services when "-nsight" is on
             // the command line. This is an easy way to record a global (&cross-dll)
@@ -220,9 +206,13 @@ namespace ConsoleRig
     GlobalServices::~GlobalServices() 
     {
         assert(s_instance == nullptr);  // (should already have been detached in the Withhold() call)
+        _pimpl->_shortTaskPool = nullptr;
+        _pimpl->_longTaskPool = nullptr;
         _pimpl->_logCfg = nullptr;
         _pimpl->_assetsSetsManager = nullptr;
         _pimpl->_compileAndAsyncManager = nullptr;
+        _pimpl->_mountingTree = nullptr;
+        _pimpl->_defaultFilesystem = nullptr;
         _pimpl->_depValSys = nullptr;
         CrossModule::GetInstance().Shutdown();
     }
@@ -242,6 +232,7 @@ namespace ConsoleRig
     {
         assert(s_instance == nullptr);
         s_instance = this;
+        ::Assets::MainFileSystem::Init(_pimpl->_mountingTree, _pimpl->_defaultFilesystem);
         MainRig_Attach();
         // We can't do this in AttachCurrentModule, because it interacts with other globals (eg, ::Assets::GetDepValSys()), which
         // may creates requirements for what modules are attached in what order
@@ -251,13 +242,8 @@ namespace ConsoleRig
 
     void GlobalServices::DetachCurrentModule()
     {
-        // hack -- MainRig_Detach() will cause MainFileSystem to be shut down on this
-        //          module, which is a problem if the intermediates store tries to
-        //          access it during shutdown. We can work around it by flushing
-        //          early (which isn't necessarily a bad idea, anyway)
-        if (_pimpl->_compileAndAsyncManager)
-            _pimpl->_compileAndAsyncManager->GetIntermediateStore()->FlushToDisk();
         MainRig_Detach();
+        ::Assets::MainFileSystem::Shutdown();
         assert(s_instance == this);
         s_instance = nullptr;
     }
@@ -311,7 +297,7 @@ namespace ConsoleRig
     {
         size_t fileSize = 0;
         ::Assets::DependentFileState fileState;
-        auto file = ::Assets::TryLoadFileAsMemoryBlock(fn, &fileSize, &fileState);
+        auto file = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock(fn, &fileSize, &fileState);
         auto depVal = ::Assets::GetDepValSys().Make(fileState);
         if (!file.get() || !fileSize)
             return std::make_pair(nullptr, depVal);

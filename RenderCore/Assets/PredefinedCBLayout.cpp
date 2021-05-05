@@ -33,7 +33,7 @@ namespace RenderCore { namespace Assets
 			// of a constant buffer. Sometimes we need to get the layout of a constant 
 			// buffer without compiling any shader code, or really touching the HLSL at all.
 			size_t size;
-			auto file = ::Assets::TryLoadFileAsMemoryBlock(initializer, &size);
+			auto file = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock(initializer, &size);
 			StringSection<char> configSection((const char*)file.get(), (const char*)PtrAdd(file.get(), size));
 
 			// if it's a compound document, we're only going to extra the cb layout part

@@ -14,6 +14,7 @@ namespace Assets
     class IntermediatesStore;
 	class IIntermediateCompilers;
     class ArchiveCache;
+    class IFileSystem;
 
     class IPollingAsyncProcess
     {
@@ -39,7 +40,7 @@ namespace Assets
         const std::shared_ptr<IntermediatesStore>&	GetIntermediateStore();
 		const std::shared_ptr<IntermediatesStore>&	GetShadowingStore();
 
-        CompileAndAsyncManager();
+        CompileAndAsyncManager(std::shared_ptr<IFileSystem> intermediatesFilesystem);
         ~CompileAndAsyncManager();
     protected:
 		class Pimpl;

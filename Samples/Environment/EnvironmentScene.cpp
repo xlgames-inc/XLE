@@ -81,7 +81,7 @@ namespace Sample
     void EnvironmentSceneParser::Pimpl::LoadGameObjects(StringSection<::Assets::ResChar> filename)
     {
         size_t fileSize = 0;
-        auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(filename, &fileSize);
+        auto sourceFile = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock(filename, &fileSize);
         using Formatter = InputStreamFormatter<utf8>;
         Formatter formatter(
             MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));

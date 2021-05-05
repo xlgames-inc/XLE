@@ -323,6 +323,7 @@ namespace UnitTests
 		std::filesystem::create_directories(tempDirPath);
 
 		auto intermediateStore = std::make_shared<::Assets::IntermediatesStore>(
+			::Assets::MainFileSystem::GetDefaultFileSystem(),
 			tempDirPath.string().c_str(),
 			ConsoleRig::GetLibVersionDesc()._versionString,
 			GetConfigString());
@@ -398,6 +399,7 @@ namespace UnitTests
 		std::filesystem::create_directories(tempDirPath);
 
 		auto intermediateStore = std::make_shared<::Assets::IntermediatesStore>(
+			::Assets::MainFileSystem::GetDefaultFileSystem(),
 			tempDirPath.string().c_str(),
 			ConsoleRig::GetLibVersionDesc()._versionString,
 			GetConfigString());

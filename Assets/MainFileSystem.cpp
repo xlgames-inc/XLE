@@ -413,12 +413,12 @@ namespace Assets
 	template IFileSystem::IOReason TryMonitor<utf16>(IFileSystem& fs, StringSection<utf16> fn, const std::shared_ptr<IFileMonitor>& evnt);
 	template FileDesc TryGetDesc<utf16>(IFileSystem& fs, StringSection<utf16> fn);
 
-	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult)
+	std::unique_ptr<uint8[]> MainFileSystem::TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult)
 	{
-		return TryLoadFileAsMemoryBlock(sourceFileName, sizeResult, nullptr);
+		return MainFileSystem::TryLoadFileAsMemoryBlock(sourceFileName, sizeResult, nullptr);
 	}
 
-	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult, DependentFileState* fileState)
+	std::unique_ptr<uint8[]> MainFileSystem::TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult, DependentFileState* fileState)
 	{
 		std::unique_ptr<IFileInterface> file;
 		if (MainFileSystem::TryOpen(file, sourceFileName, "rb", OSServices::FileShareMode::Read) == IFileSystem::IOReason::Success) {
@@ -450,12 +450,12 @@ namespace Assets
 		return nullptr;
 	}
 
-	Blob TryLoadFileAsBlob(StringSection<char> sourceFileName)
+	Blob MainFileSystem::TryLoadFileAsBlob(StringSection<char> sourceFileName)
 	{
-		return TryLoadFileAsBlob(sourceFileName, nullptr);
+		return MainFileSystem::TryLoadFileAsBlob(sourceFileName, nullptr);
 	}
 
-	Blob TryLoadFileAsBlob(StringSection<char> sourceFileName, DependentFileState* fileState)
+	Blob MainFileSystem::TryLoadFileAsBlob(StringSection<char> sourceFileName, DependentFileState* fileState)
 	{
 		std::unique_ptr<IFileInterface> file;
 		if (MainFileSystem::TryOpen(file, sourceFileName, "rb", OSServices::FileShareMode::Read) == IFileSystem::IOReason::Success) {
@@ -482,10 +482,10 @@ namespace Assets
 		return nullptr;
 	}
 
-	FileSystemWalker BeginWalk(const std::shared_ptr<ISearchableFileSystem>& fs)
+	FileSystemWalker BeginWalk(const std::shared_ptr<ISearchableFileSystem>& fs, StringSection<> initialSubDirectory)
 	{
 		std::vector<FileSystemWalker::StartingFS> startingFS;
-		startingFS.push_back({{}, {}, fs, 0});
+		startingFS.push_back({{}, initialSubDirectory.AsString(), fs, 0});
 		return FileSystemWalker(std::move(startingFS));
 	}
 
@@ -721,12 +721,12 @@ namespace Assets
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock_TolerateSharingErrors(StringSection<char> sourceFileName, size_t* sizeResult)
+	std::unique_ptr<uint8[]> MainFileSystem::TryLoadFileAsMemoryBlock_TolerateSharingErrors(StringSection<char> sourceFileName, size_t* sizeResult)
 	{
-		return TryLoadFileAsMemoryBlock_TolerateSharingErrors(sourceFileName, sizeResult, nullptr);
+		return MainFileSystem::TryLoadFileAsMemoryBlock_TolerateSharingErrors(sourceFileName, sizeResult, nullptr);
 	}
 
-	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock_TolerateSharingErrors(StringSection<char> sourceFileName, size_t* sizeResult, DependentFileState* fileState)
+	std::unique_ptr<uint8[]> MainFileSystem::TryLoadFileAsMemoryBlock_TolerateSharingErrors(StringSection<char> sourceFileName, size_t* sizeResult, DependentFileState* fileState)
 	{
 		std::unique_ptr<::Assets::IFileInterface> file;
 
@@ -775,7 +775,7 @@ namespace Assets
         return nullptr;
 	}
 
-	Blob TryLoadFileAsBlob_TolerateSharingErrors(StringSection<char> sourceFileName, DependentFileState* fileState)
+	Blob MainFileSystem::TryLoadFileAsBlob_TolerateSharingErrors(StringSection<char> sourceFileName, DependentFileState* fileState)
 	{
 		std::unique_ptr<IFileInterface> file;
 		unsigned retryCount = 0;
@@ -814,9 +814,9 @@ namespace Assets
 		return nullptr;
 	}
 
-	Blob TryLoadFileAsBlob_TolerateSharingErrors(StringSection<char> sourceFileName)
+	Blob MainFileSystem::TryLoadFileAsBlob_TolerateSharingErrors(StringSection<char> sourceFileName)
 	{
-		return TryLoadFileAsBlob_TolerateSharingErrors(sourceFileName, nullptr);
+		return MainFileSystem::TryLoadFileAsBlob_TolerateSharingErrors(sourceFileName, nullptr);
 	}
 
 	IFileInterface::~IFileInterface() {}

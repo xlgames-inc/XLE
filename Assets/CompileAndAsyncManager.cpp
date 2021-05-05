@@ -91,7 +91,7 @@ namespace Assets
 		return _pimpl->_shadowingStore;
 	}
 
-    CompileAndAsyncManager::CompileAndAsyncManager()
+    CompileAndAsyncManager::CompileAndAsyncManager(std::shared_ptr<IFileSystem> intermediatesFilesystem)
     {
             // todo --  this version string can be used to differentiate different
             //          versions of the compiling tools. This is important when we
@@ -121,8 +121,8 @@ namespace Assets
         auto tempDirPath = std::filesystem::temp_directory_path() / "xle-unit-tests";
 
 		_pimpl = std::make_unique<Pimpl>();
-		_pimpl->_intStore = std::make_shared<IntermediatesStore>(tempDirPath.string().c_str(), storeVersionString, storeConfigString);
-		_pimpl->_shadowingStore = std::make_shared<IntermediatesStore>(tempDirPath.string().c_str(), storeVersionString, storeConfigString, true);
+		_pimpl->_intStore = std::make_shared<IntermediatesStore>(intermediatesFilesystem, tempDirPath.string(), storeVersionString, storeConfigString);
+		_pimpl->_shadowingStore = std::make_shared<IntermediatesStore>(intermediatesFilesystem, tempDirPath.string(), storeVersionString, storeConfigString, true);
 
 		_pimpl->_intMan = CreateIntermediateCompilers(_pimpl->_intStore);
     }

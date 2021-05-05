@@ -176,7 +176,7 @@ namespace Assets
 		FileSystemWalker(std::vector<StartingFS>&& fileSystems);
 
 		friend class MountingTree;
-		friend FileSystemWalker BeginWalk(const std::shared_ptr<ISearchableFileSystem>& fs);
+		friend FileSystemWalker BeginWalk(const std::shared_ptr<ISearchableFileSystem>&, StringSection<>);
 	};
 
 	/// <summary>Description of a file object within a filesystem</summary>
@@ -260,6 +260,16 @@ namespace Assets
 		static const std::shared_ptr<IFileSystem>& GetDefaultFileSystem();
 		static void Init(const std::shared_ptr<MountingTree>& mountingTree, const std::shared_ptr<IFileSystem>& defaultFileSystem);
         static void Shutdown();
+
+		static std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult = nullptr);
+		static std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult, DependentFileState* fileState);
+		static Blob TryLoadFileAsBlob(StringSection<char> sourceFileName);
+		static Blob TryLoadFileAsBlob(StringSection<char> sourceFileName, DependentFileState* fileState);
+
+		static std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock_TolerateSharingErrors(StringSection<char> sourceFileName, size_t* sizeResult);
+		static std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock_TolerateSharingErrors(StringSection<char> sourceFileName, size_t* sizeResult, DependentFileState* fileState);
+		static Blob TryLoadFileAsBlob_TolerateSharingErrors(StringSection<char> sourceFileName);
+		static Blob TryLoadFileAsBlob_TolerateSharingErrors(StringSection<char> sourceFileName, DependentFileState* fileState);
 	};
 
 	T2(CharType, FileObject) IFileSystem::IOReason TryOpen(FileObject& result, IFileSystem& fs, StringSection<CharType> fn, const char openMode[], OSServices::FileShareMode::BitField shareMode=FileShareMode_Default);
@@ -267,17 +277,5 @@ namespace Assets
 	T1(CharType) IFileSystem::IOReason TryMonitor(IFileSystem& fs, StringSection<CharType> fn, const std::shared_ptr<IFileMonitor>& evnt);
 	T1(CharType) IFileSystem::IOReason TryFakeFileChange(IFileSystem& fs, StringSection<CharType> fn);
 	T1(CharType) FileDesc TryGetDesc(IFileSystem& fs, StringSection<CharType> fn);
-	FileSystemWalker BeginWalk(const std::shared_ptr<ISearchableFileSystem>& fs);
-
-	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult = nullptr);
-	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult, DependentFileState* fileState);
-	Blob TryLoadFileAsBlob(StringSection<char> sourceFileName);
-	Blob TryLoadFileAsBlob(StringSection<char> sourceFileName, DependentFileState* fileState);
-
-	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock_TolerateSharingErrors(StringSection<char> sourceFileName, size_t* sizeResult);
-	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock_TolerateSharingErrors(StringSection<char> sourceFileName, size_t* sizeResult, DependentFileState* fileState);
-	Blob TryLoadFileAsBlob_TolerateSharingErrors(StringSection<char> sourceFileName);
-	Blob TryLoadFileAsBlob_TolerateSharingErrors(StringSection<char> sourceFileName, DependentFileState* fileState);
-
+	FileSystemWalker BeginWalk(const std::shared_ptr<ISearchableFileSystem>& fs, StringSection<> initialSubDirectory = "");
 }
-

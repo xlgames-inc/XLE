@@ -296,7 +296,7 @@ namespace SceneEngine
     TerrainCachedData::TerrainCachedData(StringSection<::Assets::ResChar> filename)
     {
         size_t fileSize = 0;
-        auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(filename, &fileSize);
+        auto sourceFile = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock(filename, &fileSize);
 
         InputStreamFormatter<utf8> formatter(
             MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));

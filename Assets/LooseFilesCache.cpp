@@ -53,6 +53,7 @@ namespace Assets
 
 	static std::shared_ptr<IArtifactCollection> MakeArtifactCollection(
 		const CompileProductsFile& productsFile, 
+		std::shared_ptr<IFileSystem> fs,
 		const ::Assets::DependencyValidation& depVal,
 		const std::shared_ptr<StoreReferenceCounts>& refCounts,
 		uint64_t refCountHashCode);
@@ -168,7 +169,7 @@ namespace Assets
 	{
 		auto intermediateName = MakeProductsFileName(archivableName);
 		std::unique_ptr<IFileInterface> productsFile;
-		auto ioResult = MainFileSystem::TryOpen(productsFile, intermediateName.c_str(), "rb", 0);
+		auto ioResult = TryOpen(productsFile, *_filesystem, MakeStringSection(intermediateName), "rb", 0);
 		if (ioResult != ::Assets::IFileSystem::IOReason::Success || !productsFile)
 			return nullptr;
 	
@@ -198,7 +199,7 @@ namespace Assets
 			}
 		}
 
-		return MakeArtifactCollection(finalProductsFile, depVal, storeRefCounts, hashCode);
+		return MakeArtifactCollection(finalProductsFile, _filesystem, depVal, storeRefCounts, hashCode);
 	}
 
 	static std::string MakeSafeName(StringSection<> input)
@@ -206,6 +207,15 @@ namespace Assets
 		auto result = input.AsString();
 		for (auto&b:result)
 			if (b == ':' || b == '*' || b == '/' || b == '\\') b = '-';
+		return result;
+	}
+
+	static std::unique_ptr<IFileInterface> OpenFileInterface(IFileSystem& filesystem, StringSection<> fn, const char openMode[], OSServices::FileShareMode::BitField shareMode)
+	{
+		std::unique_ptr<IFileInterface> result;
+		auto ioResult = TryOpen(result, filesystem, fn, openMode, shareMode);
+		if (ioResult != MainFileSystem::IOReason::Success || !result)
+			Throw(std::runtime_error("Failed to open file in loose files cache: " + fn.AsString()));
 		return result;
 	}
 
@@ -240,7 +250,7 @@ namespace Assets
 					metricsName = productsName + "-" + MakeSafeName(a._name) + ".metrics";
 				} else 
 					metricsName = productsName + ".metrics";
-				auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".staging", "wb", 0);
+				auto outputFile = OpenFileInterface(*_filesystem, metricsName + ".staging", "wb", 0);
 				outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
 				compileProductsFile._compileProducts.push_back({a._chunkTypeCode, metricsName});
 				renameOps.push_back({metricsName + ".staging", metricsName});
@@ -250,7 +260,7 @@ namespace Assets
 					metricsName = productsName + "-" + MakeSafeName(a._name) + ".log";
 				} else 
 					metricsName = productsName + ".log";
-				auto outputFile = MainFileSystem::OpenFileInterface(metricsName + ".staging", "wb", 0);
+				auto outputFile = OpenFileInterface(*_filesystem, metricsName + ".staging", "wb", 0);
 				outputFile->Write((const void*)AsPointer(a._data->cbegin()), 1, a._data->size());
 				compileProductsFile._compileProducts.push_back({a._chunkTypeCode, metricsName});
 				renameOps.push_back({metricsName + ".staging", metricsName});
@@ -260,7 +270,7 @@ namespace Assets
 
 		if (!chunksInMainFile.empty()) {
 			auto mainBlobName = productsName + ".chunk";
-			auto outputFile = MainFileSystem::OpenFileInterface(mainBlobName + ".staging", "wb", 0);
+			auto outputFile = OpenFileInterface(*_filesystem, mainBlobName + ".staging", "wb", 0);
 			ChunkFile::BuildChunkFile(*outputFile, MakeIteratorRange(chunksInMainFile), _compilerVersionInfo);
 			compileProductsFile._compileProducts.push_back({ChunkType_Multi, mainBlobName});
 			renameOps.push_back({mainBlobName + ".staging", mainBlobName});
@@ -276,7 +286,7 @@ namespace Assets
 		*/
 
 		{
-			std::shared_ptr<IFileInterface> productsFile = MainFileSystem::OpenFileInterface(productsName + ".staging", "wb", 0); // note -- no sharing allowed on this file. We take an exclusive lock on it
+			std::shared_ptr<IFileInterface> productsFile = OpenFileInterface(*_filesystem, productsName + ".staging", "wb", 0); // note -- no sharing allowed on this file. We take an exclusive lock on it
 			FileOutputStream stream(productsFile);
 			OutputStreamFormatter fmtter(stream);
 			fmtter << compileProductsFile;
@@ -311,13 +321,28 @@ namespace Assets
 		return result;
 	}
 
-	LooseFilesStorage::LooseFilesStorage(StringSection<> baseDirectory, const ConsoleRig::LibVersionDesc& compilerVersionInfo)
+	LooseFilesStorage::LooseFilesStorage(std::shared_ptr<IFileSystem> filesystem, StringSection<> baseDirectory, const ConsoleRig::LibVersionDesc& compilerVersionInfo)
 	: _baseDirectory(baseDirectory.AsString())
 	, _compilerVersionInfo(compilerVersionInfo)
+	, _filesystem(std::move(filesystem))
 	{}
 	LooseFilesStorage::~LooseFilesStorage() {}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	static Blob TryLoadFileAsBlob(IFileSystem&fs, StringSection<char> sourceFileName)
+	{
+		std::unique_ptr<IFileInterface> file;
+		if (TryOpen(file, fs, sourceFileName, "rb", OSServices::FileShareMode::Read) == IFileSystem::IOReason::Success) {
+			size_t size = file->GetSize();
+			if (size) {
+				auto result = std::make_shared<std::vector<uint8_t>>(size);
+				file->Read(result->data(), 1, size);
+				return result;
+			}
+		}
+		return nullptr;
+	}
 
 	class CompileProductsArtifactCollection : public IArtifactCollection
 	{
@@ -339,7 +364,7 @@ namespace Assets
 				if (requests[r]._dataType == ArtifactRequest::DataType::SharedBlob)
 					for (const auto&prod:_productsFile._compileProducts)
 						if (prod._type == requests[r]._chunkTypeCode) {
-							auto fileData = TryLoadFileAsBlob(prod._intermediateArtifact);
+							auto fileData = TryLoadFileAsBlob(*_filesystem, prod._intermediateArtifact);
 							result[r] = {nullptr, 0, fileData, nullptr};
 							foundExactMatch = true;
 							break;
@@ -356,7 +381,7 @@ namespace Assets
 				for (const auto&prod:_productsFile._compileProducts)
 					if (prod._type == ChunkType_Multi) {
 						// open with no sharing
-						auto mainChunkFile = MainFileSystem::OpenFileInterface(prod._intermediateArtifact, "rb", 0);
+						auto mainChunkFile = OpenFileInterface(*_filesystem, prod._intermediateArtifact, "rb", 0);
 						ChunkFileContainer temp(prod._intermediateArtifact);
 						auto fromMulti = temp.ResolveRequests(*mainChunkFile, MakeIteratorRange(requestsForMulti));
 						for (size_t c=0; c<fromMulti.size(); ++c)
@@ -372,12 +397,14 @@ namespace Assets
 		StringSection<ResChar> GetRequestParameters() const override { return {}; }
 		AssetState GetAssetState() const override { return _productsFile._state; }
 		CompileProductsArtifactCollection(
-			const CompileProductsFile& productsFile, 
+			const CompileProductsFile& productsFile,
+			std::shared_ptr<IFileSystem> fs,
 			const DependencyValidation& depVal,
 			const std::shared_ptr<StoreReferenceCounts>& refCounts,
 			uint64_t refCountHashCode)
 		: _productsFile(productsFile), _depVal(depVal)
 		, _refCounts(refCounts), _refCountHashCode(refCountHashCode)
+		, _filesystem(std::move(fs))
 		{
 			ScopedLock(_refCounts->_lock);
 			auto read = LowerBound(_refCounts->_readReferenceCount, _refCountHashCode);
@@ -406,15 +433,17 @@ namespace Assets
 		DependencyValidation _depVal;
 		std::shared_ptr<StoreReferenceCounts> _refCounts;
 		uint64_t _refCountHashCode;
+		std::shared_ptr<IFileSystem> _filesystem;
 	};
 
 	static std::shared_ptr<IArtifactCollection> MakeArtifactCollection(
 		const CompileProductsFile& productsFile, 
+		std::shared_ptr<IFileSystem> fs,
 		const DependencyValidation& depVal,
 		const std::shared_ptr<StoreReferenceCounts>& refCounts,
 		uint64_t refCountHashCode)
 	{
-		return std::make_shared<CompileProductsArtifactCollection>(productsFile, depVal, refCounts, refCountHashCode);
+		return std::make_shared<CompileProductsArtifactCollection>(productsFile, std::move(fs), depVal, refCounts, refCountHashCode);
 	}
 
 }

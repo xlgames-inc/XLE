@@ -22,7 +22,7 @@ namespace ColladaConversion
         TRY 
         {
             size_t fileSize = 0;
-            auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(filename, &fileSize);
+            auto sourceFile = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock(filename, &fileSize);
             InputStreamFormatter<utf8> formatter(
                 MakeStringSection((const char*)sourceFile.get(), (const char*)PtrAdd(sourceFile.get(), fileSize)));
             StreamDOM<InputStreamFormatter<utf8>> doc(formatter);

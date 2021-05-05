@@ -22,6 +22,7 @@ namespace Assets
 {
 	class ArtifactDirectoryBlock;
 	class CollectionDirectoryBlock;
+	class IFileSystem;
 
 	class ArchiveCache
 	{
@@ -55,7 +56,9 @@ namespace Assets
 		/// Designed to be used for profiling archive usage and stats.
 		Metrics GetMetrics() const;
 
-		ArchiveCache(StringSection<char> archiveName, const ConsoleRig::LibVersionDesc&);
+		ArchiveCache(
+			std::shared_ptr<IFileSystem> filesystem,
+			StringSection<char> archiveName, const ConsoleRig::LibVersionDesc&);
 		~ArchiveCache();
 
 		ArchiveCache(const ArchiveCache&) = delete;
@@ -70,6 +73,7 @@ namespace Assets
 		mutable Threading::Mutex _pendingCommitsLock;
 		std::vector<PendingCommit> _pendingCommits;
 		std::basic_string<utf8> _mainFileName, _directoryFileName;
+		std::shared_ptr<IFileSystem> _filesystem;
 
 		std::string _buildVersionString, _buildDateString;
 
@@ -96,12 +100,13 @@ namespace Assets
 		std::shared_ptr<::Assets::ArchiveCache> GetArchive(StringSection<char> archiveFilename);
 		void FlushToDisk();
 		
-		ArchiveCacheSet(const ConsoleRig::LibVersionDesc&);
+		ArchiveCacheSet(std::shared_ptr<IFileSystem> filesystem, const ConsoleRig::LibVersionDesc&);
 		~ArchiveCacheSet();
 	protected:
 		typedef std::pair<uint64, std::shared_ptr<::Assets::ArchiveCache>> Archive;
 		std::vector<Archive>    _archives;
 		Threading::Mutex        _archivesLock;
+		std::shared_ptr<IFileSystem> _filesystem;
 		ConsoleRig::LibVersionDesc	_versionDesc;
 	};
 

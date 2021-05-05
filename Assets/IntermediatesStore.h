@@ -21,6 +21,7 @@ namespace Assets
 	class DependentFileState;
 	class DependencyValidation;
 	class IArtifactCollection;
+	class IFileSystem;
 
 	/// <summary>Archive of compiled intermediate assets</summary>
 	/// When compile operations succeed, the resulting artifacts are cached in an IntermediatesStore,
@@ -84,9 +85,10 @@ namespace Assets
 			const StringSection<> assetName);
 
 		IntermediatesStore(
-			const char baseDirectory[],
-			const char versionString[],
-			const char configString[],
+			std::shared_ptr<IFileSystem> intermediatesFilesystem,
+			StringSection<> baseDirectory,
+			StringSection<> versionString,
+			StringSection<> configString,
 			bool universal = false);
 		~IntermediatesStore();
 		IntermediatesStore(const IntermediatesStore&) = delete;

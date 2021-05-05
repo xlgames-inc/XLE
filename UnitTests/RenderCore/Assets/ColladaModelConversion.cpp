@@ -98,7 +98,7 @@ namespace UnitTests
             const char sampleAsset[] = "xleres/DefaultResources/materialsphere.dae";
 
             size_t size = 0;
-            auto chars = ::Assets::TryLoadFileAsMemoryBlock(sampleAsset, &size);
+            auto chars = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock(sampleAsset, &size);
             std::vector<char> charsWithNullTerminator(size+1);
             std::memcpy(charsWithNullTerminator.data(), chars.get(), size);
             charsWithNullTerminator[size] = 0;

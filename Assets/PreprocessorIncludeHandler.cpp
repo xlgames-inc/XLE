@@ -24,7 +24,7 @@ namespace Assets
 
 		::Assets::DependentFileState mainFileState;
 		
-		result._fileContents = ::Assets::TryLoadFileAsMemoryBlock_TolerateSharingErrors(result._filename, &result._fileContentsSize, &mainFileState);
+		result._fileContents = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock_TolerateSharingErrors(result._filename, &result._fileContentsSize, &mainFileState);
 		_depFileStates.insert(mainFileState);
 		if (!result._fileContentsSize) {
 			if (!fileIncludedFrom.IsEmpty())

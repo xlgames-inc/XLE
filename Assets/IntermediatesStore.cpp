@@ -34,6 +34,7 @@ namespace Assets
 		Threading::Mutex _lock;
 		mutable std::string _resolvedBaseDirectory;
 		mutable std::unique_ptr<IFileInterface> _markerFile;
+		std::shared_ptr<IFileSystem> _filesystem;
 
 		struct ConstructorOptions
 		{
@@ -311,7 +312,9 @@ namespace Assets
 			//  Look for existing directories that could match the version
 			//  string we have. 
 		std::set<unsigned> indicesUsed;
-		auto searchPath = MainFileSystem::BeginWalk(cfgDir);
+		auto searchableFS = std::dynamic_pointer_cast<ISearchableFileSystem>(_filesystem);
+		assert(searchableFS);
+		auto searchPath = BeginWalk(searchableFS, cfgDir);
 		for (auto candidateDirectory=searchPath.begin_directories(); candidateDirectory!=searchPath.end_directories(); ++candidateDirectory) {
 			auto candidateName = candidateDirectory.Name();
 			
@@ -321,7 +324,7 @@ namespace Assets
 
 			auto markerFileName = cfgDir + "/" + candidateName + "/.store";
 			std::unique_ptr<IFileInterface> markerFile;
-			auto ioReason = MainFileSystem::TryOpen(markerFile, markerFileName, "rb", 0);
+			auto ioReason = TryOpen(markerFile, *_filesystem, MakeStringSection(markerFileName), "rb", 0);
 			if (ioReason != IFileSystem::IOReason::Success)
 				continue;
 
@@ -357,7 +360,10 @@ namespace Assets
 
 					// Opening without sharing to prevent other instances of XLE apps from using
 					// the same directory.
-				_markerFile = MainFileSystem::OpenFileInterface(markerFileName, "wb", 0);
+				std::unique_ptr<IFileInterface> markerFile;
+				TryOpen(markerFile, *_filesystem, MakeStringSection(markerFileName), "wb", 0);
+				if (!markerFile)
+					Throw(std::runtime_error("Failed while opening intermediates store marker file"));
 				auto outStr = std::string("VersionString=") + _constructorOptions._versionString + "\n";
 				_markerFile->Write(outStr.data(), 1, outStr.size());
 				break;
@@ -380,9 +386,9 @@ namespace Assets
 			_pimpl->ResolveBaseDirectory();
 			std::string looseFilesBase = Concatenate(_pimpl->_resolvedBaseDirectory, "/", safeGroupName, "/");
 			Pimpl::Group newGroup;
-			newGroup._looseFilesStorage = std::make_shared<LooseFilesStorage>(looseFilesBase, compilerVersionInfo);
+			newGroup._looseFilesStorage = std::make_shared<LooseFilesStorage>(_pimpl->_filesystem, looseFilesBase, compilerVersionInfo);
 			if (enableArchiveCacheSet) {
-				newGroup._archiveCacheSet = std::make_shared<ArchiveCacheSet>(compilerVersionInfo);
+				newGroup._archiveCacheSet = std::make_shared<ArchiveCacheSet>(_pimpl->_filesystem, compilerVersionInfo);
 				newGroup._archiveCacheBase = looseFilesBase;
 			}
 			_pimpl->_groups.insert({id, std::move(newGroup)});
@@ -390,19 +396,21 @@ namespace Assets
 		return id;
 	}
 
-	IntermediatesStore::IntermediatesStore(const ResChar baseDirectory[], const ResChar versionString[], const ResChar configString[], bool universal)
+	IntermediatesStore::IntermediatesStore(
+		std::shared_ptr<IFileSystem> intermediatesFilesystem,
+		StringSection<> baseDirectory, StringSection<> versionString, StringSection<> configString, 
+		bool universal)
 	{
 		_pimpl = std::make_unique<Pimpl>();
+		_pimpl->_filesystem = intermediatesFilesystem;
 		if (universal) {
 			// This is the "universal" store directory. A single directory is used by all
 			// versions of the game.
-			ResChar buffer[MaxPath];
-			snprintf(buffer, dimof(buffer), "%s/.int/u", baseDirectory);
-			_pimpl->_resolvedBaseDirectory = buffer;
+			_pimpl->_resolvedBaseDirectory = baseDirectory.AsString() + "/.int/u";
 		} else {
-			_pimpl->_constructorOptions._baseDir = baseDirectory;
-			_pimpl->_constructorOptions._versionString = versionString;
-			_pimpl->_constructorOptions._configString = configString;
+			_pimpl->_constructorOptions._baseDir = baseDirectory.AsString();
+			_pimpl->_constructorOptions._versionString = versionString.AsString();
+			_pimpl->_constructorOptions._configString = configString.AsString();
 		}
 		_pimpl->_storeRefCounts = std::make_shared<StoreReferenceCounts>();
 	}

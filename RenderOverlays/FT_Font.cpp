@@ -43,7 +43,7 @@ namespace RenderOverlays
 					return result;
 			}
 
-			auto blob = ::Assets::TryLoadFileAsBlob(path);
+			auto blob = ::Assets::MainFileSystem::TryLoadFileAsBlob(path);
 			if (blob)
 				_buffers.insert(std::make_pair(path, blob));
 			return blob;
@@ -265,7 +265,7 @@ namespace RenderOverlays
 		std::unordered_map<std::string, std::string> result;
 
 		size_t blobSize = 0;
-		auto blob = ::Assets::TryLoadFileAsMemoryBlock(cfgFile, &blobSize);
+		auto blob = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock(cfgFile, &blobSize);
 
 		InputStreamFormatter<utf8> formatter(MakeStringSection((const char*)blob.get(), (const char*)PtrAdd(blob.get(), blobSize)));
 
