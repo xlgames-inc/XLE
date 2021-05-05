@@ -101,6 +101,8 @@ namespace RenderCore { namespace Techniques
 
         ParsingContext& operator=(const ParsingContext&) = delete;
         ParsingContext(const ParsingContext&) = delete;
+        ParsingContext& operator=(ParsingContext&&) = default;
+        ParsingContext(ParsingContext&&) = default;
 
     protected:
         TechniqueContext*                   _techniqueContext;

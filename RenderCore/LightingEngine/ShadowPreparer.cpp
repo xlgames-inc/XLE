@@ -170,7 +170,8 @@ namespace RenderCore { namespace LightingEngine
 				{
 					AsTypelessFormat(desc._format),
 					float(desc._width), float(desc._height),
-					desc._arrayCount 
+					desc._arrayCount,
+					0		// no flags
 				});
 			
 			auto shadowGenDelegate = delegatesBox->GetShadowGenTechniqueDelegate(singleSidedBias, doubleSidedBias, desc._cullMode);
@@ -191,7 +192,8 @@ namespace RenderCore { namespace LightingEngine
 		
 		auto merged = Techniques::MergeFragments(
 			{}, MakeIteratorRange(&fragment.GetFrameBufferDescFragment(), &fragment.GetFrameBufferDescFragment()+1));
-		_fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment), FrameBufferProperties{});
+		FrameBufferProperties fbProps { desc._width, desc._height };
+		_fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment), fbProps);
 
 		_sequencerConfigs = pipelineAccelerators->CreateSequencerConfig(
 			fragment.GetSubpassAddendums()[0]._techniqueDelegate,

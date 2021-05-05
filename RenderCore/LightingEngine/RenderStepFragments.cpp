@@ -21,12 +21,14 @@ namespace RenderCore { namespace LightingEngine
 		RenderCore::SubpassDesc&& subpass,
 		const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& techniqueDelegate,
 		Techniques::BatchFilter batchFilter,
-		ParameterBox&& sequencerSelectors)
+		ParameterBox&& sequencerSelectors,
+		std::shared_ptr<Techniques::IShaderResourceDelegate> shaderResourceDelegate)
 	{
 		_frameBufferDescFragment.AddSubpass(std::move(subpass));
 		_subpassExtensions.emplace_back(
 			SubpassExtension {
-				techniqueDelegate, std::move(sequencerSelectors), batchFilter
+				techniqueDelegate, std::move(sequencerSelectors), batchFilter,
+				std::move(shaderResourceDelegate)
 			});
 	}
 

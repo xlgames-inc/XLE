@@ -13,6 +13,7 @@ namespace RenderCore { namespace Techniques
 	class FrameBufferDescFragment;
 	class ITechniqueDelegate;
 	class SequencerConfig;
+	class IShaderResourceDelegate;
 }}
 
 namespace RenderCore { namespace LightingEngine
@@ -26,7 +27,8 @@ namespace RenderCore { namespace LightingEngine
 			RenderCore::SubpassDesc&& subpass,
 			const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& techniqueDelegate = nullptr,
 			Techniques::BatchFilter batchFilter = Techniques::BatchFilter::Max,
-			ParameterBox&& sequencerSelectors = {});
+			ParameterBox&& sequencerSelectors = {},
+			std::shared_ptr<Techniques::IShaderResourceDelegate> shaderResourceDelegates = {});
 
 		RenderStepFragmentInterface(RenderCore::PipelineType);
 		~RenderStepFragmentInterface();
@@ -38,6 +40,7 @@ namespace RenderCore { namespace LightingEngine
 			std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
 			ParameterBox _sequencerSelectors;
 			Techniques::BatchFilter _batchFilter;
+			std::shared_ptr<Techniques::IShaderResourceDelegate> _shaderResourceDelegate;
 		};
 		IteratorRange<const SubpassExtension*> GetSubpassAddendums() const { return MakeIteratorRange(_subpassExtensions); }
 	private:

@@ -57,7 +57,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			#endif
 
 			DescSet(const std::shared_ptr<CompiledDescriptorSetLayout>& layout)
-			: _builder(layout->GetDescriptorSlots(), ProgressiveDescriptorSetBuilder::Flags::ValidateVisibilityOnBind), _layout(layout)
+			: _builder(layout->GetDescriptorSlots()), _layout(layout)
 			{
 				#if defined(VULKAN_VERBOSE_DEBUG)
 					_description._descriptorSetInfo = "NumericUniformsInterface";

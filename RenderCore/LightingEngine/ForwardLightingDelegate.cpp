@@ -2,7 +2,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-
 #include "ForwardLightingDelegate.h"
 #include "LightingEngineInternal.h"
 #include "LightingEngineApparatus.h"
@@ -119,17 +118,16 @@ namespace RenderCore { namespace LightingEngine
 		// box.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
 		box.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", 1);
 		box.SetParameter((const utf8*)"HAS_SPECULAR_IBL", 1);
-		result.AddSubpass(mainSubpass.SetName("MainForward"), forwardIllumDelegate, Techniques::BatchFilter::General);
+		result.AddSubpass(mainSubpass.SetName("MainForward"), forwardIllumDelegate, Techniques::BatchFilter::General, std::move(box));
 		return result;
 	}
 
 	std::shared_ptr<CompiledLightingTechnique> CreateForwardLightingTechnique(
-		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
 		const std::shared_ptr<LightingEngineApparatus>& apparatus,
 		IteratorRange<const Techniques::PreregisteredAttachment*> preregisteredAttachments,
 		const FrameBufferProperties& fbProps)
 	{
-		return CreateForwardLightingTechnique(apparatus->_device, pipelineAccelerators, apparatus->_sharedDelegates, preregisteredAttachments, fbProps);
+		return CreateForwardLightingTechnique(apparatus->_device, apparatus->_pipelineAccelerators, apparatus->_sharedDelegates, preregisteredAttachments, fbProps);
 	}
 
 	std::shared_ptr<CompiledLightingTechnique> CreateForwardLightingTechnique(
@@ -146,7 +144,7 @@ namespace RenderCore { namespace LightingEngine
 		captures->_uniformsDelegate = std::make_shared<ForwardLightingCaptures::UniformsDelegate>(*captures.get());
 
 		// Reset captures
-		lightingTechnique->Push(
+		lightingTechnique->CreateStep_CallFunction(
 			[captures](LightingTechniqueIterator& iterator) {
 				captures->_sceneLightDesc = &iterator._sceneLightingDesc;
 				iterator._parsingContext->AddShaderResourceDelegate(captures->_uniformsDelegate);
@@ -155,7 +153,7 @@ namespace RenderCore { namespace LightingEngine
 		// Prepare shadows
 		ShadowGeneratorDesc defaultShadowGenerator;
 		captures->_shadowPreparer = CreateCompiledShadowPreparer(defaultShadowGenerator, pipelineAccelerators, techDelBox);
-		lightingTechnique->Push(
+		lightingTechnique->CreateStep_CallFunction(
 			[captures](LightingTechniqueIterator& iterator) {
 				const auto& lightingDesc = iterator._sceneLightingDesc;
 
@@ -166,15 +164,17 @@ namespace RenderCore { namespace LightingEngine
 
 		// Draw main scene
 		const bool writeDirectToLDR = true;
-		lightingTechnique->Push(CreateForwardSceneFragment(
+		lightingTechnique->CreateStep_RunFragmentsAndExecuteDrawables(CreateForwardSceneFragment(
 			techDelBox->_forwardIllumDelegate_DisableDepthWrite,
 			techDelBox->_depthOnlyDelegate, 
 			false, writeDirectToLDR));
 
-		lightingTechnique->Push(
+		lightingTechnique->CreateStep_CallFunction(
 			[captures](LightingTechniqueIterator& iterator) {
 				iterator._parsingContext->RemoveShaderResourceDelegate(*captures->_uniformsDelegate);
 			});
+
+		lightingTechnique->CompleteConstruction();
 			
 		return lightingTechnique;
 	}

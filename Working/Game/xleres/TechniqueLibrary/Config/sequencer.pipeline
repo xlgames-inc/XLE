@@ -23,7 +23,7 @@ DescriptorSet Sequencer
 	UniformBuffer RayDefinition;				// 4
 	UniformBuffer cb2;							// 5
 
-	SampledTexture tex0;						// 6
+	SampledTexture NormalsFittingTexture;		// 6
 	SampledTexture tex1;						// 7
 	SampledTexture tex2;						// 8
 	SampledTexture tex3;						// 9

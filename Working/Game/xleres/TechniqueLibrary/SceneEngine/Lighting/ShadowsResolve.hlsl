@@ -18,7 +18,7 @@
     //   I N P U T S
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 Texture2DArray 	ShadowTextures : register(t14);         // There's a problem here currently -- when using cv.LightResolveDynamic=1, the system doesn't handle 
-Texture2D		NoiseTexture	BIND_SEQ_T1;
+Texture2D		NoiseTexture	BIND_SEQ_T7;
 
 #if !defined(SHADOW_RESOLVE_MODEL)
     #define SHADOW_RESOLVE_MODEL 0

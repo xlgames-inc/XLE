@@ -162,81 +162,97 @@ namespace Utility
         _pendingTaskVariable.notify_one();
     }
 
+    void ThreadPool::RunBlocks(bool finishWhenEmpty)
+    {
+        ++_runningWorkerCount;
+
+        SetYieldToPoolFunction([this](std::chrono::steady_clock::time_point waitUntilTime) {
+            std::function<void()> task;
+            {
+                // slightly awkwardly, we can't actually use std::timed_mutex and try_lock_until
+                // here, because std::timed_mutex can't be used with std::condition_variable
+                std::unique_lock<decltype(this->_pendingTaskLock)> autoLock(this->_pendingTaskLock);
+                if (this->_workerQuit) 
+                    return;
+
+                if (_pendingTasks.empty()) {
+                    this->_pendingTaskVariable.wait_until(autoLock, waitUntilTime);
+                    if (this->_workerQuit) return;
+                    if (_pendingTasks.empty())
+                        return;
+                }
+
+                task = std::move(_pendingTasks.front());
+                _pendingTasks.pop();
+            }
+
+            TRY
+            {
+                task();
+            } CATCH(const std::exception& e) {
+                Log(Error) << "Suppressing exception in thread pool thread: " << e.what() << std::endl;
+                (void)e;
+            } CATCH(...) {
+                Log(Error) << "Suppressing unknown exception in thread pool thread." << std::endl;
+            } CATCH_END
+        });
+
+        for (;;) {
+            std::function<void()> task;
+
+            {
+                    // note that _pendingTasks is safe for multiple pushing threads,
+                    // but not safe for multiple popping threads. So we have to
+                    // lock to prevent more than one thread from attempt to pop
+                    // from it at the same time.
+                std::unique_lock<decltype(_pendingTaskLock)> autoLock(_pendingTaskLock);
+                if (_workerQuit) break;
+
+                if (_pendingTasks.empty()) {
+                    --_runningWorkerCount;
+                    if (finishWhenEmpty) {
+                        SetYieldToPoolFunction(nullptr);
+                        return;
+                    }
+                    _pendingTaskVariable.wait(autoLock);
+                    if (_workerQuit) break;
+                    ++_runningWorkerCount;
+                    if (_pendingTasks.empty())
+                        continue;
+                }
+
+                task = std::move(_pendingTasks.front());
+                _pendingTasks.pop();
+            }
+
+            TRY
+            {
+                task();
+            } CATCH(const std::exception& e) {
+                Log(Error) << "Suppressing exception in thread pool thread: " << e.what() << std::endl;
+                (void)e;
+            } CATCH(...) {
+                Log(Error) << "Suppressing unknown exception in thread pool thread." << std::endl;
+            } CATCH_END
+        }
+
+        SetYieldToPoolFunction(nullptr);
+    }
+
     ThreadPool::ThreadPool(unsigned threadCount)
     {
         _workerQuit = false;
 
         for (unsigned i = 0; i<threadCount; ++i)
-            _workerThreads.emplace_back(
-                [this]
-                {
-                    SetYieldToPoolFunction([this](std::chrono::steady_clock::time_point waitUntilTime) {
-                        std::function<void()> task;
-                        {
-                            // slightly awkwardly, we can't actually use std::timed_mutex and try_lock_until
-                            // here, because std::timed_mutex can't be used with std::condition_variable
-                            std::unique_lock<decltype(this->_pendingTaskLock)> autoLock(this->_pendingTaskLock);
-                            if (this->_workerQuit) 
-                                return;
+            _workerThreads.emplace_back([this] { this->RunBlocks(false); });
+    }
 
-                            if (_pendingTasks.empty()) {
-                                this->_pendingTaskVariable.wait_until(autoLock, waitUntilTime);
-                                if (this->_workerQuit) return;
-                                if (_pendingTasks.empty())
-                                    return;
-                            }
-
-                            task = std::move(_pendingTasks.front());
-                            _pendingTasks.pop();
-                        }
-
-                        TRY
-                        {
-                            task();
-                        } CATCH(const std::exception& e) {
-                            Log(Error) << "Suppressing exception in thread pool thread: " << e.what() << std::endl;
-                            (void)e;
-                        } CATCH(...) {
-                            Log(Error) << "Suppressing unknown exception in thread pool thread." << std::endl;
-                        } CATCH_END
-                    });
-
-                    for (;;) {
-                        std::function<void()> task;
-
-                        {
-                                // note that _pendingTasks is safe for multiple pushing threads,
-                                // but not safe for multiple popping threads. So we have to
-                                // lock to prevent more than one thread from attempt to pop
-                                // from it at the same time.
-                            std::unique_lock<decltype(this->_pendingTaskLock)> autoLock(this->_pendingTaskLock);
-                            if (this->_workerQuit) break;
-
-                            if (_pendingTasks.empty()) {
-                                this->_pendingTaskVariable.wait(autoLock);
-                                if (this->_workerQuit) break;
-                                if (_pendingTasks.empty())
-                                    continue;
-                            }
-
-                            task = std::move(_pendingTasks.front());
-                            _pendingTasks.pop();
-                        }
-
-                        TRY
-                        {
-                            task();
-                        } CATCH(const std::exception& e) {
-                            Log(Error) << "Suppressing exception in thread pool thread: " << e.what() << std::endl;
-                            (void)e;
-                        } CATCH(...) {
-                            Log(Error) << "Suppressing unknown exception in thread pool thread." << std::endl;
-                        } CATCH_END
-                    }
-
-                    SetYieldToPoolFunction(nullptr);
-                }
-            );
+    void ThreadPool::StallAndDrainQueue()
+    {
+        while (_runningWorkerCount) {
+            Threading::YieldTimeSlice();
+            RunBlocks(true);
+        }
     }
 
     ThreadPool::~ThreadPool()

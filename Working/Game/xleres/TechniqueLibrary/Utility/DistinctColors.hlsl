@@ -10,7 +10,7 @@
 #if !defined(DISTINCT_COLORS)
 #define DISTINCT_COLORS
 
-#include "../../Framework/Binding.hlsl"
+#include "../Framework/Binding.hlsl"
 
 #if 0
     static const uint ColourListCount = 47;
@@ -38,7 +38,7 @@
     }
 #else
 
-    Texture1D DistinctColors BIND_SEQ_T5;
+    Texture1D DistinctColors BIND_SEQ_T12;
     float3 GetDistinctFloatColour(uint index)
     {
         uint dims;

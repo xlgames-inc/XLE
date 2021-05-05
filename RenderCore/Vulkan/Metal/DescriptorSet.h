@@ -60,13 +60,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		struct Flags
 		{
-			enum Enum { ValidateVisibilityOnBind };
+			enum Enum {};
 			using BitField = unsigned;
 		};
 
 		ProgressiveDescriptorSetBuilder(
 			IteratorRange<const DescriptorSlot*> signature,
-			Flags::BitField flags);
+			Flags::BitField flags = 0);
 		~ProgressiveDescriptorSetBuilder();
 		ProgressiveDescriptorSetBuilder(ProgressiveDescriptorSetBuilder&&);
 		ProgressiveDescriptorSetBuilder& operator=(ProgressiveDescriptorSetBuilder&&);
@@ -148,6 +148,10 @@ namespace RenderCore { namespace Metal_Vulkan
 			const DescriptorSetDebugInfo& GetDescription() const { return _description; }
 		#endif
 
+		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+			IteratorRange<const uint64_t*> GetResourcesThatMustBeVisible() const { return _resourcesThatMustBeVisible; }
+		#endif
+
 		CompiledDescriptorSet(
 			ObjectFactory& factory,
 			GlobalPools& globalPools,
@@ -166,6 +170,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		std::vector<ResourceView> _retainedViews;
 		std::vector<SamplerState> _retainedSamplers;
+
+		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+			std::vector<uint64_t> _resourcesThatMustBeVisible;
+		#endif
 	};
 
 }}

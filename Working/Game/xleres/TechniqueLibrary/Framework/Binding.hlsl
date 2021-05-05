@@ -35,13 +35,13 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define BIND_SEQ_T0 : register(t16)
-#define BIND_SEQ_T1 : register(t17)
-#define BIND_SEQ_T2 : register(t18)
-#define BIND_SEQ_T3 : register(t19)
-#define BIND_SEQ_T4 : register(t20)
-#define BIND_SEQ_T5 : register(t21)
-#define BIND_SEQ_T6 : register(t22)
+#define BIND_SEQ_T6 : register(t16)
+#define BIND_SEQ_T7 : register(t17)
+#define BIND_SEQ_T8 : register(t18)
+#define BIND_SEQ_T9 : register(t19)
+#define BIND_SEQ_T10 : register(t20)
+#define BIND_SEQ_T11 : register(t21)
+#define BIND_SEQ_T12 : register(t22)
 
 #define BIND_MAT_T3 : register(t23)
 #define BIND_MAT_T4 : register(t24)

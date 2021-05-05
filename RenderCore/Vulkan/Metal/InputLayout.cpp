@@ -714,7 +714,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			bool requiresTemporaryBufferBarrier = false;
 
 			// -------- write descriptor set --------
-			ProgressiveDescriptorSetBuilder builder { MakeIteratorRange(adaptiveSet._sig), ProgressiveDescriptorSetBuilder::Flags::ValidateVisibilityOnBind };
+			ProgressiveDescriptorSetBuilder builder { MakeIteratorRange(adaptiveSet._sig) };
 			auto cbBindingFlag = BindingHelper::WriteImmediateDataBindings(
 				builder,
 				context.GetTemporaryBufferSpace(),
@@ -784,6 +784,10 @@ namespace RenderCore { namespace Metal_Vulkan
 			encoder.BindDescriptorSet(
 				fixedSet._outputSlot, descSet->GetUnderlying()
 				VULKAN_VERBOSE_DEBUG_ONLY(, DescriptorSetDebugInfo{descSet->GetDescription()} ));
+
+			#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+				context.RequireResourceVisbility(descSet->GetResourcesThatMustBeVisible());
+			#endif
 		}
 	}
 

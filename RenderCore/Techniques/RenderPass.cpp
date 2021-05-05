@@ -608,6 +608,10 @@ namespace RenderCore { namespace Techniques
         assert(attach);
         if (!attach) return false;
 
+        assert(attach->_desc._type == ResourceDesc::Type::Texture);
+        assert(attach->_desc._textureDesc._width > 0);
+        assert(attach->_desc._textureDesc._height > 0);
+        assert(attach->_desc._textureDesc._depth > 0);
         attach->_resource = _device->CreateResource(attach->_desc);
         return attach->_resource != nullptr;
     }
@@ -722,9 +726,6 @@ namespace RenderCore { namespace Techniques
         }
         tDesc._depth = 1;
         tDesc._format = attachmentDesc._format;
-        #if (GFXAPI_TARGET != GFXAPI_OPENGLES) && (GFXAPI_TARGET != GFXAPI_APPLEMETAL)        // OpenGLES can't handle the typeless formats current (and they are useless since there aren't "views" on OpenGL) -- so just skip this
-            tDesc._format = AsTypelessFormat(tDesc._format);
-        #endif
         tDesc._dimensionality = TextureDesc::Dimensionality::T2D;
         tDesc._mipCount = 1;
         tDesc._arrayCount = 0;

@@ -18,6 +18,7 @@ namespace RenderCore { namespace LightingEngine
 		_techniqueSetFile = ::Assets::MakeAsset<RenderCore::Techniques::TechniqueSetFile>(ILLUM_TECH);
 		_forwardIllumDelegate_DisableDepthWrite = RenderCore::Techniques::CreateTechniqueDelegate_Forward(_techniqueSetFile, _sharedResources, RenderCore::Techniques::TechniqueDelegateForwardFlags::DisableDepthWrite);
 		_depthOnlyDelegate = RenderCore::Techniques::CreateTechniqueDelegate_Forward(_techniqueSetFile, _sharedResources);
+		_deferredIllumDelegate = RenderCore::Techniques::CreateTechniqueDelegate_Deferred(_techniqueSetFile, _sharedResources);
 	}
 
 	SharedTechniqueDelegateBox::SharedTechniqueDelegateBox(Techniques::DrawingApparatus& drawingApparatus)
@@ -27,6 +28,7 @@ namespace RenderCore { namespace LightingEngine
 	LightingEngineApparatus::LightingEngineApparatus(std::shared_ptr<Techniques::DrawingApparatus> drawingApparatus)
 	{
 		_device = drawingApparatus->_device;
+		_pipelineAccelerators = drawingApparatus->_pipelineAccelerators;
 		_sharedDelegates = std::make_shared<SharedTechniqueDelegateBox>(*drawingApparatus);
 	}
 

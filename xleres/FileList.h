@@ -46,3 +46,6 @@
 
 #define AREA_LIGHT_TECH "xleres/TechniqueLibrary/ToolsRig/arealight.material"
 #define MESH_MARKER_TECH "xleres/TechniqueLibrary/Config/Legacy/MeshMarker.tech"
+
+#define NORMALS_FITTING_TEXTURE "xleres/DefaultResources/normalsfitting.dds:LT"
+#define DISTINCT_COLORS_TEXTURE "xleres/DefaultResources/distinctcolors.dds:T"

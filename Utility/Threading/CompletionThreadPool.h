@@ -94,6 +94,7 @@ namespace Utility
 		void EnqueueBasic(std::function<void()>&& task);
 
         bool IsGood() const { return !_workerThreads.empty(); }
+        void StallAndDrainQueue();
 
         ThreadPool(unsigned threadCount);
         ~ThreadPool();
@@ -111,6 +112,9 @@ namespace Utility
         std::queue<PendingTask> _pendingTasks;
 
         volatile bool _workerQuit;
+        std::atomic<signed> _runningWorkerCount;
+
+        void RunBlocks(bool finishWhenEmpty);
     };
 
     template<class Fn, class... Args>

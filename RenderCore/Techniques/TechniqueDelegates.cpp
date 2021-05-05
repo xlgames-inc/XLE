@@ -205,6 +205,8 @@ namespace RenderCore { namespace Techniques
 					(stateSet._flag & Assets::RenderStateSet::Flag::BlendType)
 				&&	(stateSet._blendType == Assets::RenderStateSet::BlendType::DeferredDecal);
 			nascentDesc->_blend.push_back(deferredDecal ? CommonResourceBox::s_abStraightAlpha : CommonResourceBox::s_abOpaque);
+			nascentDesc->_blend.push_back(deferredDecal ? CommonResourceBox::s_abStraightAlpha : CommonResourceBox::s_abOpaque);
+			nascentDesc->_blend.push_back(deferredDecal ? CommonResourceBox::s_abStraightAlpha : CommonResourceBox::s_abOpaque);
 
 			auto illumType = CalculateIllumType(shaderPatches);
 			bool hasDeformVertex = shaderPatches.HasPatchType(s_deformVertex);
@@ -400,7 +402,7 @@ namespace RenderCore { namespace Techniques
 	class TechniqueDelegate_DepthOnly : public ITechniqueDelegate
 	{
 	public:
-	struct TechniqueFileHelper
+		struct TechniqueFileHelper
 		{
 		public:
 			std::shared_ptr<TechniqueSetFile> _techniqueSet;

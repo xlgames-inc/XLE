@@ -9,6 +9,7 @@
 #include "../../../RenderCore/LightingEngine/LightingEngineApparatus.h"
 #include "../../../RenderCore/LightingEngine/LightDesc.h"
 #include "../../../RenderCore/LightingEngine/ForwardLightingDelegate.h"
+#include "../../../RenderCore/LightingEngine/DeferredLightingDelegate.h"
 #include "../../../RenderCore/Techniques/RenderPass.h"
 #include "../../../RenderCore/Techniques/Drawables.h"
 #include "../../../RenderCore/Techniques/PipelineAccelerator.h"
@@ -17,7 +18,9 @@
 #include "../../../RenderCore/Techniques/CommonResources.h"
 #include "../../../RenderCore/Techniques/SystemUniformsDelegate.h"
 #include "../../../RenderCore/Techniques/Techniques.h"
+#include "../../../RenderCore/Techniques/TextureLoaders.h"
 #include "../../../RenderCore/MinimalShaderSource.h"
+#include "../../../BufferUploads/IBufferUploads.h"
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Assets/OSFileSystem.h"
@@ -96,7 +99,7 @@ namespace UnitTests
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{"ArbitraryShadowProjection"}, RenderCore::DescriptorType::UniformBuffer },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::UniformBuffer },
 			
-			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
+			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{"NormalsFittingTexture"}, RenderCore::DescriptorType::SampledTexture },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
 			RenderCore::Assets::PredefinedDescriptorSetLayout::ConditionalDescriptorSlot { std::string{}, RenderCore::DescriptorType::SampledTexture },
@@ -183,18 +186,56 @@ namespace UnitTests
 		}
 	};
 
-	TEST_CASE( "LightingEngine-CompileTechnique", "[rendercore_lighting_engine]" )
+	static RenderCore::Techniques::ParsingContext InitializeParsingContext(
+		RenderCore::Techniques::TechniqueContext& techniqueContext,
+		const RenderCore::ResourceDesc& targetDesc,
+		const RenderCore::Techniques::CameraDesc& camera)
 	{
 		using namespace RenderCore;
 
+		Techniques::PreregisteredAttachment preregisteredAttachments[] {
+			Techniques::PreregisteredAttachment {
+				Techniques::AttachmentSemantics::ColorLDR,
+				targetDesc,
+				Techniques::PreregisteredAttachment::State::Uninitialized
+			}
+		};
+		FrameBufferProperties fbProps { targetDesc._textureDesc._width, targetDesc._textureDesc._height };
+
+		Techniques::ParsingContext parsingContext{techniqueContext};
+		parsingContext.GetProjectionDesc() = BuildProjectionDesc(camera, UInt2{targetDesc._textureDesc._width, targetDesc._textureDesc._height});
+		parsingContext._fbProps = fbProps;
+		parsingContext._preregisteredAttachments = { preregisteredAttachments, &preregisteredAttachments[dimof(preregisteredAttachments)] };
+
+		return parsingContext;
+	}
+
+	static void ParseScene(RenderCore::LightingEngine::LightingTechniqueInstance& lightingIterator, DrawableWriter& drawableWriter)
+	{
+		using namespace RenderCore;
+		for (;;) {
+			auto next = lightingIterator.GetNextStep();
+			if (next._type == LightingEngine::StepType::None || next._type == LightingEngine::StepType::Abort) break;
+			assert(next._type == LightingEngine::StepType::ParseScene);
+			assert(next._pkt);
+			drawableWriter.WriteDrawable(*next._pkt);
+		}
+	}
+
+	TEST_CASE( "LightingEngine-ExecuteTechnique", "[rendercore_lighting_engine]" )
+	{
 		using namespace RenderCore;
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
 		auto xlresmnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", UnitTests::CreateEmbeddedResFileSystem());
 		auto testHelper = MakeTestHelper();
 
-		Verbose.SetConfiguration(OSServices::MessageTargetConfiguration{});
+		// Verbose.SetConfiguration(OSServices::MessageTargetConfiguration{});
 
 		auto techniqueServices = ConsoleRig::MakeAttachablePtr<Techniques::Services>(testHelper->_device);
+		techniqueServices->RegisterTextureLoader(std::regex(R"(.*\.[dD][dD][sS])"), Techniques::CreateDDSTextureLoader());
+		techniqueServices->RegisterTextureLoader(std::regex(R"(.*)"), Techniques::CreateWICTextureLoader());
+		std::shared_ptr<BufferUploads::IManager> bufferUploads = BufferUploads::CreateManager(*testHelper->_device);
+		techniqueServices->SetBufferUploads(bufferUploads);
 
 		auto executor = std::make_shared<thousandeyes::futures::DefaultExecutor>(std::chrono::milliseconds(2));
 		thousandeyes::futures::Default<thousandeyes::futures::Executor>::Setter execSetter(executor);
@@ -203,6 +244,10 @@ namespace UnitTests
 		auto filteringRegistration = ShaderSourceParser::RegisterShaderSelectorFilteringCompiler(compilers);
 		auto shaderCompilerRegistration = RenderCore::RegisterShaderCompiler(testHelper->_shaderSource, compilers);
 		auto shaderCompiler2Registration = RenderCore::Techniques::RegisterInstantiateShaderGraphCompiler(testHelper->_shaderSource, compilers);
+
+		auto cleanup = AutoCleanup([&globalServices](){
+			::Assets::Services::GetAssetSets().Clear();
+		});
 
 		auto pipelineAcceleratorPool = Techniques::CreatePipelineAcceleratorPool(
 			testHelper->_device, testHelper->_pipelineLayout, Techniques::PipelineAcceleratorPoolFlags::RecordDescriptorSetBindingInfo,
@@ -216,52 +261,91 @@ namespace UnitTests
 			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
 			TextureDesc::Plain2D(256, 256, RenderCore::Format::R8G8B8A8_UNORM),
 			"temporary-out");
-		RenderCore::Techniques::PreregisteredAttachment preregisteredAttachments[] {
-			RenderCore::Techniques::PreregisteredAttachment {
-				RenderCore::Techniques::AttachmentSemantics::ColorLDR,
-				targetDesc,
-				RenderCore::Techniques::PreregisteredAttachment::State::Uninitialized
-			}
-		};
-		RenderCore::FrameBufferProperties fbProps { targetDesc._textureDesc._width, targetDesc._textureDesc._height };
-
-		auto lightingTechnique = LightingEngine::CreateForwardLightingTechnique(testHelper->_device, pipelineAcceleratorPool, techDelBox, MakeIteratorRange(preregisteredAttachments), fbProps);
-		(void)lightingTechnique;
-
+		
 		auto threadContext = testHelper->_device->GetImmediateContext();
 		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 
-		auto techniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
-		techniqueContext->_drawablesSharedResources = RenderCore::Techniques::CreateDrawablesSharedResources();
-		auto commonResources = std::make_shared<RenderCore::Techniques::CommonResourceBox>(*testHelper->_device);
-		techniqueContext->_systemUniformsDelegate = std::make_shared<RenderCore::Techniques::SystemUniformsDelegate>(*testHelper->_device, *commonResources);
+		DrawableWriter drawableWriter(*testHelper, *pipelineAcceleratorPool);
+
+		RenderCore::LightingEngine::SceneLightingDesc lightingDesc;
+		lightingDesc._lights.push_back(CreateTestLight());
+		lightingDesc._shadowProjections.push_back(CreateTestShadowProjection());
+
+		RenderCore::Techniques::CameraDesc camera;
+		camera._cameraToWorld = MakeCameraToWorld(Float3{1.0f, 0.0f, 0.0f}, Float3{0.0f, 1.0f, 0.0f}, Float3{-5.0f, 0.f, 0.f});
+
+		auto techniqueContext = std::make_shared<Techniques::TechniqueContext>();
+		techniqueContext->_drawablesSharedResources = Techniques::CreateDrawablesSharedResources();
+		auto commonResources = std::make_shared<Techniques::CommonResourceBox>(*testHelper->_device);
+		techniqueContext->_systemUniformsDelegate = std::make_shared<Techniques::SystemUniformsDelegate>(*testHelper->_device, *commonResources);
 		techniqueContext->_attachmentPool = std::make_shared<Techniques::AttachmentPool>(testHelper->_device);
 		techniqueContext->_frameBufferPool = Techniques::CreateFrameBufferPool();
-
-		DrawableWriter drawableWriter(*testHelper, *pipelineAcceleratorPool);
+		
+		auto parsingContext = InitializeParsingContext(*techniqueContext, targetDesc, camera);
+		parsingContext.GetTechniqueContext()._attachmentPool->Bind(Techniques::AttachmentSemantics::ColorLDR, fbHelper.GetMainTarget());
 
 		testHelper->BeginFrameCapture();
 
+		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		SECTION("Forward lighting")
 		{
-			RenderCore::LightingEngine::SceneLightingDesc lightingDesc;
-			lightingDesc._lights.push_back(CreateTestLight());
-			lightingDesc._shadowProjections.push_back(CreateTestShadowProjection());
+			auto lightingTechnique = LightingEngine::CreateForwardLightingTechnique(
+				testHelper->_device,
+				pipelineAcceleratorPool, techDelBox,
+				MakeIteratorRange(parsingContext._preregisteredAttachments), parsingContext._fbProps);
 
-			RenderCore::Techniques::CameraDesc camera;
-			camera._cameraToWorld = MakeCameraToWorld(Float3{1.0f, 0.0f, 0.0f}, Float3{0.0f, 1.0f, 0.0f}, Float3{-5.0f, 0.f, 0.f});
-			
-			Techniques::ParsingContext parsingContext{*techniqueContext};
-			parsingContext.GetProjectionDesc() = BuildProjectionDesc(camera, UInt2{targetDesc._textureDesc._width, targetDesc._textureDesc._height});
-			RenderCore::LightingEngine::LightingTechniqueInstance lightingIterator(
-				*threadContext, parsingContext, *pipelineAcceleratorPool, lightingDesc, *lightingTechnique);
-
-			for (;;) {
-				auto next = lightingIterator.GetNextStep();
-				if (next._type == LightingEngine::StepType::None || next._type == LightingEngine::StepType::Abort) break;
-				assert(next._type == LightingEngine::StepType::ParseScene);
-				assert(next._pkt);
-				drawableWriter.WriteDrawable(*next._pkt);
+			// stall until all resources are ready
+			{
+				RenderCore::LightingEngine::LightingTechniqueInstance prepareLightingIterator(*pipelineAcceleratorPool, *lightingTechnique);
+				ParseScene(prepareLightingIterator, drawableWriter);
+				auto prepareMarker = prepareLightingIterator.GetResourcePreparationMarker();
+				if (prepareMarker) {
+					prepareMarker->StallWhilePending();
+					REQUIRE(prepareMarker->GetAssetState() == ::Assets::AssetState::Ready);
+				}
 			}
+
+			{
+				RenderCore::LightingEngine::LightingTechniqueInstance lightingIterator(
+					*threadContext, parsingContext, *pipelineAcceleratorPool, lightingDesc, *lightingTechnique);
+				ParseScene(lightingIterator, drawableWriter);
+			}
+
+			fbHelper.SaveImage(*threadContext, "forward-lighting-output");
+		}
+
+		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		SECTION("Deferred lighting")
+		{
+			auto lightingTechniqueFuture = LightingEngine::CreateDeferredLightingTechnique(
+				testHelper->_device,
+				pipelineAcceleratorPool, techDelBox,
+				MakeIteratorRange(parsingContext._preregisteredAttachments), parsingContext._fbProps);
+			lightingTechniqueFuture->StallWhilePending();
+			auto lightingTechnique = lightingTechniqueFuture->Actualize();
+
+			bufferUploads->Update(*threadContext);
+			Threading::Sleep(16);
+			bufferUploads->Update(*threadContext);
+
+			// stall until all resources are ready
+			{
+				RenderCore::LightingEngine::LightingTechniqueInstance prepareLightingIterator(*pipelineAcceleratorPool, *lightingTechnique);
+				ParseScene(prepareLightingIterator, drawableWriter);
+				auto prepareMarker = prepareLightingIterator.GetResourcePreparationMarker();
+				if (prepareMarker) {
+					prepareMarker->StallWhilePending();
+					REQUIRE(prepareMarker->GetAssetState() == ::Assets::AssetState::Ready);
+				}
+			}
+
+			{
+				RenderCore::LightingEngine::LightingTechniqueInstance lightingIterator(
+					*threadContext, parsingContext, *pipelineAcceleratorPool, lightingDesc, *lightingTechnique);
+				ParseScene(lightingIterator, drawableWriter);
+			}
+
+			fbHelper.SaveImage(*threadContext, "deferred-lighting-output");
 		}
 
 		testHelper->EndFrameCapture();

@@ -6,6 +6,7 @@
 
 #include "LightingEngine.h"
 #include "LightDesc.h"
+#include "RenderStepFragments.h"
 #include "../Techniques/RenderPass.h"
 
 namespace RenderCore { namespace LightingEngine
@@ -22,27 +23,18 @@ namespace RenderCore { namespace LightingEngine
 	class CompiledLightingTechnique
 	{
 	public:
-		struct Step
-		{
-			enum class Type { ParseScene, ExecuteFunction, ExecuteDrawables, BeginRenderPassInstance, EndRenderPassInstance, NextRenderPassStep, None };
-			Type _type = Type::None;
-			Techniques::BatchFilter _batch = Techniques::BatchFilter::Max;
-			std::shared_ptr<Techniques::SequencerConfig> _sequencerConfig;
-			std::shared_ptr<Techniques::IShaderResourceDelegate> _shaderResourceDelegate;
-			FrameBufferDesc _fbDesc;
-			FragmentLinkResults _fragmentLinkResults;
-
-			using FnSig = void(LightingTechniqueIterator&);
-			std::function<FnSig> _function;
-		};
-		std::vector<Step> _steps;
-
-		void Push(std::function<Step::FnSig>&&);
-		void PushParseScene(Techniques::BatchFilter);
-		void PushExecuteDrawables(
+		using StepFnSig = void(LightingTechniqueIterator&);
+		void CreateStep_CallFunction(std::function<StepFnSig>&&);
+		void CreateStep_ParseScene(Techniques::BatchFilter);
+		void CreateStep_ExecuteDrawables(
 			std::shared_ptr<Techniques::SequencerConfig> sequencerConfig,
 			std::shared_ptr<Techniques::IShaderResourceDelegate> uniformDelegate);
-		void Push(RenderStepFragmentInterface&& fragmentInterface);
+		void CreateStep_RunFragmentsAndExecuteDrawables(RenderStepFragmentInterface&& fragmentInterface);
+		void CreateStep_RunFragmentsAndCallFunction(
+			RenderStepFragmentInterface&& fragmentInterface, 
+			std::function<StepFnSig>&& fn);
+
+		void CompleteConstruction();
 
 		std::vector<Techniques::PreregisteredAttachment> _workingAttachments;
 		FrameBufferProperties _fbProps;
@@ -56,6 +48,33 @@ namespace RenderCore { namespace LightingEngine
 			const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
 			const FrameBufferProperties& fbProps,
 			IteratorRange<const Techniques::PreregisteredAttachment*> preregisteredAttachments);
+		~CompiledLightingTechnique();
+
+	private:
+		// PendingCreateFragmentStep is used internally to merge subsequent CreateStep_ calls
+		// into single render passes
+		class PendingCreateFragmentStep;
+		std::vector<PendingCreateFragmentStep> _pendingCreateFragmentSteps;
+		bool _isConstructionCompleted = false;
+
+		struct Step
+		{
+			enum class Type { ParseScene, CallFunction, ExecuteDrawables, BeginRenderPassInstance, EndRenderPassInstance, NextRenderPassStep, None };
+			Type _type = Type::None;
+			Techniques::BatchFilter _batch = Techniques::BatchFilter::Max;
+			std::shared_ptr<Techniques::SequencerConfig> _sequencerConfig;
+			std::shared_ptr<Techniques::IShaderResourceDelegate> _shaderResourceDelegate;
+			FrameBufferDesc _fbDesc;
+			FragmentLinkResults _fragmentLinkResults;
+
+			std::function<StepFnSig> _function;
+		};
+		std::vector<Step> _steps;
+
+		friend class LightingTechniqueIterator;
+		friend class LightingTechniqueInstance;
+
+		void ResolvePendingCreateFragmentSteps();
 	};
 
     class LightingTechniqueIterator
@@ -72,7 +91,7 @@ namespace RenderCore { namespace LightingEngine
 		const CompiledLightingTechnique* _compiledTechnique = nullptr;
 		SceneLightingDesc _sceneLightingDesc;
 
-		void PushFollowingStep(std::function<CompiledLightingTechnique::Step::FnSig>&& fn);
+		void PushFollowingStep(std::function<CompiledLightingTechnique::StepFnSig>&& fn);
         void PushFollowingStep(Techniques::BatchFilter batchFilter);
 		void PushFollowingStep(std::shared_ptr<Techniques::SequencerConfig> seqConfig, std::shared_ptr<Techniques::IShaderResourceDelegate> uniformDelegate);
 		LightingTechniqueIterator(
@@ -88,7 +107,6 @@ namespace RenderCore { namespace LightingEngine
 		std::vector<CompiledLightingTechnique::Step> _steps;
 		std::vector<CompiledLightingTechnique::Step>::iterator _stepIterator;
 		std::vector<CompiledLightingTechnique::Step>::iterator _pushFollowingIterator;
-		size_t currentStepIdx = 0;
 
 		friend class LightingTechniqueInstance;
 	};

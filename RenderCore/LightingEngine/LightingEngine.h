@@ -28,7 +28,7 @@ namespace RenderCore { namespace LightingEngine
 			Techniques::DrawablesPacket* _pkt = nullptr;
 		};
 		Step GetNextStep();
-		
+
 		LightingTechniqueInstance(
 			IThreadContext&,
 			Techniques::ParsingContext&,
@@ -36,8 +36,18 @@ namespace RenderCore { namespace LightingEngine
 			const SceneLightingDesc&,
 			CompiledLightingTechnique&);
 		~LightingTechniqueInstance();
+
+		// For ensuring that required resources are prepared/loaded
+		std::shared_ptr<::Assets::IAsyncMarker> GetResourcePreparationMarker();
+		LightingTechniqueInstance(
+			Techniques::IPipelineAcceleratorPool&,
+			CompiledLightingTechnique&);
 	private:
 		std::unique_ptr<LightingTechniqueIterator> _iterator;
+
+		class PrepareResourcesIterator;
+		std::unique_ptr<PrepareResourcesIterator> _prepareResourcesIterator;
+		Step GetNextPrepareResourcesStep();
 	};
 
 }}

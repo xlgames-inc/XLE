@@ -18,6 +18,7 @@ namespace Assets
     
     void AsyncMarkerGroup::Add(const std::shared_ptr<IAsyncMarker>& marker, const std::string& name)
     {
+        assert(marker);
         _entries.push_back({marker, name});
     }
     

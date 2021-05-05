@@ -5,18 +5,19 @@
 #pragma once
 
 #include "LightingEngine.h"
+#include "../../Assets/AssetsCore.h"
 
 namespace RenderCore { namespace Techniques { class ParsingContext; struct PreregisteredAttachment; } }
 namespace RenderCore { class IDevice; class FrameBufferProperties; }
 
 namespace RenderCore { namespace LightingEngine
 {
-	std::shared_ptr<CompiledLightingTechnique> CreateForwardLightingTechnique(
+	std::shared_ptr<CompiledLightingTechnique> CreateDeferredLightingTechnique(
 		const std::shared_ptr<LightingEngineApparatus>& apparatus,
 		IteratorRange<const Techniques::PreregisteredAttachment*> preregisteredAttachments,
 		const FrameBufferProperties& fbProps);
 
-	std::shared_ptr<CompiledLightingTechnique> CreateForwardLightingTechnique(
+	::Assets::FuturePtr<CompiledLightingTechnique> CreateDeferredLightingTechnique(
 		const std::shared_ptr<IDevice>& device,
 		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
 		const std::shared_ptr<SharedTechniqueDelegateBox>& techDelBox,

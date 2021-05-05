@@ -410,11 +410,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		void ProgressiveDescriptorSetBuilder::ValidateResourceVisibility(IResource& res)
 		{
 			auto& vres = *checked_cast<Resource*>(&res);
-			if (_flags & Flags::ValidateVisibilityOnBind) {
-				if (vres._pendingInitialization)
-					Throw(std::runtime_error("Attempting to use a resource while it still has a pending initialization function. Call Metal::CompleteInitialization() to complete initialization for this resource. Resource: " + std::string{res.GetDesc()._name}));
-			}
-
 			if (!vres.GetImage())		// we only care about images; they are the ones with awkward rules
 				return;
 
@@ -782,6 +777,10 @@ namespace RenderCore { namespace Metal_Vulkan
 			nullptr, 0,
 			resourceVisibilityList
 			VULKAN_VERBOSE_DEBUG_ONLY(, _description));
+
+		#if defined(VULKAN_VALIDATE_RESOURCE_VISIBILITY)
+			_resourcesThatMustBeVisible = std::move(resourceVisibilityList);
+		#endif
 	}
 
 	CompiledDescriptorSet::~CompiledDescriptorSet()

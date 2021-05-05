@@ -10,11 +10,13 @@
 #include <memory>
 #include <map>
 
-namespace RenderCore { namespace Techniques { 
+namespace RenderCore { namespace Techniques 
+{
 	class TechniqueSetFile;
 	class TechniqueSharedResources;
 	class ITechniqueDelegate;
 	class DrawingApparatus;
+	class IPipelineAcceleratorPool;
 }}
 namespace RenderCore { class IDevice; }
 namespace Assets { class InitializerPack; }
@@ -44,6 +46,7 @@ namespace RenderCore { namespace LightingEngine
 	public:
 		std::shared_ptr<SharedTechniqueDelegateBox> _sharedDelegates;
 		std::shared_ptr<IDevice> _device;
+		std::shared_ptr<Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
 
 		LightingEngineApparatus(std::shared_ptr<Techniques::DrawingApparatus>);
 		~LightingEngineApparatus();
