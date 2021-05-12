@@ -288,7 +288,7 @@ namespace SceneEngine
                 {
                     auto& shader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                         BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
-                        "xleres/forward/transparency/stochasticdebug.hlsl:ps_pixelmetrics:ps_*");
+                        "xleres/Forward/Transparency/stochasticdebug.hlsl:ps_pixelmetrics:ps_*");
 					UniformsStreamInterface usi;
 					usi.BindShaderResource(0, Hash64("DepthsTexture"));
 					usi.BindShaderResource(1, Hash64("LitSamplesMetrics"));
@@ -308,7 +308,7 @@ namespace SceneEngine
                     RenderGPUMetrics(
                         context, parserContext,
 						MetricsBox{MetricsBox::Desc{}},
-                        "xleres/forward/transparency/stochasticdebug.hlsl",
+                        "xleres/Forward/Transparency/stochasticdebug.hlsl",
                         {"LitFragmentCount", "AveLitFragment", "PartialLitFragment"});
                 });
         }
@@ -316,7 +316,7 @@ namespace SceneEngine
         if (Tweakable("StochTransDebug", false)) {
             auto& shader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen:vs_*",
-                "xleres/forward/transparency/stochasticdebug.hlsl:ps_depthave:ps_*");
+                "xleres/Forward/Transparency/stochasticdebug.hlsl:ps_depthave:ps_*");
 			UniformsStreamInterface usi;
 			usi.BindShaderResource(0, Hash64("DepthsTexture"));
             Metal::BoundUniforms uniforms(

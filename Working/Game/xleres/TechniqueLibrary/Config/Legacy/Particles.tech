@@ -16,7 +16,7 @@ Illum=~
             RES_HAS_OPACITY_MAP
     VertexShader=xleres/particles/Particle.vertex.hlsl:nogs
     GeometryShader=xleres/particles/sprite.geo.hlsl:autoquads
-    PixelShader=xleres/forward/illum.pixel.hlsl:main
+    PixelShader=xleres/Forward/illum.pixel.hlsl:main
 DepthOnly=~
     Parameters=~
         Geometry=~
@@ -25,7 +25,7 @@ DepthOnly=~
             MAT_ALPHA_TEST
     VertexShader=xleres/particles/Particle.vertex.hlsl:nogs
     GeometryShader=xleres/particles/sprite.geo.hlsl:autoquads
-    PixelShader=xleres/forward/depthonly.pixel.hlsl:main
+    PixelShader=xleres/Forward/depthonly.pixel.hlsl:main
 Deferred=~
     Parameters=~
         Geometry=~
@@ -43,7 +43,7 @@ Deferred=~
             RES_HAS_NormalsTexture_DXT
     VertexShader=xleres/particles/Particle.vertex.hlsl:nogs
     GeometryShader=xleres/particles/sprite.geo.hlsl:autoquads
-    PixelShader=xleres/deferred/basic.pixel.hlsl:main
+    PixelShader=xleres/Deferred/basic.pixel.hlsl:main
 ShadowGen=~
 OrderIndependentTransparency=~
     Parameters=~
@@ -64,4 +64,4 @@ OrderIndependentTransparency=~
             RES_HAS_NormalsTexture_DXT
     VertexShader=xleres/particles/Particle.vertex.hlsl:nogs
     GeometryShader=xleres/particles/sprite.geo.hlsl:autoquads
-    PixelShader=xleres/forward/transparency/illum.pixel.hlsl:main
+    PixelShader=xleres/Forward/Transparency/illum.pixel.hlsl:main

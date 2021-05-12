@@ -12,7 +12,7 @@ Deferred=~
 OrderIndependentTransparency=~
 	Inherit=~; ../Illum.tech:IllumShared; ../Shared.tech:Forward
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
-	PixelShader=xleres/forward/transparency/illum.pixel.hlsl:main_oi
+	PixelShader=xleres/Forward/Transparency/illum.pixel.hlsl:main_oi
 
 StochasticTransparency=~
 	Inherit=~; ../Illum.tech:IllumShared; ../Shared.tech:Forward
@@ -21,12 +21,12 @@ StochasticTransparency=~
 		STOCHASTIC_TRANS_PRIMITIVEID
 		STOCHASTIC_TRANS_OPACITY
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
-	PixelShader=xleres/forward/transparency/illum.pixel.hlsl:main_stochastic
+	PixelShader=xleres/Forward/Transparency/illum.pixel.hlsl:main_stochastic
 
 DepthWeightedTransparency=~
 	Inherit=~; ../Illum.tech:IllumShared; ../Shared.tech:Forward
 	VertexShader=xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl:main
-	PixelShader=xleres/forward/transparency/depthweighted.hlsl:main_depth_weighted_oi
+	PixelShader=xleres/Forward/Transparency/depthweighted.hlsl:main_depth_weighted_oi
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

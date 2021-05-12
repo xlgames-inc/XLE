@@ -16,6 +16,7 @@
 
 #define MAIN_PIPELINE "xleres/TechniqueLibrary/Config/main.pipeline"
 #define IMMEDIATE_PIPELINE "xleres/TechniqueLibrary/Config/immediate.pipeline"
+#define LIGHTING_OPERATOR_PIPELINE "xleres/TechniqueLibrary/Config/lighting_operator.pipeline"
 
 #define ROOT_SIGNATURE_CFG "xleres/TechniqueLibrary/System/RootSignature.cfg"
 #define ROOT_SIGNATURE_COMPUTE_CFG "xleres/TechniqueLibrary/System/RootSignatureCS.cfg"
@@ -30,7 +31,9 @@
 #define NO_PATCHES_VERTEX_HLSL "xleres/TechniqueLibrary/Standard/nopatches.vertex.hlsl"
 #define NO_PATCHES_PIXEL_HLSL "xleres/TechniqueLibrary/Standard/nopatches.pixel.hlsl"
 
-#define CASCADE_VIS_HLSL "xleres/deferred/debugging/cascadevis.pixel.hlsl"
+#define DEFERRED_RESOLVE_LIGHT "xleres/Deferred/resolvelight.pixel.hlsl"
+
+#define CASCADE_VIS_HLSL "xleres/Deferred/debugging/cascadevis.pixel.hlsl"
 #define HIGHLIGHT_VIS_PIXEL_HLSL "xleres/TechniqueLibrary/ToolsRig/Vis/HighlightVis.pixel.hlsl"
 #define OUTLINE_VIS_PIXEL_HLSL "xleres/TechniqueLibrary/ToolsRig/Vis/outlinehighlight.pixel.hlsl"
 #define SOLID_WIREFRAME_GEO_HLSL "xleres/TechniqueLibrary/ToolsRig/Vis/solidwireframe.geo.hlsl"

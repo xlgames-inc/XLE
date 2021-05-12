@@ -190,7 +190,7 @@ namespace SceneEngine
             if (checkForInfiniteLoops) {
                 metalContext.Bind(::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                     BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
-                    "xleres/forward/transparency/resolve.pixel.hlsl:FindInfiniteLoops:ps_*"));
+                    "xleres/Forward/Transparency/resolve.pixel.hlsl:FindInfiniteLoops:ps_*"));
                 metalContext.Bind(MakeResourceList(transparencyTargets._infiniteLoopRTV), nullptr);
                 metalContext.Bind(Techniques::CommonResources()._blendOpaque);
                 metalContext.Draw(4);
@@ -205,7 +205,7 @@ namespace SceneEngine
 
             auto& resolveShader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
-                "xleres/forward/transparency/resolve.pixel.hlsl:main:ps_*",
+                "xleres/Forward/Transparency/resolve.pixel.hlsl:main:ps_*",
                 checkForInfiniteLoops ? "DETECT_INFINITE_LISTS=1" : nullptr);
             metalContext.Bind(resolveShader);
 

@@ -172,7 +172,7 @@ namespace SceneEngine
 
             auto& resolveShader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
-                "xleres/forward/transparency/cloudresolve.pixel.hlsl:main:ps_*");
+                "xleres/Forward/Transparency/cloudresolve.pixel.hlsl:main:ps_*");
             context->Bind(resolveShader);
             context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(0, parserContext.GetGlobalTransformCB()));
             SetupVertexGeneratorShader(*context);

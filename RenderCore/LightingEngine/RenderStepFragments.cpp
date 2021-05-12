@@ -27,9 +27,38 @@ namespace RenderCore { namespace LightingEngine
 		_frameBufferDescFragment.AddSubpass(std::move(subpass));
 		_subpassExtensions.emplace_back(
 			SubpassExtension {
+				SubpassExtension::Type::ExecuteDrawables,
 				techniqueDelegate, std::move(sequencerSelectors), batchFilter,
 				std::move(shaderResourceDelegate)
 			});
+	}
+
+	void RenderStepFragmentInterface::AddSubpass(
+		RenderCore::SubpassDesc&& subpass,
+		std::function<void(LightingTechniqueIterator&)>&& fn)
+	{
+		_frameBufferDescFragment.AddSubpass(std::move(subpass));
+		SubpassExtension ext;
+		ext._type = SubpassExtension::Type::CallLightingIteratorFunction;
+		ext._lightingIteratorFunction = std::move(fn);
+		_subpassExtensions.emplace_back(std::move(ext));
+	}
+
+	void RenderStepFragmentInterface::AddSubpasses(
+		IteratorRange<const RenderCore::SubpassDesc*> subpasses,
+		std::function<void(LightingTechniqueIterator&)>&& fn)
+	{
+		if (subpasses.empty()) return;
+		for (const auto& s:subpasses)
+			_frameBufferDescFragment.AddSubpass(SubpassDesc{s});
+
+		SubpassExtension ext;
+		ext._type = SubpassExtension::Type::CallLightingIteratorFunction;
+		ext._lightingIteratorFunction = std::move(fn);
+		_subpassExtensions.emplace_back(std::move(ext));
+		// One function should iterate through all subpasses -- so subpasses after the first need to be marked as handled by that function
+		for (unsigned c=1; c<subpasses.size(); ++c)
+			_subpassExtensions.emplace_back(SubpassExtension { SubpassExtension::Type::HandledByPrevious });
 	}
 
 	RenderStepFragmentInterface::RenderStepFragmentInterface(RenderCore::PipelineType pipelineType)

@@ -346,7 +346,9 @@ namespace ToolsRig
 		const RenderCore::FrameBufferProperties& fbProps)
 	{
 		assert(_pipelineAccelerators && _lightingApparatus);
-		_compiledLightingTechnique = RenderCore::LightingEngine::CreateForwardLightingTechnique(_lightingApparatus, preregAttachments, fbProps);
+		auto lightingTechniqueFuture = RenderCore::LightingEngine::CreateForwardLightingTechnique(_lightingApparatus, preregAttachments, fbProps);
+		lightingTechniqueFuture->StallWhilePending();
+		_compiledLightingTechnique = lightingTechniqueFuture->Actualize();
 		_lightingTechniqueTargetsHash = RenderCore::Techniques::HashPreregisteredAttachments(preregAttachments, fbProps);
 	}
 

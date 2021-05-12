@@ -17,6 +17,7 @@ namespace RenderCore { namespace Techniques
 	class ITechniqueDelegate;
 	class DrawingApparatus;
 	class IPipelineAcceleratorPool;
+	class GraphicsPipelineCollection;
 }}
 namespace RenderCore { class IDevice; }
 namespace Assets { class InitializerPack; }
@@ -47,6 +48,11 @@ namespace RenderCore { namespace LightingEngine
 		std::shared_ptr<SharedTechniqueDelegateBox> _sharedDelegates;
 		std::shared_ptr<IDevice> _device;
 		std::shared_ptr<Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
+		std::shared_ptr<ICompiledPipelineLayout> _lightingOperatorLayout;
+		std::shared_ptr<Techniques::GraphicsPipelineCollection> _lightingOperatorCollection;
+
+		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depValPtr; }
+		::Assets::DependencyValidation _depValPtr;
 
 		LightingEngineApparatus(std::shared_ptr<Techniques::DrawingApparatus>);
 		~LightingEngineApparatus();

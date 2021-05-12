@@ -60,9 +60,9 @@ namespace UnitTests
 		_defaultLegacyBindings = CreateDefaultLegacyRegisterBindingDesc();
 		_pipelineLayout = CreateDefaultPipelineLayout(*_device);
 
-		auto shaderCompiler = CreateDefaultShaderCompiler(*_device, *_defaultLegacyBindings);
+		_shaderCompiler = CreateDefaultShaderCompiler(*_device, *_defaultLegacyBindings);
 		_shaderService = std::make_unique<RenderCore::ShaderService>();
-		_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(shaderCompiler);
+		_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(_shaderCompiler);
 		_shaderService->SetShaderSource(_shaderSource);
 	}
 
@@ -71,7 +71,8 @@ namespace UnitTests
 		_device = device;
 
 		_shaderService = std::make_unique<RenderCore::ShaderService>();
-		_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(_device->CreateShaderCompiler());
+		_shaderCompiler = _device->CreateShaderCompiler();
+		_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(_shaderCompiler);
 		_shaderService->SetShaderSource(_shaderSource);
 	}
 

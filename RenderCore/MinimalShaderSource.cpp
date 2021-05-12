@@ -82,9 +82,16 @@ namespace RenderCore
 		::Assets::DependentFileState fileState;
 		size_t fileSize = 0;
 		auto fileData = ::Assets::MainFileSystem::TryLoadFileAsMemoryBlock(resId._filename, &fileSize, &fileState);
-		auto result = Compile({(const char*)fileData.get(), (const char*)fileData.get() + fileSize}, resId, definesTable);
-		result._deps.push_back(std::move(fileState));
-		return result;
+		if (fileData.get() && fileSize) {
+			auto result = Compile({(const char*)fileData.get(), (const char*)fileData.get() + fileSize}, resId, definesTable);
+			result._deps.push_back(std::move(fileState));
+			return result;
+		} else {
+			ShaderByteCodeBlob result;
+			result._errors = ::Assets::AsBlob(std::string{"Empty or missing shader file: "} + resId._filename);
+			result._deps.push_back(std::move(fileState));
+			return result;
+		}
 	}
 			
 	auto MinimalShaderSource::CompileFromMemory(

@@ -52,7 +52,7 @@ namespace EntityInterface
         light._radii = Float2(decomposed._scale[0], decomposed._scale[1]);
 
             // For directional lights we need to normalize the position (it will be treated as a direction)
-        if (light._shape == RenderCore::LightingEngine::LightDesc::Shape::Directional)
+        if (light._shape == RenderCore::LightingEngine::LightSourceShape::Directional)
             light._position = (MagnitudeSquared(light._position) > 1e-5f) ? Normalize(light._position) : Float3(0.f, 0.f, 0.f);
     }
 
@@ -105,7 +105,7 @@ namespace EntityInterface
                 const auto& props = child->_properties;
                 auto light = SceneEngine::MakeLightDesc(props);
                 if (child->_type == typeDirectionalLight)
-                    light._shape = RenderCore::LightingEngine::LightDesc::Shape::Directional;
+                    light._shape = RenderCore::LightingEngine::LightSourceShape::Directional;
                 ReadTransform(light, props);
                 
                 if (props.GetParameter(Attribute::Flags, 0u) & (1<<0)) {

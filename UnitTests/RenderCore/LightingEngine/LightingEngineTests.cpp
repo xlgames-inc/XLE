@@ -19,6 +19,8 @@
 #include "../../../RenderCore/Techniques/SystemUniformsDelegate.h"
 #include "../../../RenderCore/Techniques/Techniques.h"
 #include "../../../RenderCore/Techniques/TextureLoaders.h"
+#include "../../../RenderCore/Techniques/PipelineCollection.h"
+#include "../../../RenderCore/Assets/PredefinedPipelineLayout.h"
 #include "../../../RenderCore/MinimalShaderSource.h"
 #include "../../../BufferUploads/IBufferUploads.h"
 #include "../../../Assets/AssetServices.h"
@@ -37,6 +39,7 @@
 #include "../../../ConsoleRig/AttachablePtr.h"
 #include "../../../ConsoleRig/GlobalServices.h"
 #include "../../../Tools/ToolsRig/VisualisationGeo.h"
+#include "../../../xleres/FileList.h"
 #include "../Metal/MetalTestHelper.h"
 #include "thousandeyes/futures/then.h"
 #include "thousandeyes/futures/DefaultExecutor.h"
@@ -122,7 +125,7 @@ namespace UnitTests
 		result._orientation = Identity<Float3x3>();
 		result._position = Float3{0.f, 1.0f, 0.f};
 		result._radii = Float2{1.0f, 1.0f};
-		result._shape = RenderCore::LightingEngine::LightDesc::Shape::Directional;
+		result._shape = RenderCore::LightingEngine::LightSourceShape::Directional;
 		result._diffuseColor = Float3{1.0f, 1.0f, 1.0f};
 		result._radii = Float2{100.f, 100.f};
 		return result;
@@ -222,6 +225,15 @@ namespace UnitTests
 		}
 	}
 
+	template<typename Type>
+		static std::shared_ptr<Type> StallAndRequireReady(::Assets::AssetFuture<Type>& future)
+	{
+		future.StallWhilePending();
+		INFO(::Assets::AsString(future.GetActualizationLog()));
+		REQUIRE(future.GetAssetState() == ::Assets::AssetState::Ready);
+		return future.Actualize();
+	}
+
 	TEST_CASE( "LightingEngine-ExecuteTechnique", "[rendercore_lighting_engine]" )
 	{
 		using namespace RenderCore;
@@ -289,10 +301,11 @@ namespace UnitTests
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		SECTION("Forward lighting")
 		{
-			auto lightingTechnique = LightingEngine::CreateForwardLightingTechnique(
+			auto lightingTechniqueFuture = LightingEngine::CreateForwardLightingTechnique(
 				testHelper->_device,
 				pipelineAcceleratorPool, techDelBox,
 				MakeIteratorRange(parsingContext._preregisteredAttachments), parsingContext._fbProps);
+			auto lightingTechnique = StallAndRequireReady(*lightingTechniqueFuture);
 
 			// stall until all resources are ready
 			{
@@ -317,12 +330,31 @@ namespace UnitTests
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		SECTION("Deferred lighting")
 		{
+			auto pipelineLayoutFileFuture = ::Assets::MakeAsset<RenderCore::Assets::PredefinedPipelineLayoutFile>(LIGHTING_OPERATOR_PIPELINE);
+			auto pipelineLayoutFile = StallAndRequireReady(*pipelineLayoutFileFuture);
+
+			const std::string pipelineLayoutName = "LightingOperator";
+			auto i = pipelineLayoutFile->_pipelineLayouts.find(pipelineLayoutName);
+			if (i == pipelineLayoutFile->_pipelineLayouts.end())
+				Throw(std::runtime_error("Did not find pipeline layout with the name " + pipelineLayoutName + " in the given pipeline layout file"));
+			auto pipelineInit = i->second->MakePipelineLayoutInitializer(testHelper->_shaderCompiler->GetShaderLanguage());
+			auto lightingOperatorLayout = testHelper->_device->CreatePipelineLayout(pipelineInit);
+
+			auto pipelineCollection = std::make_shared<Techniques::GraphicsPipelineCollection>(lightingOperatorLayout);
+
+			LightingEngine::LightResolveOperatorDesc resolveOperators[] {
+				LightingEngine::LightResolveOperatorDesc{}
+			};
+			LightingEngine::ShadowGeneratorDesc shadowGenerator[] {
+				LightingEngine::ShadowGeneratorDesc{}
+			};
+
 			auto lightingTechniqueFuture = LightingEngine::CreateDeferredLightingTechnique(
 				testHelper->_device,
-				pipelineAcceleratorPool, techDelBox,
+				pipelineAcceleratorPool, techDelBox, pipelineCollection,
+				MakeIteratorRange(resolveOperators), MakeIteratorRange(shadowGenerator), 
 				MakeIteratorRange(parsingContext._preregisteredAttachments), parsingContext._fbProps);
-			lightingTechniqueFuture->StallWhilePending();
-			auto lightingTechnique = lightingTechniqueFuture->Actualize();
+			auto lightingTechnique = StallAndRequireReady(*lightingTechniqueFuture);
 
 			bufferUploads->Update(*threadContext);
 			Threading::Sleep(16);

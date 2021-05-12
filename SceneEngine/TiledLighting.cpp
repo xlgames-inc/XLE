@@ -145,7 +145,7 @@ namespace SceneEngine
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(4, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/digits.dds:T")->Actualize()->GetShaderResource()));
         auto& debuggingShader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             BASIC2D_VERTEX_HLSL ":fullscreen:vs_*", 
-            "xleres/deferred/debugging.pixel.hlsl:DepthsDebuggingTexture:ps_*");
+            "xleres/Deferred/debugging.pixel.hlsl:DepthsDebuggingTexture:ps_*");
         context.Bind(debuggingShader);
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
         SetupVertexGeneratorShader(context);
@@ -281,16 +281,16 @@ namespace SceneEngine
                     metricBufferUAV, 
                     tileLightingResources._debuggingTexture[0], tileLightingResources._debuggingTexture[1], tileLightingResources._debuggingTexture[2]));
 
-                context->Bind(::Assets::Legacy::GetAssetDep<Metal::ComputeShader>("xleres/deferred/tiled.compute.hlsl:PrepareLights"));
+                context->Bind(::Assets::Legacy::GetAssetDep<Metal::ComputeShader>("xleres/Deferred/tiled.compute.hlsl:PrepareLights"));
                 context->Dispatch((tileLightCount + 256 - 1) / 256);
                         
                 char definesTable[256];
                 Utility::XlFormatString(definesTable, dimof(definesTable), "MSAA_SAMPLES=%i", sampleCount);
         
                 if (doClusteredRenderingTest) {
-                    context->Bind(::Assets::Legacy::GetAssetDep<Metal::ComputeShader>("xleres/deferred/clustered.compute.hlsl:main", definesTable));
+                    context->Bind(::Assets::Legacy::GetAssetDep<Metal::ComputeShader>("xleres/Deferred/clustered.compute.hlsl:main", definesTable));
                 } else {
-                    context->Bind(::Assets::Legacy::GetAssetDep<Metal::ComputeShader>("xleres/deferred/tiled.compute.hlsl:main", definesTable));
+                    context->Bind(::Assets::Legacy::GetAssetDep<Metal::ComputeShader>("xleres/Deferred/tiled.compute.hlsl:main", definesTable));
                 }
                 context->Dispatch(lightCulling._groupCounts[0], lightCulling._groupCounts[1]);
 
@@ -365,9 +365,9 @@ namespace SceneEngine
                 bool isShadowsPass = techniqueIndex == TechniqueIndex_ShadowGen;
 
                 auto& debuggingShader = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
-                    "xleres/deferred/debugging/beams.vertex.hlsl:main:vs_*", 
-                    "xleres/deferred/debugging/beams.geo.hlsl:main:gs_*", 
-                    "xleres/deferred/debugging/beams.pixel.hlsl:main:ps_*",
+                    "xleres/Deferred/debugging/beams.vertex.hlsl:main:vs_*", 
+                    "xleres/Deferred/debugging/beams.geo.hlsl:main:gs_*", 
+                    "xleres/Deferred/debugging/beams.pixel.hlsl:main:ps_*",
                     isShadowsPass?"SHADOWS=1;SHADOW_CASCADE_MODE=1":"");    // hack -- SHADOW_CASCADE_MODE let explicitly here
 
 				UniformsStreamInterface usi;
@@ -397,9 +397,9 @@ namespace SceneEngine
                 if (!isShadowsPass && Tweakable("TiledBeamsTransparent", false)) {
                     context->Bind(Techniques::CommonResources()._blendStraightAlpha);
                     auto& predepth = ::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
-                        "xleres/deferred/debugging/beams.vertex.hlsl:main:vs_*", 
-                        "xleres/deferred/debugging/beams.geo.hlsl:main:gs_*", 
-                        "xleres/deferred/debugging/beams.pixel.hlsl:predepth:ps_*",
+                        "xleres/Deferred/debugging/beams.vertex.hlsl:main:vs_*", 
+                        "xleres/Deferred/debugging/beams.geo.hlsl:main:gs_*", 
+                        "xleres/Deferred/debugging/beams.pixel.hlsl:predepth:ps_*",
                         "");
                     context->Bind(predepth);
                     context->Draw(globals[0]*globals[1]);
@@ -412,9 +412,9 @@ namespace SceneEngine
 
                 if (!isShadowsPass) {
                     context->Bind(::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
-                        "xleres/deferred/debugging/beams.vertex.hlsl:main:vs_*", 
-                        "xleres/deferred/debugging/beams.geo.hlsl:Outlines:gs_*", 
-                        "xleres/deferred/debugging/beams.pixel.hlsl:main:ps_*",
+                        "xleres/Deferred/debugging/beams.vertex.hlsl:main:vs_*", 
+                        "xleres/Deferred/debugging/beams.geo.hlsl:Outlines:gs_*", 
+                        "xleres/Deferred/debugging/beams.pixel.hlsl:main:ps_*",
                         ""));
                     context->Draw(globals[0]*globals[1]);
                 }

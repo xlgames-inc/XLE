@@ -13,6 +13,7 @@
 #include "../Techniques/RenderPass.h"
 #include "../Techniques/CommonBindings.h"
 #include "../Techniques/TechniqueDelegates.h"
+#include "../../Assets/AssetFutureContinuation.h"
 
 namespace RenderCore { namespace LightingEngine
 {
@@ -122,7 +123,7 @@ namespace RenderCore { namespace LightingEngine
 		return result;
 	}
 
-	std::shared_ptr<CompiledLightingTechnique> CreateForwardLightingTechnique(
+	::Assets::FuturePtr<CompiledLightingTechnique> CreateForwardLightingTechnique(
 		const std::shared_ptr<LightingEngineApparatus>& apparatus,
 		IteratorRange<const Techniques::PreregisteredAttachment*> preregisteredAttachments,
 		const FrameBufferProperties& fbProps)
@@ -130,7 +131,7 @@ namespace RenderCore { namespace LightingEngine
 		return CreateForwardLightingTechnique(apparatus->_device, apparatus->_pipelineAccelerators, apparatus->_sharedDelegates, preregisteredAttachments, fbProps);
 	}
 
-	std::shared_ptr<CompiledLightingTechnique> CreateForwardLightingTechnique(
+	::Assets::FuturePtr<CompiledLightingTechnique> CreateForwardLightingTechnique(
 		const std::shared_ptr<IDevice>& device,
 		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
 		const std::shared_ptr<SharedTechniqueDelegateBox>& techDelBox,
@@ -143,40 +144,49 @@ namespace RenderCore { namespace LightingEngine
 		captures->_shadowGenFrameBufferPool = Techniques::CreateFrameBufferPool();
 		captures->_uniformsDelegate = std::make_shared<ForwardLightingCaptures::UniformsDelegate>(*captures.get());
 
-		// Reset captures
-		lightingTechnique->CreateStep_CallFunction(
-			[captures](LightingTechniqueIterator& iterator) {
-				captures->_sceneLightDesc = &iterator._sceneLightingDesc;
-				iterator._parsingContext->AddShaderResourceDelegate(captures->_uniformsDelegate);
-			});
-
-		// Prepare shadows
 		ShadowGeneratorDesc defaultShadowGenerator;
-		captures->_shadowPreparer = CreateCompiledShadowPreparer(defaultShadowGenerator, pipelineAccelerators, techDelBox);
-		lightingTechnique->CreateStep_CallFunction(
-			[captures](LightingTechniqueIterator& iterator) {
-				const auto& lightingDesc = iterator._sceneLightingDesc;
+		auto shadowPreparerFuture = CreateCompiledShadowPreparer(defaultShadowGenerator, pipelineAccelerators, techDelBox);
 
-				captures->_preparedDMShadows.reserve(lightingDesc._shadowProjections.size());
-				for (unsigned c=0; c<lightingDesc._shadowProjections.size(); ++c)
-					SetupDMShadowPrepare(iterator, captures, lightingDesc._shadowProjections[c], c);
+		auto result = std::make_shared<::Assets::AssetFuture<CompiledLightingTechnique>>("forward-lighting-technique");
+		::Assets::WhenAll(shadowPreparerFuture).ThenConstructToFuture<CompiledLightingTechnique>(
+			*result,
+			[device, captures, lightingTechnique, techDelBox](std::shared_ptr<ICompiledShadowPreparer> shadowPreparer) {
+
+				// Reset captures
+				lightingTechnique->CreateStep_CallFunction(
+					[captures](LightingTechniqueIterator& iterator) {
+						captures->_sceneLightDesc = &iterator._sceneLightingDesc;
+						iterator._parsingContext->AddShaderResourceDelegate(captures->_uniformsDelegate);
+					});
+
+				// Prepare shadows
+				captures->_shadowPreparer = std::move(shadowPreparer);
+				lightingTechnique->CreateStep_CallFunction(
+					[captures](LightingTechniqueIterator& iterator) {
+						const auto& lightingDesc = iterator._sceneLightingDesc;
+
+						captures->_preparedDMShadows.reserve(lightingDesc._shadowProjections.size());
+						for (unsigned c=0; c<lightingDesc._shadowProjections.size(); ++c)
+							SetupDMShadowPrepare(iterator, captures, lightingDesc._shadowProjections[c], c);
+					});
+
+				// Draw main scene
+				const bool writeDirectToLDR = true;
+				lightingTechnique->CreateStep_RunFragments(CreateForwardSceneFragment(
+					techDelBox->_forwardIllumDelegate_DisableDepthWrite,
+					techDelBox->_depthOnlyDelegate, 
+					false, writeDirectToLDR));
+
+				lightingTechnique->CreateStep_CallFunction(
+					[captures](LightingTechniqueIterator& iterator) {
+						iterator._parsingContext->RemoveShaderResourceDelegate(*captures->_uniformsDelegate);
+					});
+
+				lightingTechnique->CompleteConstruction();
+					
+				return lightingTechnique;
 			});
-
-		// Draw main scene
-		const bool writeDirectToLDR = true;
-		lightingTechnique->CreateStep_RunFragmentsAndExecuteDrawables(CreateForwardSceneFragment(
-			techDelBox->_forwardIllumDelegate_DisableDepthWrite,
-			techDelBox->_depthOnlyDelegate, 
-			false, writeDirectToLDR));
-
-		lightingTechnique->CreateStep_CallFunction(
-			[captures](LightingTechniqueIterator& iterator) {
-				iterator._parsingContext->RemoveShaderResourceDelegate(*captures->_uniformsDelegate);
-			});
-
-		lightingTechnique->CompleteConstruction();
-			
-		return lightingTechnique;
+		return result;
 	}
 
 }}

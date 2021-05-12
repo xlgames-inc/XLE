@@ -84,7 +84,7 @@ namespace SceneEngine
     RenderCore::LightingEngine::LightDesc DefaultDominantLight()
     {
         RenderCore::LightingEngine::LightDesc light;
-        light._shape = RenderCore::LightingEngine::LightDesc::Directional;
+        light._shape = RenderCore::LightingEngine::LightSourceShape::Directional;
         light._position = Normalize(Float3(-0.15046243f, 0.97377890f, 0.17063323f));
         light._cutoffRange = 10000.f;
         light._diffuseColor = Float3(3.2803922f, 2.2372551f, 1.9627452f);
@@ -121,7 +121,7 @@ namespace SceneEngine
 
         if (constant_expression<false>::result()) {
             RenderCore::LightingEngine::LightDesc secondaryLight;
-            secondaryLight._shape = RenderCore::LightingEngine::LightDesc::Directional;
+            secondaryLight._shape = RenderCore::LightingEngine::LightSourceShape::Directional;
             secondaryLight._position = Normalize(Float3(0.71622938f, 0.48972201f, -0.49717990f));
             secondaryLight._cutoffRange = 10000.f;
             secondaryLight._diffuseColor = Float3(3.2803922f, 2.2372551f, 1.9627452f);
@@ -132,7 +132,7 @@ namespace SceneEngine
             result._lights.push_back(secondaryLight);
 
             RenderCore::LightingEngine::LightDesc tertiaryLight;
-            tertiaryLight._shape = RenderCore::LightingEngine::LightDesc::Directional;
+            tertiaryLight._shape = RenderCore::LightingEngine::LightSourceShape::Directional;
             tertiaryLight._position = Normalize(Float3(-0.75507462f, -0.62672323f, 0.19256261f));
             tertiaryLight._cutoffRange = 10000.f;
             tertiaryLight._diffuseColor = Float3(0.13725491f, 0.18666667f, 0.18745099f);
@@ -254,7 +254,7 @@ namespace SceneEngine
         result._diffuseModel = props.GetParameter(diffuseModel, 1);
         result._cutoffRange = props.GetParameter(cutoffRange, result._cutoffRange);
 
-        result._shape = (RenderCore::LightingEngine::LightDesc::Shape)props.GetParameter(shape, unsigned(result._shape));
+        result._shape = (RenderCore::LightingEngine::LightSourceShape)props.GetParameter(shape, unsigned(result._shape));
 
         result._shadowResolveModel = props.GetParameter(shadowResolveModel, 0);
         return result;
@@ -273,7 +273,7 @@ namespace SceneEngine
         light._radii = Float2(decomposed._scale[0], decomposed._scale[1]);
 
             // For directional lights we need to normalize the position (it will be treated as a direction)
-        if (light._shape == RenderCore::LightingEngine::LightDesc::Shape::Directional)
+        if (light._shape == RenderCore::LightingEngine::LightSourceShape::Directional)
             light._position = (MagnitudeSquared(light._position) > 1e-5f) ? Normalize(light._position) : Float3(0.f, 0.f, 0.f);
     }
     
@@ -336,7 +336,7 @@ namespace SceneEngine
 
                         auto lightDesc = MakeLightDesc(params);
                         if (XlEqString(name, EntityTypeName::DirectionalLight))
-                            lightDesc._shape = RenderCore::LightingEngine::LightDesc::Shape::Directional;
+                            lightDesc._shape = RenderCore::LightingEngine::LightSourceShape::Directional;
                         ReadTransform(lightDesc, params);
 
                         _lights.push_back(lightDesc);

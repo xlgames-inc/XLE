@@ -5,15 +5,24 @@
 #pragma once
 
 #include "LightingEngine.h"
+#include "LightDesc.h"
 #include "../../Assets/AssetsCore.h"
 
-namespace RenderCore { namespace Techniques { class ParsingContext; struct PreregisteredAttachment; } }
+namespace RenderCore { namespace Techniques { class ParsingContext; struct PreregisteredAttachment; class GraphicsPipelineCollection; } }
 namespace RenderCore { class IDevice; class FrameBufferProperties; }
 
 namespace RenderCore { namespace LightingEngine
 {
-	std::shared_ptr<CompiledLightingTechnique> CreateDeferredLightingTechnique(
+	struct LightResolveOperatorDesc
+	{
+		LightSourceShape _shape = LightSourceShape::Sphere;
+		unsigned _diffuseModel = 1;
+	};
+
+	::Assets::FuturePtr<CompiledLightingTechnique> CreateDeferredLightingTechnique(
 		const std::shared_ptr<LightingEngineApparatus>& apparatus,
+		IteratorRange<const LightResolveOperatorDesc*> resolveOperators,
+		IteratorRange<const ShadowGeneratorDesc*> shadowGenerators,
 		IteratorRange<const Techniques::PreregisteredAttachment*> preregisteredAttachments,
 		const FrameBufferProperties& fbProps);
 
@@ -21,6 +30,9 @@ namespace RenderCore { namespace LightingEngine
 		const std::shared_ptr<IDevice>& device,
 		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
 		const std::shared_ptr<SharedTechniqueDelegateBox>& techDelBox,
+		const std::shared_ptr<Techniques::GraphicsPipelineCollection>& pipelineCollection,
+		IteratorRange<const LightResolveOperatorDesc*> resolveOperators,
+		IteratorRange<const ShadowGeneratorDesc*> shadowGenerators,
 		IteratorRange<const Techniques::PreregisteredAttachment*> preregisteredAttachments,
 		const FrameBufferProperties& fbProps);
 }}

@@ -306,7 +306,6 @@ namespace RenderCore { namespace Metal_Vulkan
 				bool isAttachmentInput = !!(a.second._attachmentUsage & unsigned(Internal::AttachmentUsageType::Input));
 				if (isDepthStencil) {
 					assert(!isColorOutput);
-					assert(!isAttachmentInput);
 					desc.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 					desc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 				} else if (isColorOutput) {

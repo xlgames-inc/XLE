@@ -13,20 +13,19 @@
 namespace Utility { class ParameterBox; }
 namespace RenderCore { namespace LightingEngine
 {
-	
+	enum class LightSourceShape { Directional, Sphere, Tube, Rectangle, Disc };
+
 	/// <summary>Defines a dynamic light</summary>
 	/// Lights defined by this structure 
 	class LightDesc
 	{
 	public:
-		enum Shape { Directional, Sphere, Tube, Rectangle, Disc };
-
 		Float3x3    _orientation;
 		Float3      _position;
 		Float2      _radii;
 
 		float       _cutoffRange;
-		Shape       _shape;
+		LightSourceShape       _shape;
 		Float3      _diffuseColor;
 		Float3      _specularColor;
 		float       _diffuseWideningMin;
@@ -211,7 +210,7 @@ namespace RenderCore { namespace LightingEngine
 
 	inline LightDesc::LightDesc()
 	{
-        _shape = Directional;
+        _shape = LightSourceShape::Directional;
         _position = Normalize(Float3(-.1f, 0.33f, 1.f));
         _orientation = Identity<Float3x3>();
         _cutoffRange = 10000.f;

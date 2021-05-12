@@ -133,24 +133,24 @@ namespace SceneEngine
         if (desc._debugging) {
             dest._shader = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 vertexShader_viewFrustumVector, 
-                "xleres/deferred/debugging/resolvedebug.pixel.hlsl:main:ps_*",
+                "xleres/Deferred/debugging/resolvedebug.pixel.hlsl:main:ps_*",
                 definesTable.get());
         } else if (desc._dynamicLinking==1) {
             dest._shader = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 vertexShader_viewFrustumVector, 
-                "xleres/deferred/resolvelightgraph.pixel.hlsl:main:ps_*",
+                "xleres/Deferred/resolvelightgraph.pixel.hlsl:main:ps_*",
                 definesTable.get());
         } else if (desc._dynamicLinking==2) {
             dest._shader = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 vertexShader_viewFrustumVector, 
-                "xleres/deferred/resolvelight.pixel.hlsl:main:!ps_*",
+                "xleres/Deferred/resolvelight.pixel.hlsl:main:!ps_*",
                 definesTable.get());
         } else {
             dest._shader = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
                 vertexShader_viewFrustumVector, 
                 (!desc._debugging)
-                    ? "xleres/deferred/resolvelight.pixel.hlsl:main:ps_*"
-                    : "xleres/deferred/debugging/resolvedebug.pixel.hlsl:main:ps_*",
+                    ? "xleres/Deferred/resolvelight.pixel.hlsl:main:ps_*"
+                    : "xleres/Deferred/debugging/resolvedebug.pixel.hlsl:main:ps_*",
                 definesTable.get());
         }
 
@@ -314,7 +314,7 @@ namespace SceneEngine
 
         auto* ambientLight = &::Assets::Legacy::GetAssetDep<Metal::ShaderProgram>(
             vertexShader_viewFrustumVector, 
-            "xleres/deferred/resolveambient.pixel.hlsl:ResolveAmbient:ps_*",
+            "xleres/Deferred/resolveambient.pixel.hlsl:ResolveAmbient:ps_*",
             definesTable.get());
 
 		UniformsStreamInterface usi;
@@ -373,9 +373,9 @@ namespace SceneEngine
 
         using namespace RenderCore;
 
-        const auto* ps = "xleres/deferred/debugging.pixel.hlsl:GBufferDebugging:ps_*";
+        const auto* ps = "xleres/Deferred/debugging.pixel.hlsl:GBufferDebugging:ps_*";
         if (debuggingType == 2)
-            ps = "xleres/deferred/debugging.pixel.hlsl:GenericDebugging:!ps_*";
+            ps = "xleres/Deferred/debugging.pixel.hlsl:GenericDebugging:!ps_*";
 
         StringMeld<256> meld;
         meld << useMsaaSamplers?"MSAA_SAMPLERS=1":"";
@@ -419,7 +419,7 @@ namespace SceneEngine
     {
         using namespace RenderCore;
 
-        const auto* ps = "xleres/deferred/debugging.pixel.hlsl:GenericDebugging:!ps_*";
+        const auto* ps = "xleres/Deferred/debugging.pixel.hlsl:GenericDebugging:!ps_*";
 
         StringMeld<256> meld;
         

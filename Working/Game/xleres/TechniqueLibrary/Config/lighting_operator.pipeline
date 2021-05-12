@@ -1,0 +1,40 @@
+#include "numeric.pipeline"
+
+DescriptorSet Sequencer
+{
+    UniformBuffer cb0;                          // 0
+	UniformBuffer cb1;							// 1	
+	UniformBuffer cb2;					        // 2
+	UniformBuffer cb3;		                    // 3
+	UniformBuffer cb4;				            // 4
+	UniformBuffer cb5;							// 5
+
+	SampledTexture tex0;		                // 6
+	SampledTexture tex1;						// 7
+	SampledTexture tex2;						// 8
+	SampledTexture tex3;						// 9
+	SampledTexture tex4;						// 10
+	SampledTexture tex5;						// 11
+	SampledTexture tex6;						// 12
+
+	Sampler DefaultSampler;						// 13
+	Sampler ClampingSampler;					// 14
+	Sampler AnisotropicSampler;					// 15
+	Sampler PointClampSampler;					// 16
+};
+
+DescriptorSet Draw
+{
+};
+
+DescriptorSet Material
+{
+};
+
+PipelineLayout LightingOperator
+{
+	DescriptorSet Sequencer;
+	DescriptorSet Material;
+	DescriptorSet Draw;
+	DescriptorSet Numeric;
+};

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "ShadowUniforms.h"
+#include "../../Assets/AssetsCore.h"
 #include <memory>
 
 namespace RenderCore { namespace Techniques
@@ -39,8 +40,23 @@ namespace RenderCore { namespace LightingEngine
 
 	class ShadowGeneratorDesc;
 	class SharedTechniqueDelegateBox;
-	std::shared_ptr<ICompiledShadowPreparer> CreateCompiledShadowPreparer(
+	::Assets::FuturePtr<ICompiledShadowPreparer> CreateCompiledShadowPreparer(
 		const ShadowGeneratorDesc& desc, 
+		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerator,
+		const std::shared_ptr<SharedTechniqueDelegateBox>& delegatesBox);
+
+	class ShadowPreparationOperators
+	{
+	public:
+		struct Operator
+		{
+			std::shared_ptr<ICompiledShadowPreparer> _preparer;
+			ShadowGeneratorDesc _desc;
+		};
+		std::vector<Operator> _operators;
+	};
+	::Assets::FuturePtr<ShadowPreparationOperators> CreateShadowPreparationOperators(
+		IteratorRange<const ShadowGeneratorDesc*> shadowGenerators, 
 		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerator,
 		const std::shared_ptr<SharedTechniqueDelegateBox>& delegatesBox);
 

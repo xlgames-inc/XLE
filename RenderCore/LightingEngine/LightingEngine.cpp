@@ -85,30 +85,12 @@ namespace RenderCore { namespace LightingEngine
 		return result;
 	}
 
-	class CompiledLightingTechnique::PendingCreateFragmentStep
-	{
-	public:
-		RenderStepFragmentInterface _interf;
-		std::function<StepFnSig> _techniqueFunction;
-
-		PendingCreateFragmentStep(
-			RenderStepFragmentInterface&& interf,
-			std::function<StepFnSig>&& techniqueFunction)
-		: _interf(std::move(interf)), _techniqueFunction(std::move(techniqueFunction)) {}
-	};
-
-	void CompiledLightingTechnique::CreateStep_RunFragmentsAndExecuteDrawables(RenderStepFragmentInterface&& fragments)
+	auto CompiledLightingTechnique::CreateStep_RunFragments(RenderStepFragmentInterface&& fragments) -> FragmentInterfaceRegistration
 	{
 		assert(!_isConstructionCompleted);
-		_pendingCreateFragmentSteps.emplace_back(std::move(fragments), nullptr);
-	}
-
-	void CompiledLightingTechnique::CreateStep_RunFragmentsAndCallFunction(
-		RenderStepFragmentInterface&& fragments, 
-		std::function<StepFnSig>&& fn)
-	{
-		assert(!_isConstructionCompleted);
-		_pendingCreateFragmentSteps.emplace_back(std::move(fragments), std::move(fn));
+		_pendingCreateFragmentSteps.emplace_back(std::make_pair(std::move(fragments), _nextFragmentInterfaceRegistration));
+		++_nextFragmentInterfaceRegistration;
+		return _nextFragmentInterfaceRegistration-1;
 	}
 
 	void CompiledLightingTechnique::ResolvePendingCreateFragmentSteps()
@@ -120,7 +102,7 @@ namespace RenderCore { namespace LightingEngine
 
 		std::vector<Techniques::FrameBufferDescFragment> fragments;
 		for (auto& step:_pendingCreateFragmentSteps)
-			fragments.emplace_back(Techniques::FrameBufferDescFragment{step._interf.GetFrameBufferDescFragment()});
+			fragments.emplace_back(Techniques::FrameBufferDescFragment{step.first.GetFrameBufferDescFragment()});
 
 		auto merged = Techniques::MergeFragments(
 			MakeIteratorRange(_workingAttachments),
@@ -139,21 +121,26 @@ namespace RenderCore { namespace LightingEngine
 		RenderCore::Techniques::MergeInOutputs(_workingAttachments, merged._mergedFragment, _fbProps);
 
 		auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment), _fbProps);
+		_fbDescs.emplace_back(std::move(fbDesc));
 
 		// Generate commands for walking through the render pass
 		Step beginStep;
 		beginStep._type = Step::Type::BeginRenderPassInstance;
-		beginStep._fbDesc = fbDesc;
+		beginStep._fbDescIdx = (unsigned)_fbDescs.size()-1;
 		_steps.emplace_back(std::move(beginStep));
 		
-		for (auto& step:_pendingCreateFragmentSteps) {
-			if (!step._techniqueFunction) {
-				auto& fragments = step._interf;
-				assert(!fragments.GetSubpassAddendums().empty());
-				for (unsigned c=0; c<fragments.GetSubpassAddendums().size(); ++c) {
-					if (c != 0)
-						_steps.push_back({Step::Type::NextRenderPassStep});
-					auto& sb = fragments.GetSubpassAddendums()[c];
+		unsigned stepCounter = 0;
+		for (auto& fragments:_pendingCreateFragmentSteps) {
+			assert(_fragmentInterfaceMappings.size() == fragments.second);
+			_fragmentInterfaceMappings.push_back({beginStep._fbDescIdx, stepCounter});
+
+			assert(!fragments.first.GetSubpassAddendums().empty());
+			for (unsigned c=0; c<fragments.first.GetSubpassAddendums().size(); ++c) {
+				if (stepCounter != 0) _steps.push_back({Step::Type::NextRenderPassStep});
+				auto& sb = fragments.first.GetSubpassAddendums()[c];
+
+				using SubpassExtension = RenderStepFragmentInterface::SubpassExtension;
+				if (sb._type == SubpassExtension::Type::ExecuteDrawables) {
 					assert(sb._techniqueDelegate);
 
 					Step drawStep;
@@ -165,13 +152,16 @@ namespace RenderCore { namespace LightingEngine
 					drawStep._sequencerConfig = _pipelineAccelerators->CreateSequencerConfig(sb._techniqueDelegate, sb._sequencerSelectors, fbDesc, c);
 					drawStep._shaderResourceDelegate = sb._shaderResourceDelegate;
 					_steps.emplace_back(std::move(drawStep));
+				} else if (sb._type == SubpassExtension::Type::CallLightingIteratorFunction) {
+					Step newStep;
+					newStep._type = Step::Type::CallFunction;
+					newStep._function = std::move(sb._lightingIteratorFunction);
+					_steps.emplace_back(std::move(newStep));
+				} else {
+					assert(sb._type == SubpassExtension::Type::HandledByPrevious);
 				}
-			} else {
-				// The "technique function" should advance should all render steps
-				Step newStep;
-				newStep._type = Step::Type::CallFunction;
-				newStep._function = std::move(step._techniqueFunction);
-				_steps.emplace_back(std::move(newStep));
+
+				++stepCounter;
 			}
 		}
 
@@ -188,6 +178,15 @@ namespace RenderCore { namespace LightingEngine
 		assert(!_isConstructionCompleted);
 		ResolvePendingCreateFragmentSteps();
 		_isConstructionCompleted = true;
+	}
+
+	std::pair<const FrameBufferDesc*, unsigned> CompiledLightingTechnique::GetResolvedFrameBufferDesc(FragmentInterfaceRegistration regId) const
+	{
+		assert(_isConstructionCompleted);
+		assert(regId < _fragmentInterfaceMappings.size());
+		return std::make_pair(
+			&_fbDescs[_fragmentInterfaceMappings[regId]._fbDesc],
+			_fragmentInterfaceMappings[regId]._subpassBegin);
 	}
 
 	CompiledLightingTechnique::CompiledLightingTechnique(
@@ -298,9 +297,10 @@ namespace RenderCore { namespace LightingEngine
 
 			case CompiledLightingTechnique::Step::Type::BeginRenderPassInstance:
 				{
+					assert(next->_fbDescIdx < _iterator->_compiledTechnique->_fbDescs.size());
 					_iterator->_rpi = Techniques::RenderPassInstance{
 						*_iterator->_threadContext,
-						next->_fbDesc,
+						_iterator->_compiledTechnique->_fbDescs[next->_fbDescIdx],
 						*_iterator->_frameBufferPool,
 						*_iterator->_attachmentPool,
 						MakeIteratorRange(_iterator->_parsingContext->_preregisteredAttachments)};

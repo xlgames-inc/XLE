@@ -6,6 +6,9 @@
 #include "../Techniques/TechniqueDelegates.h"
 #include "../Techniques/Apparatuses.h"
 #include "../Techniques/Techniques.h"
+#include "../Assets/PredefinedPipelineLayout.h"
+#include "../Assets/PipelineConfigurationUtils.h"
+#include "../IDevice.h"
 #include "../../Assets/AssetTraits.h"
 #include "../../Assets/Assets.h"
 #include "../../xleres/FileList.h"
@@ -27,9 +30,23 @@ namespace RenderCore { namespace LightingEngine
 
 	LightingEngineApparatus::LightingEngineApparatus(std::shared_ptr<Techniques::DrawingApparatus> drawingApparatus)
 	{
+		_depValPtr = ::Assets::GetDepValSys().Make();
+
 		_device = drawingApparatus->_device;
 		_pipelineAccelerators = drawingApparatus->_pipelineAccelerators;
 		_sharedDelegates = std::make_shared<SharedTechniqueDelegateBox>(*drawingApparatus);
+
+		auto pipelineLayoutFileFuture = ::Assets::MakeAsset<RenderCore::Assets::PredefinedPipelineLayoutFile>(LIGHTING_OPERATOR_PIPELINE);
+		pipelineLayoutFileFuture->StallWhilePending();
+		auto pipelineLayoutFile = pipelineLayoutFileFuture->Actualize();
+		_depValPtr.RegisterDependency(pipelineLayoutFile->GetDependencyValidation());
+
+		const std::string pipelineLayoutName = "LightingOperator";
+		auto i = pipelineLayoutFile->_pipelineLayouts.find(pipelineLayoutName);
+		if (i == pipelineLayoutFile->_pipelineLayouts.end())
+			Throw(std::runtime_error("Did not find pipeline layout with the name " + pipelineLayoutName + " in the given pipeline layout file"));
+		auto pipelineInit = i->second->MakePipelineLayoutInitializer(drawingApparatus->_shaderCompiler->GetShaderLanguage());
+		_lightingOperatorLayout = _device->CreatePipelineLayout(pipelineInit);
 	}
 
 	LightingEngineApparatus::~LightingEngineApparatus() {}

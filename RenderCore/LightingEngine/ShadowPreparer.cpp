@@ -14,6 +14,7 @@
 #include "../Techniques/RenderStateResolver.h"
 #include "../Techniques/DrawableDelegates.h"
 #include "../Techniques/CommonBindings.h"
+#include "../../Assets/AssetFuture.h"
 #include <vector>
 
 namespace RenderCore { namespace LightingEngine
@@ -205,14 +206,58 @@ namespace RenderCore { namespace LightingEngine
 
 	CompiledShadowPreparer::~CompiledShadowPreparer() {}
 
-	std::shared_ptr<ICompiledShadowPreparer> CreateCompiledShadowPreparer(
+	::Assets::FuturePtr<ICompiledShadowPreparer> CreateCompiledShadowPreparer(
 		const ShadowGeneratorDesc& desc, 
-		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerator,
+		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
 		const std::shared_ptr<SharedTechniqueDelegateBox>& delegatesBox)
 	{
-		return std::make_shared<CompiledShadowPreparer>(desc, pipelineAccelerator, delegatesBox);
+		auto result = std::make_shared<::Assets::AssetFuture<ICompiledShadowPreparer>>();
+		result->SetAsset(std::make_shared<CompiledShadowPreparer>(desc, pipelineAccelerators, delegatesBox), nullptr);
+		return result;
 	}
 
+	::Assets::FuturePtr<ShadowPreparationOperators> CreateShadowPreparationOperators(
+		IteratorRange<const ShadowGeneratorDesc*> shadowGenerators, 
+		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
+		const std::shared_ptr<SharedTechniqueDelegateBox>& delegatesBox)
+	{
+		using PreparerFuture = ::Assets::FuturePtr<ICompiledShadowPreparer>;
+		std::vector<PreparerFuture> futures;
+		futures.reserve(shadowGenerators.size());
+		for (const auto&desc:shadowGenerators)
+			futures.push_back(CreateCompiledShadowPreparer(desc, pipelineAccelerators, delegatesBox));
+
+		auto result = std::make_shared<::Assets::AssetFuture<ShadowPreparationOperators>>();
+		result->SetPollingFunction(
+			[futures=std::move(futures)](::Assets::AssetFuture<ShadowPreparationOperators>& future) -> bool {
+				using namespace ::Assets;
+				std::vector<std::shared_ptr<ICompiledShadowPreparer>> actualized;
+				actualized.resize(futures.size());
+				auto a=actualized.begin();
+				for (const auto& p:futures) {
+					Blob queriedLog;
+					DependencyValidation queriedDepVal;
+					auto state = p->CheckStatusBkgrnd(*a, queriedDepVal, queriedLog);
+					if (state != AssetState::Ready) {
+						if (state == AssetState::Invalid) {
+							future.SetInvalidAsset(queriedDepVal, queriedLog);
+							return false;
+						} else 
+							return true;
+					}
+					++a;
+				}
+
+				auto finalResult = std::make_shared<ShadowPreparationOperators>();
+				finalResult->_operators.reserve(actualized.size());
+				for (auto& a:actualized)
+					finalResult->_operators.push_back({std::move(a), ShadowGeneratorDesc{}});
+
+				future.SetAsset(std::move(finalResult), nullptr);
+				return false;
+			});
+		return result;
+	}
 
 	template<int BitCount, typename Input>
 		static uint64_t GetBits(Input i)
