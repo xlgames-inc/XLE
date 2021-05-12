@@ -342,7 +342,7 @@ namespace ToolsRig
 				str.str(), entryPoint,
 				profileStr, definesTable);
 
-			auto result = std::make_shared<::Assets::AssetFuture<CompiledShaderByteCode>>("");
+			auto result = std::make_shared<::Assets::AssetFuture<CompiledShaderByteCode>>();
 			::Assets::AutoConstructToFuture(*result, artifactFuture);
 			return result;
 		}

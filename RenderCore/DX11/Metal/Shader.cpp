@@ -268,7 +268,7 @@ namespace RenderCore { namespace Metal_DX11
 
 		::Assets::WhenAll(vsFuture, psFuture).ThenConstructToFuture<ShaderProgram>(
 			future,
-			[](const std::shared_ptr<CompiledShaderByteCode>& vsActual, const std::shared_ptr<CompiledShaderByteCode>& psActual) {
+			[](std::shared_ptr<CompiledShaderByteCode> vsActual, std::shared_ptr<CompiledShaderByteCode> psActual) {
 				return std::make_shared<ShaderProgram>(GetObjectFactory(), *vsActual, *psActual);
 			});
 	}
@@ -286,7 +286,7 @@ namespace RenderCore { namespace Metal_DX11
 
 		::Assets::WhenAll(vsFuture, gsFuture, psFuture).ThenConstructToFuture<ShaderProgram>(
 			future,
-			[](const std::shared_ptr<CompiledShaderByteCode>& vsActual, const std::shared_ptr<CompiledShaderByteCode>& gsActual, const std::shared_ptr<CompiledShaderByteCode>& psActual) {
+			[](std::shared_ptr<CompiledShaderByteCode> vsActual, std::shared_ptr<CompiledShaderByteCode> gsActual, std::shared_ptr<CompiledShaderByteCode> psActual) {
 				return std::make_shared<ShaderProgram>(GetObjectFactory(), *vsActual, *gsActual, *psActual);
 			});
 	}
@@ -310,11 +310,11 @@ namespace RenderCore { namespace Metal_DX11
 
 		::Assets::WhenAll(vsFuture, gsFuture, psFuture, hsFuture, dsFuture).ThenConstructToFuture<ShaderProgram>(
 			future,
-			[](	const std::shared_ptr<CompiledShaderByteCode>& vsActual,
-				const std::shared_ptr<CompiledShaderByteCode>& gsActual,
-				const std::shared_ptr<CompiledShaderByteCode>& psActual,
-				const std::shared_ptr<CompiledShaderByteCode>& hsActual,
-				const std::shared_ptr<CompiledShaderByteCode>& dsActual) {
+			[](	std::shared_ptr<CompiledShaderByteCode> vsActual,
+				std::shared_ptr<CompiledShaderByteCode> gsActual,
+				std::shared_ptr<CompiledShaderByteCode> psActual,
+				std::shared_ptr<CompiledShaderByteCode> hsActual,
+				std::shared_ptr<CompiledShaderByteCode> dsActual) {
 
 				return std::make_shared<ShaderProgram>(GetObjectFactory(), *vsActual, *gsActual, *psActual, *hsActual, *dsActual, g_defaultStreamOutputInitializers);
 			});
@@ -329,7 +329,7 @@ namespace RenderCore { namespace Metal_DX11
 
 		::Assets::WhenAll(code).ThenConstructToFuture<ComputeShader>(
 			future,
-			[](const std::shared_ptr<CompiledShaderByteCode>& csActual) {
+			[](std::shared_ptr<CompiledShaderByteCode> csActual) {
 				return std::make_shared<ComputeShader>(GetObjectFactory(), *csActual);
 			});
 	}

@@ -300,9 +300,9 @@ namespace ToolsRig
 		::Assets::WhenAll(sphereMatFuture, tubeMatFuture, rectangleMatFuture).ThenConstructToFuture<VisGeoBox>(
 			future,
 			[pipelineAcceleratorPool, dsa](
-				const std::shared_ptr<RenderCore::Assets::RawMaterial>& sphereMat,
-				const std::shared_ptr<RenderCore::Assets::RawMaterial>& tubeMat,
-				const std::shared_ptr<RenderCore::Assets::RawMaterial>& rectangleMat) {
+				std::shared_ptr<RenderCore::Assets::RawMaterial> sphereMat,
+				std::shared_ptr<RenderCore::Assets::RawMaterial> tubeMat,
+				std::shared_ptr<RenderCore::Assets::RawMaterial> rectangleMat) {
 
 				auto res = std::make_shared<VisGeoBox>();
 				res->_genSphere = BuildPipelineAccelerator(pipelineAcceleratorPool, *sphereMat);

@@ -92,7 +92,7 @@ namespace RenderCore { namespace Techniques
 			// information as usual
 			::Assets::WhenAll(_techniqueFuture).ThenConstructToFuture<GraphicsPipelineDesc>(
 				*result,
-				[techniqueIndex = _techniqueIndex, nascentDesc](const std::shared_ptr<Technique>& technique) {
+				[techniqueIndex = _techniqueIndex, nascentDesc](std::shared_ptr<Technique> technique) {
 					nascentDesc->_depVal = technique->GetDependencyValidation();
 					auto& entry = technique->GetEntry(techniqueIndex);
 					PrepareShadersFromTechniqueEntry(nascentDesc, entry);
@@ -214,7 +214,7 @@ namespace RenderCore { namespace Techniques
 			::Assets::WhenAll(_techniqueFileHelper).ThenConstructToFuture<GraphicsPipelineDesc>(
 				*result,
 				[nascentDesc, illumType, hasDeformVertex](
-					const std::shared_ptr<TechniqueFileHelper>& techniqueFileHelper) {
+					std::shared_ptr<TechniqueFileHelper> techniqueFileHelper) {
 
 					nascentDesc->_depVal = techniqueFileHelper->GetDependencyValidation();
 
@@ -254,7 +254,7 @@ namespace RenderCore { namespace Techniques
 			const std::shared_ptr<TechniqueSharedResources>& sharedResources)
 		: _sharedResources(sharedResources)
 		{
-			_techniqueFileHelper = std::make_shared<::Assets::AssetFuture<TechniqueFileHelper>>("");
+			_techniqueFileHelper = std::make_shared<::Assets::AssetFuture<TechniqueFileHelper>>();
 			::Assets::WhenAll(techniqueSet).ThenConstructToFuture<TechniqueFileHelper>(*_techniqueFileHelper);
 		}
 	private:
@@ -335,7 +335,7 @@ namespace RenderCore { namespace Techniques
 			::Assets::WhenAll(_techniqueFileHelper).ThenConstructToFuture<GraphicsPipelineDesc>(
 				*result,
 				[nascentDesc, illumType, hasDeformVertex](
-					const std::shared_ptr<TechniqueFileHelper>& techniqueFileHelper) {
+					std::shared_ptr<TechniqueFileHelper> techniqueFileHelper) {
 
 					std::vector<uint64_t> patchExpansions;
 					const TechniqueEntry* psTechEntry = &techniqueFileHelper->_noPatches;
@@ -374,7 +374,7 @@ namespace RenderCore { namespace Techniques
 		{
 			_sharedResources = sharedResources;
 
-			_techniqueFileHelper = std::make_shared<::Assets::AssetFuture<TechniqueFileHelper>>("");
+			_techniqueFileHelper = std::make_shared<::Assets::AssetFuture<TechniqueFileHelper>>();
 			::Assets::WhenAll(techniqueSet).ThenConstructToFuture<TechniqueFileHelper>(*_techniqueFileHelper);
 
 			if (flags & TechniqueDelegateForwardFlags::DisableDepthWrite) {
@@ -456,7 +456,7 @@ namespace RenderCore { namespace Techniques
 
 			::Assets::WhenAll(_techniqueFileHelper).ThenConstructToFuture<GraphicsPipelineDesc>(
 				*result,
-				[nascentDesc, hasEarlyRejectionTest, hasDeformVertex](const std::shared_ptr<TechniqueFileHelper>& techniqueFileHelper) {
+				[nascentDesc, hasEarlyRejectionTest, hasDeformVertex](std::shared_ptr<TechniqueFileHelper> techniqueFileHelper) {
 					std::vector<uint64_t> patchExpansions;
 					const TechniqueEntry* psTechEntry = &techniqueFileHelper->_noPatches;
 					if (hasEarlyRejectionTest) {
@@ -489,10 +489,10 @@ namespace RenderCore { namespace Techniques
 		{
 			_sharedResources = sharedResources;
 
-			_techniqueFileHelper = std::make_shared<::Assets::AssetFuture<TechniqueFileHelper>>("");
+			_techniqueFileHelper = std::make_shared<::Assets::AssetFuture<TechniqueFileHelper>>();
 			::Assets::WhenAll(techniqueSet).ThenConstructToFuture<TechniqueFileHelper>(
 				*_techniqueFileHelper, 
-				[shadowGen](const std::shared_ptr<TechniqueSetFile>& techniqueSet) { return std::make_shared<TechniqueFileHelper>(techniqueSet, shadowGen); });
+				[shadowGen](std::shared_ptr<TechniqueSetFile> techniqueSet) { return std::make_shared<TechniqueFileHelper>(techniqueSet, shadowGen); });
 
 			_rs[0x0] = RasterizationDesc{cullMode,        FaceWinding::CCW, (float)singleSidedBias._depthBias, singleSidedBias._depthBiasClamp, singleSidedBias._slopeScaledBias};
             _rs[0x1] = RasterizationDesc{CullMode::None,  FaceWinding::CCW, (float)doubleSidedBias._depthBias, doubleSidedBias._depthBiasClamp, doubleSidedBias._slopeScaledBias};			
@@ -578,7 +578,7 @@ namespace RenderCore { namespace Techniques
 
 			::Assets::WhenAll(_techniqueFileHelper).ThenConstructToFuture<GraphicsPipelineDesc>(
 				*result,
-				[nascentDesc, hasEarlyRejectionTest, hasDeformVertex, testType=_testTypeParameter](const std::shared_ptr<TechniqueFileHelper>& techniqueFileHelper) {
+				[nascentDesc, hasEarlyRejectionTest, hasDeformVertex, testType=_testTypeParameter](std::shared_ptr<TechniqueFileHelper> techniqueFileHelper) {
 					std::vector<uint64_t> patchExpansions;
 					const TechniqueEntry* psTechEntry = &techniqueFileHelper->_noPatches;
 					if (hasEarlyRejectionTest) {
@@ -611,7 +611,7 @@ namespace RenderCore { namespace Techniques
 		{
 			_sharedResources = sharedResources;
 			
-			_techniqueFileHelper = std::make_shared<::Assets::AssetFuture<TechniqueFileHelper>>("");
+			_techniqueFileHelper = std::make_shared<::Assets::AssetFuture<TechniqueFileHelper>>();
 			::Assets::WhenAll(techniqueSet).ThenConstructToFuture<TechniqueFileHelper>(*_techniqueFileHelper);
 
 			_soElements = NormalizeInputAssembly(soInit._outputElements);

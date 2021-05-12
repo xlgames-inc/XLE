@@ -1095,7 +1095,7 @@ namespace RenderCore { namespace Techniques
 		::Assets::WhenAll(modelScaffoldFuture, materialScaffoldFuture).ThenConstructToFuture<SimpleModelRenderer>(
 			future,
 			[deformOperationString{deformOperations.AsString()}, pipelineAcceleratorPool, uniformBufferBindings, modelScaffoldNameString, materialScaffoldNameString](
-				const std::shared_ptr<RenderCore::Assets::ModelScaffold>& scaffoldActual, const std::shared_ptr<RenderCore::Assets::MaterialScaffold>& materialActual) {
+				std::shared_ptr<RenderCore::Assets::ModelScaffold> scaffoldActual, std::shared_ptr<RenderCore::Assets::MaterialScaffold> materialActual) {
 				
 				auto deformOps = DeformOperationFactory::GetInstance().CreateDeformOperations(
 					MakeStringSection(deformOperationString),
@@ -1250,9 +1250,9 @@ namespace RenderCore { namespace Techniques
 		::Assets::WhenAll(modelScaffoldFuture, materialScaffoldFuture, skeletonInterfaceFuture).ThenConstructToFuture<SimpleModelRenderer>(
 			*rendererFuture,
 			[deformOperationString{deformOperations.AsString()}, pipelineAcceleratorPool, uniformBufferBindings](
-				const std::shared_ptr<RenderCore::Assets::ModelScaffold>& scaffoldActual, 
-				const std::shared_ptr<RenderCore::Assets::MaterialScaffold>& materialActual,
-				const std::shared_ptr<RendererSkeletonInterface>& skeletonInterface) {
+				std::shared_ptr<RenderCore::Assets::ModelScaffold> scaffoldActual, 
+				std::shared_ptr<RenderCore::Assets::MaterialScaffold> materialActual,
+				std::shared_ptr<RendererSkeletonInterface> skeletonInterface) {
 				
 				auto deformOps = DeformOperationFactory::GetInstance().CreateDeformOperations(
 					MakeStringSection(deformOperationString),

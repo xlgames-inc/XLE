@@ -226,9 +226,9 @@ namespace ToolsRig
 				auto skeletonFuture = ::Assets::MakeAsset<SkeletonScaffold>(_settings._skeletonFileName);
 				::Assets::WhenAll(rendererFuture, animationSetFuture, skeletonFuture).ThenConstructToFuture<RendererState>(
 					*_rendererStateFuture, 
-					[](	const std::shared_ptr<SimpleModelRenderer>& renderer,
-						const std::shared_ptr<AnimationSetScaffold>& animationSet,
-						const std::shared_ptr<SkeletonScaffold>& skeleton) {
+					[](	std::shared_ptr<SimpleModelRenderer> renderer,
+						std::shared_ptr<AnimationSetScaffold> animationSet,
+						std::shared_ptr<SkeletonScaffold> skeleton) {
 						
 						RenderCore::Assets::AnimationSetBinding animBinding(
 							animationSet->ImmutableData()._animationSet.GetOutputInterface(), 
@@ -250,8 +250,8 @@ namespace ToolsRig
 				auto animationSetFuture = ::Assets::MakeAsset<AnimationSetScaffold>(_settings._animationFileName);
 				::Assets::WhenAll(rendererFuture, animationSetFuture).ThenConstructToFuture<RendererState>(
 					*_rendererStateFuture, 
-					[](	const std::shared_ptr<SimpleModelRenderer>& renderer,
-						const std::shared_ptr<AnimationSetScaffold>& animationSet) {
+					[](	std::shared_ptr<SimpleModelRenderer> renderer,
+						std::shared_ptr<AnimationSetScaffold> animationSet) {
 						
 						RenderCore::Assets::AnimationSetBinding animBinding(
 							animationSet->ImmutableData()._animationSet.GetOutputInterface(), 
@@ -271,7 +271,7 @@ namespace ToolsRig
 			} else {
 				::Assets::WhenAll(rendererFuture).ThenConstructToFuture<RendererState>(
 					*_rendererStateFuture, 
-					[](	const std::shared_ptr<SimpleModelRenderer>& renderer) {
+					[](std::shared_ptr<SimpleModelRenderer> renderer) {
 						return std::make_shared<RendererState>(
 							RendererState {
 								renderer,

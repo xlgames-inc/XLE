@@ -59,7 +59,7 @@ namespace RenderCore { namespace Techniques
 		auto future = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>(programName);
 		::Assets::WhenAll(vsCode, psCode).ThenConstructToFuture<Metal::ShaderProgram>(
 			*future,
-			[pipelineLayout](const std::shared_ptr<CompiledShaderByteCode>& vsActual, const std::shared_ptr<CompiledShaderByteCode>& psActual) {
+			[pipelineLayout](std::shared_ptr<CompiledShaderByteCode> vsActual, std::shared_ptr<CompiledShaderByteCode> psActual) {
 				return std::make_shared<Metal::ShaderProgram>(
 					RenderCore::Metal::GetObjectFactory(), pipelineLayout, *vsActual, *psActual);
 			});
@@ -81,9 +81,9 @@ namespace RenderCore { namespace Techniques
 		::Assets::WhenAll(vsCode, gsCode, psCode).ThenConstructToFuture<Metal::ShaderProgram>(
 			*future,
 			[soElements, soStrides, pipelineLayout](
-				const std::shared_ptr<CompiledShaderByteCode>& vsActual, 
-				const std::shared_ptr<CompiledShaderByteCode>& gsActual, 
-				const std::shared_ptr<CompiledShaderByteCode>& psActual) {
+				std::shared_ptr<CompiledShaderByteCode> vsActual, 
+				std::shared_ptr<CompiledShaderByteCode> gsActual, 
+				std::shared_ptr<CompiledShaderByteCode> psActual) {
 
 				StreamOutputInitializers soInit;
 				soInit._outputElements = MakeIteratorRange(soElements);

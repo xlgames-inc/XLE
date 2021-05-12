@@ -77,7 +77,7 @@ namespace Assets
 						Internal::FutureResolutionMoment<FinalAssetType> moment(thatFuture);
 						TRY
 						{
-							auto finalConstruction = std::apply(continuationFunction, actualized);
+							auto finalConstruction = std::apply(continuationFunction, std::move(actualized));
 							thatFuture.SetAsset(std::move(finalConstruction), {});
 						} CATCH (const Exceptions::ConstructionError& e) {
 							thatFuture.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());	
@@ -117,7 +117,7 @@ namespace Assets
 							// Note -- watch for a subtle edge condition here. Since we're passing the future to the callback function here,
 							// it's quite possible that may set some other polling function on the same future. AssetFuture supports that,
 							// but only because we already return false from this function.
-							std::apply(continuationFunction, std::tuple_cat(std::make_tuple(std::ref(thatFuture)), actualized));
+							std::apply(continuationFunction, std::tuple_cat(std::make_tuple(std::ref(thatFuture)), std::move(actualized)));
 						} CATCH (const Exceptions::ConstructionError& e) {
 							thatFuture.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());	
 						} CATCH (const Exceptions::InvalidAsset& e) {
@@ -155,7 +155,7 @@ namespace Assets
 						Internal::FutureResolutionMoment<FinalAssetType> moment(thatFuture);
 						TRY
 						{
-							auto finalConstruction = Internal::ApplyMakeShared<FinalAssetType>(actualized);
+							auto finalConstruction = Internal::ApplyMakeShared<FinalAssetType>(std::move(actualized));
 							thatFuture.SetAsset(std::move(finalConstruction), {});
 						} CATCH (const Exceptions::ConstructionError& e) {
 							thatFuture.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());	

@@ -41,7 +41,7 @@ namespace Assets
 		const DependencyValidation&	GetDependencyValidation() const { return _actualizedDepVal; }
 		const Blob&				    GetActualizationLog() const { return _actualizationLog; }
 
-		explicit AssetFuture(const std::string& initializer);
+		explicit AssetFuture(const std::string& initializer = {});
 		~AssetFuture();
 
 		AssetFuture(AssetFuture&&);
