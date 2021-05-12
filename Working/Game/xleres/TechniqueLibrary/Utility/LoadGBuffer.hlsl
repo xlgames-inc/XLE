@@ -10,10 +10,10 @@
 #include "../Framework/gbuffer.hlsl"
 #include "../Math/TextureAlgorithm.hlsl"
 
-Texture2D_MaybeMS<float4>		GBuffer_Diffuse		BIND_NUMERIC_T0;
-Texture2D_MaybeMS<float4>		GBuffer_Normals		BIND_NUMERIC_T1;
+Texture2D_MaybeMS<float4>		GBuffer_Diffuse		BIND_SEQ_T9;
+Texture2D_MaybeMS<float4>		GBuffer_Normals		BIND_SEQ_T10;
 #if HAS_PROPERTIES_BUFFER==1
-	Texture2D_MaybeMS<float4>	GBuffer_Parameters	BIND_NUMERIC_T2;
+	Texture2D_MaybeMS<float4>	GBuffer_Parameters	BIND_SEQ_T11;
 #endif
 
 GBufferValues LoadGBuffer(float2 position, SystemInputs sys)

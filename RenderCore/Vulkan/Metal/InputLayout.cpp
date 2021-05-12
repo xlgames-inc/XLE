@@ -16,6 +16,7 @@
 #include "../../../OSServices/Log.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../Utility/ArithmeticUtils.h"
+#include "../../../Utility/BitUtils.h"
 #include "../../../Utility/StringFormat.h"
 #include <sstream>
 #include <map>
@@ -300,8 +301,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 	public:
 		std::map<unsigned, std::tuple<unsigned, unsigned, const DescriptorSetSignature*>> _fixedDescriptorSets;
-		IteratorRange<const UniformsStreamInterface* const*> _looseUniforms;
-		const CompiledPipelineLayout* _pipelineLayout;
+		IteratorRange<const UniformsStreamInterface* const*> _looseUniforms = {};
+		const CompiledPipelineLayout* _pipelineLayout = nullptr;
 
 		struct GroupRules
 		{
@@ -363,6 +364,19 @@ namespace RenderCore { namespace Metal_Vulkan
 			}
 		}
 
+		static bool SlotTypeCompatibleWithBinding(UniformStreamType bindingType, DescriptorType slotType)
+		{
+			if (bindingType == UniformStreamType::ResourceView)
+				return slotType == DescriptorType::SampledTexture || slotType == DescriptorType::UnorderedAccessTexture || slotType == DescriptorType::UniformBuffer || slotType == DescriptorType::UnorderedAccessBuffer;
+			else if (bindingType == UniformStreamType::ImmediateData)
+				return slotType == DescriptorType::UniformBuffer || slotType != DescriptorType::UnorderedAccessBuffer;
+			else if (bindingType == UniformStreamType::Sampler)
+				return slotType == DescriptorType::Sampler;
+
+			assert(0);
+			return true;
+		}
+
 		void BindReflection(const SPIRVReflection& reflection, uint32_t shaderStageMask)
 		{
 			assert(_looseUniforms.size() <= 4);
@@ -395,42 +409,17 @@ namespace RenderCore { namespace Metal_Vulkan
 						UniformStreamType bindingType = UniformStreamType::None;
 						std::tie(bindingType, groupIdx, inputSlot) = FindBinding(_looseUniforms, hashName);
 
-						if (bindingType == UniformStreamType::ResourceView) {
-							// We matched this shader input to a SRV in the loose uniforms input
-							// We also need to find this in the descriptor set.
-							// Since this is an adaptive descriptor set, we don't have to worry about the name
-							// assigned to the particular slot. We just need to know the that type is what
-							// we expect
-
-							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || (descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::SampledTexture && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessTexture && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UniformBuffer && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessBuffer))
+						if (bindingType == UniformStreamType::ResourceView || bindingType == UniformStreamType::ImmediateData || bindingType == UniformStreamType::Sampler) {
+							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || !SlotTypeCompatibleWithBinding(bindingType, descSetSigBindings[reflectionVariable._binding._bindingPoint]._type))
 								Throw(std::runtime_error("Shader input assignment is off the pipeline layout, or the types do not agree (variable: " + reflectionVariable._name.AsString() + ")"));
 
-							AddLooseUniformBinding(
-								UniformStreamType::ResourceView,
-								reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
-								groupIdx, inputSlot, shaderStageMask);
-
-						} else if (bindingType == UniformStreamType::ImmediateData) {
-							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || (descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UniformBuffer && descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::UnorderedAccessBuffer))
-								Throw(std::runtime_error("Shader input assignment is off the pipeline layout, or the types do not agree (variable: " + reflectionVariable._name.AsString() + ")"));
-
-							AddLooseUniformBinding(
-								UniformStreamType::ImmediateData,
-								reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
-								groupIdx, inputSlot, shaderStageMask);
-
-						} else if (bindingType == UniformStreamType::Sampler) {
-							if (reflectionVariable._binding._bindingPoint >= descSetSigBindings.size() || descSetSigBindings[reflectionVariable._binding._bindingPoint]._type != DescriptorType::Sampler)
-								Throw(std::runtime_error("Shader input assignment is off the pipeline layout, or the types do not agree (variable: " + reflectionVariable._name.AsString() + ")"));
-
-							if (reflectionVariable._slotType != DescriptorType::Sampler)
+							if (bindingType == UniformStreamType::Sampler && reflectionVariable._slotType != DescriptorType::Sampler)
 								Throw(std::runtime_error("Attempting to bind a sampler to a non-sampler shader variable (variable: " + reflectionVariable._name.AsString() + ")"));
 
 							AddLooseUniformBinding(
-								UniformStreamType::Sampler,
+								bindingType,
 								reflectionVariable._binding._descriptorSet, reflectionVariable._binding._bindingPoint,
 								groupIdx, inputSlot, shaderStageMask);
-
 						} else {
 							// no binding found -- just mark it as an input variable we need, it will get filled in with a default binding
 							AddLooseUniformBinding(
@@ -507,6 +496,56 @@ namespace RenderCore { namespace Metal_Vulkan
 					auto& pipelineRange = _pipelineLayout->GetPushConstantsRange(pipelineLayoutIdx);
 					_group[groupIdx]._pushConstantsRules.push_back({shaderStageMask, pipelineRange.offset, pipelineRange.size, inputSlot});
 				}
+			}
+		}
+
+		void BindPipelineLayout(const PipelineLayoutInitializer& pipelineLayout, unsigned shaderStageMask)
+		{
+			assert(_looseUniforms.size() <= 4);
+
+			unsigned groupIdxForDummies = 0;
+			for (unsigned c=0; c<_looseUniforms.size(); ++c)
+				if (!_looseUniforms[c]->_immediateDataBindings.empty() || !_looseUniforms[c]->_resourceViewBindings.empty() || !_looseUniforms[c]->_samplerBindings.empty()) {
+					groupIdxForDummies = c;	// assign this to the first group that is not just fixed descriptor sets
+					break;
+				}
+
+			for(unsigned descSetIdx=0; descSetIdx<pipelineLayout.GetDescriptorSets().size(); ++descSetIdx) {
+				const auto& descSet = pipelineLayout.GetDescriptorSets()[descSetIdx];
+				for (unsigned slotIdx=0; slotIdx<descSet._signature._slots.size(); ++slotIdx) {
+					auto bindingName = slotIdx<descSet._signature._slotNames.size() ? descSet._signature._slotNames[slotIdx] : 0ull;
+					if (!bindingName) continue;
+
+					unsigned inputSlot = ~0u, groupIdx = ~0u;
+					UniformStreamType bindingType = UniformStreamType::None;
+					std::tie(bindingType, groupIdx, inputSlot) = FindBinding(_looseUniforms, bindingName);
+
+					if (bindingType == UniformStreamType::ResourceView || bindingType == UniformStreamType::ImmediateData || bindingType == UniformStreamType::Sampler) {
+						assert(SlotTypeCompatibleWithBinding(bindingType, descSet._signature._slots[slotIdx]._type));
+						AddLooseUniformBinding(
+							bindingType,
+							descSetIdx, slotIdx,
+							groupIdx, inputSlot, shaderStageMask);
+					}
+				}
+			}
+
+			unsigned pushConstantsIterator = 0;
+			for (unsigned pushConstantsIdx=0; pushConstantsIdx<pipelineLayout.GetPushConstants().size(); ++pushConstantsIdx) {
+				const auto& pushConstants = pipelineLayout.GetPushConstants()[pushConstantsIdx];
+				auto hashName = Hash64(pushConstants._name);
+
+				unsigned inputSlot = ~0u, groupIdx = ~0u;
+				UniformStreamType bindingType = UniformStreamType::None;
+				std::tie(bindingType, groupIdx, inputSlot) = FindBinding(_looseUniforms, hashName);
+				if (bindingType == UniformStreamType::None)
+					Throw(std::runtime_error("No input data provided for push constants used by shader (while binding variable name: " + pushConstants._name + ")"));		// missing push constants input
+				if (bindingType != UniformStreamType::ImmediateData)
+					Throw(std::runtime_error("Attempting to bind a non-immediate-data input to a push constants shader input (while binding variable name:" + pushConstants._name + ")"));		// Must bind immediate data to push constants (not a fixed constant buffer)
+
+				auto size = CeilToMultiplePow2(pushConstants._cbSize, 4);
+				_group[groupIdx]._pushConstantsRules.push_back({shaderStageMask, pushConstantsIterator, size, inputSlot});
+				pushConstantsIterator += size;
 			}
 		}
 	};
@@ -596,6 +635,54 @@ namespace RenderCore { namespace Metal_Vulkan
 		const UniformsStreamInterface& group2,
 		const UniformsStreamInterface& group3)
 	: BoundUniforms(pipeline._shader, group0, group1, group2, group3) {}
+
+	BoundUniforms::BoundUniforms(
+		ICompiledPipelineLayout& pipelineLayout,
+		const UniformsStreamInterface& group0,
+		const UniformsStreamInterface& group1,
+		const UniformsStreamInterface& group2,
+		const UniformsStreamInterface& group3)
+	{
+		_pipelineType = PipelineType::Graphics;
+		auto pipelineLayoutInitializer = pipelineLayout.GetInitializer();
+		const UniformsStreamInterface* groups[] = { &group0, &group1, &group2, &group3 };
+
+		// We need to map on the input descriptor set bindings to the slots understood
+		// by the shader's pipeline layout
+		ConstructionHelper helper;
+		helper._looseUniforms = MakeIteratorRange(groups);
+		helper._pipelineLayout = checked_cast<CompiledPipelineLayout*>(&pipelineLayout);
+
+		auto pipelineLayoutDescSetCount = pipelineLayoutInitializer.GetDescriptorSets().size();
+		uint64_t initializerDescSetBindNames[pipelineLayoutDescSetCount];
+		for (unsigned c=0; c<pipelineLayoutDescSetCount; ++c)
+			initializerDescSetBindNames[c] = Hash64(pipelineLayoutInitializer.GetDescriptorSets()[c]._name);
+		
+		for (unsigned c=0; c<pipelineLayoutDescSetCount; ++c) {
+			bool foundMapping = false;
+			for (signed gIdx=3; gIdx>=0 && !foundMapping; --gIdx) {
+				for (unsigned dIdx=0; dIdx<groups[gIdx]->_fixedDescriptorSetBindings.size() && !foundMapping; ++dIdx) {
+					auto bindName = groups[gIdx]->_fixedDescriptorSetBindings[dIdx];
+					if (initializerDescSetBindNames[c] == bindName) {
+						// todo -- we should check compatibility between the given descriptor set and the pipeline layout
+						helper._fixedDescriptorSets.insert({c, std::make_tuple(gIdx, dIdx, groups[gIdx]->GetDescriptorSetSignature(bindName))});
+						foundMapping = true;
+					}
+				}
+			}
+		}
+
+		helper.BindPipelineLayout(pipelineLayoutInitializer, Internal::AsVkShaderStageFlags(ShaderStage::Vertex)|Internal::AsVkShaderStageFlags(ShaderStage::Pixel));
+
+		for (unsigned c=0; c<4; ++c) {
+			_group[c]._adaptiveSetRules = std::move(helper._group[c]._adaptiveSetRules);
+			_group[c]._fixedDescriptorSetRules = std::move(helper._group[c]._fixedDescriptorSetRules);
+			_group[c]._pushConstantsRules = std::move(helper._group[c]._pushConstantsRules);
+			_group[c]._boundLooseImmediateDatas = helper._group[c]._boundLooseUniformBuffers;
+			_group[c]._boundLooseResources = helper._group[c]._boundLooseResources;
+			_group[c]._boundLooseSamplerStates = helper._group[c]._boundLooseSamplerStates;
+		}
+	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

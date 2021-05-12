@@ -340,7 +340,7 @@ namespace UnitTests
 			auto pipelineInit = i->second->MakePipelineLayoutInitializer(testHelper->_shaderCompiler->GetShaderLanguage());
 			auto lightingOperatorLayout = testHelper->_device->CreatePipelineLayout(pipelineInit);
 
-			auto pipelineCollection = std::make_shared<Techniques::GraphicsPipelineCollection>(lightingOperatorLayout);
+			auto pipelineCollection = std::make_shared<Techniques::GraphicsPipelineCollection>(testHelper->_device, lightingOperatorLayout);
 
 			LightingEngine::LightResolveOperatorDesc resolveOperators[] {
 				LightingEngine::LightResolveOperatorDesc{}

@@ -115,7 +115,8 @@ namespace RenderCore
 	{
 	public:
 		std::vector<DescriptorSlot> _slots;
-		uint64_t GetHash() const;		// hash of content, not including name
+		std::vector<uint64_t> _slotNames;
+		uint64_t GetHashIgnoreNames() const;
 
 		DescriptorSetSignature() {}
 		DescriptorSetSignature(std::initializer_list<DescriptorSlot> init) : _slots(std::move(init)) {}

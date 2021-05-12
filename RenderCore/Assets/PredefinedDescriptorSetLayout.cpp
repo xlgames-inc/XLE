@@ -248,10 +248,13 @@ namespace RenderCore { namespace Assets
 	{
 		DescriptorSetSignature result;
 		result._slots.reserve(_slots.size());
+		result._slotNames.reserve(_slots.size());
 		for (const auto&s:_slots) {
 			auto count = std::max(s._arrayElementCount, 1u);
 			result._slots.push_back(DescriptorSlot{s._type, count});
+			result._slotNames.push_back(Hash64(s._name));
 		}
+
 		return result;
 	}
 

@@ -127,7 +127,7 @@ namespace RenderCore
 	UniformsStreamInterface::UniformsStreamInterface() : _hash(0) {}
 	UniformsStreamInterface::~UniformsStreamInterface() {}
 
-	uint64_t DescriptorSetSignature::GetHash() const
+	uint64_t DescriptorSetSignature::GetHashIgnoreNames() const
 	{
 		return Hash64(AsPointer(_slots.begin()), AsPointer(_slots.end()));
 	}

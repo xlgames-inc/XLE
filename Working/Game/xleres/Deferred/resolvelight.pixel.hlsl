@@ -19,7 +19,7 @@
     Texture2D<float>	AmbientOcclusion : register(t5);
 #endif
 
-cbuffer LightBuffer BIND_MAT_B1
+cbuffer LightBuffer BIND_SEQ_B1
 {
 	LightDesc Light;
 }

@@ -80,8 +80,6 @@ namespace RenderCore { namespace Techniques
 		const Metal::BoundUniforms*			_boundUniforms;
 	};
 
-	static DescriptorSetSignature AsDescriptorSetSignature(const RenderCore::Assets::PredefinedDescriptorSetLayout& layout);
-
 	void Draw(
 		RenderCore::Metal::DeviceContext& metalContext,
         RenderCore::Metal::GraphicsEncoder_Optimized& encoder,
@@ -106,7 +104,7 @@ namespace RenderCore { namespace Techniques
 			uniformHelper, *pipelineAccelerators.GetSequencerDescriptorSetLayout().GetLayout());
 
 		UniformsStreamInterface sequencerUSI = std::move(uniformHelper._finalUSI);
-		auto matDescSetLayout = AsDescriptorSetSignature(*pipelineAccelerators.GetMaterialDescriptorSetLayout().GetLayout());
+		auto matDescSetLayout = pipelineAccelerators.GetMaterialDescriptorSetLayout().GetLayout()->MakeDescriptorSetSignature();
 		sequencerUSI.BindFixedDescriptorSet(0, sequencerDescSetName, &sequencerDescriptorSet.second);
 		sequencerUSI.BindFixedDescriptorSet(1, materialDescSetName, &matDescSetLayout);
 
@@ -225,15 +223,6 @@ namespace RenderCore { namespace Techniques
 			}
 		}
 
-		return result;
-	}
-
-	DescriptorSetSignature AsDescriptorSetSignature(const RenderCore::Assets::PredefinedDescriptorSetLayout& layout)
-	{
-		DescriptorSetSignature result;
-		result._slots.reserve(layout._slots.size());
-		for (const auto&s:layout._slots)
-			result._slots.push_back(DescriptorSlot{s._type, s._arrayElementCount ? s._arrayElementCount : 1});
 		return result;
 	}
 

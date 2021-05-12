@@ -122,8 +122,10 @@ namespace RenderCore { namespace Techniques
             });
     }
 
-    GraphicsPipelineCollection::GraphicsPipelineCollection(std::shared_ptr<ICompiledPipelineLayout> pipelineLayout)
-    : _pipelineLayout(std::move(pipelineLayout)) {}
+    GraphicsPipelineCollection::GraphicsPipelineCollection(
+        std::shared_ptr<IDevice> device,
+        std::shared_ptr<ICompiledPipelineLayout> pipelineLayout)
+    : _device(std::move(device)), _pipelineLayout(std::move(pipelineLayout)) {}
 
 }}
 

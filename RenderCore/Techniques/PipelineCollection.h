@@ -43,10 +43,14 @@ namespace RenderCore { namespace Techniques
 			const PixelOutputStates& outputStates);
 
         const std::shared_ptr<ICompiledPipelineLayout>& GetPipelineLayout() { return _pipelineLayout; }
+		const std::shared_ptr<IDevice>& GetDevice() { return _device; }
 
-		GraphicsPipelineCollection(std::shared_ptr<ICompiledPipelineLayout> pipelineLayout);
+		GraphicsPipelineCollection(
+			std::shared_ptr<IDevice> device,
+			std::shared_ptr<ICompiledPipelineLayout> pipelineLayout);
 
 	private:
+		std::shared_ptr<IDevice> _device;
 		std::shared_ptr<ICompiledPipelineLayout> _pipelineLayout;
 		Threading::Mutex _pipelinesLock;
 		std::vector<std::pair<uint64_t, ::Assets::FuturePtr<Metal::GraphicsPipeline>>> _pipelines;

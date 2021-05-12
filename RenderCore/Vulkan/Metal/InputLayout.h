@@ -123,6 +123,12 @@ namespace RenderCore { namespace Metal_Vulkan
 			const UniformsStreamInterface& group1 = {},
 			const UniformsStreamInterface& group2 = {},
 			const UniformsStreamInterface& group3 = {});
+		BoundUniforms(
+			ICompiledPipelineLayout& pipelineLayout,
+			const UniformsStreamInterface& group0,
+			const UniformsStreamInterface& group1 = {},
+			const UniformsStreamInterface& group2 = {},
+			const UniformsStreamInterface& group3 = {});
 		BoundUniforms();
 		~BoundUniforms();
 		BoundUniforms(const BoundUniforms&) = default;

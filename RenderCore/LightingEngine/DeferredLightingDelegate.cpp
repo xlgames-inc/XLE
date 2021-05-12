@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DeferredLightingDelegate.h"
+#include "DeferredLightingResolve.h"
 #include "LightingEngineInternal.h"
 #include "LightingEngineApparatus.h"
 #include "LightUniforms.h"
@@ -45,12 +46,6 @@ namespace RenderCore { namespace LightingEngine
 
 	private:
 		void SetupDMShadowPrepare(LightingTechniqueIterator& iterator, const ShadowProjectionDesc& proj, unsigned shadowIdx);
-	};
-
-	enum class GBufferType
-	{
-		PositionNormal,
-		PositionNormalParameters
 	};
 
 	class BuildGBufferResourceDelegate : public Techniques::IShaderResourceDelegate
@@ -164,11 +159,11 @@ namespace RenderCore { namespace LightingEngine
 			TextureViewDesc::Flags::JustDepth};
 
 		SubpassDesc subpasses[2];
-		subpasses[0].AppendOutput(lightResolveTarget, LoadStore::DontCare, LoadStore::Retain);
+		subpasses[0].AppendOutput(lightResolveTarget, LoadStore::Clear);
 		subpasses[0].SetDepthStencil(depthTarget, LoadStore::Retain_ClearStencil, LoadStore::Retain_RetainStencil);
 
 			// In the second subpass, the depth buffer is bound as stencil-only (so we can read the depth values as shader inputs)
-		subpasses[1].AppendOutput(lightResolveTarget, LoadStore::Retain, LoadStore::Retain);
+		subpasses[1].AppendOutput(lightResolveTarget);
 		subpasses[1].SetDepthStencil({ depthTarget, LoadStore::Retain_RetainStencil, LoadStore::Retain_RetainStencil, justStencilWindow });
 
 		auto gbufferStore = LoadStore::Retain;	// (technically only need retain when we're going to use these for debugging)
@@ -195,153 +190,7 @@ namespace RenderCore { namespace LightingEngine
 		fragment.AddSubpasses(MakeIteratorRange(subpasses), std::move(fn));
 		return fragment;
 	}
-
-	enum class Shadowing { NoShadows, PerspectiveShadows, OrthShadows, OrthShadowsNearCascade, OrthHybridShadows };
-
-	static const uint32_t StencilSky = 1<<7;
-    static const uint32_t StencilSampleCount = 1<<6;
-
-	static DepthStencilDesc s_dsWritePixelFrequencyPixel {
-		CompareOp::Always, false,
-		true, StencilSky|StencilSampleCount, 0xff, 
-		StencilDesc{StencilOp::DontWrite, StencilOp::DontWrite, StencilOp::DontWrite, CompareOp::Equal},
-		StencilDesc{StencilOp::DontWrite, StencilOp::DontWrite, StencilOp::DontWrite, CompareOp::Less}};
-
-	static DepthStencilDesc s_dsWriteNonSky {
-		CompareOp::Always, false,
-		true, StencilSky, 0xff, 
-		StencilDesc{StencilOp::DontWrite, StencilOp::DontWrite, StencilOp::DontWrite, CompareOp::Equal}};
-
-	::Assets::FuturePtr<Metal::GraphicsPipeline> BuildLightResolveOperator(
-		Techniques::GraphicsPipelineCollection& pipelineCollection,
-		const LightResolveOperatorDesc& desc,
-		const FrameBufferDesc& fbDesc,
-		unsigned subpassIdx,
-		bool hasScreenSpaceAO,
-		unsigned shadowResolveModel,
-		Shadowing shadowing,
-		GBufferType gbufferType)
-	{
-		auto sampleCount = TextureSamples::Create();
-		auto mainOutputAttachment = fbDesc.GetSubpasses()[subpassIdx].GetOutputs()[0]._resourceName;
-		if (fbDesc.GetAttachments()[mainOutputAttachment]._desc._flags & AttachmentDesc::Flags::Multisampled)
-			sampleCount = fbDesc.GetProperties()._samples;
-		
-		StringMeld<256, ::Assets::ResChar> definesTable;
-        definesTable << "GBUFFER_TYPE=" << (unsigned)gbufferType;
-        definesTable << ";MSAA_SAMPLES=" << ((sampleCount._sampleCount<=1)?0:sampleCount._sampleCount);
-        // if (desc._msaaSamplers) definesTable << ";MSAA_SAMPLERS=1";
-
-		if (shadowing != Shadowing::NoShadows) {
-			definesTable << ";SHADOW_CASCADE_MODE=" << ((shadowing == Shadowing::OrthShadows || shadowing == Shadowing::OrthShadowsNearCascade || shadowing == Shadowing::OrthHybridShadows) ? 2u : 1u);
-			definesTable << ";SHADOW_ENABLE_NEAR_CASCADE=" << (shadowing == Shadowing::OrthShadowsNearCascade ? 1u : 0u);
-			definesTable << ";SHADOW_RESOLVE_MODEL=" << unsigned(shadowResolveModel);
-			definesTable << ";SHADOW_RT_HYBRID=" << unsigned(shadowing == Shadowing::OrthHybridShadows);
-		}
-		definesTable << ";LIGHT_SHAPE=" << unsigned(desc._shape);
-        definesTable << ";DIFFUSE_METHOD=" << unsigned(desc._diffuseModel);
-        definesTable << ";HAS_SCREENSPACE_AO=" << unsigned(hasScreenSpaceAO);
-
-		const bool flipDirection = false;
-		const char* vertexShader_viewFrustumVector = 
-            flipDirection
-                ? BASIC2D_VERTEX_HLSL ":fullscreen_flip_viewfrustumvector"
-                : BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector"
-                ;
-
-		auto stencilRefValue = 0;
-
-		Techniques::VertexInputStates inputStates;
-		inputStates._inputLayout = {};
-		inputStates._topology = Topology::TriangleStrip;
-
-		Techniques::PixelOutputStates outputStates;
-		const bool doSampleFrequencyOptimisation = Tweakable("SampleFrequencyOptimisation", true);
-		if (doSampleFrequencyOptimisation && sampleCount._sampleCount > 1) {
-            outputStates._rasterization = Techniques::CommonResourceBox::s_rsCullDisable;
-			outputStates._depthStencil = s_dsWritePixelFrequencyPixel;
-			stencilRefValue = StencilSampleCount;
-        } else {
-			outputStates._depthStencil = s_dsWriteNonSky;
-            stencilRefValue = 0x0;
-        }
-
-		AttachmentBlendDesc blends[] { Techniques::CommonResourceBox::s_abAdditive };
-		outputStates._attachmentBlend = MakeIteratorRange(blends);
-		outputStates._fbDesc = &fbDesc;
-		outputStates._subpassIdx = subpassIdx;
-
-		return pipelineCollection.CreatePipeline(
-			vertexShader_viewFrustumVector, {},
-			DEFERRED_RESOLVE_LIGHT ":main", definesTable.AsStringSection(),
-			inputStates, outputStates);
-	}
 	
-	class LightResolveOperators
-	{
-	public:
-		struct Operator
-		{
-			std::shared_ptr<Metal::GraphicsPipeline> _pipeline;
-			LightResolveOperatorDesc _desc;
-		};
-
-		std::vector<Operator> _operators;
-	};
-
-	::Assets::FuturePtr<LightResolveOperators> BuildLightResolveOperators(
-		Techniques::GraphicsPipelineCollection& pipelineCollection,
-		IteratorRange<const LightResolveOperatorDesc*> resolveOperators,
-		const FrameBufferDesc& fbDesc,
-		unsigned subpassIdx,
-		bool hasScreenSpaceAO,
-		unsigned shadowResolveModel,
-		Shadowing shadowing,
-		GBufferType gbufferType)
-	{
-		using PipelineFuture = ::Assets::FuturePtr<Metal::GraphicsPipeline>;
-		std::vector<PipelineFuture> pipelineFutures;
-		pipelineFutures.reserve(resolveOperators.size());
-		for (const auto&desc:resolveOperators)
-			pipelineFutures.push_back(
-				BuildLightResolveOperator(
-					pipelineCollection, desc,
-					fbDesc, subpassIdx,
-					hasScreenSpaceAO, shadowResolveModel,
-					shadowing, gbufferType));
-
-		auto result = std::make_shared<::Assets::AssetFuture<LightResolveOperators>>("light-operators");
-		result->SetPollingFunction(
-			[pipelineFutures=std::move(pipelineFutures)](::Assets::AssetFuture<LightResolveOperators>& future) -> bool {
-				using namespace ::Assets;
-				std::vector<std::shared_ptr<Metal::GraphicsPipeline>> actualized;
-				actualized.resize(pipelineFutures.size());
-				auto a=actualized.begin();
-				for (const auto& p:pipelineFutures) {
-					Blob queriedLog;
-					DependencyValidation queriedDepVal;
-					auto state = p->CheckStatusBkgrnd(*a, queriedDepVal, queriedLog);
-					if (state != AssetState::Ready) {
-						if (state == AssetState::Invalid) {
-							future.SetInvalidAsset(queriedDepVal, queriedLog);
-							return false;
-						} else 
-							return true;
-					}
-					++a;
-				}
-
-				auto finalResult = std::make_shared<LightResolveOperators>();
-				finalResult->_operators.reserve(actualized.size());
-				for (auto& a:actualized)
-					finalResult->_operators.push_back({std::move(a), LightResolveOperatorDesc{}});
-
-				future.SetAsset(std::move(finalResult), nullptr);
-				return false;
-			});
-		return result;
-	}
-
 	void DeferredLightingCaptures::SetupDMShadowPrepare(
 		LightingTechniqueIterator& iterator,
 		const ShadowProjectionDesc& proj,
@@ -387,6 +236,9 @@ namespace RenderCore { namespace LightingEngine
 		// Sky subpass (prepares the stencil buffer)
 		iterator._rpi.NextSubpass();
 		// Light subpass
+		ResolveLights(
+			*iterator._threadContext, *iterator._parsingContext, iterator._rpi,
+			iterator._sceneLightingDesc, *_lightResolveOperators);
 	}
 
 	::Assets::FuturePtr<CompiledLightingTechnique> CreateDeferredLightingTechnique(

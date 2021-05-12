@@ -6,6 +6,7 @@
 #include "../Techniques/TechniqueDelegates.h"
 #include "../Techniques/Apparatuses.h"
 #include "../Techniques/Techniques.h"
+#include "../Techniques/PipelineCollection.h"
 #include "../Assets/PredefinedPipelineLayout.h"
 #include "../Assets/PipelineConfigurationUtils.h"
 #include "../IDevice.h"
@@ -47,6 +48,8 @@ namespace RenderCore { namespace LightingEngine
 			Throw(std::runtime_error("Did not find pipeline layout with the name " + pipelineLayoutName + " in the given pipeline layout file"));
 		auto pipelineInit = i->second->MakePipelineLayoutInitializer(drawingApparatus->_shaderCompiler->GetShaderLanguage());
 		_lightingOperatorLayout = _device->CreatePipelineLayout(pipelineInit);
+
+		_lightingOperatorCollection = std::make_shared<Techniques::GraphicsPipelineCollection>(_device, _lightingOperatorLayout);
 	}
 
 	LightingEngineApparatus::~LightingEngineApparatus() {}

@@ -91,7 +91,7 @@ float ResolvePointLightShadows(float3 worldPosition, int2 randomizerValue, uint 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-cbuffer LightBuffer BIND_MAT_B1
+cbuffer LightBuffer BIND_SEQ_B1
 {
 	LightDesc Light;
 }
