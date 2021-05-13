@@ -58,7 +58,7 @@ namespace RenderCore { namespace LightingEngine
 
 		struct Step
 		{
-			enum class Type { ParseScene, CallFunction, ExecuteDrawables, BeginRenderPassInstance, EndRenderPassInstance, NextRenderPassStep, None };
+			enum class Type { ParseScene, DrawSky, CallFunction, ExecuteDrawables, BeginRenderPassInstance, EndRenderPassInstance, NextRenderPassStep, None };
 			Type _type = Type::None;
 			Techniques::BatchFilter _batch = Techniques::BatchFilter::Max;
 			std::shared_ptr<Techniques::SequencerConfig> _sequencerConfig;

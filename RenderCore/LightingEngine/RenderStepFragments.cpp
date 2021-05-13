@@ -61,6 +61,14 @@ namespace RenderCore { namespace LightingEngine
 			_subpassExtensions.emplace_back(SubpassExtension { SubpassExtension::Type::HandledByPrevious });
 	}
 
+	void RenderStepFragmentInterface::AddSkySubpass(RenderCore::SubpassDesc&& subpass)
+	{
+		_frameBufferDescFragment.AddSubpass(std::move(subpass));
+		SubpassExtension ext;
+		ext._type = SubpassExtension::Type::ExecuteSky;
+		_subpassExtensions.emplace_back(std::move(ext));
+	}
+
 	RenderStepFragmentInterface::RenderStepFragmentInterface(RenderCore::PipelineType pipelineType)
 	{
 		_frameBufferDescFragment._pipelineType = pipelineType;

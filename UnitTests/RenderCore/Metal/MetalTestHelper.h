@@ -89,6 +89,8 @@ namespace UnitTests
         std::unique_ptr<Pimpl> _pimpl;
     };
 
+    void SaveImage(RenderCore::IThreadContext& threadContext, RenderCore::IResource& resource, StringSection<> filename);
+
     class DescriptorSetHelper
 	{
 	public:

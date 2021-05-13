@@ -405,30 +405,20 @@ namespace RenderCore { namespace Techniques
         return nullptr;
 	}
 
-	auto RenderPassInstance::GetOutputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr
+	auto RenderPassInstance::GetOutputAttachmentResource(unsigned outputAttachmentSlot) const -> IResourcePtr
 	{
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
-		auto resName = subPass.GetOutputs()[inputAttachmentSlot]._resourceName;
+		auto resName = subPass.GetOutputs()[outputAttachmentSlot]._resourceName;
 		assert(_attachmentPool);
         if (resName < _attachmentPoolRemapping.size())
             return _attachmentPool->GetResource(_attachmentPoolRemapping[resName])._resource;
         return nullptr;
 	}
-
-    auto RenderPassInstance::GetOutputAttachmentSRV(unsigned inputAttachmentSlot) const -> IResourceView*
-	{
-		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
-		auto resName = subPass.GetOutputs()[inputAttachmentSlot]._resourceName;
-		assert(_attachmentPool);
-        if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], subPass.GetInputs()[inputAttachmentSlot]._window);
-        return nullptr;
-	}
 	
-	auto RenderPassInstance::GetOutputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> IResourceView*
+	auto RenderPassInstance::GetOutputAttachmentSRV(unsigned outputAttachmentSlot, const TextureViewDesc& window) const -> IResourceView*
 	{
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
-		auto resName = subPass.GetOutputs()[inputAttachmentSlot]._resourceName;
+		auto resName = subPass.GetOutputs()[outputAttachmentSlot]._resourceName;
 		assert(_attachmentPool);
         if (resName < _attachmentPoolRemapping.size())
             return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], window);
@@ -445,7 +435,7 @@ namespace RenderCore { namespace Techniques
         return nullptr;
 	}
 
-	auto RenderPassInstance::GetDepthStencilAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr
+	auto RenderPassInstance::GetDepthStencilAttachmentResource() const -> IResourcePtr
 	{
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
 		auto resName = subPass.GetDepthStencil()._resourceName;
@@ -454,27 +444,7 @@ namespace RenderCore { namespace Techniques
             return _attachmentPool->GetResource(_attachmentPoolRemapping[resName])._resource;
         return nullptr;
 	}
-
-    auto RenderPassInstance::GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot) const -> IResourceView*
-	{
-		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
-		auto resName = subPass.GetDepthStencil()._resourceName;
-		assert(_attachmentPool);
-        if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], subPass.GetInputs()[inputAttachmentSlot]._window);
-        return nullptr;
-	}
 	
-	auto RenderPassInstance::GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> IResourceView*
-	{
-		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
-		auto resName = subPass.GetDepthStencil()._resourceName;
-		assert(_attachmentPool);
-        if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], window);
-        return nullptr;
-	}
-
     RenderPassInstance::RenderPassInstance(
         IThreadContext& context,
         const FrameBufferDesc& layout,
@@ -1044,11 +1014,12 @@ namespace RenderCore { namespace Techniques
 
     bool IsCompatible(const AttachmentDesc& testAttachment, const AttachmentDesc& request, UInt2 dimensionsForSizeComparison)
     {
+        auto requestFlags = request._flags & ~AttachmentDesc::Flags::OutputRelativeDimensions;
         return
             ( (FormatCompatible(testAttachment._format, request._format)) || (testAttachment._format == Format::Unknown) || (request._format == Format::Unknown) )
             && GetArrayCount(testAttachment) == GetArrayCount(request)
 			&& DimsEqual(testAttachment, request, dimensionsForSizeComparison)
-            && (testAttachment._flags & request._flags) == request._flags
+            && (testAttachment._flags & requestFlags) == requestFlags
             ;
     }
 

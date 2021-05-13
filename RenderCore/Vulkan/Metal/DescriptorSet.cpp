@@ -720,11 +720,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		ProgressiveDescriptorSetBuilder builder { _layout->GetDescriptorSlots(), 0 };
 		for (unsigned c=0; c<binds.size(); ++c) {
 			if (binds[c]._type == DescriptorSetInitializer::BindType::ResourceView) {
+				assert(uniforms._resourceViews[binds[c]._uniformsStreamIdx]);
 				auto* view = checked_cast<const ResourceView*>(uniforms._resourceViews[binds[c]._uniformsStreamIdx]);
 				builder.Bind(c, *view);
 				writtenMask |= 1ull<<uint64_t(c);
 				_retainedViews.emplace_back(*view);
 			} else if (binds[c]._type == DescriptorSetInitializer::BindType::Sampler) {
+				assert(uniforms._samplers[binds[c]._uniformsStreamIdx]);
 				auto* sampler = checked_cast<const SamplerState*>(uniforms._samplers[binds[c]._uniformsStreamIdx]);
 				builder.Bind(c, sampler->GetUnderlying());
 				writtenMask |= 1ull<<uint64_t(c);

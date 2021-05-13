@@ -129,7 +129,7 @@ static const int NonPreprocessorLine0 = 0;
 		{
 			if (!_depValSys) _depValSys = ::Assets::CreateDepValSys();
 			_mountingTree = std::make_shared<::Assets::MountingTree>(s_defaultFilenameRules);
-			_utDataMount = _mountingTree->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
+			_utDataMount = _mountingTree->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData, s_defaultFilenameRules, ::Assets::FileSystemMemoryFlags::UseModuleModificationTime));
 			_xleresMount = _mountingTree->Mount("xleres", UnitTests::CreateEmbeddedResFileSystem());
 			::Assets::MainFileSystem::Init(_mountingTree, nullptr);
 		}
@@ -287,7 +287,7 @@ static const int NonPreprocessorLine0 = 0;
 	TEST_CASE( "ShaderParser-BindShaderToTechnique", "[shader_parser]" )
 	{
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
-		auto utDataMount = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
+		auto utDataMount = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData, s_defaultFilenameRules, ::Assets::FileSystemMemoryFlags::UseModuleModificationTime));
 		auto mnt0 = ::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", UnitTests::CreateEmbeddedResFileSystem());
 
 		// Given some shader (either straight-up shader code, or something generated from a shader graph)

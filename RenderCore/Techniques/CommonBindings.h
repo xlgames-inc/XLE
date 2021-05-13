@@ -15,6 +15,7 @@ namespace RenderCore { namespace Techniques
     namespace ObjectCB
     {
         static const auto LocalTransform = Utility::Hash64("LocalTransform");
+        static const auto GlobalTransform = Utility::Hash64("GlobalTransform");
 		static const auto DrawCallProperties = Utility::Hash64("DrawCallProperties");
         static const auto BasicMaterialConstants = Utility::Hash64("BasicMaterialConstants");
         static const auto Globals = Utility::Hash64("$Globals");

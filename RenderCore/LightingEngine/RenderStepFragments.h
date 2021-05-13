@@ -34,6 +34,7 @@ namespace RenderCore { namespace LightingEngine
 		void AddSubpass(
 			RenderCore::SubpassDesc&& subpass,
 			std::function<void(LightingTechniqueIterator&)>&& fn);
+		void AddSkySubpass(RenderCore::SubpassDesc&& subpass);
 		void AddSubpasses(
 			IteratorRange<const RenderCore::SubpassDesc*> subpasses,
 			std::function<void(LightingTechniqueIterator&)>&& fn);
@@ -45,7 +46,7 @@ namespace RenderCore { namespace LightingEngine
 
 		struct SubpassExtension
 		{
-			enum Type { ExecuteDrawables, CallLightingIteratorFunction, HandledByPrevious };
+			enum Type { ExecuteDrawables, ExecuteSky, CallLightingIteratorFunction, HandledByPrevious };
 			Type _type;
 			std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
 			ParameterBox _sequencerSelectors;

@@ -152,6 +152,8 @@ namespace RenderCore { namespace LightingEngine
 					drawStep._sequencerConfig = _pipelineAccelerators->CreateSequencerConfig(sb._techniqueDelegate, sb._sequencerSelectors, fbDesc, c);
 					drawStep._shaderResourceDelegate = sb._shaderResourceDelegate;
 					_steps.emplace_back(std::move(drawStep));
+				} else if (sb._type == SubpassExtension::Type::ExecuteSky) {
+					_steps.push_back({Step::Type::DrawSky});
 				} else if (sb._type == SubpassExtension::Type::CallLightingIteratorFunction) {
 					Step newStep;
 					newStep._type = Step::Type::CallFunction;
@@ -295,6 +297,9 @@ namespace RenderCore { namespace LightingEngine
 				}
 				break;
 
+			case CompiledLightingTechnique::Step::Type::DrawSky:
+				return { StepType::DrawSky };
+
 			case CompiledLightingTechnique::Step::Type::BeginRenderPassInstance:
 				{
 					assert(next->_fbDescIdx < _iterator->_compiledTechnique->_fbDescs.size());
@@ -377,6 +382,9 @@ namespace RenderCore { namespace LightingEngine
 			switch (next->_type) {
 			case CompiledLightingTechnique::Step::Type::ParseScene:
 				return { StepType::ParseScene, next->_batch, &_prepareResourcesIterator->_drawablePkt };
+
+			case CompiledLightingTechnique::Step::Type::DrawSky:
+				return { StepType::DrawSky };
 
 			case CompiledLightingTechnique::Step::Type::ExecuteDrawables:
 				{

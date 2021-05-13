@@ -43,6 +43,7 @@ namespace RenderCore { namespace LightingEngine
 
 		void DoShadowPrepare(LightingTechniqueIterator& iterator);
 		void DoLightResolve(LightingTechniqueIterator& iterator);
+		void DoToneMap(LightingTechniqueIterator& iterator);
 
 	private:
 		void SetupDMShadowPrepare(LightingTechniqueIterator& iterator, const ShadowProjectionDesc& proj, unsigned shadowIdx);
@@ -187,7 +188,24 @@ namespace RenderCore { namespace LightingEngine
 		subpasses[1].AppendInput(
 			AttachmentViewDesc { depthTarget, LoadStore::Retain_RetainStencil, LoadStore::Retain_RetainStencil, justDepthWindow });
 
-		fragment.AddSubpasses(MakeIteratorRange(subpasses), std::move(fn));
+		// fragment.AddSubpasses(MakeIteratorRange(subpasses), std::move(fn));
+		fragment.AddSkySubpass(std::move(subpasses[0]));
+		fragment.AddSubpass(std::move(subpasses[1]), std::move(fn));
+		return fragment;
+	}
+
+	static RenderStepFragmentInterface CreateToneMapFragment(
+		std::function<void(LightingTechniqueIterator&)>&& fn,
+		bool precisionTargets = false)
+	{
+		RenderStepFragmentInterface fragment { RenderCore::PipelineType::Graphics };
+		auto hdrInput = fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR);
+		auto ldrOutput = fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorLDR);
+
+		SubpassDesc subpass;
+		subpass.AppendOutput(ldrOutput, LoadStore::DontCare, LoadStore::Retain);
+		subpass.AppendInput(hdrInput, LoadStore::Retain_RetainStencil, LoadStore::DontCare);
+		fragment.AddSubpass(std::move(subpass), std::move(fn));
 		return fragment;
 	}
 	
@@ -233,12 +251,34 @@ namespace RenderCore { namespace LightingEngine
 
 	void DeferredLightingCaptures::DoLightResolve(LightingTechniqueIterator& iterator)
 	{
-		// Sky subpass (prepares the stencil buffer)
-		iterator._rpi.NextSubpass();
 		// Light subpass
 		ResolveLights(
 			*iterator._threadContext, *iterator._parsingContext, iterator._rpi,
 			iterator._sceneLightingDesc, *_lightResolveOperators);
+	}
+
+	void DeferredLightingCaptures::DoToneMap(LightingTechniqueIterator& iterator)
+	{
+		// Very simple stand-in for tonemap -- just use a copy shader to write the HDR values directly to the LDR texture
+		auto pipelineLayout = _lightResolveOperators->_pipelineLayout;
+		auto& copyShader = *::Assets::Actualize<Metal::ShaderProgram>(
+			pipelineLayout,
+			BASIC2D_VERTEX_HLSL ":fullscreen",
+			BASIC_PIXEL_HLSL ":copy");
+		auto& metalContext = *Metal::DeviceContext::Get(*iterator._threadContext);
+		auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(pipelineLayout);
+		UniformsStreamInterface usi;
+		usi.BindResourceView(0, Utility::Hash64("InputTexture"));
+		Metal::BoundUniforms uniforms(copyShader, usi);
+		encoder.Bind(copyShader);
+		encoder.Bind(Techniques::CommonResourceBox::s_dsDisable);
+		encoder.Bind({&Techniques::CommonResourceBox::s_abOpaque, &Techniques::CommonResourceBox::s_abOpaque+1});
+		UniformsStream us;
+		IResourceView* srvs[] = { iterator._rpi.GetInputAttachmentSRV(0) };
+		us._resourceViews = MakeIteratorRange(srvs);
+		uniforms.ApplyLooseUniforms(metalContext, encoder, us);
+		encoder.Bind({}, Topology::TriangleStrip);
+		encoder.Draw(4);
 	}
 
 	::Assets::FuturePtr<CompiledLightingTechnique> CreateDeferredLightingTechnique(
@@ -294,6 +334,12 @@ namespace RenderCore { namespace LightingEngine
 						captures->DoLightResolve(iterator);
 					});
 				auto resolveFragmentRegistration = lightingTechnique->CreateStep_RunFragments(std::move(lightingResolveFragment));
+
+				auto toneMapFragment = CreateToneMapFragment(
+					[captures](LightingTechniqueIterator& iterator) {
+						captures->DoToneMap(iterator);
+					});
+				lightingTechnique->CreateStep_RunFragments(std::move(toneMapFragment));
 
 				// unbind operations
 				lightingTechnique->CreateStep_CallFunction(

@@ -148,14 +148,11 @@ namespace RenderCore { namespace Techniques
         auto GetInputAttachmentSRV(unsigned inputAttachmentSlot) const -> IResourceView*;
 		auto GetInputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> IResourceView*;
 
-		auto GetOutputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
-		auto GetOutputAttachmentSRV(unsigned inputAttachmentSlot) const -> IResourceView*;
-		auto GetOutputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> IResourceView*;
+		auto GetOutputAttachmentResource(unsigned outputAttachmentSlot) const -> IResourcePtr;
+		auto GetOutputAttachmentSRV(unsigned outputAttachmentSlot, const TextureViewDesc& window) const -> IResourceView*;
 
+		auto GetDepthStencilAttachmentResource() const -> IResourcePtr;
 		auto GetDepthStencilAttachmentSRV(const TextureViewDesc& window = {}) const -> IResourceView*;
-		auto GetDepthStencilAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
-		auto GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot) const -> IResourceView*;
-		auto GetDepthStencilAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window) const -> IResourceView*;
 
 		// The "AttachmentNames" here map onto the names used by the FrameBufferDesc used to initialize this RPI
         auto GetResourceForAttachmentName(AttachmentName resName) const -> IResourcePtr;

@@ -88,8 +88,10 @@ namespace RenderCore { namespace Techniques
 		del._delegate->WriteResourceViews(parsingContext, nullptr, toLoadDelegate, MakeIteratorRange(rvDst, &rvDst[maxPlusOneToCheck]));
 		
 		for (unsigned c=minToCheck; c<maxPlusOneToCheck; ++c)
-			if (del._resourceInterfaceToUSI[c] != ~0u && (resourcesToQuery & (1 << uint64_t(del._resourceInterfaceToUSI[c]))))
+			if (del._resourceInterfaceToUSI[c] != ~0u && (resourcesToQuery & (1 << uint64_t(del._resourceInterfaceToUSI[c])))) {
+				assert(rvDst[c]);
 				_queriedResources[del._resourceInterfaceToUSI[c]] = rvDst[c];
+			}
 
 		_slotsQueried_ResourceViews |= toLoad;
 	}
@@ -112,8 +114,10 @@ namespace RenderCore { namespace Techniques
 		del._delegate->WriteSamplers(parsingContext, nullptr, toLoadDelegate, MakeIteratorRange(samplerDst, &samplerDst[maxPlusOneToCheck]));
 		
 		for (unsigned c=minToCheck; c<maxPlusOneToCheck; ++c)
-			if (del._samplerInterfaceToUSI[c] != ~0u && (samplersToQuery & (1 << uint64_t(del._samplerInterfaceToUSI[c]))))
+			if (del._samplerInterfaceToUSI[c] != ~0u && (samplersToQuery & (1 << uint64_t(del._samplerInterfaceToUSI[c])))) {
+				assert(samplerDst[c]);
 				_queriedSamplers[del._samplerInterfaceToUSI[c]] = samplerDst[c];
+			}
 
 		_slotsQueried_Samplers |= toLoad;
 	}

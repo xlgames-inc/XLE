@@ -198,7 +198,12 @@ namespace UnitTests
 
 	void UnitTestFBHelper::SaveImage(RenderCore::IThreadContext& threadContext, StringSection<> filename) const
 	{
-		auto desc = _pimpl->_mainTarget->GetDesc();
+		UnitTests::SaveImage(threadContext, *_pimpl->_mainTarget, filename);
+	}
+
+	void SaveImage(RenderCore::IThreadContext& threadContext, RenderCore::IResource& resource, StringSection<> filename)
+	{
+		auto desc = resource.GetDesc();
 		if (RenderCore::GetCompressionType(desc._textureDesc._format) != RenderCore::FormatCompressionType::None
 			|| RenderCore::GetComponentPrecision(desc._textureDesc._format) != 8)
 			Throw(std::runtime_error("Cannot output image in compressed or high precision format"));
@@ -225,7 +230,7 @@ namespace UnitTests
 
 		auto outputName = std::filesystem::temp_directory_path() / "xle-unit-tests" / (filename.AsString() + ".png");
 		
-		auto data = _pimpl->_mainTarget->ReadBackSynchronized(threadContext);		
+		auto data = resource.ReadBackSynchronized(threadContext);		
 		auto res = stbi_write_png(
 			outputName.string().c_str(),
 			desc._textureDesc._width, desc._textureDesc._height,

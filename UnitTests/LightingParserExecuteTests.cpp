@@ -265,7 +265,7 @@ namespace UnitTests
 			UnitTest_SetWorkingDirectory();
 			_globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
 			::Assets::MainFileSystem::GetMountingTree()->Mount("xleres", ::Assets::CreateFileSystem_OS("Game/xleres"));
-			::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
+			::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData, s_defaultFilenameRules, ::Assets::FileSystemMemoryFlags::UseModuleModificationTime));
 			_assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 
 			#if GFXAPI_TARGET == GFXAPI_APPLEMETAL

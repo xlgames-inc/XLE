@@ -60,7 +60,7 @@ namespace UnitTests
 	{
 		UnitTest_SetWorkingDirectory();
 		auto globalServices = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(GetStartupConfig());
-		auto mnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData));
+		auto mnt = ::Assets::MainFileSystem::GetMountingTree()->Mount("ut-data", ::Assets::CreateFileSystem_Memory(s_utData, s_defaultFilenameRules, ::Assets::FileSystemMemoryFlags::UseModuleModificationTime));
 		// auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 
 		auto tempDirPath = std::filesystem::temp_directory_path() / "xle-unit-tests";
