@@ -12,6 +12,7 @@
 #include "../Metal/Forward.h"
 #include "../../Math/Vector.h"
 #include "../../Utility/IteratorUtils.h"
+#include "../../Utility/MemoryUtils.h"
 #include <memory>
 
 namespace RenderCore 
@@ -36,8 +37,17 @@ namespace RenderCore { namespace Techniques
     class FrameBufferDescFragment
     {
     public:
-        AttachmentName DefineAttachment(uint64_t semantic, const AttachmentDesc& request = {});
-        AttachmentName DefineTemporaryAttachment(const AttachmentDesc& request) { return DefineAttachment(0, request); }
+        AttachmentName DefineAttachment(
+            uint64_t semantic,
+            LoadStore loadOp = LoadStore::Retain, LoadStore storeOp = LoadStore::Retain);
+        AttachmentName DefineAttachmentRelativeDims(
+            uint64_t semantic,
+            float width, float height,
+            const AttachmentDesc& request);
+		AttachmentName DefineAttachment(
+			uint64_t semantic,
+            unsigned width, unsigned height, unsigned arrayLayerCount,
+            const AttachmentDesc& request);
         void AddSubpass(SubpassDesc&& subpass);
 
         FrameBufferDescFragment();
@@ -45,9 +55,14 @@ namespace RenderCore { namespace Techniques
 
         struct Attachment
         {
-            uint64_t        _inputSemanticBinding;
-            uint64_t        _outputSemanticBinding;
-            AttachmentDesc  _desc;
+            uint64_t _inputSemanticBinding;
+            uint64_t _outputSemanticBinding;
+            AttachmentDesc _desc;
+
+            // Parameters for temporary attachments
+            float _width = 1.0f, _height = 1.0f;
+            unsigned _arrayLayerCount = 0;
+            bool _relativeDimensionsMode = true;
 
             uint64_t GetInputSemanticBinding() const { return _inputSemanticBinding; }
             uint64_t GetOutputSemanticBinding() const { return _outputSemanticBinding; }
@@ -57,7 +72,75 @@ namespace RenderCore { namespace Techniques
 		PipelineType				_pipelineType = PipelineType::Graphics;
     };
 
-    FrameBufferDesc BuildFrameBufferDesc(FrameBufferDescFragment&& fragment, const FrameBufferProperties& props);
+    struct PreregisteredAttachment
+    {
+    public:
+        uint64_t _semantic = 0ull;
+        ResourceDesc _desc;
+        enum class State { Uninitialized, Initialized, Initialized_StencilUninitialized, Uninitialized_StencilInitialized };
+        State _state = State::Uninitialized;
+        BindFlag::BitField _layoutFlags = 0;
+
+        uint64_t CalculateHash() const;
+    };
+
+    uint64_t HashPreregisteredAttachments(
+        IteratorRange<const PreregisteredAttachment*> attachments,
+        const FrameBufferProperties& fbProps,
+        uint64_t seed = DefaultSeed64);
+
+    class FragmentStitchingContext
+    {
+    public:
+        void DefineAttachment(
+            uint64_t semantic, const ResourceDesc&,
+            PreregisteredAttachment::State state = PreregisteredAttachment::State::Uninitialized, 
+            BindFlag::BitField initialLayoutFlags = 0);
+        void DefineAttachment(const PreregisteredAttachment& attachment);
+        void Undefine(uint64_t semantic);
+
+        struct AttachmentTransform
+        {
+            enum Type 
+            {
+                Preserved, Generated, Written, Consumed, Temporary
+            };
+            Type _type = Temporary;
+            BindFlag::BitField _newLayout = 0;
+        };
+        struct StitchResult
+        {
+            FrameBufferDesc _fbDesc;
+            std::vector<PreregisteredAttachment> _fullAttachmentDescriptions;
+            std::vector<AttachmentTransform> _attachmentTransforms;
+            std::string _log;
+        };
+
+        StitchResult TryStitchFrameBufferDesc(const FrameBufferDescFragment& fragment);
+        StitchResult TryStitchFrameBufferDesc(IteratorRange<const FrameBufferDescFragment*> fragments);
+
+        IteratorRange<const PreregisteredAttachment*> GetPreregisteredAttachments() const { return MakeIteratorRange(_workingAttachments); }
+
+        FrameBufferProperties _workingProps;
+
+        FragmentStitchingContext();
+        ~FragmentStitchingContext();
+    private:
+        std::vector<PreregisteredAttachment> _workingAttachments;
+    };
+
+    struct MergeFragmentsResult
+    {
+        FrameBufferDescFragment _mergedFragment;
+        std::vector<std::pair<uint64_t, AttachmentName>> _inputAttachments;
+        std::vector<std::pair<uint64_t, AttachmentName>> _outputAttachments;
+        std::string _log;
+    };
+
+    MergeFragmentsResult MergeFragments(
+        IteratorRange<const PreregisteredAttachment*> preregisteredAttachments,
+        IteratorRange<const FrameBufferDescFragment*> fragments,
+		const FrameBufferProperties& fbProps);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -66,18 +149,25 @@ namespace RenderCore { namespace Techniques
     public:
         void Bind(uint64_t semantic, const IResourcePtr& resource);
         void Unbind(const IResource& resource);
+        void Unbind(uint64_t semantic);
         void UnbindAll();
 		auto GetBoundResource(uint64_t semantic) -> IResourcePtr;
-
-        std::vector<AttachmentName> Request(const FrameBufferDesc& fbDesc, IteratorRange<const PreregisteredAttachment*> = {});
 
         struct GetResourceResult
         {
             IResourcePtr _resource;
-            bool _needsCompleteResource = false;
+            bool _needsCompleteResource = false;            // set to true if the caller must call Metal::CompleteResource() to finalize preparation for this resource 
         };
         GetResourceResult GetResource(AttachmentName resName) const;
         auto GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const -> IResourceView*;
+
+        struct ReservationFlag
+        {
+            enum class Enum {};
+            using BitField=unsigned; 
+        };
+        class Reservation;
+        Reservation Reserve(IteratorRange<const PreregisteredAttachment*>, ReservationFlag::BitField = 0);
 
         void ResetActualized();
         std::string GetMetrics() const;
@@ -87,22 +177,36 @@ namespace RenderCore { namespace Techniques
     private:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
+
+        void AddRef(IteratorRange<const AttachmentName*>, ReservationFlag::BitField flags);
+        void Release(IteratorRange<const AttachmentName*>, ReservationFlag::BitField flags);
     };
 
-    class RenderPassBeginDesc
+    class AttachmentPool::Reservation
     {
     public:
-        IteratorRange<const ClearValue*>    _clearValues;
-        //      (Vulkan supports offset and extent here. But there there is
-        //      no clean equivalent in D3D. Let's avoid exposing it until
-        //      it's really needed)
-        // VectorPattern<int, 2>               _offset;
-        // VectorPattern<unsigned, 2>          _extent;
+        IteratorRange<const AttachmentName*> GetResourceIds() const { return MakeIteratorRange(_reservedAttachments); }
+        Reservation();
+        ~Reservation();
+        Reservation(Reservation&&);
+        Reservation& operator=(Reservation&&);
+        Reservation(const Reservation&);
+        Reservation& operator=(const Reservation&);
+    private:
+        std::vector<AttachmentName> _reservedAttachments;
+        AttachmentPool* _pool;
+        ReservationFlag::BitField _reservationFlags;
 
-        RenderPassBeginDesc(
-            IteratorRange<const ClearValue*> clearValues = {})
-        : _clearValues(clearValues)
-        {}
+        Reservation(
+            std::vector<AttachmentName>&& reservedAttachments,
+            AttachmentPool* pool,
+            ReservationFlag::BitField flags);
+        friend class AttachmentPool;
+    };
+
+    struct RenderPassBeginDesc
+    {
+        IteratorRange<const ClearValue*>    _clearValues;
     };
 
     /// <summary>Stores a set of retained frame buffers, which can be reused frame-to-frame</summary>
@@ -143,6 +247,7 @@ namespace RenderCore { namespace Techniques
         const Metal::FrameBuffer& GetFrameBuffer() const { return *_frameBuffer; }
         const FrameBufferDesc& GetFrameBufferDesc() const { return _layout; }
         ViewportDesc GetDefaultViewport() const;
+        const AttachmentPool::Reservation& GetAttachmentReservation() const { return _attachmentPoolReservation; }
 
         auto GetInputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
         auto GetInputAttachmentSRV(unsigned inputAttachmentSlot) const -> IResourceView*;
@@ -158,20 +263,29 @@ namespace RenderCore { namespace Techniques
         auto GetResourceForAttachmentName(AttachmentName resName) const -> IResourcePtr;
         auto GetSRVForAttachmentName(AttachmentName resName, const TextureViewDesc& window = {}) const -> IResourceView*;
 
+        // Construct from a fully actualized "FrameBufferDesc" (eg, one generated via a
+        // FragmentStitchingContext)
         RenderPassInstance(
             IThreadContext& context,
             const FrameBufferDesc& layout,
+            IteratorRange<const PreregisteredAttachment*> fullAttachmentsDescription,
             FrameBufferPool& frameBufferPool,
             AttachmentPool& attachmentPool,
-            IteratorRange<const PreregisteredAttachment*> preregisteredAttachments,
             const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
+
+        // Construct from a fully FrameBufferDescFragment fragment. This will use the
+        // stitching context in the ParsingContext to link the frame buffer to the current
+        // environment
         RenderPassInstance(
             IThreadContext& context,
             ParsingContext& parsingContext,
-            const FrameBufferDesc& layout,
+            const FrameBufferDescFragment& layoutFragment,
             const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
+
+        // Construct a "non-metal" RenderPassInstance (useful for compute shader work)
 		RenderPassInstance(
 			const FrameBufferDesc& layout,
+            IteratorRange<const PreregisteredAttachment*> resolvedAttachmentDescs,
 			AttachmentPool& attachmentPool);
 
         ~RenderPassInstance();
@@ -184,26 +298,10 @@ namespace RenderCore { namespace Techniques
         std::shared_ptr<Metal::FrameBuffer> _frameBuffer;
         Metal::DeviceContext* _attachedContext;
         AttachmentPool* _attachmentPool;
-        std::vector<AttachmentName> _attachmentPoolRemapping;
+        AttachmentPool::Reservation _attachmentPoolReservation;
 
 		FrameBufferDesc _layout;
     };
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class MergeFragmentsResult
-    {
-    public:
-        FrameBufferDescFragment _mergedFragment;
-        std::vector<std::pair<uint64_t, AttachmentName>> _inputAttachments;
-        std::vector<std::pair<uint64_t, AttachmentName>> _outputAttachments;
-        std::string _log;
-    };
-
-    MergeFragmentsResult MergeFragments(
-        IteratorRange<const PreregisteredAttachment*> preregisteredAttachments,
-        IteratorRange<const FrameBufferDescFragment*> fragments,
-		UInt2 dimenionsForCompatibilityTests = UInt2(1024, 1024));
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -223,14 +321,16 @@ namespace RenderCore { namespace Techniques
     /// outputs from each subsequent fragment into the systemAttachments array.
     bool CanBeSimplified(
         const FrameBufferDescFragment& inputFragment,
-        IteratorRange<const PreregisteredAttachment*> systemAttachments);
+        IteratorRange<const PreregisteredAttachment*> systemAttachments,
+        const FrameBufferProperties& fbProps);
 
-    void MergeInOutputs(
+/*    void MergeInOutputs(
         std::vector<PreregisteredAttachment>& workingSystemAttachments,
         const FrameBufferDescFragment& fragment,
         const FrameBufferProperties& fbProps);
 
-    bool IsCompatible(const AttachmentDesc& testAttachment, const AttachmentDesc& request, UInt2 dimensions);
+    // bool IsCompatible(const AttachmentDesc& testAttachment, const AttachmentDesc& request, UInt2 dimensions);
+*/
 
 }}
 

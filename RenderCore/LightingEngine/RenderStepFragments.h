@@ -23,8 +23,17 @@ namespace RenderCore { namespace LightingEngine
 	class RenderStepFragmentInterface
 	{
 	public:
-		RenderCore::AttachmentName DefineAttachment(uint64_t semantic, const RenderCore::AttachmentDesc& request = {});
-		RenderCore::AttachmentName DefineTemporaryAttachment(const RenderCore::AttachmentDesc& request);
+		AttachmentName DefineAttachment(
+            uint64_t semantic,
+            LoadStore loadOp = LoadStore::Retain, LoadStore storeOp = LoadStore::Retain);
+        AttachmentName DefineAttachmentRelativeDims(
+			uint64_t semantic,
+            float width, float height,
+            const AttachmentDesc& request);
+		AttachmentName DefineAttachment(
+			uint64_t semantic,
+            unsigned width, unsigned height, unsigned arrayLayerCount,
+            const AttachmentDesc& request);
 		void AddSubpass(
 			RenderCore::SubpassDesc&& subpass,
 			const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& techniqueDelegate = nullptr,

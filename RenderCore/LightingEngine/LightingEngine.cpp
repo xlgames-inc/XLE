@@ -107,16 +107,18 @@ namespace RenderCore { namespace LightingEngine
 		auto merged = Techniques::MergeFragments(
 			MakeIteratorRange(_workingAttachments),
 			MakeIteratorRange(fragments),
-			dimensionsForCompatibilityTests);
+			_fbProps);
 
 		auto linkResults = LinkFragmentOutputsToSystemAttachments(merged, MakeIteratorRange(_workingAttachments));
 
 		#if defined(_DEBUG)
 			Log(Warning) << "Merged fragment in lighting technique:" << std::endl << merged._log << std::endl;
-			if (RenderCore::Techniques::CanBeSimplified(merged._mergedFragment, _workingAttachments))
+			if (RenderCore::Techniques::CanBeSimplified(merged._mergedFragment, _workingAttachments, _fbProps))
 				Log(Warning) << "Detected a frame buffer fragment which be simplified while building lighting technique. This usually means one or more of the attachments can be reused, thereby reducing the total number of attachments required." << std::endl;
 		#endif
 
+		assert(0);
+#if 0
 		// Update _workingAttachments
 		RenderCore::Techniques::MergeInOutputs(_workingAttachments, merged._mergedFragment, _fbProps);
 
@@ -171,6 +173,7 @@ namespace RenderCore { namespace LightingEngine
 		endStep._type = Step::Type::EndRenderPassInstance;
 		endStep._fragmentLinkResults = std::move(linkResults);
 		_steps.push_back(endStep);
+#endif
 
 		_pendingCreateFragmentSteps.clear();
 	}
@@ -303,18 +306,21 @@ namespace RenderCore { namespace LightingEngine
 			case CompiledLightingTechnique::Step::Type::BeginRenderPassInstance:
 				{
 					assert(next->_fbDescIdx < _iterator->_compiledTechnique->_fbDescs.size());
+					assert(0);
 					_iterator->_rpi = Techniques::RenderPassInstance{
 						*_iterator->_threadContext,
 						_iterator->_compiledTechnique->_fbDescs[next->_fbDescIdx],
+						IteratorRange<const Techniques::PreregisteredAttachment*>{},
 						*_iterator->_frameBufferPool,
-						*_iterator->_attachmentPool,
-						MakeIteratorRange(_iterator->_parsingContext->_preregisteredAttachments)};
+						*_iterator->_attachmentPool};
 				}
 				break;
 
 			case CompiledLightingTechnique::Step::Type::EndRenderPassInstance:
 				{
 					_iterator->_rpi.End();
+					assert(0);
+#if 0
 					auto& attachmentPool = *_iterator->_attachmentPool;
 					for (auto consumed:next->_fragmentLinkResults._consumedAttachments) {
 						auto* bound = attachmentPool.GetBoundResource(consumed).get();
@@ -327,6 +333,7 @@ namespace RenderCore { namespace LightingEngine
 						Remove(_iterator->_parsingContext->_preregisteredAttachments, generated.first);
 						_iterator->_parsingContext->_preregisteredAttachments.push_back({generated.first, res->GetDesc(), Techniques::PreregisteredAttachment::State::Initialized, Techniques::PreregisteredAttachment::State::Initialized});
 					}
+#endif
 					_iterator->_rpi = {};
 				}
 				break;

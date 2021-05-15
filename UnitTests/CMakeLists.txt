@@ -84,6 +84,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         RenderCore/Assets/ColladaModelConversion.cpp
         RenderCore/Assets/PipelineConfigurationTests.cpp
         RenderCore/Assets/ImmediateDrawablesTests.cpp
+        RenderCore/Assets/RenderPassManagementTests.cpp
         RenderCore/LightingEngine/LightingEngineTests.cpp
         RenderCore/LightingEngine/LightingEngineTestHelper.cpp
         RenderCore/LightingEngine/GBufferConstructionTests.cpp

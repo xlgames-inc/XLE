@@ -26,7 +26,7 @@ namespace RenderCore
         // together the hashes of the members.
         _hash = DefaultSeed64;
         for (const auto&a:_attachments)
-            _hash = HashCombine(_hash, HashCombine(a._semantic, a._desc.CalculateHash()));
+            _hash = HashCombine(_hash, a._desc.CalculateHash());
         for (const auto&sp:_subpasses)
             _hash = HashCombine(_hash, sp.CalculateHash());
         _hash = HashCombine(_hash, _props.CalculateHash());
@@ -40,17 +40,6 @@ namespace RenderCore
     FrameBufferDesc::~FrameBufferDesc() {}
 
 	INamedAttachments::~INamedAttachments() {}
-
-    AttachmentDesc AsAttachmentDesc(const ResourceDesc& desc)
-    {
-        return {
-            desc._textureDesc._format,
-            (float)desc._textureDesc._width, (float)desc._textureDesc._height,
-            0u,
-            0u,
-            desc._bindFlags
-        };
-    }
 
     const char* AsString(LoadStore input)
     {
@@ -68,22 +57,24 @@ namespace RenderCore
         }
     }
 
+    static uint64_t MaskBits(unsigned bitCount) { return (1ull << uint64_t(bitCount)) - 1ull; }
+
     uint64_t AttachmentDesc::CalculateHash() const
     {
-        assert((unsigned(_format) & ((1<<8)-1)) == unsigned(_format));
-        assert((_arrayLayerCount & ((1<<7)-1)) == _arrayLayerCount);
+        assert((uint64_t(_format) & MaskBits(8)) == uint64_t(_format));
+        assert((uint64_t(_flags) & MaskBits(1)) == uint64_t(_flags));
+        assert((uint64_t(_loadFromPreviousPhase) & MaskBits(5)) == uint64_t(_loadFromPreviousPhase));
+        assert((uint64_t(_storeToNextPhase) & MaskBits(5)) == uint64_t(_storeToNextPhase));
+        assert((uint64_t(_initialLayout) & MaskBits(15)) == uint64_t(_initialLayout));
+        assert((uint64_t(_finalLayout) & MaskBits(15)) == uint64_t(_finalLayout));
 
-        uint64_t t0 =
-                uint64_t(_format)
-            |   (uint64_t(_arrayLayerCount) << 8ull)
-            |   (uint64_t(_flags) << 16ull)
-            |   (uint64_t(_bindFlagsForFinalLayout) << 32ull)
+        return  uint64_t(_format)
+            |   (uint64_t(_flags) << 8ull)
+            |   (uint64_t(_loadFromPreviousPhase) << 9ull)
+            |   (uint64_t(_storeToNextPhase) << 14ull)
+            |   (uint64_t(_initialLayout) << 19ull)
+            |   (uint64_t(_finalLayout) << 34ull)
             ;
-        uint64_t t1 =
-                uint64_t(*(uint32_t*)&_width)
-            |   (uint64_t(*(uint32_t*)&_height) << 32ull)
-            ;
-        return HashCombine(t0, t1);
     }
 
     uint64_t SubpassDesc::CalculateHash() const

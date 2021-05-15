@@ -32,12 +32,13 @@ namespace RenderCore
             #if defined(_DEBUG)
                 << (!attachment._name.empty()?attachment._name:std::string("<<no name>>")) << ", "
             #endif
-            << AsString(attachment._format) << ", "
-            << attachment._width << ", "
-            << attachment._height << ", "
-            << attachment._arrayLayerCount
+            << AsString(attachment._format)
             << ", 0x" << std::hex << attachment._flags << std::dec
-            << ", 0x" << std::hex << attachment._bindFlagsForFinalLayout << std::dec << " }";
+            << ", " << AsString(attachment._loadFromPreviousPhase) 
+            << ", " << AsString(attachment._storeToNextPhase)
+            << ", 0x" << std::hex << attachment._initialLayout << std::dec
+            << ", 0x" << std::hex << attachment._finalLayout << std::dec
+            << " }";
         return str;
     }
 
@@ -63,27 +64,32 @@ namespace RenderCore
         return str;
     }
 
+    static std::ostream& operator<<(std::ostream& str, const TextureDesc& textureDesc)
+    {
+        switch (textureDesc._dimensionality) {
+            case TextureDesc::Dimensionality::T1D: str << textureDesc._width; break;
+            case TextureDesc::Dimensionality::T2D: str << textureDesc._width << "x" << textureDesc._height; break;
+            case TextureDesc::Dimensionality::T3D: str << textureDesc._width << "x" << textureDesc._height << "x" << textureDesc._depth; break;
+            case TextureDesc::Dimensionality::CubeMap: str << textureDesc._width << "x" << textureDesc._height << " cube"; break;
+            default: str << "<<unknown dimensionality>>";
+        }
+        str << ", " << AsString(textureDesc._format)
+            << ", " << (unsigned)textureDesc._mipCount
+            << ", " << (unsigned)textureDesc._arrayCount
+            << ", " << (unsigned)textureDesc._samples._sampleCount
+            << ", " << (unsigned)textureDesc._samples._samplingQuality;
+        return str;
+    }
+
     static std::ostream& operator<<(std::ostream& str, const ResourceDesc& desc)
     {
         str << "ResourceDesc { ";
         if (desc._type == ResourceDesc::Type::Texture) {
-            str << "[Texture] ";
-            switch (desc._textureDesc._dimensionality) {
-                case TextureDesc::Dimensionality::T1D: str << desc._textureDesc._width; break;
-                case TextureDesc::Dimensionality::T2D: str << desc._textureDesc._width << "x" << desc._textureDesc._height; break;
-                case TextureDesc::Dimensionality::T3D: str << desc._textureDesc._width << "x" << desc._textureDesc._height << "x" << desc._textureDesc._depth; break;
-                case TextureDesc::Dimensionality::CubeMap: str << desc._textureDesc._width << "x" << desc._textureDesc._height << " cube"; break;
-                default: str << "<<unknown dimensionality>>";
-            }
-            str << ", " << AsString(desc._textureDesc._format)
-                << ", " << desc._textureDesc._arrayCount
-                << ", " << desc._textureDesc._arrayCount
-                << ", " << desc._textureDesc._arrayCount
-                << ", 0x" << std::hex << desc._bindFlags << std::dec;
+            str << "[Texture] " << desc._textureDesc;
         } else {
-            str << "[Buffer] " << Utility::ByteCount(desc._linearBufferDesc._sizeInBytes)
-                << ", 0x" << std::hex << desc._bindFlags << std::dec;
+            str << "[Buffer] " << Utility::ByteCount(desc._linearBufferDesc._sizeInBytes);
         }
+        str << ", 0x" << std::hex << desc._bindFlags << std::dec;
         return str;
     }
 }
@@ -100,10 +106,49 @@ namespace RenderCore { namespace Techniques
         return str;
     }
 
-    AttachmentName FrameBufferDescFragment::DefineAttachment(uint64_t semantic, const AttachmentDesc& request)
+    AttachmentName FrameBufferDescFragment::DefineAttachment(
+        uint64_t semantic, 
+        LoadStore loadOp, LoadStore storeOp)
     {
         auto name = (AttachmentName)_attachments.size();
-        _attachments.push_back({semantic, semantic, request});
+        Attachment attachment;
+        attachment._inputSemanticBinding = attachment._outputSemanticBinding = semantic;
+        attachment._desc._loadFromPreviousPhase = loadOp;
+        attachment._desc._storeToNextPhase = storeOp;
+        _attachments.push_back(attachment);
+        return name;
+    }
+
+    AttachmentName FrameBufferDescFragment::DefineAttachmentRelativeDims(
+        uint64_t semantic,
+        float width, float height,
+        const AttachmentDesc& request)
+    {
+        auto name = (AttachmentName)_attachments.size();
+        Attachment attachment;
+        attachment._inputSemanticBinding = attachment._outputSemanticBinding = semantic;
+        attachment._desc = request;
+        attachment._width = width;
+        attachment._height = height;
+        attachment._relativeDimensionsMode = true;
+        _attachments.push_back(attachment);
+        return name;
+    }
+
+    AttachmentName FrameBufferDescFragment::DefineAttachment(
+        uint64_t semantic,
+        unsigned width, unsigned height, unsigned arrayLayerCount,
+        const AttachmentDesc& request)
+    {
+        auto name = (AttachmentName)_attachments.size();
+        Attachment attachment;
+        attachment._inputSemanticBinding = attachment._outputSemanticBinding = semantic;
+        attachment._desc = request;
+        attachment._width = width;
+        attachment._height = height;
+        attachment._arrayLayerCount = arrayLayerCount;
+        attachment._relativeDimensionsMode = false;
+        _attachments.push_back(attachment);
         return name;
     }
 
@@ -121,41 +166,27 @@ namespace RenderCore { namespace Techniques
     {
     public:
 		virtual IResourcePtr GetResource(AttachmentName resName, const AttachmentDesc& requestDesc, const FrameBufferProperties& props) const override;
-		// virtual const AttachmentDesc* GetDesc(AttachmentName resName) const;
-		// virtual const FrameBufferProperties& GetFrameBufferProperties() const;
 
         NamedAttachmentsWrapper(
             AttachmentPool& pool,
-            const std::vector<AttachmentName>& poolMapping);
+            IteratorRange<const AttachmentName*> poolMapping);
         ~NamedAttachmentsWrapper();
     private:
         AttachmentPool* _pool;
-        const std::vector<AttachmentName>* _poolMapping;
+        IteratorRange<const AttachmentName*> _poolMapping;
     };
 
     IResourcePtr NamedAttachmentsWrapper::GetResource(AttachmentName resName, const AttachmentDesc& requestDesc, const FrameBufferProperties& props) const
     {
-        assert(resName < _poolMapping->size());
-        auto result = _pool->GetResource((*_poolMapping)[resName])._resource;
+        assert(resName < _poolMapping.size());
+        auto result = _pool->GetResource(_poolMapping[resName])._resource;
 
         #if defined(_DEBUG)
             // Validate that the "desc" for the returned resource matches what the caller was requesting
             auto resultDesc = result->GetDesc();
-
-            unsigned requestAttachmentWidth, requestAttachmentHeight;
-            if (!(requestDesc._flags & AttachmentDesc::Flags::OutputRelativeDimensions)) {
-                requestAttachmentWidth = unsigned(requestDesc._width);
-                requestAttachmentHeight = unsigned(requestDesc._height);
-            } else {
-                requestAttachmentWidth = unsigned(std::floor(props._outputWidth * requestDesc._width));
-                requestAttachmentHeight = unsigned(std::floor(props._outputHeight * requestDesc._height));
-            }
-
             assert(requestDesc._format == Format(0) || AsTypelessFormat(requestDesc._format) == AsTypelessFormat(resultDesc._textureDesc._format));
-            assert(requestAttachmentWidth == resultDesc._textureDesc._width);
-            assert(requestAttachmentHeight == resultDesc._textureDesc._height);
-            assert(requestDesc._arrayLayerCount == resultDesc._textureDesc._arrayCount);
-            assert((requestDesc._bindFlagsForFinalLayout & resultDesc._bindFlags) == requestDesc._bindFlagsForFinalLayout);
+            assert((requestDesc._finalLayout & resultDesc._bindFlags) == requestDesc._finalLayout);
+            assert((requestDesc._initialLayout & resultDesc._bindFlags) == requestDesc._initialLayout);
         #endif
 
         return result;
@@ -163,9 +194,9 @@ namespace RenderCore { namespace Techniques
 
     NamedAttachmentsWrapper::NamedAttachmentsWrapper(
         AttachmentPool& pool,
-        const std::vector<AttachmentName>& poolMapping)
+        IteratorRange<const AttachmentName*> poolMapping)
     : _pool(&pool)
-    , _poolMapping(&poolMapping) {}
+    , _poolMapping(poolMapping) {}
     NamedAttachmentsWrapper::~NamedAttachmentsWrapper() {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -177,15 +208,15 @@ namespace RenderCore { namespace Techniques
         {
         public:
             std::shared_ptr<Metal::FrameBuffer> _frameBuffer;
-            IteratorRange<const AttachmentName*> _poolAttachmentsRemapping;
+            AttachmentPool::Reservation _poolReservation;
             const FrameBufferDesc* _completedDesc;
             std::vector<IResource*> _uncompletedInitializationResources;
         };
         Result BuildFrameBuffer(
             Metal::ObjectFactory& factory,
             const FrameBufferDesc& desc,
-            AttachmentPool& attachmentPool,
-            IteratorRange<const PreregisteredAttachment*> preregisteredAttachments);
+            IteratorRange<const PreregisteredAttachment*> resolvedAttachmentDescs,
+            AttachmentPool& attachmentPool);
 
         void Reset();
 
@@ -222,11 +253,11 @@ namespace RenderCore { namespace Techniques
     auto FrameBufferPool::BuildFrameBuffer(
         Metal::ObjectFactory& factory,
         const FrameBufferDesc& desc,
-        AttachmentPool& attachmentPool,
-        IteratorRange<const PreregisteredAttachment*> preregisteredAttachments) -> Result
+        IteratorRange<const PreregisteredAttachment*> resolvedAttachmentDescs,
+        AttachmentPool& attachmentPool) -> Result
     {    
-        auto poolAttachments = attachmentPool.Request(desc, preregisteredAttachments);
-		assert(poolAttachments.size() == desc.GetAttachments().size());
+        auto poolAttachments = attachmentPool.Reserve(resolvedAttachmentDescs);
+		assert(poolAttachments.GetResourceIds().size() == desc.GetAttachments().size());
 
         std::vector<FrameBufferDesc::Attachment> adjustedAttachments;
         adjustedAttachments.reserve(desc.GetAttachments().size());
@@ -234,7 +265,7 @@ namespace RenderCore { namespace Techniques
 
         uint64_t hashValue = DefaultSeed64;
         for (unsigned c=0; c<desc.GetAttachments().size(); ++c) {
-            auto matchedAttachment = attachmentPool.GetResource(poolAttachments[c]);
+            auto matchedAttachment = attachmentPool.GetResource(poolAttachments.GetResourceIds()[c]);
             assert(matchedAttachment._resource);
             hashValue = HashCombine(matchedAttachment._resource->GetGUID(), hashValue);
 
@@ -247,9 +278,10 @@ namespace RenderCore { namespace Techniques
             // We must merge this updated information back into the FrameBufferDesc.
             // This also has the effect of normalizing the attachment desc information for the hash value,
             // which would help cases where functionality identical information produces different hash value
-            auto completeAttachmentDesc = AsAttachmentDesc(matchedAttachment._resource->GetDesc());
-            completeAttachmentDesc._bindFlagsForFinalLayout = desc.GetAttachments()[c]._desc._bindFlagsForFinalLayout;
-            adjustedAttachments.push_back({desc.GetAttachments()[c]._semantic, completeAttachmentDesc});
+            auto resDesc = matchedAttachment._resource->GetDesc();
+            AttachmentDesc completeAttachmentDesc = desc.GetAttachments()[c]._desc;
+            completeAttachmentDesc._format = resDesc._textureDesc._format;
+            adjustedAttachments.push_back({completeAttachmentDesc});
         }
 
         FrameBufferDesc adjustedDesc(
@@ -264,12 +296,12 @@ namespace RenderCore { namespace Techniques
         for (unsigned c=0; c<dimof(_entries); ++c) {
             if (_entries[c]._hash == hashValue) {
                 _entries[c]._tickId = _currentTickId;
-				_entries[c]._poolAttachmentsRemapping = std::move(poolAttachments);	// update the mapping, because attachments map have moved
+				_entries[c]._poolAttachmentsRemapping = {poolAttachments.GetResourceIds().begin(), poolAttachments.GetResourceIds().end()};	// update the mapping, because attachments map have moved
                 IncreaseTickId();
                 assert(_entries[c]._fb != nullptr);
                 return {
                     _entries[c]._fb,
-                    MakeIteratorRange(_entries[c]._poolAttachmentsRemapping),
+                    poolAttachments,
                     &_entries[c]._completedDesc
                 };
             }
@@ -285,18 +317,18 @@ namespace RenderCore { namespace Techniques
 //            Log(Warning) << "Overwriting tail in FrameBufferPool(). There may be too many different framebuffers required from the same pool" << std::endl;
 //        }
 
-        NamedAttachmentsWrapper namedAttachments(attachmentPool, poolAttachments);
+        NamedAttachmentsWrapper namedAttachments(attachmentPool, poolAttachments.GetResourceIds());
         assert(adjustedDesc.GetSubpasses().size());
         _entries[earliestEntry]._fb = std::make_shared<Metal::FrameBuffer>(
             factory,
             adjustedDesc, namedAttachments);
         _entries[earliestEntry]._tickId = _currentTickId;
         _entries[earliestEntry]._hash = hashValue;
-        _entries[earliestEntry]._poolAttachmentsRemapping = std::move(poolAttachments);
+        _entries[earliestEntry]._poolAttachmentsRemapping = {poolAttachments.GetResourceIds().begin(), poolAttachments.GetResourceIds().end()};
         _entries[earliestEntry]._completedDesc = std::move(adjustedDesc);
         IncreaseTickId();
         result._frameBuffer = _entries[earliestEntry]._fb;
-        result._poolAttachmentsRemapping = MakeIteratorRange(_entries[earliestEntry]._poolAttachmentsRemapping);
+        result._poolReservation = std::move(poolAttachments);
         result._completedDesc = &_entries[earliestEntry]._completedDesc;
         return result;
     }
@@ -362,16 +394,16 @@ namespace RenderCore { namespace Techniques
     auto RenderPassInstance::GetResourceForAttachmentName(AttachmentName resName) const -> IResourcePtr
     {
         assert(_attachmentPool);
-        if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName])._resource;
+        if (resName < _attachmentPoolReservation.GetResourceIds().size())
+            return _attachmentPool->GetResource(_attachmentPoolReservation.GetResourceIds()[resName])._resource;
         return nullptr;
     }
 
     auto RenderPassInstance::GetSRVForAttachmentName(AttachmentName resName, const TextureViewDesc& window) const -> IResourceView*
     {
         assert(_attachmentPool);
-        if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], window);
+        if (resName < _attachmentPoolReservation.GetResourceIds().size())
+            return _attachmentPool->GetSRV(_attachmentPoolReservation.GetResourceIds()[resName], window);
         return nullptr;
     }
 
@@ -380,8 +412,8 @@ namespace RenderCore { namespace Techniques
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
 		auto resName = subPass.GetInputs()[inputAttachmentSlot]._resourceName;
 		assert(_attachmentPool);
-        if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName])._resource;
+        if (resName < _attachmentPoolReservation.GetResourceIds().size())
+            return _attachmentPool->GetResource(_attachmentPoolReservation.GetResourceIds()[resName])._resource;
         return nullptr;
 	}
 
@@ -390,8 +422,8 @@ namespace RenderCore { namespace Techniques
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
 		auto resName = subPass.GetInputs()[inputAttachmentSlot]._resourceName;
 		assert(_attachmentPool);
-        if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], subPass.GetInputs()[inputAttachmentSlot]._window);
+        if (resName < _attachmentPoolReservation.GetResourceIds().size())
+            return _attachmentPool->GetSRV(_attachmentPoolReservation.GetResourceIds()[resName], subPass.GetInputs()[inputAttachmentSlot]._window);
         return nullptr;
 	}
 	
@@ -400,8 +432,8 @@ namespace RenderCore { namespace Techniques
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
 		auto resName = subPass.GetInputs()[inputAttachmentSlot]._resourceName;
 		assert(_attachmentPool);
-        if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], window);
+        if (resName < _attachmentPoolReservation.GetResourceIds().size())
+            return _attachmentPool->GetSRV(_attachmentPoolReservation.GetResourceIds()[resName], window);
         return nullptr;
 	}
 
@@ -410,8 +442,8 @@ namespace RenderCore { namespace Techniques
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
 		auto resName = subPass.GetOutputs()[outputAttachmentSlot]._resourceName;
 		assert(_attachmentPool);
-        if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName])._resource;
+        if (resName < _attachmentPoolReservation.GetResourceIds().size())
+            return _attachmentPool->GetResource(_attachmentPoolReservation.GetResourceIds()[resName])._resource;
         return nullptr;
 	}
 	
@@ -420,8 +452,8 @@ namespace RenderCore { namespace Techniques
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
 		auto resName = subPass.GetOutputs()[outputAttachmentSlot]._resourceName;
 		assert(_attachmentPool);
-        if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], window);
+        if (resName < _attachmentPoolReservation.GetResourceIds().size())
+            return _attachmentPool->GetSRV(_attachmentPoolReservation.GetResourceIds()[resName], window);
         return nullptr;
 	}
 
@@ -430,8 +462,8 @@ namespace RenderCore { namespace Techniques
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
 		auto resName = subPass.GetDepthStencil()._resourceName;
 		assert(_attachmentPool);
-        if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], window);
+        if (resName < _attachmentPoolReservation.GetResourceIds().size())
+            return _attachmentPool->GetSRV(_attachmentPoolReservation.GetResourceIds()[resName], window);
         return nullptr;
 	}
 
@@ -440,31 +472,30 @@ namespace RenderCore { namespace Techniques
 		const auto& subPass = _layout.GetSubpasses()[GetCurrentSubpassIndex()];
 		auto resName = subPass.GetDepthStencil()._resourceName;
 		assert(_attachmentPool);
-        if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName])._resource;
+        if (resName < _attachmentPoolReservation.GetResourceIds().size())
+            return _attachmentPool->GetResource(_attachmentPoolReservation.GetResourceIds()[resName])._resource;
         return nullptr;
 	}
 	
     RenderPassInstance::RenderPassInstance(
         IThreadContext& context,
         const FrameBufferDesc& layout,
+        IteratorRange<const PreregisteredAttachment*> fullAttachmentsDescription,
         FrameBufferPool& frameBufferPool,
         AttachmentPool& attachmentPool,
-        IteratorRange<const PreregisteredAttachment*> preregisteredAttachments,
         const RenderPassBeginDesc& beginInfo)
     {
         _attachedContext = Metal::DeviceContext::Get(context).get();
 
         auto fb = frameBufferPool.BuildFrameBuffer(
             Metal::GetObjectFactory(*context.GetDevice()),
-            layout, attachmentPool,
-            preregisteredAttachments);
+            layout, fullAttachmentsDescription, attachmentPool);
 
         if (!fb._uncompletedInitializationResources.empty())
             Metal::CompleteInitialization(*_attachedContext, MakeIteratorRange(fb._uncompletedInitializationResources));
 
         _frameBuffer = std::move(fb._frameBuffer);
-        _attachmentPoolRemapping = std::vector<AttachmentName>(fb._poolAttachmentsRemapping.begin(), fb._poolAttachmentsRemapping.end());
+        _attachmentPoolReservation = std::move(fb._poolReservation);
         _attachmentPool = &attachmentPool;
         _layout = *fb._completedDesc;
         // todo -- we might need to pass offset & extent parameters to BeginRenderPass
@@ -475,19 +506,54 @@ namespace RenderCore { namespace Techniques
     RenderPassInstance::RenderPassInstance(
         IThreadContext& context,
         ParsingContext& parsingContext,
-        const FrameBufferDesc& layout,
+        const FrameBufferDescFragment& layout,
         const RenderPassBeginDesc& beginInfo)
-    : RenderPassInstance(
-        context, layout, 
-        *parsingContext.GetTechniqueContext()._frameBufferPool,
-        *parsingContext.GetTechniqueContext()._attachmentPool,
-        parsingContext._preregisteredAttachments,
-        beginInfo)
     {
+        _attachedContext = nullptr;
+        _attachmentPool = nullptr;
+        
+        auto& stitchContext = parsingContext.GetFragmentStitchingContext();
+        auto stitchResult = stitchContext.TryStitchFrameBufferDesc(layout);
+        *this = RenderPassInstance {
+            context, stitchResult._fbDesc, stitchResult._fullAttachmentDescriptions,
+            *parsingContext.GetTechniqueContext()._frameBufferPool,
+            *parsingContext.GetTechniqueContext()._attachmentPool,
+            beginInfo };
+
+        // Update the parsing context with the changes to attachments
+        for (unsigned aIdx=0; aIdx<stitchResult._attachmentTransforms.size(); ++aIdx) {
+            auto semantic = stitchResult._fullAttachmentDescriptions[aIdx]._semantic;
+            if (!semantic) continue;
+            switch (stitchResult._attachmentTransforms[aIdx]._type) {
+            case FragmentStitchingContext::AttachmentTransform::Preserved:
+            case FragmentStitchingContext::AttachmentTransform::Temporary:
+                break;
+            case FragmentStitchingContext::AttachmentTransform::Written:
+                {
+                    auto desc = stitchResult._fullAttachmentDescriptions[aIdx];
+                    desc._state = PreregisteredAttachment::State::Uninitialized;
+                    stitchContext.DefineAttachment(desc);
+                    break;
+                }
+            case FragmentStitchingContext::AttachmentTransform::Generated:
+                {
+                    auto desc = stitchResult._fullAttachmentDescriptions[aIdx];
+                    desc._state = PreregisteredAttachment::State::Uninitialized;
+                    stitchContext.DefineAttachment(desc);
+                    parsingContext.GetTechniqueContext()._attachmentPool->Bind(semantic, GetResourceForAttachmentName(aIdx));
+                    break;
+                }
+            case FragmentStitchingContext::AttachmentTransform::Consumed:
+                stitchContext.Undefine(semantic);
+                parsingContext.GetTechniqueContext()._attachmentPool->Unbind(semantic);
+                break;
+            }
+        }
     }
 
 	RenderPassInstance::RenderPassInstance(
         const FrameBufferDesc& layout,
+        IteratorRange<const PreregisteredAttachment*> resolvedAttachmentDescs,
         AttachmentPool& attachmentPool)
 	: _layout(layout)
     {
@@ -497,8 +563,7 @@ namespace RenderCore { namespace Techniques
 		// This is used with compute pipelines sometimes -- since in Vulkan, those have some similarities with
 		// graphics pipelines, but are incompatible with the vulkan render passes
 		_attachedContext = nullptr;
-		_attachmentPoolRemapping = attachmentPool.Request(layout);
-		assert(_attachmentPoolRemapping.size() == layout.GetAttachments().size());
+		_attachmentPoolReservation = attachmentPool.Reserve(resolvedAttachmentDescs);
 		_attachmentPool = &attachmentPool;
 	}
     
@@ -513,7 +578,7 @@ namespace RenderCore { namespace Techniques
     : _frameBuffer(std::move(moveFrom._frameBuffer))
     , _attachedContext(moveFrom._attachedContext)
     , _attachmentPool(moveFrom._attachmentPool)
-    , _attachmentPoolRemapping(std::move(moveFrom._attachmentPoolRemapping))
+    , _attachmentPoolReservation(std::move(moveFrom._attachmentPoolReservation))
 	, _layout(std::move(moveFrom._layout))
     {
         moveFrom._attachedContext = nullptr;
@@ -529,7 +594,7 @@ namespace RenderCore { namespace Techniques
         _frameBuffer = std::move(moveFrom._frameBuffer);
         _attachedContext = moveFrom._attachedContext;
         _attachmentPool = moveFrom._attachmentPool;
-        _attachmentPoolRemapping = std::move(moveFrom._attachmentPoolRemapping);
+        _attachmentPoolReservation = std::move(moveFrom._attachmentPoolReservation);
         moveFrom._attachedContext = nullptr;
         moveFrom._attachmentPool = nullptr;
 		_layout = std::move(moveFrom._layout);
@@ -549,10 +614,11 @@ namespace RenderCore { namespace Techniques
     public:
         struct Attachment
         {
-            IResourcePtr		    _resource;
-            ResourceDesc		    _desc;
+            IResourcePtr            _resource;
+            ResourceDesc            _desc;
+            unsigned                _lockCount = 0;
         };
-        std::vector<Attachment>                         _attachments;
+        std::vector<Attachment>     _attachments;
 
         struct SemanticAttachment : public Attachment
         {
@@ -637,73 +703,24 @@ namespace RenderCore { namespace Techniques
 		return _pimpl->_srvPool.GetTextureView(attach->_resource, BindFlag::ShaderResource, completeView).get();
 	}
 
-    static bool DimsEqual(const AttachmentDesc& lhs, const TextureDesc& rhs, const FrameBufferProperties& props)
-    {
-        bool lhsRelativeMode = !!(lhs._flags & AttachmentDesc::Flags::OutputRelativeDimensions);
-        unsigned lhsWidth, lhsHeight;
-        if (!lhsRelativeMode) {
-            lhsWidth = unsigned(lhs._width);
-            lhsHeight = unsigned(lhs._height);
-        } else {
-            lhsWidth = unsigned(std::floor(props._outputWidth * lhs._width));
-            lhsHeight = unsigned(std::floor(props._outputHeight * lhs._height));
-        }
-
-        return lhsWidth == rhs._width && lhsHeight == rhs._height;
-    }
-
-    static unsigned GetArrayCount(const AttachmentDesc& lhs) { return (lhs._arrayLayerCount == 0) ? 1 : lhs._arrayLayerCount; }
-    static unsigned GetArrayCount(const TextureDesc& lhs) { return (lhs._arrayCount == 0) ? 1 : lhs._arrayCount; }
-
-    static bool MatchRequest(const AttachmentDesc& lhs, BindFlag::BitField lhsBindFlags, const ResourceDesc& rhs, const FrameBufferProperties& props)
-    {
-        assert(rhs._type == ResourceDesc::Type::Texture);
-        auto requestSamples = lhs._flags & AttachmentDesc::Flags::Multisampled ? props._samples : TextureSamples::Create();
-        return
-            GetArrayCount(lhs) == GetArrayCount(rhs._textureDesc)
-            && (AsTypelessFormat(lhs._format) == AsTypelessFormat(rhs._textureDesc._format) || lhs._format == Format::Unknown)
-            && DimsEqual(lhs, rhs._textureDesc, props)
-            && requestSamples == rhs._textureDesc._samples
-            && (rhs._bindFlags & lhsBindFlags) == lhsBindFlags
-            ;
-    }
+    static unsigned GetArrayCount(unsigned arrayCount) { return (arrayCount == 0) ? 1 : arrayCount; }
 
     static bool MatchRequest(const ResourceDesc& preregisteredDesc, const ResourceDesc& concreteObjectDesc)
     {
         assert(preregisteredDesc._type == ResourceDesc::Type::Texture && concreteObjectDesc._type == ResourceDesc::Type::Texture);
         return
-            GetArrayCount(preregisteredDesc._textureDesc) == GetArrayCount(concreteObjectDesc._textureDesc)
+            GetArrayCount(preregisteredDesc._textureDesc._arrayCount) == GetArrayCount(concreteObjectDesc._textureDesc._arrayCount)
             && (AsTypelessFormat(preregisteredDesc._textureDesc._format) == AsTypelessFormat(concreteObjectDesc._textureDesc._format) || preregisteredDesc._textureDesc._format == Format::Unknown)
             && preregisteredDesc._textureDesc._width == concreteObjectDesc._textureDesc._width
             && preregisteredDesc._textureDesc._height == concreteObjectDesc._textureDesc._height
             && preregisteredDesc._textureDesc._samples == concreteObjectDesc._textureDesc._samples
             && (concreteObjectDesc._bindFlags & preregisteredDesc._bindFlags) == preregisteredDesc._bindFlags
             ;
-
     }
 
-    static ResourceDesc AsResourceDesc(const AttachmentDesc& attachmentDesc, BindFlag::BitField bindFlags, const FrameBufferProperties& props)
-    {
-        // Prefer "typeless" formats when creating the actual attachments
-        // This ensures that we can have complete freedom when we create views
-        TextureDesc tDesc;
-        if (attachmentDesc._flags & AttachmentDesc::Flags::OutputRelativeDimensions) {
-            tDesc._width = unsigned(std::floor(props._outputWidth * attachmentDesc._width));
-            tDesc._height = unsigned(std::floor(props._outputHeight * attachmentDesc._height));
-        } else {
-            tDesc._width = (unsigned)attachmentDesc._width;
-            tDesc._height = (unsigned)attachmentDesc._height;
-        }
-        tDesc._depth = 1;
-        tDesc._format = attachmentDesc._format;
-        tDesc._dimensionality = TextureDesc::Dimensionality::T2D;
-        tDesc._mipCount = 1;
-        tDesc._arrayCount = 0;
-        tDesc._samples = attachmentDesc._flags & AttachmentDesc::Flags::Multisampled ? props._samples : TextureSamples::Create();
-        return CreateDesc(bindFlags, 0, 0, tDesc, "attachment-pool");
-    }
-
-    std::vector<AttachmentName> AttachmentPool::Request(const FrameBufferDesc& fbDesc, IteratorRange<const PreregisteredAttachment*> preregisteredAttachments)
+    auto AttachmentPool::Reserve(
+        IteratorRange<const PreregisteredAttachment*> attachmentRequests,
+        ReservationFlag::BitField flags) -> Reservation
     {
         std::vector<bool> consumed(_pimpl->_attachments.size(), false);
         std::vector<bool> consumedSemantic(_pimpl->_semanticAttachments.size(), false);
@@ -712,58 +729,37 @@ namespace RenderCore { namespace Techniques
         // In other words, we can't give these attachments to requests without a semantic,
         // or using another semantic.
         for (unsigned c=0; c<_pimpl->_attachments.size(); ++c) {
-            for (const auto&a:_pimpl->_semanticAttachments) {
-                if (a._resource == _pimpl->_attachments[c]._resource) {
+            consumed[c] = _pimpl->_attachments[c]._lockCount > 0;
+            for (unsigned s=0; s<_pimpl->_semanticAttachments.size(); ++s) {
+                if (_pimpl->_semanticAttachments[s]._resource == _pimpl->_attachments[c]._resource) {
                     consumed[c] = true;
+                    consumedSemantic[s] = _pimpl->_attachments[c]._lockCount > 0;
                     break;
                 }
             }
         }
 
-        AttachmentDesc::Flags::BitField relevantFlags = ~0u;
-        if (fbDesc.GetProperties()._samples._sampleCount <= 1)
-            relevantFlags &= ~AttachmentDesc::Flags::Multisampled;
-
-        std::vector<BindFlag::BitField> attachmentBindFlags(fbDesc.GetAttachments().size(), 0);
-        for (const auto& spDesc:fbDesc.GetSubpasses()) {
-            for (const auto& r:spDesc.GetOutputs())
-                attachmentBindFlags[r._resourceName] |= BindFlag::RenderTarget;
-			if (spDesc.GetDepthStencil()._resourceName != SubpassDesc::Unused._resourceName)
-				attachmentBindFlags[spDesc.GetDepthStencil()._resourceName] |= BindFlag::DepthStencil;
-			for (const auto& r:spDesc.GetInputs())
-                // \todo -- shader resource or input attachment bind flag here?
-				attachmentBindFlags[r._resourceName] |= BindFlag::ShaderResource;
-        }
-        for (unsigned c=0; c<fbDesc.GetAttachments().size(); ++c)
-            attachmentBindFlags[c] |= fbDesc.GetAttachments()[c]._desc._bindFlagsForFinalLayout;
-
-        std::vector<AttachmentName> result;
-        auto bindFlagI = attachmentBindFlags.begin();
-        for (auto request=fbDesc.GetAttachments().begin(); request!=fbDesc.GetAttachments().end(); ++request, ++bindFlagI) {
-            auto requestDesc = request->_desc;
-            requestDesc._flags &= relevantFlags;
+        std::vector<AttachmentName> selectedAttachments;
+        for (const auto& request:attachmentRequests) {
+            auto requestDesc = request._desc;
 
             // If a semantic value is set, we should first check to see if the request can match
             // one of the bound attachments.
             bool foundMatch = false;
-            if (request->_semantic) {
+            if (request._semantic) {
                 for (unsigned q=0; q<_pimpl->_semanticAttachments.size(); ++q) {
-                    if (request->_semantic == _pimpl->_semanticAttachments[q]._semantic && !consumedSemantic[q] && _pimpl->_semanticAttachments[q]._resource) {
+                    if (request._semantic == _pimpl->_semanticAttachments[q]._semantic && !consumedSemantic[q] && _pimpl->_semanticAttachments[q]._resource) {
                         #if defined(_DEBUG)
-							if (!MatchRequest(requestDesc, *bindFlagI, _pimpl->_semanticAttachments[q]._desc, fbDesc.GetProperties())) {
-                            	Log(Warning) << "Attachment bound to the pool for semantic (" << AttachmentSemantic{request->_semantic} << ", bind flag: 0x" << std::hex << *bindFlagI << std::dec << ") does not match the request for this semantic. Attempting to use it anyway. Request: "
+							if (!MatchRequest(requestDesc, _pimpl->_semanticAttachments[q]._desc)) {
+                            	Log(Warning) << "Attachment bound to the pool for semantic (" << AttachmentSemantic{request._semantic} << ") does not match the request for this semantic. Attempting to use it anyway. Request: "
                                 	<< requestDesc << ", Bound to pool: " << _pimpl->_semanticAttachments[q]._desc
                                 	<< std::endl;
                         	}
-                            auto prereg = std::find_if(preregisteredAttachments.begin(), preregisteredAttachments.end(),
-                                [sem = request->_semantic](const auto& c) { return c._semantic == sem; });
-                            if (prereg != preregisteredAttachments.end() && !MatchRequest(prereg->_desc, _pimpl->_semanticAttachments[q]._desc))
-                                Log(Warning) << "Attachment bound to the pool for semantic (" << AttachmentSemantic{request->_semantic} << " is not compatible with the preregistered attachments description. Attempting to use it anyway" << std::endl;
 						#endif
 
                         consumedSemantic[q] = true;
                         foundMatch = true;
-                        result.push_back(q | (1u<<31u));
+                        selectedAttachments.push_back(q | (1u<<31u));
                         break;
                     }
                 }
@@ -776,42 +772,21 @@ namespace RenderCore { namespace Techniques
             // If we haven't found a match yet, we must treat the request as a temporary buffer
             // We will go through and either find an existing buffer or create a new one
             for (unsigned q=0; q<_pimpl->_attachments.size(); ++q) {
-                if (MatchRequest(requestDesc, *bindFlagI, _pimpl->_attachments[q]._desc, fbDesc.GetProperties()) && q < consumed.size() && !consumed[q]) {
+                if (MatchRequest(requestDesc, _pimpl->_attachments[q]._desc) && q < consumed.size() && !consumed[q]) {
                     consumed[q] = true;
-                    result.push_back(q);
+                    selectedAttachments.push_back(q);
                     foundMatch = true;
-
-                    #if defined(_DEBUG)
-                        if (request->_semantic) {
-                            auto prereg = std::find_if(preregisteredAttachments.begin(), preregisteredAttachments.end(),
-                                [sem = request->_semantic](const auto& c) { return c._semantic == sem; });
-                            if (prereg != preregisteredAttachments.end() && !MatchRequest(prereg->_desc, _pimpl->_attachments[q]._desc))
-                                Log(Warning) << "Attachment bound to the pool for semantic (" << AttachmentSemantic{request->_semantic} << " is not compatible with the preregistered attachments description. Attempting to use it anyway" << std::endl;
-                        }
-                    #endif
                     break;
                 }
             }
 
             if (!foundMatch) {
-
-                if (request->_semantic) {
-                    auto prereg = std::find_if(preregisteredAttachments.begin(), preregisteredAttachments.end(),
-                        [sem = request->_semantic](const auto& c) { return c._semantic == sem; });
-                    if (prereg != preregisteredAttachments.end()) {
-                        _pimpl->_attachments.push_back(Pimpl::Attachment{nullptr, prereg->_desc});
-                        result.push_back((unsigned)(_pimpl->_attachments.size()-1));
-                        foundMatch = true;
-                    }
-                }
-
-                if (!foundMatch) {
-                    _pimpl->_attachments.push_back(Pimpl::Attachment{nullptr, AsResourceDesc(requestDesc, *bindFlagI, fbDesc.GetProperties())});
-                    result.push_back((unsigned)(_pimpl->_attachments.size()-1));
-                }
+                _pimpl->_attachments.push_back(Pimpl::Attachment{nullptr, requestDesc});
+                selectedAttachments.push_back((unsigned)(_pimpl->_attachments.size()-1));
             }
         }
-        return result;
+        AddRef(MakeIteratorRange(selectedAttachments), flags);
+        return Reservation(std::move(selectedAttachments), this, flags);
     }
 
     void AttachmentPool::Bind(uint64_t semantic, const IResourcePtr& resource)
@@ -853,6 +828,18 @@ namespace RenderCore { namespace Techniques
         }
     }
 
+    void AttachmentPool::Unbind(uint64_t semantic)
+    {
+        auto existingBinding = std::find_if(
+            _pimpl->_semanticAttachments.begin(),
+            _pimpl->_semanticAttachments.end(),
+            [semantic](const Pimpl::SemanticAttachment& a) {
+                return a._semantic == semantic;
+            });
+        if (existingBinding != _pimpl->_semanticAttachments.end())
+            _pimpl->_semanticAttachments.erase(existingBinding);
+    }
+
     void AttachmentPool::UnbindAll()
     {
         _pimpl->_semanticAttachments.clear();
@@ -877,6 +864,36 @@ namespace RenderCore { namespace Techniques
         for (auto&attach:_pimpl->_attachments)
             attach._resource.reset();
         _pimpl->_srvPool.Reset();
+    }
+
+    void AttachmentPool::AddRef(IteratorRange<const AttachmentName*> attachments, ReservationFlag::BitField flags)
+    {
+        for (auto a:attachments) {
+            if (a & (1u<<31u)) {
+                auto semanticAttachIdx = a & ~(1u<<31u);
+                assert(semanticAttachIdx<_pimpl->_semanticAttachments.size());
+                ++_pimpl->_semanticAttachments[semanticAttachIdx]._lockCount;
+            } else {
+                assert(a<_pimpl->_attachments.size());
+                ++_pimpl->_attachments[a]._lockCount;
+            }
+        }
+    }
+
+    void AttachmentPool::Release(IteratorRange<const AttachmentName*> attachments, ReservationFlag::BitField flags)
+    {
+        for (auto a:attachments) {
+            if (a & (1u<<31u)) {
+                auto semanticAttachIdx = a & ~(1u<<31u);
+                assert(semanticAttachIdx<_pimpl->_semanticAttachments.size());
+                assert(_pimpl->_semanticAttachments[semanticAttachIdx]._lockCount >= 1);
+                --_pimpl->_semanticAttachments[semanticAttachIdx]._lockCount;
+            } else {
+                assert(a<_pimpl->_attachments.size());
+                assert(_pimpl->_attachments[a]._lockCount >= 1);
+                --_pimpl->_attachments[a]._lockCount;
+            }
+        }
     }
 
     std::string AttachmentPool::GetMetrics() const
@@ -910,10 +927,92 @@ namespace RenderCore { namespace Techniques
     AttachmentPool::~AttachmentPool()
     {}
 
+    AttachmentPool::Reservation::Reservation() 
+    {
+        _pool = nullptr;
+        _reservationFlags = 0;
+    }
+    AttachmentPool::Reservation::~Reservation()
+    {
+        if (_pool)
+            _pool->Release(_reservedAttachments, _reservationFlags);
+    }
+
+    AttachmentPool::Reservation::Reservation(Reservation&& moveFrom)
+    : _reservedAttachments(std::move(moveFrom._reservedAttachments))
+    , _pool(std::move(moveFrom._pool))
+    , _reservationFlags(std::move(moveFrom._reservationFlags))
+    {
+        moveFrom._pool = nullptr;
+    }
+
+    auto AttachmentPool::Reservation::operator=(Reservation&& moveFrom) -> Reservation&
+    {
+        if (_pool)
+            _pool->Release(_reservedAttachments, _reservationFlags);
+        _reservedAttachments = std::move(moveFrom._reservedAttachments);
+        _pool = std::move(moveFrom._pool);
+        _reservationFlags = std::move(moveFrom._reservationFlags);
+        moveFrom._pool = nullptr;
+        return *this;
+    }
+
+    AttachmentPool::Reservation::Reservation(const Reservation& copyFrom)
+    : _reservedAttachments(copyFrom._reservedAttachments)
+    , _pool(copyFrom._pool)
+    , _reservationFlags(copyFrom._reservationFlags)
+    {
+        if (_pool)
+            _pool->AddRef(_reservedAttachments, _reservationFlags);
+    }
+
+    auto AttachmentPool::Reservation::operator=(const Reservation& copyFrom) -> Reservation&
+    {
+        if (_pool)
+            _pool->Release(_reservedAttachments, _reservationFlags);
+        _reservedAttachments = copyFrom._reservedAttachments;
+        _pool = copyFrom._pool;
+        _reservationFlags = copyFrom._reservationFlags;
+        if (_pool)
+            _pool->AddRef(_reservedAttachments, _reservationFlags);
+        return *this;
+    }
+
+    AttachmentPool::Reservation::Reservation(
+        std::vector<AttachmentName>&& reservedAttachments,
+        AttachmentPool* pool,
+        ReservationFlag::BitField flags)
+    : _reservedAttachments(std::move(reservedAttachments))
+    , _pool(pool)
+    , _reservationFlags(flags)
+    {
+        // this variation is called by the AttachmentPool, and that will have already
+        // increased the ref count.
+    }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    FrameBufferDesc BuildFrameBufferDesc(
-        FrameBufferDescFragment&& fragment,
+	uint64_t PreregisteredAttachment::CalculateHash() const
+	{
+		uint64_t result = HashCombine(_semantic, _desc.CalculateHash());
+		auto shift = (unsigned)_state;
+		lrot(result, shift);
+		return result;
+	}
+
+    uint64_t HashPreregisteredAttachments(
+        IteratorRange<const PreregisteredAttachment*> attachments,
+        const FrameBufferProperties& fbProps,
+        uint64_t seed)
+    {
+        uint64_t result = HashCombine(fbProps.CalculateHash(), seed);
+        for (const auto& a:attachments)
+            result = HashCombine(a.CalculateHash(), result);
+        return result;
+    }
+
+    static FrameBufferDesc BuildFrameBufferDesc(
+        const FrameBufferDescFragment& fragment,
         const FrameBufferProperties& props)
     {
         //
@@ -937,7 +1036,9 @@ namespace RenderCore { namespace Techniques
         // * add an extra "copy" subpass -- this should just copy to the expected output buffer
         //
         std::vector<FrameBufferDesc::Attachment> fbAttachments;
+        std::vector<uint64_t> attachmentSemantics;
         fbAttachments.reserve(fragment._attachments.size());
+        attachmentSemantics.reserve(fragment._attachments.size());
         for (const auto& inputFrag:fragment._attachments) {
             uint64_t semantic = 0;
             if (inputFrag._inputSemanticBinding != 0 || inputFrag._outputSemanticBinding != 0) {
@@ -945,14 +1046,14 @@ namespace RenderCore { namespace Techniques
                     &&  inputFrag._inputSemanticBinding != inputFrag._outputSemanticBinding)
                     Throw(std::runtime_error("Cannot construct FrameBufferDesc because input fragment has an attachment with two different semantics for input and output. This isn't supported; we must instead use two different attachments, one for each semantic."));
 
-                for (auto compareFrag=fbAttachments.begin(); compareFrag!=fbAttachments.end(); ++compareFrag) {
-                    if (    ((inputFrag._inputSemanticBinding != 0) && compareFrag->_semantic == inputFrag._inputSemanticBinding)
-                        ||  ((inputFrag._outputSemanticBinding != 0) && compareFrag->_semantic == inputFrag._outputSemanticBinding)) {
+                for (auto compareFrag=attachmentSemantics.begin(); compareFrag!=attachmentSemantics.end(); ++compareFrag) {
+                    if (    ((inputFrag._inputSemanticBinding != 0) && *compareFrag == inputFrag._inputSemanticBinding)
+                        ||  ((inputFrag._outputSemanticBinding != 0) && *compareFrag == inputFrag._outputSemanticBinding)) {
                         // Hit a duplicate semantic binding case. Let's check if it's a "split semantic" case
                         // If the two attachments in question have non-coinciding zeroes for their semantic interface
                         // (and we already know that the non-zero semantics are equal), then it must be the split
                         // semantic case
-                        auto& suspect = fragment._attachments[std::distance(fbAttachments.begin(), compareFrag)];
+                        auto& suspect = fragment._attachments[std::distance(attachmentSemantics.begin(), compareFrag)];
                         if (    (suspect._inputSemanticBinding == 0 && inputFrag._outputSemanticBinding == 0)
                             ||  (suspect._outputSemanticBinding == 0 && inputFrag._inputSemanticBinding == 0)) {
                             Throw(std::runtime_error("Cannot construct FrameBufferDesc because input fragment has a \"split semantic\" attachment. This can occur when an extra copy subpass is required"));
@@ -963,7 +1064,8 @@ namespace RenderCore { namespace Techniques
                 }
                 semantic = (inputFrag._inputSemanticBinding != 0) ? inputFrag._inputSemanticBinding : inputFrag._outputSemanticBinding;
             }
-            fbAttachments.push_back({semantic, inputFrag._desc});
+            fbAttachments.push_back({inputFrag._desc});
+            attachmentSemantics.push_back(semantic);
         }
 
         // Generate the final FrameBufferDesc by moving the subpasses out of the fragment
@@ -971,56 +1073,8 @@ namespace RenderCore { namespace Techniques
         // into a final FrameBufferDesc, so it makes sense to move the subpasses from the input
         return FrameBufferDesc {
             std::move(fbAttachments),
-            std::move(fragment._subpasses),
+            std::vector<SubpassDesc>(fragment._subpasses),
             props };
-    }
-
-    static bool FormatCompatible(Format lhs, Format rhs)
-    {
-        if (lhs == rhs) return true;
-        auto    lhsTypeless = AsTypelessFormat(lhs),
-                rhsTypeless = AsTypelessFormat(rhs);
-        return lhsTypeless == rhsTypeless;
-    }
-
-    static bool DimsEqual(const AttachmentDesc& lhs, const AttachmentDesc& rhs, UInt2 dimensionsForSizeComparison)
-    {
-        bool lhsRelativeMode = !!(lhs._flags & AttachmentDesc::Flags::OutputRelativeDimensions);
-        bool rhsRelativeMode = !!(rhs._flags & AttachmentDesc::Flags::OutputRelativeDimensions);
-        if (lhsRelativeMode == rhsRelativeMode)
-            return lhs._width == rhs._width && lhs._height == rhs._height;
-
-        unsigned lhsWidth, lhsHeight;
-        unsigned rhsWidth, rhsHeight;
-
-        if (!lhsRelativeMode) {
-            lhsWidth = unsigned(lhs._width);
-            lhsHeight = unsigned(lhs._height);
-        } else {
-            lhsWidth = unsigned(std::floor(dimensionsForSizeComparison[0] * lhs._width));
-            lhsHeight = unsigned(std::floor(dimensionsForSizeComparison[1] * lhs._height));
-        }
-
-        if (!rhsRelativeMode) {
-            rhsWidth = unsigned(rhs._width);
-            rhsHeight = unsigned(rhs._height);
-        } else {
-            rhsWidth = unsigned(std::floor(dimensionsForSizeComparison[0] * rhs._width));
-            rhsHeight = unsigned(std::floor(dimensionsForSizeComparison[1] * rhs._height));
-        }
-
-        return lhsWidth == rhsWidth && lhsHeight == rhsHeight;
-    }
-
-    bool IsCompatible(const AttachmentDesc& testAttachment, const AttachmentDesc& request, UInt2 dimensionsForSizeComparison)
-    {
-        auto requestFlags = request._flags & ~AttachmentDesc::Flags::OutputRelativeDimensions;
-        return
-            ( (FormatCompatible(testAttachment._format, request._format)) || (testAttachment._format == Format::Unknown) || (request._format == Format::Unknown) )
-            && GetArrayCount(testAttachment) == GetArrayCount(request)
-			&& DimsEqual(testAttachment, request, dimensionsForSizeComparison)
-            && (testAttachment._flags & requestFlags) == requestFlags
-            ;
     }
 
     static AttachmentName Remap(const std::vector<std::pair<AttachmentName, AttachmentName>>& remapping, AttachmentName name)
@@ -1036,9 +1090,9 @@ namespace RenderCore { namespace Techniques
         enum Bits
         {
             Reference = 1<<0,
-            Load = 1<<1,
-            RetainAfterLoad = 1<<2,
-            Store = 1<<3
+            RequirePreinitializedData = 1<<1,
+            WritesData = 1<<2,
+            RetainsOnExit = 1<<3
         };
         using BitField = unsigned;
     };
@@ -1053,36 +1107,38 @@ namespace RenderCore { namespace Techniques
             ;
     }
 
-    static DirectionFlags::BitField GetDirectionFlags(const SubpassDesc& p, AttachmentName attachment)
+    static DirectionFlags::BitField GetDirectionFlags(const FrameBufferDescFragment& fragment, AttachmentName attachment)
     {
+        auto loadOp = fragment._attachments[attachment]._desc._loadFromPreviousPhase;
+        auto storeOp = fragment._attachments[attachment]._desc._storeToNextPhase;
         DirectionFlags::BitField result = 0;
-        for (const auto&a:p.GetOutputs())
-            if (a._resourceName == attachment) {
-                result |= DirectionFlags::Reference;
-                if (HasRetain(a._loadFromPreviousPhase))
-                    result |= DirectionFlags::Load;
-                if (HasRetain(a._storeToNextPhase))
-                    result |= DirectionFlags::Store;
-            }
-        if (p.GetDepthStencil()._resourceName == attachment) {
-            result |= DirectionFlags::Reference;
-            if (HasRetain(p.GetDepthStencil()._loadFromPreviousPhase))
-                result |= DirectionFlags::Load;
-            if (HasRetain(p.GetDepthStencil()._storeToNextPhase))
-                result |= DirectionFlags::Store;
-        }
-        for (const auto&a:p.GetInputs())
-            if (a._resourceName == attachment) {
-                result |= DirectionFlags::Reference | DirectionFlags::Load;
-                if (HasRetain(a._storeToNextPhase))
-                    result |= DirectionFlags::RetainAfterLoad;
-            }
-        for (const auto&a:p.GetResolveOutputs())
-            if (a._resourceName == attachment) {
-                result |= DirectionFlags::Reference | DirectionFlags::Store;
-            }
-        if (p.GetResolveDepthStencil()._resourceName == attachment) {
-            result |= DirectionFlags::Reference | DirectionFlags::Store;
+        if (HasRetain(storeOp))
+            result |= DirectionFlags::RetainsOnExit;
+        if (HasRetain(loadOp))
+            result |= DirectionFlags::RequirePreinitializedData;
+
+        // If we only use the attachment as a resolve output, but we have "Retain" in
+        // load op, the DirectionFlags::RequirePreinitializedData flag will still be
+        // set. This isn't very correct -- if we only use an attachment for a resolve
+        // output, the load op should be DontCare
+
+        for (const auto&p:fragment._subpasses) {
+            for (const auto&a:p.GetOutputs())
+                if (a._resourceName == attachment)
+                    result |= DirectionFlags::Reference | DirectionFlags::WritesData;
+
+            if (p.GetDepthStencil()._resourceName == attachment)
+                result |= DirectionFlags::Reference | DirectionFlags::WritesData;
+
+            for (const auto&a:p.GetInputs())
+                if (a._resourceName == attachment)
+                    result |= DirectionFlags::Reference;
+
+            for (const auto&a:p.GetResolveOutputs())
+                if (a._resourceName == attachment)
+                    result |= DirectionFlags::Reference | DirectionFlags::WritesData;
+            if (p.GetResolveDepthStencil()._resourceName == attachment)
+                result |= DirectionFlags::Reference | DirectionFlags::WritesData;
         }
         return result;
     }
@@ -1091,16 +1147,85 @@ namespace RenderCore { namespace Techniques
     {
     public:
         AttachmentName _name = ~0u;
-        AttachmentDesc _desc;
+
+        TextureDesc _textureDesc;
         uint64_t _shouldReceiveDataForSemantic = 0;         // when looking for an attachment to write the data for this semantic, prefer this attachment
         uint64_t _containsDataForSemantic = 0;              // the data for this semantic is already written to this attachment
-        uint64_t _firstReadSemantic = 0;
+
+        uint64_t _firstAccessSemantic = 0;
+        LoadStore _firstAccessLoad = LoadStore::DontCare;
+        BindFlag::BitField _firstAccessInitialLayout = 0;
         uint64_t _lastWriteSemantic = 0;
-        bool _isPredefinedAttachment = false;
-        bool _forceShaderResourceFlag = false;
+        LoadStore _lastAccessStore = LoadStore::DontCare;
+        BindFlag::BitField _lastAccessFinalLayout = 0;
+
+        bool _hasBeenAccessed = false;
         PreregisteredAttachment::State _state = PreregisteredAttachment::State::Uninitialized;
-        PreregisteredAttachment::State _stencilState = PreregisteredAttachment::State::Uninitialized;
+
+        WorkingAttachment(const PreregisteredAttachment& attachment);
+        WorkingAttachment(const FrameBufferDescFragment::Attachment& attachment, const FrameBufferProperties& props);
+        WorkingAttachment() {}
     };
+
+    WorkingAttachment::WorkingAttachment(const PreregisteredAttachment& attachment)
+    {
+        _textureDesc = attachment._desc._textureDesc;
+        _state = attachment._state;
+        if (_state == PreregisteredAttachment::State::Initialized
+            || _state == PreregisteredAttachment::State::Uninitialized_StencilInitialized)
+            _containsDataForSemantic = attachment._semantic;
+        _shouldReceiveDataForSemantic = attachment._semantic;
+    }
+
+    static TextureDesc MakeTextureDesc(
+        const FrameBufferDescFragment::Attachment& attachment,
+        const FrameBufferProperties& props)
+    {
+        auto samples = (attachment._desc._flags & AttachmentDesc::Flags::Multisampled) ? props._samples : TextureSamples::Create();
+        if (attachment._relativeDimensionsMode) {
+            return TextureDesc::Plain2D(
+                unsigned(std::floor(attachment._width * props._outputWidth)),
+                unsigned(std::floor(attachment._height * props._outputHeight)),
+                attachment._desc._format, 1, attachment._arrayLayerCount,
+                samples);
+        } else {
+            return TextureDesc::Plain2D(
+                (unsigned)attachment._width, (unsigned)attachment._height,
+                attachment._desc._format, 1, attachment._arrayLayerCount,
+                samples);
+        }
+    }
+
+    WorkingAttachment::WorkingAttachment(
+        const FrameBufferDescFragment::Attachment& attachment,
+        const FrameBufferProperties& props)
+    {
+        _textureDesc = MakeTextureDesc(attachment, props);
+    }
+
+    static bool FormatCompatible(Format lhs, Format rhs)
+    {
+        if (lhs == rhs) return true;
+        auto    lhsTypeless = AsTypelessFormat(lhs),
+                rhsTypeless = AsTypelessFormat(rhs);
+        return lhsTypeless == rhsTypeless;
+    }
+
+    static bool IsCompatible(const TextureDesc& testAttachment, const TextureDesc& request)
+    {
+        return
+            ( (FormatCompatible(testAttachment._format, request._format)) || (testAttachment._format == Format::Unknown) || (request._format == Format::Unknown) )
+            && GetArrayCount(testAttachment._arrayCount) == GetArrayCount(request._arrayCount)
+			&& testAttachment._width == request._width
+            && testAttachment._height == request._height
+            && testAttachment._samples == request._samples
+            ;
+    }
+    
+    static bool IsCompatible(const WorkingAttachment& testAttachment, const FrameBufferDescFragment::Attachment& request, const FrameBufferProperties& fbProps)
+    {
+        return IsCompatible(testAttachment._textureDesc, MakeTextureDesc(request, fbProps));
+    }
 
     static AttachmentName NextName(IteratorRange<const WorkingAttachment*> attachments0, IteratorRange<const WorkingAttachment*> attachments1)
     {
@@ -1130,6 +1255,8 @@ namespace RenderCore { namespace Techniques
         switch (state) {
         case PreregisteredAttachment::State::Uninitialized: return "Uninitialized";
         case PreregisteredAttachment::State::Initialized:   return "Initialized";
+        case PreregisteredAttachment::State::Initialized_StencilUninitialized:   return "Initialized_StencilUninitialized";
+        case PreregisteredAttachment::State::Uninitialized_StencilInitialized:   return "Uninitialized_StencilInitialized";
         default:                                            return "<<unknown>>";
         }
     }
@@ -1140,7 +1267,7 @@ namespace RenderCore { namespace Techniques
             << AttachmentSemantic{attachment._semantic} << ", "
             << attachment._desc << ", "
             << AsString(attachment._state) << ", "
-            << AsString(attachment._stencilState) << "}";
+            << "0x" << std::hex << attachment._layoutFlags << std::dec << "}";
         return str;
     }
 
@@ -1148,14 +1275,13 @@ namespace RenderCore { namespace Techniques
     {
         str << "WorkingAttachment {"
             << attachment._name << ", "
-            << attachment._desc << ", "
+            << "{" << attachment._textureDesc << "}, "
             << std::hex << "Contains: " << AttachmentSemantic{attachment._containsDataForSemantic} << ", "
             << "ShouldReceive: " << AttachmentSemantic{attachment._shouldReceiveDataForSemantic} << ", "
-            << "FirstRead: " << AttachmentSemantic{attachment._firstReadSemantic} << ", "
-            << "LastWrite: " << AttachmentSemantic{attachment._lastWriteSemantic} << ", " << std::dec
-            << attachment._forceShaderResourceFlag << ", "
-            << AsString(attachment._state) << ", "
-            << AsString(attachment._stencilState) << "}";
+            << "FirstAccess: {" << AttachmentSemantic{attachment._firstAccessSemantic} << ", 0x" << attachment._firstAccessInitialLayout << ", " << AsString(attachment._firstAccessLoad) << "}, "
+            << "LastAccess: {" << AttachmentSemantic{attachment._lastWriteSemantic} << ", 0x" << attachment._lastAccessFinalLayout << ", " << AsString(attachment._lastAccessStore) << "}, "
+            << std::dec
+            << AsString(attachment._state) << "}";
         return str;
     }
 
@@ -1178,6 +1304,143 @@ namespace RenderCore { namespace Techniques
     {
         return lhs._name < rhs._name;
     }
+
+    static PreregisteredAttachment BuildPreregisteredAttachment(
+        const FrameBufferDescFragment::Attachment& attachmentDesc,
+        unsigned usageBindFlags, 
+        const FrameBufferProperties& props)
+    {
+        // Prefer "typeless" formats when creating the actual attachments
+        // This ensures that we can have complete freedom when we create views
+        TextureDesc tDesc = MakeTextureDesc(attachmentDesc, props);
+        auto bindFlags = usageBindFlags | attachmentDesc._desc._initialLayout | attachmentDesc._desc._finalLayout; 
+
+        PreregisteredAttachment result;
+        result._desc = CreateDesc(bindFlags, 0, 0, tDesc, "attachment-pool");
+        result._semantic = attachmentDesc._inputSemanticBinding;
+        result._state = PreregisteredAttachment::State::Uninitialized;
+        result._layoutFlags = attachmentDesc._desc._finalLayout ? attachmentDesc._desc._finalLayout : usageBindFlags;
+        return result;
+    }
+
+    static bool IsCompatible(const PreregisteredAttachment& testAttachment, const FrameBufferDescFragment::Attachment& request, const FrameBufferProperties& fbProps)
+    {
+        assert(testAttachment._desc._type == ResourceDesc::Type::Texture);
+        return IsCompatible(testAttachment._desc._textureDesc, MakeTextureDesc(request, fbProps));
+    }
+
+    auto FragmentStitchingContext::TryStitchFrameBufferDesc(const FrameBufferDescFragment& fragment) -> StitchResult
+    {
+        // Match the attachment requests to the given fragment to our list of working attachments
+        // in order to fill out a full specified attachment list. Also update the preregistered
+        // attachments as per inputs and outputs from the fragment
+        StitchResult result;
+        result._fullAttachmentDescriptions.reserve(fragment._attachments.size());
+        result._attachmentTransforms.reserve(fragment._attachments.size());
+        for (const auto&a:fragment._attachments) {
+            auto idx = &a - AsPointer(fragment._attachments.begin());
+            auto directionFlags = GetDirectionFlags(fragment, idx);
+            assert(directionFlags & DirectionFlags::Reference);
+            auto usageFlags = CalculateBindFlags(fragment, idx);
+
+            // Try to the match the attachment request to an existing preregistered attachment,
+            // or created a new one if we can't match
+            auto i = std::find_if(
+                _workingAttachments.begin(), _workingAttachments.end(),
+                [semantic=a._inputSemanticBinding](const auto& c) { return c._semantic == semantic; });
+            if (i != _workingAttachments.end()) {
+                #if defined(_DEBUG)
+                    if (!IsCompatible(*i, a, _workingProps)) {     // todo -- check layout flags
+                        Log(Warning) << "Preregistered attachment for semantic (" << AttachmentSemantic{a._inputSemanticBinding} << " does not match the request for this semantic. Attempting to use it anyway. Request: "
+                            << a._desc << ", Preregistered: " << *i << std::endl;
+                    }
+                #endif
+                result._fullAttachmentDescriptions.push_back(*i);
+
+                AttachmentTransform transform;
+                if (directionFlags & DirectionFlags::RetainsOnExit) {
+                    if (directionFlags & DirectionFlags::WritesData) {
+                        if (directionFlags & DirectionFlags::RequirePreinitializedData) transform._type = AttachmentTransform::Written;
+                        else transform._type = AttachmentTransform::Generated;
+                    } else  {
+                        transform._type = AttachmentTransform::Preserved;
+                    }
+                } else {
+                    assert(directionFlags & DirectionFlags::Reference);
+                    if (directionFlags & DirectionFlags::RequirePreinitializedData) transform._type = AttachmentTransform::Consumed;
+                    else transform._type = AttachmentTransform::Temporary;
+                }
+
+                transform._newLayout = a._desc._finalLayout ? a._desc._finalLayout : usageFlags;
+                result._attachmentTransforms.push_back(transform);
+            } else {
+                auto newAttachment = BuildPreregisteredAttachment(a, usageFlags, _workingProps);
+                result._fullAttachmentDescriptions.push_back(newAttachment);
+                AttachmentTransform transform;
+                assert(!(directionFlags & DirectionFlags::RequirePreinitializedData));
+                if (directionFlags & DirectionFlags::RetainsOnExit) {
+                    assert(directionFlags & DirectionFlags::WritesData);
+                    transform._type = AttachmentTransform::Generated;
+                    transform._newLayout = newAttachment._layoutFlags;
+                } else
+                    transform._type = AttachmentTransform::Temporary;
+                result._attachmentTransforms.push_back(transform);
+            }
+        }
+        result._fbDesc = BuildFrameBufferDesc(fragment, _workingProps);
+        return result;
+    }
+
+    auto FragmentStitchingContext::TryStitchFrameBufferDesc(IteratorRange<const FrameBufferDescFragment*> fragments) -> StitchResult
+    {
+        auto merged = MergeFragments(MakeIteratorRange(_workingAttachments), fragments, _workingProps);
+        Log(Warning) << merged._log << std::endl;
+        auto stitched = TryStitchFrameBufferDesc(merged._mergedFragment);
+        stitched._log = merged._log;
+        return stitched;
+    }
+
+    void FragmentStitchingContext::DefineAttachment(
+        uint64_t semantic, const ResourceDesc& resourceDesc, 
+        PreregisteredAttachment::State state,
+        BindFlag::BitField initialLayoutFlags)
+	{
+		auto i = std::find_if(
+			_workingAttachments.begin(), _workingAttachments.end(),
+			[semantic](const auto& c) { return c._semantic == semantic; });
+		if (i != _workingAttachments.end()) {
+            *i = RenderCore::Techniques::PreregisteredAttachment{semantic, resourceDesc, state, initialLayoutFlags};
+        } else
+            _workingAttachments.push_back(
+                RenderCore::Techniques::PreregisteredAttachment{semantic, resourceDesc, state, initialLayoutFlags});
+	}
+
+    void FragmentStitchingContext::DefineAttachment(
+        const PreregisteredAttachment& attachment)
+	{
+		auto i = std::find_if(
+			_workingAttachments.begin(), _workingAttachments.end(),
+			[semantic=attachment._semantic](const auto& c) { return c._semantic == semantic; });
+		if (i != _workingAttachments.end()) {
+            *i = attachment;
+        } else
+            _workingAttachments.push_back(attachment);
+	}
+
+    void FragmentStitchingContext::Undefine(uint64_t semantic)
+    {
+        auto i = std::find_if(
+			_workingAttachments.begin(), _workingAttachments.end(),
+			[semantic](const auto& c) { return c._semantic == semantic; });
+		if (i != _workingAttachments.end())
+            _workingAttachments.erase(i);
+    }
+
+    FragmentStitchingContext::FragmentStitchingContext()
+    {}
+
+    FragmentStitchingContext::~FragmentStitchingContext()
+    {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1219,7 +1482,7 @@ namespace RenderCore { namespace Techniques
     MergeFragmentsResult MergeFragments(
         IteratorRange<const PreregisteredAttachment*> preregisteredInputs,
         IteratorRange<const FrameBufferDescFragment*> fragments,
-		UInt2 dimensionsForCompatibilityTests)
+		const FrameBufferProperties& fbProps)
     {
         #if defined(_DEBUG)
             std::stringstream debugInfo;
@@ -1240,17 +1503,7 @@ namespace RenderCore { namespace Techniques
         std::vector<WorkingAttachment> workingAttachments;
         workingAttachments.reserve(preregisteredInputs.size());
         for (unsigned c=0; c<preregisteredInputs.size(); c++) {
-            WorkingAttachment initialState;
-            initialState._shouldReceiveDataForSemantic = preregisteredInputs[c]._semantic;
-            if (    preregisteredInputs[c]._state == PreregisteredAttachment::State::Initialized
-                ||  preregisteredInputs[c]._stencilState == PreregisteredAttachment::State::Initialized)
-                initialState._containsDataForSemantic = preregisteredInputs[c]._semantic;
-            initialState._desc = AsAttachmentDesc(preregisteredInputs[c]._desc);
-            initialState._state = preregisteredInputs[c]._state;
-            initialState._stencilState = preregisteredInputs[c]._stencilState;
-            initialState._isPredefinedAttachment = true;
-            initialState._name = ~0u;       // start with no name (which equates to unused)
-            workingAttachments.push_back(initialState);
+            workingAttachments.push_back(WorkingAttachment{ preregisteredInputs[c] });
         }
 
         for (auto f=fragments.begin(); f!=fragments.end(); ++f) {
@@ -1258,15 +1511,15 @@ namespace RenderCore { namespace Techniques
             std::vector<std::pair<AttachmentName, AttachmentName>> attachmentRemapping;
 
             // Capture the default properties for each semantic on the interface now
-            std::unordered_map<uint64_t, AttachmentDesc> defaultSemanticFormats;
+            std::unordered_map<uint64_t, Format> defaultSemanticFormats;
             for (const auto& a:preregisteredInputs) {
-                defaultSemanticFormats[a._semantic] = AsAttachmentDesc(a._desc);
+                defaultSemanticFormats[a._semantic] = a._desc._textureDesc._format;
             }
             for (const auto& a:workingAttachments) {
                 if (a._shouldReceiveDataForSemantic)
-                    defaultSemanticFormats[a._shouldReceiveDataForSemantic] = a._desc;
+                    defaultSemanticFormats[a._shouldReceiveDataForSemantic] = a._textureDesc._format;
                 if (a._containsDataForSemantic)
-                    defaultSemanticFormats[a._containsDataForSemantic] = a._desc;
+                    defaultSemanticFormats[a._containsDataForSemantic] = a._textureDesc._format;
             }
 
             #if defined(_DEBUG)
@@ -1280,50 +1533,35 @@ namespace RenderCore { namespace Techniques
             for (auto interf = f->_attachments.begin(); interf != f->_attachments.end(); ++interf) {
                 AttachmentName interfaceAttachmentName = (AttachmentName)std::distance(f->_attachments.begin(), interf);
 
-                DirectionFlags::BitField firstUseDirection = 0;
                 // Look through the load/store values in the subpasses to find the "direction" for
                 // the first use of this attachment;
-                for (auto p = f->_subpasses.begin(); p != f->_subpasses.end(); ++p) {
-                    firstUseDirection = GetDirectionFlags(*p, interfaceAttachmentName);
-                    if (firstUseDirection)
-                        break;
-                }
-                assert(firstUseDirection != 0);     // Note -- we can get here if we have an attachment that is defined, but never used
-
-                sortedInterfaceAttachments.push_back({interfaceAttachmentName, firstUseDirection});
+                auto directionFlags = GetDirectionFlags(*f, interfaceAttachmentName);
+                assert(directionFlags != 0);     // Note -- we can get here if we have an attachment that is defined, but never used
+                sortedInterfaceAttachments.push_back({interfaceAttachmentName, directionFlags});
             }
 
             // sort so the attachment with "load" direction are handled first
             std::stable_sort(
                 sortedInterfaceAttachments.begin(), sortedInterfaceAttachments.end(),
                 [](const AttachmentAndDirection& lhs, const AttachmentAndDirection& rhs) {
-                    return (lhs.second & DirectionFlags::Load) > (rhs.second & DirectionFlags::Load);
+                    return (lhs.second & DirectionFlags::RequirePreinitializedData) > (rhs.second & DirectionFlags::RequirePreinitializedData);
                 });
 
             for (const auto&pair:sortedInterfaceAttachments) {
                 const auto& interfaceAttachment = f->_attachments[pair.first];
-                AttachmentName reboundName = ~0u;
                 AttachmentName interfaceAttachmentName = pair.first;
-                DirectionFlags::BitField firstUseDirection = pair.second;
-
-                DirectionFlags::BitField lastUseDirection = 0;
-                for (auto p = f->_subpasses.rbegin(); p != f->_subpasses.rend(); ++p) {
-                    lastUseDirection = GetDirectionFlags(*p, interfaceAttachmentName);
-                    if (lastUseDirection)
-                        break;
-				}
-
-                if (firstUseDirection & DirectionFlags::Load) {
+                DirectionFlags::BitField directionFlags = pair.second;
+                
+                WorkingAttachment newState;
+                if (directionFlags & DirectionFlags::RequirePreinitializedData) {
                     // We're expecting a buffer that already has some initialized contents. Look for
                     // something matching in our working attachments array
-                    auto interfaceAttachmentNoFlag = interfaceAttachment;
-                    // interfaceAttachmentNoFlag._desc._flags &= ~AttachmentDesc::Flags::ShaderResource;
                     auto compat = std::find_if(
                         workingAttachments.begin(), workingAttachments.end(),
-                        [&interfaceAttachmentNoFlag, dimensionsForCompatibilityTests](const WorkingAttachment& workingAttachment) {
+                        [&interfaceAttachment, fbProps](const WorkingAttachment& workingAttachment) {
                             return (workingAttachment._state == PreregisteredAttachment::State::Initialized)
-                                && (workingAttachment._containsDataForSemantic == interfaceAttachmentNoFlag.GetInputSemanticBinding())
-                                && IsCompatible(workingAttachment._desc, interfaceAttachmentNoFlag._desc, dimensionsForCompatibilityTests);
+                                && (workingAttachment._containsDataForSemantic == interfaceAttachment.GetInputSemanticBinding())
+                                && IsCompatible(workingAttachment, interfaceAttachment, fbProps);
                         });
 
                     if (compat == workingAttachments.end()) {
@@ -1332,8 +1570,8 @@ namespace RenderCore { namespace Techniques
                             #if defined(_DEBUG)
                                 auto uninitializedCheck = std::find_if(
                                     workingAttachments.begin(), workingAttachments.end(),
-                                    [&interfaceAttachment, dimensionsForCompatibilityTests](const WorkingAttachment& workingAttachment) {
-                                        return IsCompatible(workingAttachment._desc, interfaceAttachment._desc, dimensionsForCompatibilityTests);
+                                    [&interfaceAttachment, fbProps](const WorkingAttachment& workingAttachment) {
+                                        return IsCompatible(workingAttachment, interfaceAttachment, fbProps);
                                     });
                                 debugInfo << "      * Failed to find compatible initialized buffer for request: " << interfaceAttachment._desc << ". Semantic: " << AttachmentSemantic{interfaceAttachment.GetInputSemanticBinding()} << std::endl;
                                 if (uninitializedCheck != workingAttachments.end())
@@ -1353,48 +1591,16 @@ namespace RenderCore { namespace Techniques
                         // final fragment.
                         // Note that we don't allow an attachment with a "Unknown" format to be defined
                         // in this way -- just because that could start to get confusing to the caller.
-                        reboundName = NextName(MakeIteratorRange(workingAttachments), MakeIteratorRange(newWorkingAttachments));
-
-                        WorkingAttachment newState;
-                        newState._desc = interfaceAttachment._desc;
-                        newState._state = (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
-                        newState._stencilState = (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
-
-                        newState._firstReadSemantic = interfaceAttachment.GetInputSemanticBinding();
-                        if (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) {
-                            newState._containsDataForSemantic = interfaceAttachment.GetOutputSemanticBinding();
-                            newState._lastWriteSemantic = interfaceAttachment.GetOutputSemanticBinding();
-                        }
-                        newState._name = reboundName;
-                        newWorkingAttachments.push_back(newState);
+                        newState = WorkingAttachment { interfaceAttachment, fbProps };
+                        newState._state = PreregisteredAttachment::State::Uninitialized;                        
+                        newState._name = NextName(MakeIteratorRange(workingAttachments), MakeIteratorRange(newWorkingAttachments));
                     } else {
-                        reboundName = compat->_name;
-                        if (reboundName == ~0u)
-                            reboundName = NextName(MakeIteratorRange(workingAttachments), MakeIteratorRange(newWorkingAttachments));
-
                         // Remove from the working attachments and push back in it's new state
                         // If we're not writing to this attachment, it will lose it's semantic here
-                        auto newState = *compat;
-                        newState._state = (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
-                        newState._stencilState = (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
-                        /*if ((interfaceAttachment._desc._flags & AttachmentDesc::Flags::ShaderResource) || ImplicitlyRequiresShaderResourceFlag(*f, interfaceAttachmentName))
-                            newState._desc._flags |= AttachmentDesc::Flags::ShaderResource;*/
-
-                        newState._shouldReceiveDataForSemantic = compat->_shouldReceiveDataForSemantic;
-                        if (!newState._firstReadSemantic && compat->_isPredefinedAttachment) {    // (we only really care about first read for predefined attachments)
-                            newState._firstReadSemantic = interfaceAttachment.GetInputSemanticBinding();
-                        }
-                        if (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) {
-                            newState._containsDataForSemantic =  interfaceAttachment.GetOutputSemanticBinding();
-                            newState._lastWriteSemantic = interfaceAttachment.GetOutputSemanticBinding();
-                        } else {
-                            newState._containsDataForSemantic = 0;
-                            newState._lastWriteSemantic = 0;
-                        }
-                        newState._isPredefinedAttachment = false;
-                        newState._name = reboundName;
+                        newState = *compat;
+                        if (newState._name == ~0u)
+                            newState._name = NextName(MakeIteratorRange(workingAttachments), MakeIteratorRange(newWorkingAttachments));
                         workingAttachments.erase(compat);
-                        newWorkingAttachments.push_back(newState);
                     }
                 } else {
                     // define a new output buffer, or reuse something that we can reuse
@@ -1402,10 +1608,10 @@ namespace RenderCore { namespace Techniques
                     // is initialized if we have to
                     auto compat = std::find_if(
                         workingAttachments.begin(), workingAttachments.end(),
-                        [&interfaceAttachment, dimensionsForCompatibilityTests](const WorkingAttachment& workingAttachment) {
+                        [&interfaceAttachment, fbProps](const WorkingAttachment& workingAttachment) {
                             return (workingAttachment._shouldReceiveDataForSemantic == interfaceAttachment.GetOutputSemanticBinding())
                                 && (workingAttachment._state == PreregisteredAttachment::State::Uninitialized)
-                                && IsCompatible(workingAttachment._desc, interfaceAttachment._desc, dimensionsForCompatibilityTests);
+                                && IsCompatible(workingAttachment, interfaceAttachment, fbProps);
                         });
 
                     if (compat == workingAttachments.end() && interfaceAttachment.GetOutputSemanticBinding()) {
@@ -1413,10 +1619,10 @@ namespace RenderCore { namespace Techniques
                         // give it
                         compat = std::find_if(
                             workingAttachments.begin(), workingAttachments.end(),
-                            [&interfaceAttachment, dimensionsForCompatibilityTests](const WorkingAttachment& workingAttachment) {
+                            [&interfaceAttachment, fbProps](const WorkingAttachment& workingAttachment) {
                                 return (workingAttachment._shouldReceiveDataForSemantic == 0)
                                     && (workingAttachment._state == PreregisteredAttachment::State::Uninitialized)
-                                    && IsCompatible(workingAttachment._desc, interfaceAttachment._desc, dimensionsForCompatibilityTests);
+                                    && IsCompatible(workingAttachment, interfaceAttachment, fbProps);
                             });
                     }
 
@@ -1433,9 +1639,9 @@ namespace RenderCore { namespace Techniques
 						// can match against almost anything
                         compat = std::find_if(
                             workingAttachments.begin(), workingAttachments.end(),
-                            [&interfaceAttachment, dimensionsForCompatibilityTests](const WorkingAttachment& workingAttachment) {
+                            [&interfaceAttachment, fbProps](const WorkingAttachment& workingAttachment) {
                                 return (workingAttachment._shouldReceiveDataForSemantic == interfaceAttachment.GetOutputSemanticBinding() || workingAttachment._shouldReceiveDataForSemantic == 0)
-                                    && IsCompatible(workingAttachment._desc, interfaceAttachment._desc, dimensionsForCompatibilityTests);
+                                    && IsCompatible(workingAttachment, interfaceAttachment, fbProps);
                             });
                     }
 
@@ -1444,15 +1650,13 @@ namespace RenderCore { namespace Techniques
                         // we could write over -- but that would lead to other complications. Let's just
                         // create something new.
 
-                        reboundName = NextName(MakeIteratorRange(workingAttachments), MakeIteratorRange(newWorkingAttachments));
-
                         // We can steal the settings from an existing attachment with the same semantic
                         // name, if necessary. We get these from a capture of the working attachments
                         // we made at the same of the fragment
                         auto desc = interfaceAttachment._desc;
                         auto sameSemantic = defaultSemanticFormats.find(interfaceAttachment.GetOutputSemanticBinding());
                         if (sameSemantic != defaultSemanticFormats.end()) {
-                            if (desc._format == Format::Unknown) desc._format = sameSemantic->second._format;
+                            if (desc._format == Format::Unknown) desc._format = sameSemantic->second;
                         } else {
                             if (desc._format == Format::Unknown) {
                                 #if defined(_DEBUG)
@@ -1468,55 +1672,41 @@ namespace RenderCore { namespace Techniques
                             }
                         }
 
-                        WorkingAttachment newState;
-                        newState._name = reboundName;
-                        newState._desc = desc;
-                        newState._state = (lastUseDirection & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
-                        newState._stencilState = (lastUseDirection & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
-                        if (lastUseDirection & DirectionFlags::Store) {
-                            auto writeSemantic = interfaceAttachment.GetOutputSemanticBinding();
-                            newState._containsDataForSemantic = writeSemantic;
-                            newState._lastWriteSemantic = writeSemantic;
-
-                            // If there are any other attachments with the same semantic, we have to clear them now
-                            // 2 different subpasses can conceivably write to the same semantic data to 2 completely
-                            // different attachments. In these cases, the last subpass should always win out
-                            for (auto&a:workingAttachments)
-                                if (a._containsDataForSemantic == writeSemantic)
-                                    a._containsDataForSemantic = 0;
-                            for (auto&a:newWorkingAttachments)
-                                if (a._containsDataForSemantic == writeSemantic)
-                                    a._containsDataForSemantic = 0;
-                        }
-                        newState._isPredefinedAttachment = false;
-                        newWorkingAttachments.push_back(newState);
+                        newState = WorkingAttachment { interfaceAttachment, fbProps };
+                        newState._name = NextName(MakeIteratorRange(workingAttachments), MakeIteratorRange(newWorkingAttachments));
 
                         #if defined(_DEBUG)
                             debugInfo 
                                 << "      * " 
-                                << "Cannot find compatible buffer, creating #" << reboundName << ", " << newState << std::endl;
+                                << "Cannot find compatible buffer, creating #" << newState._name << ", " << newState << std::endl;
                         #endif
                     } else {
-                        reboundName = compat->_name;
-                        if (reboundName == ~0u)
-                            reboundName = NextName(MakeIteratorRange(workingAttachments), MakeIteratorRange(newWorkingAttachments));
-
                         // remove from the working attachments and push back in it's new state
-                        auto newState = *compat;
-                        newState._state = (lastUseDirection & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
-                        newState._stencilState = (lastUseDirection & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
-                        if (lastUseDirection & DirectionFlags::Store) {
-                            newState._containsDataForSemantic = interfaceAttachment.GetOutputSemanticBinding();
-                            newState._lastWriteSemantic = interfaceAttachment.GetOutputSemanticBinding();
-                        }
-                        newState._isPredefinedAttachment = false;
-                        newState._name = reboundName;
+                        newState = *compat;
+                        if (newState._name == ~0u)
+                            newState._name = NextName(MakeIteratorRange(workingAttachments), MakeIteratorRange(newWorkingAttachments));
                         workingAttachments.erase(compat);
-                        newWorkingAttachments.push_back(newState);
                     }
                 }
 
-                attachmentRemapping.push_back({interfaceAttachmentName, reboundName});
+                if (!newState._hasBeenAccessed) {
+                    newState._hasBeenAccessed = true;
+                    newState._firstAccessSemantic = interfaceAttachment.GetInputSemanticBinding();
+                    newState._firstAccessLoad = interfaceAttachment._desc._loadFromPreviousPhase;
+                    newState._firstAccessInitialLayout = interfaceAttachment._desc._initialLayout;
+                }
+
+                if (directionFlags & DirectionFlags::WritesData) {
+                    newState._state = PreregisteredAttachment::State::Initialized;
+                    newState._containsDataForSemantic = interfaceAttachment.GetOutputSemanticBinding();
+                    newState._lastWriteSemantic = interfaceAttachment.GetOutputSemanticBinding();
+                }
+
+                newState._lastAccessStore = interfaceAttachment._desc._storeToNextPhase;
+                newState._lastAccessFinalLayout = interfaceAttachment._desc._finalLayout;
+                newWorkingAttachments.push_back(newState);
+
+                attachmentRemapping.push_back({interfaceAttachmentName, newState._name});
             }
 
             /////////////////////////////////////////////////////////////////////////////
@@ -1572,7 +1762,17 @@ namespace RenderCore { namespace Techniques
             // The AttachmentNames in FrameBufferDescFragment are just indices into the attachment
             // list -- so we must ensure that we insert in order, and without gaps
             assert(a._name == result._attachments.size());
-            FrameBufferDescFragment::Attachment r { a._firstReadSemantic, a._containsDataForSemantic, a._desc };
+            FrameBufferDescFragment::Attachment r { a._firstAccessSemantic, a._containsDataForSemantic };
+            r._desc._format = a._textureDesc._format;
+            r._desc._flags = (a._textureDesc._samples == fbProps._samples) ? AttachmentDesc::Flags::Multisampled : 0;
+            r._desc._initialLayout = a._firstAccessInitialLayout;
+            r._desc._finalLayout = a._lastAccessFinalLayout;
+            r._desc._loadFromPreviousPhase = a._firstAccessLoad;
+            r._desc._storeToNextPhase = a._lastAccessStore;
+            r._width = (unsigned)a._textureDesc._width;
+            r._height = (unsigned)a._textureDesc._height;
+            r._arrayLayerCount = (unsigned)a._textureDesc._arrayCount;
+            r._relativeDimensionsMode = false;
             result._attachments.push_back(r);
         }
 
@@ -1581,10 +1781,10 @@ namespace RenderCore { namespace Techniques
 
         for (auto& a:workingAttachments) {
             if (a._name == ~0u) continue;
-            if (a._firstReadSemantic)
-                finalResult._inputAttachments.push_back({a._firstReadSemantic, a._name});
-            if (a._containsDataForSemantic)
-                finalResult._outputAttachments.push_back({a._containsDataForSemantic, a._name});
+            if (a._firstAccessSemantic && HasRetain(a._firstAccessLoad))
+                finalResult._inputAttachments.push_back({a._firstAccessSemantic, a._name});
+            if (a._lastWriteSemantic)
+                finalResult._outputAttachments.push_back({a._lastWriteSemantic, a._name});
         }
 
         #if defined(_DEBUG)
@@ -1620,9 +1820,18 @@ namespace RenderCore { namespace Techniques
         auto existing = LowerBound(remapping, input);
         if (existing == remapping.end() || existing->first != input) {
             auto semantic = srcFragment._attachments[input].GetInputSemanticBinding();
-            auto newName = dstFragment.DefineAttachment(
-                semantic,
-                srcFragment._attachments[input]._desc);
+            AttachmentName newName;
+            if (srcFragment._attachments[input]._relativeDimensionsMode) {
+                newName = dstFragment.DefineAttachmentRelativeDims(
+                    semantic,
+                    srcFragment._attachments[input]._width, srcFragment._attachments[input]._height,
+                    srcFragment._attachments[input]._desc);
+            } else {
+                newName = dstFragment.DefineAttachment(
+                    semantic,
+                    srcFragment._attachments[input]._width, srcFragment._attachments[input]._height, srcFragment._attachments[input]._arrayLayerCount,
+                    srcFragment._attachments[input]._desc);
+            }
             existing = remapping.insert(existing, {input, newName});
         }
 
@@ -1631,7 +1840,8 @@ namespace RenderCore { namespace Techniques
 
     bool CanBeSimplified(
         const RenderCore::Techniques::FrameBufferDescFragment& inputFragment,
-        IteratorRange<const RenderCore::Techniques::PreregisteredAttachment*> systemAttachments)
+        IteratorRange<const RenderCore::Techniques::PreregisteredAttachment*> systemAttachments,
+        const FrameBufferProperties& fbProps)
     {
         TRY
         {
@@ -1649,7 +1859,7 @@ namespace RenderCore { namespace Techniques
                 testFragments.emplace_back(std::move(separatedFragment));
             }
             auto collapsed = RenderCore::Techniques::MergeFragments(
-                systemAttachments, MakeIteratorRange(testFragments));
+                systemAttachments, MakeIteratorRange(testFragments), fbProps);
             assert(collapsed._mergedFragment._attachments.size() <= inputFragment._attachments.size());
             if (collapsed._mergedFragment._attachments.size() < inputFragment._attachments.size()) {
                 return true;
@@ -1663,7 +1873,9 @@ namespace RenderCore { namespace Techniques
 
     static BindFlag::BitField CalculateBindFlags(const FrameBufferDescFragment& fragment, unsigned attachmentName)
     {
-        BindFlag::BitField result = fragment._attachments[attachmentName]._desc._bindFlagsForFinalLayout;
+        BindFlag::BitField result = 
+            fragment._attachments[attachmentName]._desc._initialLayout
+            | fragment._attachments[attachmentName]._desc._finalLayout;
         for (const auto& spDesc:fragment._subpasses) {
             for (const auto& r:spDesc.GetOutputs())
                 if (r._resourceName == attachmentName)
@@ -1674,33 +1886,6 @@ namespace RenderCore { namespace Techniques
                 result |= BindFlag::ShaderResource; // \todo -- shader resource or input attachment bind flag here?
         }
         return result;
-    }
-
-    void MergeInOutputs(
-        std::vector<PreregisteredAttachment>& workingSystemAttachments,
-        const FrameBufferDescFragment& fragment,
-        const FrameBufferProperties& fbProps)
-    {
-        for (unsigned fragmentIdx=0; fragmentIdx<fragment._attachments.size(); ++fragmentIdx) {
-            const auto& fragAttachment = fragment._attachments[fragmentIdx];
-            if (fragAttachment.GetOutputSemanticBinding() == 0) continue;
-            bool foundExisting = false;
-            for (auto&dstAttachment:workingSystemAttachments)
-                if (dstAttachment._semantic == fragAttachment.GetOutputSemanticBinding()) {
-                    dstAttachment._state = PreregisteredAttachment::State::Initialized;
-                    dstAttachment._stencilState = PreregisteredAttachment::State::Initialized;
-                    dstAttachment._desc._bindFlags |= CalculateBindFlags(fragment, fragmentIdx);
-                    foundExisting = true;
-                    break;
-                }
-            if (!foundExisting) {
-                workingSystemAttachments.push_back({
-                    fragAttachment.GetOutputSemanticBinding(),
-                    AsResourceDesc(fragAttachment._desc, CalculateBindFlags(fragment, fragmentIdx), fbProps),
-                    PreregisteredAttachment::State::Initialized,
-                    PreregisteredAttachment::State::Initialized});
-            }
-        }
     }
 
 }}

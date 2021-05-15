@@ -180,9 +180,11 @@ namespace UnitTests
 
 		Techniques::ParsingContext parsingContext{techniqueContext};
 		parsingContext.GetProjectionDesc() = BuildProjectionDesc(camera, s_testResolution);
-		parsingContext._fbProps = fbProps;
-		parsingContext._preregisteredAttachments = { preregisteredAttachments, &preregisteredAttachments[dimof(preregisteredAttachments)] };
 
+		auto& stitchingContext = parsingContext.GetFragmentStitchingContext();
+		stitchingContext._workingProps = fbProps;
+		for (const auto&a:preregisteredAttachments)
+			stitchingContext.DefineAttachment(a._semantic, a._desc, a._state, a._layoutFlags);
 		return parsingContext;
 	}
 
@@ -365,6 +367,7 @@ namespace UnitTests
 			std::shared_ptr<IResource> diffuseResource, normalResource, parameterResource, depthResource;
 			std::shared_ptr<IResource> reconstructedWorldPosition, reconstructedWorldNormal;
 			std::shared_ptr<IResource> directWorldPosition, directWorldNormal;
+			RenderCore::Techniques::AttachmentPool::Reservation attachmentReservation;
 
 			testApparatus._bufferUploads->Update(*threadContext);
 			Threading::Sleep(16);
@@ -372,31 +375,27 @@ namespace UnitTests
 
 			// Prepare gbuffer using standard technique delegate
 			{
-				RenderCore::Techniques::FrameBufferDescFragment frag;
+				RenderCore::Techniques::FrameBufferDescFragment fbFrag;
 				SubpassDesc subpass;
-				subpass.AppendOutput(frag.DefineAttachment(Techniques::AttachmentSemantics::GBufferDiffuse), LoadStore::Clear);
-				subpass.AppendOutput(frag.DefineAttachment(Techniques::AttachmentSemantics::GBufferNormal), LoadStore::Clear);
-				subpass.AppendOutput(frag.DefineAttachment(Techniques::AttachmentSemantics::GBufferParameter), LoadStore::Clear);
+				subpass.AppendOutput(fbFrag.DefineAttachment(Techniques::AttachmentSemantics::GBufferDiffuse, LoadStore::Clear));
+				subpass.AppendOutput(fbFrag.DefineAttachment(Techniques::AttachmentSemantics::GBufferNormal, LoadStore::Clear));
+				subpass.AppendOutput(fbFrag.DefineAttachment(Techniques::AttachmentSemantics::GBufferParameter, LoadStore::Clear));
 				AttachmentDesc depthAttachmentDesc = {s_depthStencilFormat};
-				depthAttachmentDesc._bindFlagsForFinalLayout = BindFlag::ShaderResource;
-				subpass.SetDepthStencil(frag.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth, depthAttachmentDesc), LoadStore::Clear_ClearStencil);
-				frag.AddSubpass(std::move(subpass));
-				auto merged = RenderCore::Techniques::MergeFragments(
-					parsingContext._preregisteredAttachments,
-					MakeIteratorRange(&frag, &frag+1),
-					s_testResolution);
-				auto fbDesc = RenderCore::Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment), FrameBufferProperties{s_testResolution[0], s_testResolution[1]});
+				depthAttachmentDesc._finalLayout = BindFlag::ShaderResource;
+				depthAttachmentDesc._loadFromPreviousPhase = LoadStore::Clear_ClearStencil;
+				subpass.SetDepthStencil(fbFrag.DefineAttachmentRelativeDims(Techniques::AttachmentSemantics::MultisampleDepth, 1.0f, 1.0f, depthAttachmentDesc));
+				fbFrag.AddSubpass(std::move(subpass));
 
-				auto gbufferWriteCfg = testApparatus._pipelineAcceleratorPool->CreateSequencerConfig(
-					Techniques::CreateTechniqueDelegate_Deferred(techniqueSetFile, Techniques::CreateTechniqueSharedResources(*testHelper->_device)),
-					ParameterBox {},
-					fbDesc);
-
-				RenderCore::Techniques::RenderPassInstance rpi(*threadContext, parsingContext, fbDesc);
+				RenderCore::Techniques::RenderPassInstance rpi(*threadContext, parsingContext, fbFrag);
 				diffuseResource = rpi.GetOutputAttachmentResource(0);
 				normalResource = rpi.GetOutputAttachmentResource(1);
 				parameterResource = rpi.GetOutputAttachmentResource(2);
 				depthResource = rpi.GetDepthStencilAttachmentResource();
+
+				auto gbufferWriteCfg = testApparatus._pipelineAcceleratorPool->CreateSequencerConfig(
+					Techniques::CreateTechniqueDelegate_Deferred(techniqueSetFile, Techniques::CreateTechniqueSharedResources(*testHelper->_device)),
+					ParameterBox {},
+					rpi.GetFrameBufferDesc());
 
 				{
 					Techniques::DrawablesPacket pkt;
@@ -416,36 +415,20 @@ namespace UnitTests
 						sequencerContext,
 						pkt);
 				}
-
-				parsingContext._preregisteredAttachments[0]._state = RenderCore::Techniques::PreregisteredAttachment::State::Initialized;
-				parsingContext._preregisteredAttachments[1]._state = RenderCore::Techniques::PreregisteredAttachment::State::Initialized;
-				parsingContext._preregisteredAttachments[2]._state = RenderCore::Techniques::PreregisteredAttachment::State::Initialized;
-				parsingContext._preregisteredAttachments.push_back(
-					Techniques::PreregisteredAttachment {
-						Techniques::AttachmentSemantics::MultisampleDepth,
-						depthResource->GetDesc(),
-						Techniques::PreregisteredAttachment::State::Initialized,
-						Techniques::PreregisteredAttachment::State::Initialized
-					});
 			}
 
 			// Run per pixel pass to convert gbuffer textures -> world position & normal textures
 			{
 				RenderCore::Techniques::FrameBufferDescFragment frag;
 				SubpassDesc subpass;
-				subpass.AppendOutput(frag.DefineAttachment(Hash64("ReconstructedWorldPosition")), LoadStore::Clear);
-				subpass.AppendOutput(frag.DefineAttachment(Hash64("ReconstructedWorldNormal")), LoadStore::Clear);
+				subpass.AppendOutput(frag.DefineAttachment(Hash64("ReconstructedWorldPosition"), LoadStore::Clear));
+				subpass.AppendOutput(frag.DefineAttachment(Hash64("ReconstructedWorldNormal"), LoadStore::Clear));
 				subpass.AppendInput(frag.DefineAttachment(Techniques::AttachmentSemantics::GBufferDiffuse));
 				subpass.AppendInput(frag.DefineAttachment(Techniques::AttachmentSemantics::GBufferNormal));
 				subpass.AppendInput(frag.DefineAttachment(Techniques::AttachmentSemantics::GBufferParameter));
 				subpass.AppendInput(frag.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth));
 				frag.AddSubpass(std::move(subpass));
-				auto merged = RenderCore::Techniques::MergeFragments(
-					parsingContext._preregisteredAttachments,
-					MakeIteratorRange(&frag, &frag+1),
-					s_testResolution);
-				auto fbDesc = RenderCore::Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment), FrameBufferProperties{s_testResolution[0], s_testResolution[1]});
-				RenderCore::Techniques::RenderPassInstance rpi(*threadContext, parsingContext, fbDesc);
+				RenderCore::Techniques::RenderPassInstance rpi(*threadContext, parsingContext, frag);
 				reconstructedWorldPosition = rpi.GetOutputAttachmentResource(0);
 				reconstructedWorldNormal = rpi.GetOutputAttachmentResource(1);
 
@@ -467,34 +450,27 @@ namespace UnitTests
 				UniformsStream::ImmediateData immData[] = { MakeOpaqueIteratorRange(globalTransform) };
 				us._immediateData = MakeIteratorRange(immData);
 				RunSimpleFullscreen(*threadContext, testHelper->_pipelineLayout, "ut-data/reconstruct_from_gbuffer.pixel.hlsl:main", usi, us);
-			}
 
-			SaveImage(*threadContext, *diffuseResource, "gbuffer-diffuse");
-			SaveImage(*threadContext, *normalResource, "gbuffer-normals");
-			SaveImage(*threadContext, *parameterResource, "gbuffer-parameters");
-			auto reconstructedPositionData = reconstructedWorldPosition->ReadBackSynchronized(*threadContext);
-			auto reconstructedNormalData = reconstructedWorldNormal->ReadBackSynchronized(*threadContext);
+				attachmentReservation = rpi.GetAttachmentReservation();
+			}
 
 			// Redraw from original geo, but this time render world position and normal directly
 			{
 				RenderCore::Techniques::FrameBufferDescFragment frag;
 				SubpassDesc subpass;
-				subpass.AppendOutput(frag.DefineAttachment(Hash64("DirectWorldPosition")), LoadStore::Clear);
-				subpass.AppendOutput(frag.DefineAttachment(Hash64("DirectWorldNormal")), LoadStore::Clear);
-				subpass.SetDepthStencil(frag.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth, {s_depthStencilFormat}), LoadStore::Clear_ClearStencil);
+				subpass.AppendOutput(frag.DefineAttachment(Hash64("DirectWorldPosition"), LoadStore::Clear));
+				subpass.AppendOutput(frag.DefineAttachment(Hash64("DirectWorldNormal"), LoadStore::Clear));
+				AttachmentDesc depthAttachmentDesc = {s_depthStencilFormat};
+				depthAttachmentDesc._loadFromPreviousPhase = LoadStore::Clear_ClearStencil;
+				subpass.SetDepthStencil(frag.DefineAttachmentRelativeDims(Techniques::AttachmentSemantics::MultisampleDepth, 1.0f, 1.0f, depthAttachmentDesc));
 				frag.AddSubpass(std::move(subpass));
-				auto merged = RenderCore::Techniques::MergeFragments(
-					parsingContext._preregisteredAttachments,
-					MakeIteratorRange(&frag, &frag+1),
-					s_testResolution);
-				auto fbDesc = RenderCore::Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment), FrameBufferProperties{s_testResolution[0], s_testResolution[1]});
+				RenderCore::Techniques::RenderPassInstance rpi(*threadContext, parsingContext, frag);
 
 				auto writeDirectCfg = testApparatus._pipelineAcceleratorPool->CreateSequencerConfig(
 					std::make_shared<WriteWorldCoordsDelegate>(),
 					ParameterBox {},
-					fbDesc);
+					rpi.GetFrameBufferDesc());
 
-				RenderCore::Techniques::RenderPassInstance rpi(*threadContext, parsingContext, fbDesc);
 				directWorldPosition = rpi.GetOutputAttachmentResource(0);
 				directWorldNormal = rpi.GetOutputAttachmentResource(1);
 
@@ -517,6 +493,12 @@ namespace UnitTests
 						pkt);
 				}
 			}
+
+			SaveImage(*threadContext, *diffuseResource, "gbuffer-diffuse");
+			SaveImage(*threadContext, *normalResource, "gbuffer-normals");
+			SaveImage(*threadContext, *parameterResource, "gbuffer-parameters");
+			auto reconstructedPositionData = reconstructedWorldPosition->ReadBackSynchronized(*threadContext);
+			auto reconstructedNormalData = reconstructedWorldNormal->ReadBackSynchronized(*threadContext);
 
 			// By comparing the reconstructed vs direct rendering outputs, we can see how much precision
 			// is lost via the gbuffer. So, for example, we may loose some precision related to the direction of

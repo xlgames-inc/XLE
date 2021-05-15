@@ -72,9 +72,11 @@ namespace UnitTests
 
 		Techniques::ParsingContext parsingContext{techniqueContext};
 		parsingContext.GetProjectionDesc() = BuildProjectionDesc(camera, UInt2{targetDesc._textureDesc._width, targetDesc._textureDesc._height});
-		parsingContext._fbProps = fbProps;
-		parsingContext._preregisteredAttachments = { preregisteredAttachments, &preregisteredAttachments[dimof(preregisteredAttachments)] };
-
+		
+		auto& stitchingContext = parsingContext.GetFragmentStitchingContext();
+		stitchingContext._workingProps = fbProps;
+		for (const auto&a:preregisteredAttachments)
+			stitchingContext.DefineAttachment(a._semantic, a._desc, a._state, a._layoutFlags);
 		return parsingContext;
 	}
 
@@ -118,10 +120,11 @@ namespace UnitTests
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		SECTION("Forward lighting")
 		{
+			auto& stitchingContext = parsingContext.GetFragmentStitchingContext();
 			auto lightingTechniqueFuture = LightingEngine::CreateForwardLightingTechnique(
 				testHelper->_device,
 				testApparatus._pipelineAcceleratorPool, testApparatus._techDelBox,
-				MakeIteratorRange(parsingContext._preregisteredAttachments), parsingContext._fbProps);
+				stitchingContext.GetPreregisteredAttachments(), stitchingContext._workingProps);
 			auto lightingTechnique = StallAndRequireReady(*lightingTechniqueFuture);
 
 			// stall until all resources are ready
@@ -166,11 +169,12 @@ namespace UnitTests
 				LightingEngine::ShadowGeneratorDesc{}
 			};
 
+			auto& stitchingContext = parsingContext.GetFragmentStitchingContext();
 			auto lightingTechniqueFuture = LightingEngine::CreateDeferredLightingTechnique(
 				testHelper->_device,
 				testApparatus._pipelineAcceleratorPool, testApparatus._techDelBox, pipelineCollection,
 				MakeIteratorRange(resolveOperators), MakeIteratorRange(shadowGenerator), 
-				MakeIteratorRange(parsingContext._preregisteredAttachments), parsingContext._fbProps);
+				stitchingContext.GetPreregisteredAttachments(), stitchingContext._workingProps);
 			auto lightingTechnique = StallAndRequireReady(*lightingTechniqueFuture);
 
 			testApparatus._bufferUploads->Update(*threadContext);

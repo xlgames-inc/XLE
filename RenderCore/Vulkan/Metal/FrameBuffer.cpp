@@ -170,8 +170,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		struct WorkingAttachment
 		{
 			AttachmentDesc _desc;
-			AttachmentUsage _lastSubpassWrite;
-			AttachmentUsage _lastSubpassRead;
+			// AttachmentUsage _lastSubpassWrite;
+			// AttachmentUsage _lastSubpassRead;
 			TextureViewDesc::FormatFilter _formatFilter;
 			Internal::AttachmentUsageType::BitField _attachmentUsage = 0;
 		};
@@ -212,6 +212,7 @@ namespace RenderCore { namespace Metal_Vulkan
 					i->second._desc = layout.GetAttachments()[resource]._desc;
 				}
 
+#if 0
 				AttachmentUsage loadUsage { spIdx, spa.second, r._loadFromPreviousPhase };
 				AttachmentUsage storeUsage { spIdx, spa.second, r._storeToNextPhase };
 
@@ -239,6 +240,7 @@ namespace RenderCore { namespace Metal_Vulkan
 					if (!HasRetain(r._storeToNextPhase))
 						i->second._lastSubpassWrite = {};
 				}
+#endif
 
 				MergeFormatFilter(i->second._formatFilter, r._window._format);
 				i->second._attachmentUsage |= spa.second;
@@ -259,7 +261,7 @@ namespace RenderCore { namespace Metal_Vulkan
             auto resolvedFormat = ResolveFormat(resourceDesc._format, formatFilter, formatUsage);
 
 			// look through the subpass dependencies to find the load operation for the first reference to this resource
-			LoadStore originalLoad = LoadStore::DontCare;
+			/*LoadStore originalLoad = LoadStore::DontCare;
 			for (const auto& d:dependencies) {
 				if (d._resource == a.first && d._first._subpassIdx == ~0u) {
 					// this is a load from pre-renderpass
@@ -267,7 +269,9 @@ namespace RenderCore { namespace Metal_Vulkan
 					originalLoad = d._second._loadStore;
 				}
 			}
-			LoadStore finalStore = a.second._lastSubpassWrite._loadStore;
+			LoadStore finalStore = a.second._lastSubpassWrite._loadStore;*/
+			LoadStore originalLoad = resourceDesc._loadFromPreviousPhase;
+			LoadStore finalStore = resourceDesc._storeToNextPhase;
 
             VkAttachmentDescription desc;
             desc.flags = 0;
@@ -285,19 +289,19 @@ namespace RenderCore { namespace Metal_Vulkan
 			//		default to just the "general" layout
 			// Otherwise we default to keeping the layout that corresponds to how we where
 			// using it in the render pass
-			if (resourceDesc._bindFlagsForFinalLayout == BindFlag::ShaderResource) {
+			if (resourceDesc._finalLayout == BindFlag::ShaderResource) {
 				desc.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 				desc.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			} else if (resourceDesc._bindFlagsForFinalLayout == BindFlag::TransferSrc) {
+			} else if (resourceDesc._finalLayout == BindFlag::TransferSrc) {
 				desc.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 				desc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-			} else if (resourceDesc._bindFlagsForFinalLayout == BindFlag::TransferDst) {
+			} else if (resourceDesc._finalLayout == BindFlag::TransferDst) {
 				desc.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 				desc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			} else if (resourceDesc._bindFlagsForFinalLayout == BindFlag::PresentationSrc) {
+			} else if (resourceDesc._finalLayout == BindFlag::PresentationSrc) {
 				desc.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 				desc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-			} else if (resourceDesc._bindFlagsForFinalLayout != 0) {
+			} else if (resourceDesc._finalLayout != 0) {
 				desc.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
 				desc.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
 			} else {
@@ -511,25 +515,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		unsigned _layers = 0;
 	};
 
-	static void BuildMaxDims(MaxDims& result, const AttachmentDesc& desc, const INamedAttachments& namedResources, const FrameBufferProperties& props)
+	static void BuildMaxDims(MaxDims& result, const ResourceDesc& desc)
 	{
-		// This is annoying -- we need to look for any resources with
-        // array layers. Ideally all our resources should have the same
-        // array layer count (if they don't, we just end up selecting the
-        // largest value)
-		result._layers = std::max(result._layers, desc._arrayLayerCount);
-		unsigned resWidth = 0u, resHeight = 0u;
-			
-		if (!(desc._flags & AttachmentDesc::Flags::OutputRelativeDimensions)) {
-			resWidth = unsigned(desc._width);
-			resHeight = unsigned(desc._height);
-		} else {
-			resWidth = unsigned(std::floor(props._outputWidth * desc._width + 0.5f));
-			resHeight = unsigned(std::floor(props._outputHeight * desc._height + 0.5f));
-		}
-
-		result._width = std::max(result._width, resWidth);
-		result._height = std::max(result._height, resHeight);
+		assert(desc._type == ResourceDesc::Type::Texture);
+		result._width = std::max(result._width, desc._textureDesc._width);
+		result._height = std::max(result._height, desc._textureDesc._height);
+		result._layers = std::max(result._layers, (unsigned)desc._textureDesc._arrayCount);
 	}
 
 	static BindFlag::Enum AsBindFlag(Internal::AttachmentUsageType::BitField usageType)
@@ -555,7 +546,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		// same order as the attachments were defined in the VkRenderPass object.
 		auto subpasses = fbDesc.GetSubpasses();
 
-        MaxDims maxDims;
 		std::vector<std::pair<AttachmentName, Internal::AttachmentUsageType::BitField>> attachments;
 		attachments.reserve(subpasses.size()*4);	// estimate
 		auto fbAttachments = fbDesc.GetAttachments();
@@ -564,19 +554,16 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			for (const auto& r:spDesc.GetOutputs()) {
 				attachments.push_back({r._resourceName, Internal::AttachmentUsageType::Output});
-				BuildMaxDims(maxDims, fbAttachments[r._resourceName]._desc, namedResources, fbDesc.GetProperties());
 			}
 
 			if (spDesc.GetDepthStencil()._resourceName != SubpassDesc::Unused._resourceName) {
 				attachments.push_back({spDesc.GetDepthStencil()._resourceName, Internal::AttachmentUsageType::DepthStencil});
-				BuildMaxDims(maxDims, fbAttachments[spDesc.GetDepthStencil()._resourceName]._desc, namedResources, fbDesc.GetProperties());
 			}
 
 			for (const auto& r:spDesc.GetInputs()) {
 				// todo -- these srvs also need to be exposed to the caller, so they can be bound to
 				// the shader during the subpass
 				attachments.push_back({r._resourceName, Internal::AttachmentUsageType::Input});
-				BuildMaxDims(maxDims, fbAttachments[r._resourceName]._desc, namedResources, fbDesc.GetProperties());
 			}
         }
 
@@ -600,6 +587,7 @@ namespace RenderCore { namespace Metal_Vulkan
         VkImageView rawViews[16];
 		unsigned rawViewCount = 0;
 		_clearValuesOrdering.reserve(uniqueAttachments.size());
+        MaxDims maxDims;
 
         for (const auto&a:uniqueAttachments) {
 			// Note that we can't support TextureViewDesc properly here, because we don't support 
@@ -614,6 +602,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			_clearValuesOrdering.push_back({a.first, defaultClearValue});
 
 			_retainedViews.push_back(std::move(rtv));
+			BuildMaxDims(maxDims, resource->GetDesc());
         }
 
 		if (rawViewCount == 0 && maxDims._width == 0 && maxDims._height == 0) {

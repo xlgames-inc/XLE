@@ -92,20 +92,16 @@ namespace RenderCore { namespace Techniques
 			_shaderResourceDelegates.end());
 	}
 
-	void ParsingContext::DefineAttachment(uint64_t semantic, const ResourceDesc& resourceDesc, PreregisteredAttachment::State state, PreregisteredAttachment::State stencilState)
-	{
-		auto i = std::find_if(
-			_preregisteredAttachments.begin(), _preregisteredAttachments.end(),
-			[semantic](const auto& c) { return c._semantic == semantic; });
-		if (i != _preregisteredAttachments.end())
-			Throw(std::runtime_error("Attempting to define an attachment that has already been defined"));
-		_preregisteredAttachments.push_back(
-			RenderCore::Techniques::PreregisteredAttachment{semantic, resourceDesc, state, stencilState});
-	}
-
 	SystemUniformsDelegate& ParsingContext::GetSystemUniformsDelegate() const
 	{
 		return *_techniqueContext->_systemUniformsDelegate;
+	}
+
+	FragmentStitchingContext& ParsingContext::GetFragmentStitchingContext()
+	{
+		if (!_stitchingContext)
+			_stitchingContext = std::make_unique<FragmentStitchingContext>();
+		return *_stitchingContext;
 	}
 
     ParsingContext::ParsingContext(TechniqueContext& techniqueContext)
@@ -127,25 +123,5 @@ namespace RenderCore { namespace Techniques
     {
         _errorString[0] = _pendingAssets[0] = _invalidAssets[0] = _quickMetrics[0] = '\0';
     }
-
-	uint64_t PreregisteredAttachment::CalculateHash() const
-	{
-		uint64_t result = HashCombine(_semantic, _desc.CalculateHash());
-		auto shift = (_stencilState == State::Initialized) << 1 | (_state == State::Initialized);
-		lrot(result, shift);
-		return result;
-	}
-
-    uint64_t HashPreregisteredAttachments(
-        IteratorRange<const PreregisteredAttachment*> attachments,
-        const FrameBufferProperties& fbProps,
-        uint64_t seed)
-    {
-        uint64_t result = HashCombine(fbProps.CalculateHash(), seed);
-        for (const auto& a:attachments)
-            result = HashCombine(a.CalculateHash(), result);
-        return result;
-    }
-
 }}
 

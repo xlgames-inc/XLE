@@ -89,27 +89,28 @@ namespace RenderCore { namespace LightingEngine
 	{
 		AttachmentDesc lightResolveAttachmentDesc =
 			{	(!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
-				1.f, 1.f, 0u,
-				AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::OutputRelativeDimensions };
+				AttachmentDesc::Flags::Multisampled,
+				LoadStore::Clear };
 
 		AttachmentDesc msDepthDesc =
-            {   Format::D24_UNORM_S8_UINT, 1.f, 1.f, 0u,
-                AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::OutputRelativeDimensions,
-				BindFlag::ShaderResource };
+            {   Format::D24_UNORM_S8_UINT,
+                AttachmentDesc::Flags::Multisampled,
+				LoadStore::Clear_ClearStencil, LoadStore::Retain_RetainStencil,
+				0, BindFlag::ShaderResource };
 
 		RenderStepFragmentInterface result(PipelineType::Graphics);
         AttachmentName output;
 		if (!writeDirectToLDR)
-			output = result.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR, lightResolveAttachmentDesc);
+			output = result.DefineAttachmentRelativeDims(Techniques::AttachmentSemantics::ColorHDR, 1.0f, 1.0f, lightResolveAttachmentDesc);
 		else
-			output = result.DefineAttachment(Techniques::AttachmentSemantics::ColorLDR);
-		auto depth = result.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth, msDepthDesc);
+			output = result.DefineAttachment(Techniques::AttachmentSemantics::ColorLDR, LoadStore::Clear);
+		auto depth = result.DefineAttachmentRelativeDims(Techniques::AttachmentSemantics::MultisampleDepth, 1.0f, 1.0f, msDepthDesc);
 
 		SubpassDesc depthOnlySubpass;
-		depthOnlySubpass.SetDepthStencil(depth, LoadStore::Clear_ClearStencil);
+		depthOnlySubpass.SetDepthStencil(depth);
 
 		SubpassDesc mainSubpass;
-		mainSubpass.AppendOutput(output, LoadStore::Clear);
+		mainSubpass.AppendOutput(output);
 		mainSubpass.SetDepthStencil(depth);
 
 		result.AddSubpass(depthOnlySubpass.SetName("DepthOnly"), depthOnlyDelegate, Techniques::BatchFilter::General);

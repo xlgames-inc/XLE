@@ -7,7 +7,6 @@
 #include "TechniqueUtils.h"
 #include "../FrameBufferDesc.h"
 #include "../StateDesc.h"
-#include "../../Utility/MemoryUtils.h"
 #include <vector>
 #include <memory>
 #include <functional>
@@ -22,19 +21,8 @@ namespace RenderCore { namespace Techniques
 	class IUniformBufferDelegate;
     class IShaderResourceDelegate;
     class SystemUniformsDelegate;
-    
-    struct PreregisteredAttachment
-    {
-    public:
-        uint64_t _semantic;
-        ResourceDesc _desc;
-        enum class State { Uninitialized, Initialized };
-        State _state = State::Uninitialized;
-        State _stencilState = State::Uninitialized;
-
-        uint64_t CalculateHash() const;
-    };
-    
+    class FragmentStitchingContext;
+        
     /// <summary>Manages critical shader state</summary>
     /// Certain system variables are bound to the shaders, and managed by higher
     /// level code. The simpliest example is the global transform; but there are
@@ -70,10 +58,9 @@ namespace RenderCore { namespace Techniques
         SystemUniformsDelegate& GetSystemUniformsDelegate() const;
 
 			//  ----------------- Frame buffer / render pass state -----------------
-        std::vector<PreregisteredAttachment> _preregisteredAttachments;
-        FrameBufferProperties _fbProps;
-
-        void DefineAttachment(uint64_t semantic, const ResourceDesc&, PreregisteredAttachment::State state = PreregisteredAttachment::State::Uninitialized, PreregisteredAttachment::State stencilState = PreregisteredAttachment::State::Uninitialized);
+        /*std::vector<PreregisteredAttachment> _preregisteredAttachments;
+        FrameBufferProperties _fbProps;*/
+        FragmentStitchingContext& GetFragmentStitchingContext();
 
 			//  ----------------- Overlays for late rendering -----------------
         typedef std::function<void(IThreadContext&, ParsingContext&)> PendingOverlay;
@@ -110,6 +97,7 @@ namespace RenderCore { namespace Techniques
         ViewportDesc                        _viewportDesc;
 
 		ParameterBox                        _subframeShaderSelectors;
+        std::unique_ptr<FragmentStitchingContext> _stitchingContext;
 
 		std::vector<std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>> _uniformDelegates;
         std::vector<std::shared_ptr<IShaderResourceDelegate>> _shaderResourceDelegates;
@@ -141,10 +129,5 @@ namespace RenderCore { namespace Techniques
     #define CATCH_ASSETS_BEGIN TRY {
     #define CATCH_ASSETS_END(parserContext) } CATCH_ASSETS(parserContext) CATCH_END
     /// @}
-
-    uint64_t HashPreregisteredAttachments(
-        IteratorRange<const PreregisteredAttachment*> attachments,
-        const FrameBufferProperties& fbProps,
-        uint64_t seed = DefaultSeed64);
 }}
 

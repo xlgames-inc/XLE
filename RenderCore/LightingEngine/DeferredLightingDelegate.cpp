@@ -95,10 +95,11 @@ namespace RenderCore { namespace LightingEngine
 				// the gbuffer contents are useful for various effects.
 
 				auto createGBuffer = std::make_shared<RenderStepFragmentInterface>(RenderCore::PipelineType::Graphics);
-				auto msDepth = createGBuffer->DefineAttachment(
-					Techniques::AttachmentSemantics::MultisampleDepth,
+				auto msDepth = createGBuffer->DefineAttachmentRelativeDims(
+					Techniques::AttachmentSemantics::MultisampleDepth, 1.0f, 1.0f,
 					// Main multisampled depth stencil
-					{ RenderCore::Format::D24_UNORM_S8_UINT });
+					{ RenderCore::Format::D24_UNORM_S8_UINT, AttachmentDesc::Flags::Multisampled,
+						LoadStore::Clear_ClearStencil, LoadStore::Retain });
 
 						// Generally the deferred pixel shader will just copy information from the albedo
 						// texture into the first deferred buffer. So the first deferred buffer should
@@ -108,24 +109,27 @@ namespace RenderCore { namespace LightingEngine
 						// that should be enough precision.
 						//      .. however, it possible some clients might prefer 10 or 16 bit albedo textures
 						//      In these cases, the first buffer should be a matching format.
-				auto diffuse = createGBuffer->DefineAttachment(
-					Techniques::AttachmentSemantics::GBufferDiffuse,
-					{ (!precisionTargets) ? Format::R8G8B8A8_UNORM_SRGB : Format::R32G32B32A32_FLOAT });
+				auto diffuse = createGBuffer->DefineAttachmentRelativeDims(
+					Techniques::AttachmentSemantics::GBufferDiffuse, 1.0f, 1.0f,
+					{ (!precisionTargets) ? Format::R8G8B8A8_UNORM_SRGB : Format::R32G32B32A32_FLOAT, AttachmentDesc::Flags::Multisampled,
+						LoadStore::Clear, LoadStore::Retain });
 
-				auto normal = createGBuffer->DefineAttachment(
-					Techniques::AttachmentSemantics::GBufferNormal,
-					{ (!precisionTargets) ? Format::R8G8B8A8_SNORM : Format::R32G32B32A32_FLOAT });
+				auto normal = createGBuffer->DefineAttachmentRelativeDims(
+					Techniques::AttachmentSemantics::GBufferNormal, 1.0f, 1.0f,
+					{ (!precisionTargets) ? Format::R8G8B8A8_SNORM : Format::R32G32B32A32_FLOAT, AttachmentDesc::Flags::Multisampled,
+						LoadStore::Clear, LoadStore::Retain });
 
-				auto parameter = createGBuffer->DefineAttachment(
-					Techniques::AttachmentSemantics::GBufferParameter,
-					{ (!precisionTargets) ? Format::R8G8B8A8_UNORM : Format::R32G32B32A32_FLOAT });
+				auto parameter = createGBuffer->DefineAttachmentRelativeDims(
+					Techniques::AttachmentSemantics::GBufferParameter, 1.0f, 1.0f,
+					{ (!precisionTargets) ? Format::R8G8B8A8_UNORM : Format::R32G32B32A32_FLOAT, AttachmentDesc::Flags::Multisampled,
+						LoadStore::Clear, LoadStore::Retain });
 
 				SubpassDesc subpass;
-				subpass.AppendOutput(diffuse, LoadStore::Clear, LoadStore::Retain);
-				subpass.AppendOutput(normal, LoadStore::Clear, LoadStore::Retain);
+				subpass.AppendOutput(diffuse);
+				subpass.AppendOutput(normal);
 				if (gbufferType == GBufferType::PositionNormalParameters)
-					subpass.AppendOutput(parameter, LoadStore::Clear, LoadStore::Retain);
-				subpass.SetDepthStencil(msDepth, LoadStore::Clear_ClearStencil, LoadStore::Retain);
+					subpass.AppendOutput(parameter);
+				subpass.SetDepthStencil(msDepth);
 
 				auto srDelegate = std::make_shared<BuildGBufferResourceDelegate>(*deferredShaderResource);
 
@@ -142,10 +146,10 @@ namespace RenderCore { namespace LightingEngine
 		bool precisionTargets = false)
 	{
 		RenderStepFragmentInterface fragment { RenderCore::PipelineType::Graphics };
-		auto depthTarget = fragment.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth);
-		auto lightResolveTarget = fragment.DefineAttachment(
-			Techniques::AttachmentSemantics::ColorHDR,
-			{ (!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT });
+		auto depthTarget = fragment.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth, LoadStore::Retain_ClearStencil, LoadStore::Retain_RetainStencil);
+		auto lightResolveTarget = fragment.DefineAttachmentRelativeDims(
+			Techniques::AttachmentSemantics::ColorHDR, 1.0f, 1.0f,
+			{ (!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT, AttachmentDesc::Flags::Multisampled, LoadStore::Clear });
 
 		TextureViewDesc justStencilWindow {
 			TextureViewDesc::Aspect::Stencil,
@@ -160,33 +164,24 @@ namespace RenderCore { namespace LightingEngine
 			TextureViewDesc::Flags::JustDepth};
 
 		SubpassDesc subpasses[2];
-		subpasses[0].AppendOutput(lightResolveTarget, LoadStore::Clear);
-		subpasses[0].SetDepthStencil(depthTarget, LoadStore::Retain_ClearStencil, LoadStore::Retain_RetainStencil);
+		subpasses[0].AppendOutput(lightResolveTarget);
+		subpasses[0].SetDepthStencil(depthTarget);
 
 			// In the second subpass, the depth buffer is bound as stencil-only (so we can read the depth values as shader inputs)
 		subpasses[1].AppendOutput(lightResolveTarget);
-		subpasses[1].SetDepthStencil({ depthTarget, LoadStore::Retain_RetainStencil, LoadStore::Retain_RetainStencil, justStencilWindow });
+		subpasses[1].SetDepthStencil({ depthTarget, justStencilWindow });
 
 		auto gbufferStore = LoadStore::Retain;	// (technically only need retain when we're going to use these for debugging)
 		auto diffuseAspect = (!precisionTargets) ? TextureViewDesc::Aspect::ColorSRGB : TextureViewDesc::Aspect::ColorLinear;
 		subpasses[1].AppendInput(
 			AttachmentViewDesc {
-				fragment.DefineAttachment(Techniques::AttachmentSemantics::GBufferDiffuse),
-				LoadStore::Retain, gbufferStore,
+				fragment.DefineAttachment(Techniques::AttachmentSemantics::GBufferDiffuse, LoadStore::Retain, gbufferStore),
 				{diffuseAspect}
 			});
+		subpasses[1].AppendInput(fragment.DefineAttachment(Techniques::AttachmentSemantics::GBufferNormal, LoadStore::Retain, gbufferStore));
+		subpasses[1].AppendInput(fragment.DefineAttachment(Techniques::AttachmentSemantics::GBufferParameter, LoadStore::Retain, gbufferStore));
 		subpasses[1].AppendInput(
-			AttachmentViewDesc {
-				fragment.DefineAttachment(Techniques::AttachmentSemantics::GBufferNormal),
-				LoadStore::Retain, gbufferStore
-			});
-		subpasses[1].AppendInput(
-			AttachmentViewDesc {
-				fragment.DefineAttachment(Techniques::AttachmentSemantics::GBufferParameter),
-				LoadStore::Retain, gbufferStore
-			});
-		subpasses[1].AppendInput(
-			AttachmentViewDesc { depthTarget, LoadStore::Retain_RetainStencil, LoadStore::Retain_RetainStencil, justDepthWindow });
+			AttachmentViewDesc { depthTarget, justDepthWindow });
 
 		// fragment.AddSubpasses(MakeIteratorRange(subpasses), std::move(fn));
 		fragment.AddSkySubpass(std::move(subpasses[0]));
@@ -199,12 +194,12 @@ namespace RenderCore { namespace LightingEngine
 		bool precisionTargets = false)
 	{
 		RenderStepFragmentInterface fragment { RenderCore::PipelineType::Graphics };
-		auto hdrInput = fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR);
-		auto ldrOutput = fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorLDR);
+		auto hdrInput = fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR, LoadStore::Retain_RetainStencil, LoadStore::DontCare);
+		auto ldrOutput = fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorLDR, LoadStore::DontCare, LoadStore::Retain);
 
 		SubpassDesc subpass;
-		subpass.AppendOutput(ldrOutput, LoadStore::DontCare, LoadStore::Retain);
-		subpass.AppendInput(hdrInput, LoadStore::Retain_RetainStencil, LoadStore::DontCare);
+		subpass.AppendOutput(ldrOutput);
+		subpass.AppendInput(hdrInput);
 		fragment.AddSubpass(std::move(subpass), std::move(fn));
 		return fragment;
 	}
@@ -356,7 +351,7 @@ namespace RenderCore { namespace LightingEngine
 				auto lightResolveOperators = BuildLightResolveOperators(
 					*pipelineCollection, resolveOperators,
 					*resolvedFB.first, resolvedFB.second,
-					false, 0, Shadowing::NoShadows, GBufferType::PositionNormalParameters);
+					false, 0, Shadowing::PerspectiveShadows, GBufferType::PositionNormalParameters);
 
 				::Assets::WhenAll(lightResolveOperators).ThenConstructToFuture<CompiledLightingTechnique>(
 					thatFuture,

@@ -360,9 +360,8 @@ namespace Assets
 
 					// Opening without sharing to prevent other instances of XLE apps from using
 					// the same directory.
-				std::unique_ptr<IFileInterface> markerFile;
-				TryOpen(markerFile, *_filesystem, MakeStringSection(markerFileName), "wb", 0);
-				if (!markerFile)
+				TryOpen(_markerFile, *_filesystem, MakeStringSection(markerFileName), "wb", 0);
+				if (!_markerFile)
 					Throw(std::runtime_error("Failed while opening intermediates store marker file"));
 				auto outStr = std::string("VersionString=") + _constructorOptions._versionString + "\n";
 				_markerFile->Write(outStr.data(), 1, outStr.size());

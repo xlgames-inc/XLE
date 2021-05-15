@@ -15,7 +15,7 @@ namespace RenderCore { namespace LightingEngine
 {
 	struct LightResolveOperatorDesc
 	{
-		LightSourceShape _shape = LightSourceShape::Sphere;
+		LightSourceShape _shape = LightSourceShape::Directional;
 		unsigned _diffuseModel = 1;
 	};
 

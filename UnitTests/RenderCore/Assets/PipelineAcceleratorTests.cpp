@@ -130,7 +130,7 @@ namespace UnitTests
 		mainSubpass.AppendOutput(0);
 
 		std::vector<FrameBufferDesc::Attachment> attachments;
-		attachments.push_back({0, AttachmentDesc{Format::R8G8B8A8_UNORM}});
+		attachments.push_back({AttachmentDesc{Format::R8G8B8A8_UNORM}});
 		std::vector<SubpassDesc> subpasses;
 		subpasses.push_back(mainSubpass);
 

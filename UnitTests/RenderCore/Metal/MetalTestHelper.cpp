@@ -146,14 +146,7 @@ namespace UnitTests
 			assert(resName == 0);
 			// the "requestDesc" is passed in here so that we can validate it. We're expecting
 			// it to match up to the desc that was provided in the FrameBufferDesc
-			auto expectedDesc = RenderCore::AsAttachmentDesc(_originalMainTargetDesc);
-			assert(requestDesc._format == expectedDesc._format);
-			assert(requestDesc._width == expectedDesc._width);
-			assert(requestDesc._height == expectedDesc._height);
-			assert(requestDesc._arrayLayerCount == expectedDesc._arrayLayerCount);
-			assert(requestDesc._flags == expectedDesc._flags);
-			assert(requestDesc._bindFlagsForFinalLayout == expectedDesc._bindFlagsForFinalLayout);
-			assert(requestDesc.CalculateHash() == expectedDesc.CalculateHash());
+			assert(requestDesc._format == _originalMainTargetDesc._textureDesc._format);
 			return _mainTarget;
 		}
 	};
@@ -267,9 +260,10 @@ namespace UnitTests
 		_pimpl->_mainTarget = device.CreateResource(mainFBDesc, initData);
 		_pimpl->_originalMainTargetDesc = mainFBDesc;
 
-		FrameBufferDesc::Attachment mainAttachment { 0, AsAttachmentDesc(mainFBDesc) };
+		FrameBufferDesc::Attachment mainAttachment { mainFBDesc._textureDesc._format };
+		mainAttachment._desc._loadFromPreviousPhase = beginLoadStore;
 		SubpassDesc mainSubpass;
-		mainSubpass.AppendOutput(0, beginLoadStore, LoadStore::Retain);
+		mainSubpass.AppendOutput(0);
 		mainSubpass.SetName("unit-test-subpass");
 		_pimpl->_fbDesc = FrameBufferDesc { 
 			std::vector<FrameBufferDesc::Attachment>{ mainAttachment },

@@ -109,7 +109,11 @@ namespace RenderCore { namespace LightingEngine
 		assert(!_fbDesc.GetSubpasses().empty());
 		_savedProjectionDesc = parsingContext.GetProjectionDesc();
 		parsingContext.GetProjectionDesc()._worldToProjection = frustum._worldToClip;
-		return Techniques::RenderPassInstance{threadContext, _fbDesc, shadowGenFrameBufferPool, shadowGenAttachmentPool, {}};
+		assert(0);
+		return Techniques::RenderPassInstance{
+			threadContext, _fbDesc, 
+			IteratorRange<const Techniques::PreregisteredAttachment*>{},
+			shadowGenFrameBufferPool, shadowGenAttachmentPool, {}};
 	}
 
 	PreparedShadowFrustum CompiledShadowPreparer::End(
@@ -168,12 +172,8 @@ namespace RenderCore { namespace LightingEngine
 
 			auto output = fragment.DefineAttachment(
 				Techniques::AttachmentSemantics::ShadowDepthMap, 
-				{
-					AsTypelessFormat(desc._format),
-					float(desc._width), float(desc._height),
-					desc._arrayCount,
-					0		// no flags
-				});
+				desc._width, desc._height, desc._arrayCount,
+				AttachmentDesc{AsTypelessFormat(desc._format), 0, LoadStore::Clear, LoadStore::Retain});
 			
 			auto shadowGenDelegate = delegatesBox->GetShadowGenTechniqueDelegate(singleSidedBias, doubleSidedBias, desc._cullMode);
 
@@ -182,7 +182,7 @@ namespace RenderCore { namespace LightingEngine
 			box.SetParameter(s_shadowEnableNearCascadeString, desc._enableNearCascade?1:0);
 
 			SubpassDesc subpass;
-			subpass.SetDepthStencil(output, LoadStore::Clear, LoadStore::Retain);
+			subpass.SetDepthStencil(output);
 			fragment.AddSubpass(
 				std::move(subpass),
 				shadowGenDelegate,
@@ -191,10 +191,9 @@ namespace RenderCore { namespace LightingEngine
 		}
 		///////////////////////////////
 		
-		auto merged = Techniques::MergeFragments(
-			{}, MakeIteratorRange(&fragment.GetFrameBufferDescFragment(), &fragment.GetFrameBufferDescFragment()+1));
-		FrameBufferProperties fbProps { desc._width, desc._height };
-		_fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment), fbProps);
+		Techniques::FragmentStitchingContext stitchingContext;
+		stitchingContext._workingProps = FrameBufferProperties { desc._width, desc._height };
+		_fbDesc = stitchingContext.TryStitchFrameBufferDesc(fragment.GetFrameBufferDescFragment())._fbDesc;
 
 		_sequencerConfigs = pipelineAccelerators->CreateSequencerConfig(
 			fragment.GetSubpassAddendums()[0]._techniqueDelegate,

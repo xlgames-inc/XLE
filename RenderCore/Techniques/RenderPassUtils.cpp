@@ -19,16 +19,11 @@ namespace RenderCore { namespace Techniques
         ParsingContext& parserContext,
 		LoadStore loadOperation)
 	{
+		FrameBufferDescFragment frag;
 		SubpassDesc subpass;
-		subpass.AppendOutput( AttachmentViewDesc { 0, loadOperation, LoadStore::Retain, TextureViewDesc{ TextureViewDesc::Aspect::ColorSRGB } });
-		FrameBufferDesc::Attachment attachment { AttachmentSemantics::ColorLDR };
-
-		FrameBufferDesc fbDesc {
-			std::vector<FrameBufferDesc::Attachment>{attachment},
-			std::vector<SubpassDesc>{subpass},
-			parserContext._fbProps
-		};
-        auto rpi =  RenderPassInstance{context, parserContext, fbDesc};
+		subpass.AppendOutput(frag.DefineAttachment(AttachmentSemantics::ColorLDR, loadOperation));
+		frag.AddSubpass(std::move(subpass));
+        auto rpi =  RenderPassInstance{context, parserContext, frag};
 		parserContext.GetViewport() = rpi.GetDefaultViewport();
 		return rpi;
 	}
@@ -52,35 +47,13 @@ namespace RenderCore { namespace Techniques
 		if (!boundDepth && loadOperation != LoadStore::Clear)
 			return RenderPassToPresentationTarget(context, parserContext, loadOperation);
 
+		FrameBufferDescFragment frag;
 		SubpassDesc subpass;
-		subpass.AppendOutput( AttachmentViewDesc { 0, loadOperation, LoadStore::Retain, TextureViewDesc{ TextureViewDesc::Aspect::ColorSRGB } });
-		subpass.SetDepthStencil( AttachmentViewDesc { 1, loadOperation, LoadStore::Retain, TextureViewDesc{ TextureViewDesc::Aspect::DepthStencil } });
-		FrameBufferDesc::Attachment colorAttachment { AttachmentSemantics::ColorLDR };
+		subpass.AppendOutput(frag.DefineAttachment(AttachmentSemantics::ColorLDR, loadOperation));
+		subpass.SetDepthStencil(frag.DefineAttachment(AttachmentSemantics::MultisampleDepth, loadOperation));
+		frag.AddSubpass(std::move(subpass));
 
-        AttachmentDesc depthDesc;
-        if (boundDepth) {
-            depthDesc = AsAttachmentDesc(boundDepth->GetDesc());
-        } else {
-            depthDesc = colorAttachment._desc;
-            auto device = context.GetDevice();
-            if (device->QueryFormatCapability(Format::D24_UNORM_S8_UINT, 0) == FormatCapability::Supported) {
-                depthDesc._format = Format::D24_UNORM_S8_UINT;
-            } else if (device->QueryFormatCapability(Format::D32_SFLOAT_S8_UINT, 0) == FormatCapability::Supported) {
-                depthDesc._format = Format::D32_SFLOAT_S8_UINT;
-            } else {
-                assert(0);
-            }
-            depthDesc._flags = AttachmentDesc::Flags::Multisampled;
-			depthDesc._bindFlagsForFinalLayout = BindFlag::DepthStencil;
-        }
-		FrameBufferDesc::Attachment depthAttachment { AttachmentSemantics::MultisampleDepth, depthDesc };
-
-		FrameBufferDesc fbDesc {
-			std::vector<FrameBufferDesc::Attachment>{colorAttachment, depthAttachment},
-			std::vector<SubpassDesc>{std::move(subpass)},
-			parserContext._fbProps
-		};
-        auto rpi = RenderPassInstance{context, parserContext, fbDesc};
+        auto rpi = RenderPassInstance{ context, parserContext, frag };
 		parserContext.GetViewport() = rpi.GetDefaultViewport();
 		return rpi;
 	}

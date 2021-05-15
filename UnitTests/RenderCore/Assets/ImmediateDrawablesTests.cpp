@@ -120,7 +120,7 @@ namespace UnitTests
 				auto techniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
 				techniqueContext->_drawablesSharedResources = RenderCore::Techniques::CreateDrawablesSharedResources();
 				RenderCore::Techniques::ParsingContext parsingContext { *techniqueContext };
-				parsingContext._fbProps = fbHelper.GetDesc().GetProperties();
+				// parsingContext._fbProps = fbHelper.GetDesc().GetProperties();
 				immediateDrawables->ExecuteDraws(*threadContext, parsingContext, fbHelper.GetDesc(), 0);
 			}
 
@@ -169,7 +169,7 @@ namespace UnitTests
 				auto techniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
 				techniqueContext->_drawablesSharedResources = RenderCore::Techniques::CreateDrawablesSharedResources();
 				RenderCore::Techniques::ParsingContext parsingContext { *techniqueContext };
-				parsingContext._fbProps = fbHelper.GetDesc().GetProperties();
+				// parsingContext._fbProps = fbHelper.GetDesc().GetProperties();
 				immediateDrawables->ExecuteDraws(*threadContext, parsingContext, fbHelper.GetDesc(), 0);
 			}
 
