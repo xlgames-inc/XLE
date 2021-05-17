@@ -13,7 +13,7 @@
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Texture2D_MaybeMS<float>	DepthTexture	 	BIND_SEQ_T12;
+Texture2D_MaybeMS<float>	DepthTexture	 	BIND_SEQ_T9;
 
 float GetLinear0To1Depth(int2 pixelCoords, uint sampleIndex)
 {

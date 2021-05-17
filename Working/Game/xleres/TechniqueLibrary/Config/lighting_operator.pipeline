@@ -13,41 +13,69 @@ DescriptorSet PerLightDescriptors
 	};
 
 	UniformBuffer LightBuffer;					// 1	
-	UniformBuffer ShadowProj_Arbit;				// 2
-	UniformBuffer ShadowParam;					// 3
-	UniformBuffer ScreenToShadow;				// 4
-	UniformBuffer ShadowProj_Ortho;				// 5
-	UniformBuffer ShadowResolveParam;			// 6
-	UniformBuffer ScreenToRTShadow;				// 7
-	UniformBuffer Debugging;					// 8
+	UniformBuffer Debugging;					// 2
 
-	SampledTexture GBuffer_Diffuse;				// 9
-	SampledTexture GBuffer_Normals;				// 10
-	SampledTexture GBuffer_Parameters;			// 11
-	SampledTexture DepthTexture;				// 12
-	SampledTexture DMShadow;					// 13
-	SampledTexture RTShadow_ListHead;			// 14
-	SampledTexture RTShadow_LinkedLists;		// 15
-	SampledTexture RTShadow_Triangles;			// 16
+	UniformBuffer d0;	// 3
+	UniformBuffer d1;	// 4
+	UniformBuffer d2;	// 5
 
-	Sampler DefaultSampler;						// 17
-	Sampler ClampingSampler;					// 18
-	Sampler AnisotropicSampler;					// 19
-	Sampler PointClampSampler;					// 20
+	SampledTexture GBuffer_Diffuse;				// 6
+	SampledTexture GBuffer_Normals;				// 7
+	SampledTexture GBuffer_Parameters;			// 8
+	SampledTexture DepthTexture;				// 9
+
+	SampledTexture d3;	// 10
+	SampledTexture d4;	// 11
+	SampledTexture d5;	// 12
+
+	Sampler DefaultSampler;						// 13
+	Sampler ClampingSampler;					// 14
+	Sampler AnisotropicSampler;					// 15
+	Sampler PointClampSampler;					// 16
 };
 
 DescriptorSet SharedDescriptors
 {
-	UniformBuffer cb0;
-	SampledTexture tex0;
+	UniformBuffer ShadowFilteringTable;		// 0
+	SampledTexture tex0;					// 1
+	Sampler ShadowSampler;					// 2
+	Sampler ShadowDepthSampler;				// 3
 };
 
-DescriptorSet Dummy {};
+DescriptorSet ShadowTemplate
+{
+	UniformBuffer cb0;					// 0
+	UniformBuffer cb1;					// 1
+	UniformBuffer cb2;					// 2
+	SampledTexture tex0;				// 3
+	SampledTexture tex1;				// 4
+	SampledTexture tex2;				// 5
+};
+
+DescriptorSet DMShadow
+{
+	UniformBuffer ShadowProjection;				// 0 (either ArbitraryShadowProjection or OrthogonalShadowProjection)
+	UniformBuffer ShadowResolveParameters;		// 1
+	UniformBuffer ScreenToShadowProjection;		// 2
+	SampledTexture DMShadow;					// 3
+	SampledTexture d0;
+	SampledTexture d1;
+};
+
+DescriptorSet RTShadow
+{
+	UniformBuffer ScreenToRTShadow;				// 0
+	UniformBuffer spacer0;						// 1
+	UniformBuffer spacer1;						// 2
+	SampledTexture RTShadow_ListHead;			// 3
+	SampledTexture RTShadow_LinkedLists;		// 4
+	SampledTexture RTShadow_Triangles;			// 5
+};
 
 PipelineLayout LightingOperator
 {
 	DescriptorSet PerLightDescriptors;
+	DescriptorSet ShadowTemplate;
 	DescriptorSet SharedDescriptors;
-	DescriptorSet Dummy;
 	DescriptorSet Numeric;
 };

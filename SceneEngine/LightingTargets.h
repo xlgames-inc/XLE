@@ -94,12 +94,12 @@ namespace SceneEngine
         {
             enum 
             {
-                ShadowProj_Arbit,
+                ArbitraryShadowProjection,
                 LightBuffer,
-                ShadowParam,
-                ScreenToShadow,
-                ShadowProj_Ortho,
-                ShadowResolveParam,
+                ShadowFilteringTable,
+                ScreenToShadowProjection,
+                OrthogonalShadowProjection,
+                ShadowResolveParameters,
                 ScreenToRTShadow,
                 Debugging,
                 Max

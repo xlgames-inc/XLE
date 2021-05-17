@@ -151,7 +151,7 @@ namespace SceneEngine
         // 
         // CBs
         // 11: ShadowResolveParameters
-        // 12: ShadowParameters
+        // 12: ShadowFilteringTable
 
         auto* shadowSRV = &dominantLight.GetSRV();
         assert(shadowSRV);
@@ -482,7 +482,7 @@ namespace SceneEngine
         const Metal::ShaderResourceView* srvs[] = { nullptr, nullptr, nullptr, nullptr };
         static_assert(dimof(srvs)==SR::Max, "Shader resource array incorrect size");
         
-        cbvs[CB::ShadowParam] = &ConsoleRig::FindCachedBox2<ShadowResourcesBox>()._sampleKernel32;
+        cbvs[CB::ShadowFilteringTable] = &ConsoleRig::FindCachedBox2<ShadowResourcesBox>()._sampleKernel32;
 
         Metal::ConstantBuffer debuggingCB;
         if (debugging) {
@@ -528,9 +528,9 @@ namespace SceneEngine
                     const auto& preparedShadows = lightingParserContext._preparedDMShadows[shadowFrustumIndex].second;
                     srvs[SR::DMShadow] = &preparedShadows.GetSRV();
                     assert(srvs[SR::DMShadow]);
-                    cbvs[CB::ShadowProj_Arbit] = &preparedShadows._arbitraryCB;
-                    cbvs[CB::ShadowProj_Ortho] = &preparedShadows._orthoCB;
-                    cbvs[CB::ShadowResolveParam] = &preparedShadows._resolveParametersCB;
+                    cbvs[CB::ArbitraryShadowProjection] = &preparedShadows._arbitraryCB;
+                    cbvs[CB::OrthogonalShadowProjection] = &preparedShadows._orthoCB;
+                    cbvs[CB::ShadowResolveParameters] = &preparedShadows._resolveParametersCB;
 
                         //
                         //      We need an accurate way to get from screen coords into 
@@ -546,7 +546,7 @@ namespace SceneEngine
                         //
                     
                     auto& mainCamProjDesc = parsingContext.GetProjectionDesc();
-                    cbvs[CB::ScreenToShadow] = BuildScreenToShadowConstants(
+                    cbvs[CB::ScreenToShadowProjection] = BuildScreenToShadowConstants(
                         preparedShadows, mainCamProjDesc._cameraToWorld, mainCamProjDesc._cameraToProjection);
 
                     if (preparedShadows._mode == ShadowProjectionMode::Ortho && allowOrthoShadowResolve) {

@@ -39,12 +39,12 @@ namespace RenderCore { namespace LightingEngine
 
 		auto pipelineLayoutFileFuture = ::Assets::MakeAsset<RenderCore::Assets::PredefinedPipelineLayoutFile>(LIGHTING_OPERATOR_PIPELINE);
 		pipelineLayoutFileFuture->StallWhilePending();
-		auto pipelineLayoutFile = pipelineLayoutFileFuture->Actualize();
-		_depValPtr.RegisterDependency(pipelineLayoutFile->GetDependencyValidation());
+		_lightingOperatorsPipelineLayoutFile = pipelineLayoutFileFuture->Actualize();
+		_depValPtr.RegisterDependency(_lightingOperatorsPipelineLayoutFile->GetDependencyValidation());
 
 		const std::string pipelineLayoutName = "LightingOperator";
-		auto i = pipelineLayoutFile->_pipelineLayouts.find(pipelineLayoutName);
-		if (i == pipelineLayoutFile->_pipelineLayouts.end())
+		auto i = _lightingOperatorsPipelineLayoutFile->_pipelineLayouts.find(pipelineLayoutName);
+		if (i == _lightingOperatorsPipelineLayoutFile->_pipelineLayouts.end())
 			Throw(std::runtime_error("Did not find pipeline layout with the name " + pipelineLayoutName + " in the given pipeline layout file"));
 		auto pipelineInit = i->second->MakePipelineLayoutInitializer(drawingApparatus->_shaderCompiler->GetShaderLanguage());
 		_lightingOperatorLayout = _device->CreatePipelineLayout(pipelineInit);

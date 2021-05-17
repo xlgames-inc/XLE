@@ -14,7 +14,7 @@
 
 static const uint ShadowMaxSubProjections = 6;
 
-cbuffer ArbitraryShadowProjection BIND_SEQ_B4
+cbuffer ArbitraryShadowProjection BIND_SHADOW_B0
 {
         // note --
         //      I've used this order to try to reduce the
@@ -28,7 +28,7 @@ cbuffer ArbitraryShadowProjection BIND_SEQ_B4
     row_major float4x4 ShadowWorldToProj[ShadowMaxSubProjections];
 }
 
-cbuffer OrthogonalShadowProjection BIND_SEQ_B5
+cbuffer OrthogonalShadowProjection BIND_SHADOW_B0
 {
 	row_major float3x4 OrthoShadowWorldToProj;
     float4 OrthoShadowMinimalProjection;
@@ -39,7 +39,7 @@ cbuffer OrthogonalShadowProjection BIND_SEQ_B5
 	float4 OrthoShadowNearMinimalProjection;
 }
 
-cbuffer ScreenToShadowProjection
+cbuffer ScreenToShadowProjection BIND_SHADOW_B2
 {
     row_major float4x4 CameraToShadow[ShadowMaxSubProjections];
 	row_major float4x4 OrthoCameraToShadow;	// the "definition" projection for cascades in ortho mode

@@ -169,12 +169,12 @@ namespace SceneEngine
                 using namespace RenderCore;
 
 				UniformsStreamInterface usi;
-				usi.BindConstantBuffer(CB::ShadowProj_Arbit, {Hash64("ArbitraryShadowProjection")});
+				usi.BindConstantBuffer(CB::ArbitraryShadowProjection, {Hash64("ArbitraryShadowProjection")});
                 usi.BindConstantBuffer(CB::LightBuffer, {Hash64("LightBuffer")});
-                usi.BindConstantBuffer(CB::ShadowParam, {Hash64("ShadowParameters")});
-                usi.BindConstantBuffer(CB::ScreenToShadow, {Hash64("ScreenToShadowProjection")});
-                usi.BindConstantBuffer(CB::ShadowProj_Ortho, {Hash64("OrthogonalShadowProjection")});
-                usi.BindConstantBuffer(CB::ShadowResolveParam, {Hash64("ShadowResolveParameters")});
+                usi.BindConstantBuffer(CB::ShadowFilteringTable, {Hash64("ShadowFilteringTable")});
+                usi.BindConstantBuffer(CB::ScreenToShadowProjection, {Hash64("ScreenToShadowProjection")});
+                usi.BindConstantBuffer(CB::OrthogonalShadowProjection, {Hash64("OrthogonalShadowProjection")});
+                usi.BindConstantBuffer(CB::ShadowResolveParameters, {Hash64("ShadowResolveParameters")});
                 usi.BindConstantBuffer(CB::ScreenToRTShadow, {Hash64("ScreenToRTShadowProjection")});
                 usi.BindConstantBuffer(CB::Debugging, {Hash64("DebuggingGlobals")});
                 usi.BindShaderResource(SR::DMShadow, {Hash64("ShadowTextures")});

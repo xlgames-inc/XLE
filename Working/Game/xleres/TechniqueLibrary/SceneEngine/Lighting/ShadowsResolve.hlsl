@@ -17,8 +17,8 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     //   I N P U T S
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-Texture2DArray 	ShadowTextures : register(t14);         // There's a problem here currently -- when using cv.LightResolveDynamic=1, the system doesn't handle 
-Texture2D		NoiseTexture	BIND_SEQ_T7;
+Texture2DArray 	ShadowTextures BIND_SHADOW_T0;
+Texture2D		NoiseTexture BIND_SEQ_T10;
 
 #if !defined(SHADOW_RESOLVE_MODEL)
     #define SHADOW_RESOLVE_MODEL 0
@@ -27,7 +27,7 @@ Texture2D		NoiseTexture	BIND_SEQ_T7;
 static const bool ShadowsPerspectiveProjection = false;
 
 static const uint FilterKernelSize = 32;
-cbuffer ShadowParameters
+cbuffer ShadowFilteringTable BIND_SHARED_LIGHTING_B0
 {
     // #define PACK_FILTER_KERNEL
     #if defined(PACK_FILTER_KERNEL)
@@ -37,7 +37,7 @@ cbuffer ShadowParameters
     #endif
 }
 
-cbuffer ShadowResolveParameters
+cbuffer ShadowResolveParameters BIND_SHADOW_B1
 {
     float ShadowBiasWorldSpace;
     float TanBlurAngle;

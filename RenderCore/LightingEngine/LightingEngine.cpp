@@ -51,40 +51,6 @@ namespace RenderCore { namespace LightingEngine
 		_steps.emplace_back(std::move(newStep));
 	}
 
-	static FragmentLinkResults LinkFragmentOutputsToSystemAttachments(
-		RenderCore::Techniques::MergeFragmentsResult& merged,
-		IteratorRange<RenderCore::Techniques::PreregisteredAttachment*> systemAttachments)
-	{
-		// Attachments that are in _outputAttachments, but not in _inputAttachments are considered generated
-		// Attachments that are in _inputAttachments, but not in _outputAttachments are considered consumed
-		FragmentLinkResults result;
-		for (const auto& o:merged._outputAttachments) {
-			auto q = std::find_if(merged._inputAttachments.begin(), merged._inputAttachments.end(), [o](const auto& a) { return a.first == o.first; });
-			if (q != merged._inputAttachments.end()) continue;
-			result._generatedAttachments.push_back(o);
-		}
-		for (const auto& i:merged._inputAttachments) {
-			auto q = std::find_if(merged._outputAttachments.begin(), merged._outputAttachments.end(), [i](const auto& a) { return a.first == i.first; });
-			if (q != merged._outputAttachments.end()) continue;
-			result._consumedAttachments.push_back(i.first);
-		}
-		// If there are system attachments that are no considered initialized, and not written to by the fragment
-		// at all; generate a warning
-		for (const auto& s:systemAttachments) {
-			if (s._state == RenderCore::Techniques::PreregisteredAttachment::State::Initialized) continue;
-			auto i = std::find_if(merged._outputAttachments.begin(), merged._outputAttachments.end(), [s](const auto& a) { return a.first == s._semantic; });
-			if (i != merged._outputAttachments.end()) continue;
-			Log(Warning) << "System attachment with semantic (";
-			auto* dehash = RenderCore::Techniques::AttachmentSemantics::TryDehash(s._semantic);
-			if (dehash) {
-				Log(Warning) << dehash;
-			} else
-				Log(Warning) << "0x" << std::hex << s._semantic << std::dec;
-			Log(Warning) << ") is not written to by merged fragment" << std::endl;
-		}
-		return result;
-	}
-
 	auto CompiledLightingTechnique::CreateStep_RunFragments(RenderStepFragmentInterface&& fragments) -> FragmentInterfaceRegistration
 	{
 		assert(!_isConstructionCompleted);
@@ -97,33 +63,17 @@ namespace RenderCore { namespace LightingEngine
 	{
 		if (_pendingCreateFragmentSteps.empty()) return;
 
-		UInt2 dimensionsForCompatibilityTests { _fbProps._outputWidth, _fbProps._outputHeight };
-		assert(dimensionsForCompatibilityTests[0] * dimensionsForCompatibilityTests[1]);
-
 		std::vector<Techniques::FrameBufferDescFragment> fragments;
 		for (auto& step:_pendingCreateFragmentSteps)
 			fragments.emplace_back(Techniques::FrameBufferDescFragment{step.first.GetFrameBufferDescFragment()});
 
-		auto merged = Techniques::MergeFragments(
-			MakeIteratorRange(_workingAttachments),
-			MakeIteratorRange(fragments),
-			_fbProps);
-
-		auto linkResults = LinkFragmentOutputsToSystemAttachments(merged, MakeIteratorRange(_workingAttachments));
+		auto merged = _stitchingContext->TryStitchFrameBufferDesc(MakeIteratorRange(fragments));
 
 		#if defined(_DEBUG)
 			Log(Warning) << "Merged fragment in lighting technique:" << std::endl << merged._log << std::endl;
-			if (RenderCore::Techniques::CanBeSimplified(merged._mergedFragment, _workingAttachments, _fbProps))
-				Log(Warning) << "Detected a frame buffer fragment which be simplified while building lighting technique. This usually means one or more of the attachments can be reused, thereby reducing the total number of attachments required." << std::endl;
 		#endif
 
-		assert(0);
-#if 0
-		// Update _workingAttachments
-		RenderCore::Techniques::MergeInOutputs(_workingAttachments, merged._mergedFragment, _fbProps);
-
-		auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment), _fbProps);
-		_fbDescs.emplace_back(std::move(fbDesc));
+		_fbDescs.emplace_back(std::move(merged));
 
 		// Generate commands for walking through the render pass
 		Step beginStep;
@@ -151,7 +101,7 @@ namespace RenderCore { namespace LightingEngine
 					_steps.emplace_back(std::move(drawStep));
 
 					drawStep._type = Step::Type::ExecuteDrawables;
-					drawStep._sequencerConfig = _pipelineAccelerators->CreateSequencerConfig(sb._techniqueDelegate, sb._sequencerSelectors, fbDesc, c);
+					drawStep._sequencerConfig = _pipelineAccelerators->CreateSequencerConfig(sb._techniqueDelegate, sb._sequencerSelectors, _fbDescs[beginStep._fbDescIdx]._fbDesc, c);
 					drawStep._shaderResourceDelegate = sb._shaderResourceDelegate;
 					_steps.emplace_back(std::move(drawStep));
 				} else if (sb._type == SubpassExtension::Type::ExecuteSky) {
@@ -171,9 +121,9 @@ namespace RenderCore { namespace LightingEngine
 
 		Step endStep;
 		endStep._type = Step::Type::EndRenderPassInstance;
-		endStep._fragmentLinkResults = std::move(linkResults);
 		_steps.push_back(endStep);
-#endif
+
+		_stitchingContext->UpdateAttachments(merged);
 
 		_pendingCreateFragmentSteps.clear();
 	}
@@ -183,6 +133,7 @@ namespace RenderCore { namespace LightingEngine
 		assert(!_isConstructionCompleted);
 		ResolvePendingCreateFragmentSteps();
 		_isConstructionCompleted = true;
+		_stitchingContext = nullptr;
 	}
 
 	std::pair<const FrameBufferDesc*, unsigned> CompiledLightingTechnique::GetResolvedFrameBufferDesc(FragmentInterfaceRegistration regId) const
@@ -190,17 +141,15 @@ namespace RenderCore { namespace LightingEngine
 		assert(_isConstructionCompleted);
 		assert(regId < _fragmentInterfaceMappings.size());
 		return std::make_pair(
-			&_fbDescs[_fragmentInterfaceMappings[regId]._fbDesc],
+			&_fbDescs[_fragmentInterfaceMappings[regId]._fbDesc]._fbDesc,
 			_fragmentInterfaceMappings[regId]._subpassBegin);
 	}
 
 	CompiledLightingTechnique::CompiledLightingTechnique(
 		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-		const FrameBufferProperties& fbProps,
-		IteratorRange<const Techniques::PreregisteredAttachment*> preregisteredAttachments)
+		Techniques::FragmentStitchingContext& stitchingContext)
 	: _pipelineAccelerators(pipelineAccelerators)
-	, _fbProps(fbProps)
-	, _workingAttachments(preregisteredAttachments.begin(), preregisteredAttachments.end())
+	, _stitchingContext(&stitchingContext)
 	{
 	}
 
@@ -306,36 +255,15 @@ namespace RenderCore { namespace LightingEngine
 			case CompiledLightingTechnique::Step::Type::BeginRenderPassInstance:
 				{
 					assert(next->_fbDescIdx < _iterator->_compiledTechnique->_fbDescs.size());
-					assert(0);
 					_iterator->_rpi = Techniques::RenderPassInstance{
-						*_iterator->_threadContext,
-						_iterator->_compiledTechnique->_fbDescs[next->_fbDescIdx],
-						IteratorRange<const Techniques::PreregisteredAttachment*>{},
-						*_iterator->_frameBufferPool,
-						*_iterator->_attachmentPool};
+						*_iterator->_threadContext, *_iterator->_parsingContext,
+						_iterator->_compiledTechnique->_fbDescs[next->_fbDescIdx]};
 				}
 				break;
 
 			case CompiledLightingTechnique::Step::Type::EndRenderPassInstance:
-				{
-					_iterator->_rpi.End();
-					assert(0);
-#if 0
-					auto& attachmentPool = *_iterator->_attachmentPool;
-					for (auto consumed:next->_fragmentLinkResults._consumedAttachments) {
-						auto* bound = attachmentPool.GetBoundResource(consumed).get();
-						if (bound) attachmentPool.Unbind(*bound);
-						Remove(_iterator->_parsingContext->_preregisteredAttachments, consumed);
-					}
-					for (auto generated:next->_fragmentLinkResults._generatedAttachments) {
-						auto res = _iterator->_rpi.GetResourceForAttachmentName(generated.second);
-						attachmentPool.Bind(generated.first, res);
-						Remove(_iterator->_parsingContext->_preregisteredAttachments, generated.first);
-						_iterator->_parsingContext->_preregisteredAttachments.push_back({generated.first, res->GetDesc(), Techniques::PreregisteredAttachment::State::Initialized, Techniques::PreregisteredAttachment::State::Initialized});
-					}
-#endif
-					_iterator->_rpi = {};
-				}
+				_iterator->_rpi.End();
+				_iterator->_rpi = {};
 				break;
 
 			case CompiledLightingTechnique::Step::Type::NextRenderPassStep:

@@ -119,11 +119,12 @@ namespace RenderCore { namespace Techniques
         StitchResult TryStitchFrameBufferDesc(const FrameBufferDescFragment& fragment);
         StitchResult TryStitchFrameBufferDesc(IteratorRange<const FrameBufferDescFragment*> fragments);
 
+        void UpdateAttachments(const StitchResult& res);
         IteratorRange<const PreregisteredAttachment*> GetPreregisteredAttachments() const { return MakeIteratorRange(_workingAttachments); }
 
         FrameBufferProperties _workingProps;
 
-        FragmentStitchingContext();
+        FragmentStitchingContext(IteratorRange<const PreregisteredAttachment*> preregAttachments = {}, const FrameBufferProperties& fbProps = {});
         ~FragmentStitchingContext();
     private:
         std::vector<PreregisteredAttachment> _workingAttachments;
@@ -280,6 +281,12 @@ namespace RenderCore { namespace Techniques
             IThreadContext& context,
             ParsingContext& parsingContext,
             const FrameBufferDescFragment& layoutFragment,
+            const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
+
+        RenderPassInstance(
+            IThreadContext& context,
+            ParsingContext& parsingContext,
+            const FragmentStitchingContext::StitchResult& stitchedFragment,
             const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
 
         // Construct a "non-metal" RenderPassInstance (useful for compute shader work)

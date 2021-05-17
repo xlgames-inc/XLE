@@ -15,16 +15,15 @@ DescriptorSet Numeric
 	SampledTexture tex12;				// 12
 	SampledTexture tex13;				// 13
 	SampledTexture tex14;				// 14
-	SampledTexture tex15;				// 15
 
-	Sampler sampler0;					// 16
-	Sampler sampler1;					// 17
-	Sampler sampler2;					// 18
+	Sampler sampler0;					// 15
+	Sampler sampler1;					// 16
+	Sampler sampler2;					// 17
 
-	UniformBuffer cb0;					// 19
-	UniformBuffer cb1;					// 20
-	UniformBuffer cb2;					// 21
-	UniformBuffer cb3;					// 22
+	UniformBuffer cb0;					// 18
+	UniformBuffer cb1;					// 19
+	UniformBuffer cb2;					// 20
+	UniformBuffer cb3;					// 21
 
-	Sampler hlslcc_DummySampler;		// 23
+	Sampler hlslcc_DummySampler;		// 22
 };

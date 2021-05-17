@@ -13,7 +13,7 @@ namespace SceneEngine
 {
     using namespace RenderCore;
 
-    class ShadowParameters
+    class ShadowFilteringTable
     {
     public:
         Float4      _filterKernel[32];
@@ -22,7 +22,7 @@ namespace SceneEngine
     ShadowResourcesBox::ShadowResourcesBox(const Desc& desc)
     {
             //      32 tap sampling kernel for shadows
-        ShadowParameters shadowParameters;
+        ShadowFilteringTable shadowParameters;
         shadowParameters._filterKernel[ 0] = Float4(-0.1924249f, -0.5685654f,0,0);
         shadowParameters._filterKernel[ 1] = Float4(0.0002287195f, -0.830722f,0,0);
         shadowParameters._filterKernel[ 2] = Float4(-0.6227817f, -0.676464f,0,0);

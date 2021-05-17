@@ -160,6 +160,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				uint64_t rangeBegin = range.first, rangeEnd = range.second;
 				if (rangeBegin == 0 && rangeEnd == 0)
 					rangeEnd = VK_WHOLE_SIZE;
+				assert((rangeEnd-rangeBegin) != 0);
 				WriteBinding(
 					descriptorSetBindPoint,
 					AsVkDescriptorType(slotType),
@@ -223,6 +224,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		auto slotType = _signature[descriptorSetBindPoint]._type;
 		assert(_signature[descriptorSetBindPoint]._count == 1);
 		assert(uniformBuffer.buffer);
+		assert(uniformBuffer.range != 0); 
 
 		switch (slotType) {
 		case DescriptorType::UniformBuffer:
@@ -589,7 +591,6 @@ namespace RenderCore { namespace Metal_Vulkan
 				auto entries = legacyBinding.GetEntries((LegacyRegisterBindingDesc::RegisterType)regType, LegacyRegisterBindingDesc::RegisterQualifier::None);
 				for (const auto&e:entries)
 					if (e._targetDescriptorSetIdx == descriptorSetIndex && e._targetBegin < rowCount) {
-						assert(e._targetDescriptorSetBindingName == Hash64(descriptorSetName));
 						for (unsigned t=e._targetBegin; t<std::min(e._targetEnd, rowCount); ++t) {
 							if (!legacyBindingColumn[t].empty())
 								legacyBindingColumn[t] += ", ";
@@ -764,6 +765,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<binds.size(); ++c)
 				if (binds[c]._type == DescriptorSetInitializer::BindType::ImmediateData) {
 					auto size = uniforms._immediateData[binds[c]._uniformsStreamIdx].size();
+					assert(size);
 					builder.Bind(c, VkDescriptorBufferInfo{_associatedLinearBufferData.GetBuffer(), linearBufferIterator, size}, "descriptor-set-bound-data");
 					linearBufferIterator += CeilToMultiple(size, offsetMultiple);
 				}

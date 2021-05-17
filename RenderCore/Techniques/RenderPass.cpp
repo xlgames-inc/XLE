@@ -506,49 +506,50 @@ namespace RenderCore { namespace Techniques
     RenderPassInstance::RenderPassInstance(
         IThreadContext& context,
         ParsingContext& parsingContext,
-        const FrameBufferDescFragment& layout,
+        const FragmentStitchingContext::StitchResult& stitchedFragment,
         const RenderPassBeginDesc& beginInfo)
     {
         _attachedContext = nullptr;
         _attachmentPool = nullptr;
-        
+
         auto& stitchContext = parsingContext.GetFragmentStitchingContext();
-        auto stitchResult = stitchContext.TryStitchFrameBufferDesc(layout);
         *this = RenderPassInstance {
-            context, stitchResult._fbDesc, stitchResult._fullAttachmentDescriptions,
+            context, stitchedFragment._fbDesc, stitchedFragment._fullAttachmentDescriptions,
             *parsingContext.GetTechniqueContext()._frameBufferPool,
             *parsingContext.GetTechniqueContext()._attachmentPool,
             beginInfo };
 
         // Update the parsing context with the changes to attachments
-        for (unsigned aIdx=0; aIdx<stitchResult._attachmentTransforms.size(); ++aIdx) {
-            auto semantic = stitchResult._fullAttachmentDescriptions[aIdx]._semantic;
+        stitchContext.UpdateAttachments(stitchedFragment);
+        for (unsigned aIdx=0; aIdx<stitchedFragment._attachmentTransforms.size(); ++aIdx) {
+            auto semantic = stitchedFragment._fullAttachmentDescriptions[aIdx]._semantic;
             if (!semantic) continue;
-            switch (stitchResult._attachmentTransforms[aIdx]._type) {
+            switch (stitchedFragment._attachmentTransforms[aIdx]._type) {
             case FragmentStitchingContext::AttachmentTransform::Preserved:
             case FragmentStitchingContext::AttachmentTransform::Temporary:
-                break;
             case FragmentStitchingContext::AttachmentTransform::Written:
-                {
-                    auto desc = stitchResult._fullAttachmentDescriptions[aIdx];
-                    desc._state = PreregisteredAttachment::State::Uninitialized;
-                    stitchContext.DefineAttachment(desc);
-                    break;
-                }
+                break;
             case FragmentStitchingContext::AttachmentTransform::Generated:
-                {
-                    auto desc = stitchResult._fullAttachmentDescriptions[aIdx];
-                    desc._state = PreregisteredAttachment::State::Uninitialized;
-                    stitchContext.DefineAttachment(desc);
-                    parsingContext.GetTechniqueContext()._attachmentPool->Bind(semantic, GetResourceForAttachmentName(aIdx));
-                    break;
-                }
+                parsingContext.GetTechniqueContext()._attachmentPool->Bind(semantic, GetResourceForAttachmentName(aIdx));
+                break;
             case FragmentStitchingContext::AttachmentTransform::Consumed:
-                stitchContext.Undefine(semantic);
                 parsingContext.GetTechniqueContext()._attachmentPool->Unbind(semantic);
                 break;
             }
         }
+    }
+
+    RenderPassInstance::RenderPassInstance(
+        IThreadContext& context,
+        ParsingContext& parsingContext,
+        const FrameBufferDescFragment& layout,
+        const RenderPassBeginDesc& beginInfo)
+    {
+        _attachedContext = nullptr;
+        _attachmentPool = nullptr;
+        auto& stitchContext = parsingContext.GetFragmentStitchingContext();
+        auto stitchResult = stitchContext.TryStitchFrameBufferDesc(layout);
+        *this = RenderPassInstance { context, parsingContext, stitchResult, beginInfo };
     }
 
 	RenderPassInstance::RenderPassInstance(
@@ -1387,14 +1388,49 @@ namespace RenderCore { namespace Techniques
                 result._attachmentTransforms.push_back(transform);
             }
         }
+
+        #if defined(_DEBUG)
+            if (CanBeSimplified(fragment, _workingAttachments, _workingProps))
+				Log(Warning) << "Detected a frame buffer fragment which be simplified. This usually means one or more of the attachments can be reused, thereby reducing the total number of attachments required." << std::endl;
+        #endif
+
         result._fbDesc = BuildFrameBufferDesc(fragment, _workingProps);
         return result;
+    }
+    
+    void FragmentStitchingContext::UpdateAttachments(const StitchResult& stitchResult)
+    {
+        for (unsigned aIdx=0; aIdx<stitchResult._attachmentTransforms.size(); ++aIdx) {
+            auto semantic = stitchResult._fullAttachmentDescriptions[aIdx]._semantic;
+            if (!semantic) continue;
+            switch (stitchResult._attachmentTransforms[aIdx]._type) {
+            case FragmentStitchingContext::AttachmentTransform::Preserved:
+            case FragmentStitchingContext::AttachmentTransform::Temporary:
+                break;
+            case FragmentStitchingContext::AttachmentTransform::Written:
+                {
+                    auto desc = stitchResult._fullAttachmentDescriptions[aIdx];
+                    desc._state = PreregisteredAttachment::State::Initialized;
+                    DefineAttachment(desc);
+                    break;
+                }
+            case FragmentStitchingContext::AttachmentTransform::Generated:
+                {
+                    auto desc = stitchResult._fullAttachmentDescriptions[aIdx];
+                    desc._state = PreregisteredAttachment::State::Initialized;
+                    DefineAttachment(desc);
+                    break;
+                }
+            case FragmentStitchingContext::AttachmentTransform::Consumed:
+                Undefine(semantic);
+                break;
+            }
+        }
     }
 
     auto FragmentStitchingContext::TryStitchFrameBufferDesc(IteratorRange<const FrameBufferDescFragment*> fragments) -> StitchResult
     {
         auto merged = MergeFragments(MakeIteratorRange(_workingAttachments), fragments, _workingProps);
-        Log(Warning) << merged._log << std::endl;
         auto stitched = TryStitchFrameBufferDesc(merged._mergedFragment);
         stitched._log = merged._log;
         return stitched;
@@ -1436,8 +1472,12 @@ namespace RenderCore { namespace Techniques
             _workingAttachments.erase(i);
     }
 
-    FragmentStitchingContext::FragmentStitchingContext()
-    {}
+    FragmentStitchingContext::FragmentStitchingContext(IteratorRange<const PreregisteredAttachment*> preregAttachments, const FrameBufferProperties& fbProps)
+    : _workingProps(fbProps)
+    {
+        for (const auto&attach:preregAttachments)
+            DefineAttachment(attach);
+    }
 
     FragmentStitchingContext::~FragmentStitchingContext()
     {}
@@ -1763,6 +1803,7 @@ namespace RenderCore { namespace Techniques
             // list -- so we must ensure that we insert in order, and without gaps
             assert(a._name == result._attachments.size());
             FrameBufferDescFragment::Attachment r { a._firstAccessSemantic, a._containsDataForSemantic };
+            assert(a._textureDesc._format != Format::Unknown);
             r._desc._format = a._textureDesc._format;
             r._desc._flags = (a._textureDesc._samples == fbProps._samples) ? AttachmentDesc::Flags::Multisampled : 0;
             r._desc._initialLayout = a._firstAccessInitialLayout;
@@ -1883,7 +1924,8 @@ namespace RenderCore { namespace Techniques
 			if (spDesc.GetDepthStencil()._resourceName == attachmentName)
 				result |= BindFlag::DepthStencil;
 			for (const auto& r:spDesc.GetInputs())
-                result |= BindFlag::ShaderResource; // \todo -- shader resource or input attachment bind flag here?
+                if (r._resourceName == attachmentName)
+                    result |= BindFlag::ShaderResource | BindFlag::InputAttachment; // \todo -- shader resource or input attachment bind flag here?
         }
         return result;
     }

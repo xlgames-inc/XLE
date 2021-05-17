@@ -14,6 +14,7 @@
 #include "../Techniques/DeferredShaderResource.h"
 #include "../Techniques/ParsingContext.h"
 #include "../Techniques/PipelineCollection.h"
+#include "../Assets/PredefinedPipelineLayout.h"
 #include "../UniformsStream.h"
 #include "../../Assets/Assets.h"
 #include "../../Utility/MemoryUtils.h"
@@ -34,7 +35,7 @@ namespace RenderCore { namespace LightingEngine
 	class DeferredLightingCaptures
 	{
 	public:
-		std::vector<PreparedShadowFrustum> _preparedDMShadows;
+		std::vector<std::pair<LightId, std::shared_ptr<IPreparedShadowResult>>> _preparedShadows;
 		std::shared_ptr<ShadowPreparationOperators> _shadowPreparationOperators;
 		std::shared_ptr<LightResolveOperators> _lightResolveOperators;
 		std::shared_ptr<Techniques::FrameBufferPool> _shadowGenFrameBufferPool;
@@ -44,9 +45,6 @@ namespace RenderCore { namespace LightingEngine
 		void DoShadowPrepare(LightingTechniqueIterator& iterator);
 		void DoLightResolve(LightingTechniqueIterator& iterator);
 		void DoToneMap(LightingTechniqueIterator& iterator);
-
-	private:
-		void SetupDMShadowPrepare(LightingTechniqueIterator& iterator, const ShadowProjectionDesc& proj, unsigned shadowIdx);
 	};
 
 	class BuildGBufferResourceDelegate : public Techniques::IShaderResourceDelegate
@@ -204,44 +202,55 @@ namespace RenderCore { namespace LightingEngine
 		return fragment;
 	}
 	
-	void DeferredLightingCaptures::SetupDMShadowPrepare(
+	static std::shared_ptr<IPreparedShadowResult> SetupShadowPrepare(
 		LightingTechniqueIterator& iterator,
 		const ShadowProjectionDesc& proj,
-		unsigned shadowIdx)
+		ICompiledShadowPreparer& preparer,
+		Techniques::FrameBufferPool& shadowGenFrameBufferPool,
+		Techniques::AttachmentPool& shadowGenAttachmentPool)
 	{
-		if (_shadowPreparationOperators->_operators.empty()) return;
-
-		auto& shadowPreparer = *_shadowPreparationOperators->_operators[0]._preparer;
+		auto res = preparer.CreatePreparedShadowResult();
 		iterator.PushFollowingStep(
-			[this, &shadowPreparer, proj](LightingTechniqueIterator& iterator) {
-				iterator._rpi = shadowPreparer.Begin(
+			[&preparer, proj, &shadowGenFrameBufferPool, &shadowGenAttachmentPool](LightingTechniqueIterator& iterator) {
+				iterator._rpi = preparer.Begin(
 					*iterator._threadContext,
 					*iterator._parsingContext,
 					proj,
-					*this->_shadowGenFrameBufferPool,
-					*this->_shadowGenAttachmentPool);
+					shadowGenFrameBufferPool,
+					shadowGenAttachmentPool);
 			});
 		iterator.PushFollowingStep(Techniques::BatchFilter::General);
-		auto cfg = shadowPreparer.GetSequencerConfig();
+		auto cfg = preparer.GetSequencerConfig();
 		iterator.PushFollowingStep(std::move(cfg.first), std::move(cfg.second));
 		iterator.PushFollowingStep(
-			[this, &shadowPreparer](LightingTechniqueIterator& iterator) {
+			[res, &preparer](LightingTechniqueIterator& iterator) {
 				iterator._rpi.End();
-				auto preparedShadow = shadowPreparer.End(
+				preparer.End(
 					*iterator._threadContext,
 					*iterator._parsingContext,
-					iterator._rpi);
-				this->_preparedDMShadows.push_back(std::move(preparedShadow));
+					iterator._rpi,
+					*res);
 			});
+		return res;
 	}
 
 	void DeferredLightingCaptures::DoShadowPrepare(LightingTechniqueIterator& iterator)
 	{
-		const auto& lightingDesc = iterator._sceneLightingDesc;
+		if (_shadowPreparationOperators->_operators.empty()) return;
 
-		_preparedDMShadows.reserve(lightingDesc._shadowProjections.size());
-		for (unsigned c=0; c<lightingDesc._shadowProjections.size(); ++c)
-			SetupDMShadowPrepare(iterator, lightingDesc._shadowProjections[c], c);
+		const auto& lightingDesc = iterator._sceneLightingDesc;
+		_preparedShadows.reserve(lightingDesc._shadowProjections.size());
+		LightId prevLightId = ~0u; 
+		for (unsigned c=0; c<lightingDesc._shadowProjections.size(); ++c) {
+			auto& shadowPreparer = *_shadowPreparationOperators->_operators[0]._preparer;
+			_preparedShadows.push_back(std::make_pair(
+				lightingDesc._shadowProjections[c]._lightId,
+				SetupShadowPrepare(iterator, lightingDesc._shadowProjections[c], shadowPreparer, *_shadowGenFrameBufferPool, *_shadowGenAttachmentPool)));
+
+			// shadow entries must be sorted by light id
+			assert(prevLightId == ~0u || prevLightId < lightingDesc._shadowProjections[c]._lightId);
+			prevLightId = lightingDesc._shadowProjections[c]._lightId;
+		}
 	}
 
 	void DeferredLightingCaptures::DoLightResolve(LightingTechniqueIterator& iterator)
@@ -249,7 +258,8 @@ namespace RenderCore { namespace LightingEngine
 		// Light subpass
 		ResolveLights(
 			*iterator._threadContext, *iterator._parsingContext, iterator._rpi,
-			iterator._sceneLightingDesc, *_lightResolveOperators);
+			iterator._sceneLightingDesc, *_lightResolveOperators,
+			_preparedShadows);
 	}
 
 	void DeferredLightingCaptures::DoToneMap(LightingTechniqueIterator& iterator)
@@ -281,13 +291,18 @@ namespace RenderCore { namespace LightingEngine
 		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
 		const std::shared_ptr<SharedTechniqueDelegateBox>& techDelBox,
 		const std::shared_ptr<Techniques::GraphicsPipelineCollection>& pipelineCollection,
+		const std::shared_ptr<RenderCore::Assets::PredefinedPipelineLayoutFile>& lightingOperatorsPipelineLayoutFile,
 		IteratorRange<const LightResolveOperatorDesc*> resolveOperatorsInit,
 		IteratorRange<const ShadowGeneratorDesc*> shadowGenerators,
 		IteratorRange<const Techniques::PreregisteredAttachment*> preregisteredAttachmentsInit,
 		const FrameBufferProperties& fbProps)
 	{
+		auto shadowDescSet = lightingOperatorsPipelineLayoutFile->_descriptorSets.find("DMShadow");
+		if (shadowDescSet == lightingOperatorsPipelineLayoutFile->_descriptorSets.end())
+			Throw(std::runtime_error("Could not find DMShadow descriptor set layout in the pipeline layout file"));
+
 		auto buildGBufferFragment = CreateBuildGBufferSceneFragment(*techDelBox, GBufferType::PositionNormalParameters);
-		auto shadowPreparationOperators = CreateShadowPreparationOperators(shadowGenerators, pipelineAccelerators, techDelBox);
+		auto shadowPreparationOperators = CreateShadowPreparationOperators(shadowGenerators, pipelineAccelerators, techDelBox, shadowDescSet->second);
 		std::vector<LightResolveOperatorDesc> resolveOperators { resolveOperatorsInit.begin(), resolveOperatorsInit.end() };
 
 		auto result = std::make_shared<::Assets::AssetFuture<CompiledLightingTechnique>>("deferred-lighting-technique");
@@ -301,7 +316,8 @@ namespace RenderCore { namespace LightingEngine
 				std::shared_ptr<RenderStepFragmentInterface> buildGbuffer,
 				std::shared_ptr<ShadowPreparationOperators> shadowPreparationOperators) {
 
-				auto lightingTechnique = std::make_shared<CompiledLightingTechnique>(pipelineAccelerators, fbProps, preregisteredAttachments);
+				Techniques::FragmentStitchingContext stitchingContext{preregisteredAttachments, fbProps};
+				auto lightingTechnique = std::make_shared<CompiledLightingTechnique>(pipelineAccelerators, stitchingContext);
 				auto captures = std::make_shared<DeferredLightingCaptures>();
 				captures->_shadowGenAttachmentPool = std::make_shared<Techniques::AttachmentPool>(device);
 				captures->_shadowGenFrameBufferPool = Techniques::CreateFrameBufferPool();
@@ -350,7 +366,7 @@ namespace RenderCore { namespace LightingEngine
 				auto resolvedFB = lightingTechnique->GetResolvedFrameBufferDesc(resolveFragmentRegistration);
 				auto lightResolveOperators = BuildLightResolveOperators(
 					*pipelineCollection, resolveOperators,
-					*resolvedFB.first, resolvedFB.second,
+					*resolvedFB.first, resolvedFB.second+1,
 					false, 0, Shadowing::PerspectiveShadows, GBufferType::PositionNormalParameters);
 
 				::Assets::WhenAll(lightResolveOperators).ThenConstructToFuture<CompiledLightingTechnique>(
@@ -376,6 +392,7 @@ namespace RenderCore { namespace LightingEngine
 			apparatus->_pipelineAccelerators,
 			apparatus->_sharedDelegates,
 			apparatus->_lightingOperatorCollection,
+			apparatus->_lightingOperatorsPipelineLayoutFile,
 			resolveOperators, shadowGenerators, preregisteredAttachments,
 			fbProps);		
 	}

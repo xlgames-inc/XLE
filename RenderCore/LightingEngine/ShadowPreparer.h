@@ -17,10 +17,18 @@ namespace RenderCore { namespace Techniques
 	class AttachmentPool;
 	class SequencerConfig;
 }}
-namespace RenderCore { class IThreadContext; }
+namespace RenderCore { class IThreadContext; class IDescriptorSet; }
+namespace RenderCore { namespace Assets { class PredefinedDescriptorSetLayout; }}
 
 namespace RenderCore { namespace LightingEngine
 {
+	class IPreparedShadowResult
+	{
+	public:
+		virtual const std::shared_ptr<IDescriptorSet>& GetDescriptorSet() const = 0;
+		virtual ~IPreparedShadowResult();
+	};
+
 	class ICompiledShadowPreparer
 	{
 	public:
@@ -30,11 +38,13 @@ namespace RenderCore { namespace LightingEngine
 			const ShadowProjectionDesc& frustum,
 			Techniques::FrameBufferPool& shadowGenFrameBufferPool,
 			Techniques::AttachmentPool& shadowGenAttachmentPool) = 0;
-		virtual PreparedShadowFrustum End(
+		virtual void End(
 			IThreadContext& threadContext, 
 			Techniques::ParsingContext& parsingContext,
-			Techniques::RenderPassInstance& rpi) = 0;
+			Techniques::RenderPassInstance& rpi,
+			IPreparedShadowResult& res) = 0;
 		virtual std::pair<std::shared_ptr<Techniques::SequencerConfig>, std::shared_ptr<Techniques::IShaderResourceDelegate>> GetSequencerConfig() = 0;
+		virtual std::shared_ptr<IPreparedShadowResult> CreatePreparedShadowResult() = 0;
 		~ICompiledShadowPreparer();
 	};
 
@@ -43,7 +53,8 @@ namespace RenderCore { namespace LightingEngine
 	::Assets::FuturePtr<ICompiledShadowPreparer> CreateCompiledShadowPreparer(
 		const ShadowGeneratorDesc& desc, 
 		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerator,
-		const std::shared_ptr<SharedTechniqueDelegateBox>& delegatesBox);
+		const std::shared_ptr<SharedTechniqueDelegateBox>& delegatesBox,
+		const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& descSetLayout);
 
 	class ShadowPreparationOperators
 	{
@@ -58,7 +69,8 @@ namespace RenderCore { namespace LightingEngine
 	::Assets::FuturePtr<ShadowPreparationOperators> CreateShadowPreparationOperators(
 		IteratorRange<const ShadowGeneratorDesc*> shadowGenerators, 
 		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerator,
-		const std::shared_ptr<SharedTechniqueDelegateBox>& delegatesBox);
+		const std::shared_ptr<SharedTechniqueDelegateBox>& delegatesBox,
+		const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& descSetLayout);
 
 	/*void ShadowGen_DrawShadowFrustums(
 		Metal::DeviceContext& devContext, 

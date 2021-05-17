@@ -165,13 +165,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		{
 			unsigned _subpassIdx = ~0u;
 			Internal::AttachmentUsageType::BitField _usage = 0;
-			LoadStore _loadStore = LoadStore::DontCare;
 		};
 		struct WorkingAttachment
 		{
 			AttachmentDesc _desc;
-			// AttachmentUsage _lastSubpassWrite;
-			// AttachmentUsage _lastSubpassRead;
+			AttachmentUsage _lastSubpassWrite;
+			AttachmentUsage _lastSubpassRead;
 			TextureViewDesc::FormatFilter _formatFilter;
 			Internal::AttachmentUsageType::BitField _attachmentUsage = 0;
 		};
@@ -187,34 +186,38 @@ namespace RenderCore { namespace Metal_Vulkan
 		std::vector<SubpassDependency> dependencies;
 		dependencies.reserve(subpasses.size()*2);	// approximate
 
+		auto attachmentCount = layout.GetAttachments().size();
+
 		////////////////////////////////////////////////////////////////////////////////////
 		// Build up the list of subpass dependencies and the set of unique attachments
         for (unsigned spIdx=0; spIdx<subpasses.size(); spIdx++) {
 			const auto& spDesc = subpasses[spIdx];
 
-			std::vector<std::pair<const AttachmentViewDesc*, Internal::AttachmentUsageType::BitField>> subpassAttachments;
+			Internal::AttachmentUsageType::BitField subpassAttachmentUsages[attachmentCount];
+			for (unsigned c=0; c<attachmentCount; ++c) subpassAttachmentUsages[c] = 0;
+
 			for (const auto& r:spDesc.GetOutputs()) 
-				subpassAttachments.push_back({&r, Internal::AttachmentUsageType::Output});
+				subpassAttachmentUsages[r._resourceName] |= Internal::AttachmentUsageType::Output;
 			if (spDesc.GetDepthStencil()._resourceName != SubpassDesc::Unused._resourceName)
-				subpassAttachments.push_back({&spDesc.GetDepthStencil(), Internal::AttachmentUsageType::DepthStencil});
+				subpassAttachmentUsages[spDesc.GetDepthStencil()._resourceName] |= Internal::AttachmentUsageType::DepthStencil;
 			for (const auto& r:spDesc.GetInputs()) 
-				subpassAttachments.push_back({&r, Internal::AttachmentUsageType::Input});
+				subpassAttachmentUsages[r._resourceName] |= Internal::AttachmentUsageType::Input;
 
 			//////////////////////////////////////////////////////////////////////////////////////////
 
-			for (const auto& spa:subpassAttachments) {
-				const auto&r = *spa.first;
-				auto resource = r._resourceName;
-				auto i = LowerBound(workingAttachments, resource);
-				if (i == workingAttachments.end() || i->first != resource) {
-					i = workingAttachments.insert(i, {resource, WorkingAttachment{}});
-					assert(resource < layout.GetAttachments().size());
-					i->second._desc = layout.GetAttachments()[resource]._desc;
+			for (unsigned attachmentName=0; attachmentName<attachmentCount; ++attachmentName) {
+				auto usage = subpassAttachmentUsages[attachmentName];
+				if (!usage) continue;
+
+				auto i = LowerBound(workingAttachments, attachmentName);
+				if (i == workingAttachments.end() || i->first != attachmentName) {
+					i = workingAttachments.insert(i, {attachmentName, WorkingAttachment{}});
+					assert(attachmentName < layout.GetAttachments().size());
+					i->second._desc = layout.GetAttachments()[attachmentName]._desc;
 				}
 
-#if 0
-				AttachmentUsage loadUsage { spIdx, spa.second, r._loadFromPreviousPhase };
-				AttachmentUsage storeUsage { spIdx, spa.second, r._storeToNextPhase };
+				AttachmentUsage loadUsage { spIdx, usage };
+				AttachmentUsage storeUsage { spIdx, usage };
 
 				// If we're loading data from a previous phase, we've got to find it in
 				// the working attachments, and create a subpass dependency
@@ -223,27 +226,19 @@ namespace RenderCore { namespace Metal_Vulkan
 				// We do this even if there's not an explicit retain on the load step
 				//	-- we assume "retain" between subpasses, even if the views contradict that
 				//	(as per Vulkan, where LoadStore is only for the input/output of the entire render pass)
-				dependencies.push_back({resource, i->second._lastSubpassWrite, loadUsage});
+				dependencies.push_back({attachmentName, i->second._lastSubpassWrite, loadUsage});
 
 				// We also need a dependency with the last subpass to read from this 
 				// attachment. We can't write to it until the reading is finished
-				if (spa.second & (Internal::AttachmentUsageType::Output | Internal::AttachmentUsageType::DepthStencil)) {
+				if (usage & (Internal::AttachmentUsageType::Output | Internal::AttachmentUsageType::DepthStencil)) {
 					if (i->second._lastSubpassRead._subpassIdx != ~0u)
-						dependencies.push_back({resource, i->second._lastSubpassRead, loadUsage});
-
+						dependencies.push_back({attachmentName, i->second._lastSubpassRead, loadUsage});
 					i->second._lastSubpassWrite = storeUsage;
 				} else {
 					i->second._lastSubpassRead = loadUsage;
-
-					// If the data isn't marked as "retained" after this read, we must clear out the 
-					// last subpass write flags
-					if (!HasRetain(r._storeToNextPhase))
-						i->second._lastSubpassWrite = {};
 				}
-#endif
 
-				MergeFormatFilter(i->second._formatFilter, r._window._format);
-				i->second._attachmentUsage |= spa.second;
+				i->second._attachmentUsage |= usage;
 			}
 		}
 
@@ -254,22 +249,25 @@ namespace RenderCore { namespace Metal_Vulkan
         for (auto&a:workingAttachments) {
             const auto& resourceDesc = a.second._desc;
 
+			// We need to look through all of the places we use this attachment to finalize the
+			// format filter
             auto formatFilter = a.second._formatFilter;
+			for (const auto& spDesc:subpasses) {
+				for (const auto& r:spDesc.GetOutputs())
+					if (r._resourceName == a.first)
+						MergeFormatFilter(formatFilter, r._window._format);
+				if (spDesc.GetDepthStencil()._resourceName == a.first)
+					MergeFormatFilter(formatFilter, spDesc.GetDepthStencil()._window._format);
+				for (const auto& r:spDesc.GetInputs())
+					if (r._resourceName == a.first)
+						MergeFormatFilter(formatFilter, r._window._format);
+			}
+
             BindFlag::Enum formatUsage = BindFlag::ShaderResource;
             if (a.second._attachmentUsage & Internal::AttachmentUsageType::Output) formatUsage = BindFlag::RenderTarget;
             if (a.second._attachmentUsage & Internal::AttachmentUsageType::DepthStencil) formatUsage = BindFlag::DepthStencil;
             auto resolvedFormat = ResolveFormat(resourceDesc._format, formatFilter, formatUsage);
 
-			// look through the subpass dependencies to find the load operation for the first reference to this resource
-			/*LoadStore originalLoad = LoadStore::DontCare;
-			for (const auto& d:dependencies) {
-				if (d._resource == a.first && d._first._subpassIdx == ~0u) {
-					// this is a load from pre-renderpass
-					assert(originalLoad == LoadStore::DontCare || originalLoad == d._second._loadStore);
-					originalLoad = d._second._loadStore;
-				}
-			}
-			LoadStore finalStore = a.second._lastSubpassWrite._loadStore;*/
 			LoadStore originalLoad = resourceDesc._loadFromPreviousPhase;
 			LoadStore finalStore = resourceDesc._storeToNextPhase;
 

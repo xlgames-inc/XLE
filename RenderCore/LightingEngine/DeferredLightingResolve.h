@@ -31,12 +31,15 @@ namespace RenderCore { namespace LightingEngine
         bool _debuggingOn = false;
 	};
 
+	class IPreparedShadowResult;
+
     void ResolveLights(
 		IThreadContext& threadContext,
 		Techniques::ParsingContext& parsingContext,
         Techniques::RenderPassInstance& rpi,
 		const SceneLightingDesc& sceneLightingDesc,
-		const LightResolveOperators& lightResolveOperators);
+		const LightResolveOperators& lightResolveOperators,
+		IteratorRange<const std::pair<LightId, std::shared_ptr<IPreparedShadowResult>>*> preparedShadows);
 
 	enum class GBufferType
 	{

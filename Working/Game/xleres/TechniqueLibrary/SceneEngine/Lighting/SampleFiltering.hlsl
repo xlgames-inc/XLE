@@ -7,8 +7,8 @@
 #if !defined(SAMPLE_FILTERING_H)
 #define SAMPLE_FILTERING_H
 
-SamplerComparisonState		ShadowSampler	 	: register(s4);
-SamplerState				ShadowDepthSampler	: register(s5);
+SamplerComparisonState		ShadowSampler   BIND_SHARED_LIGHTING_S2;
+SamplerState				ShadowDepthSampler    BIND_SHARED_LIGHTING_S3;
 
 ////////////////////////////////////////////////////////////////////////////
         //   A M D   s h a d o w   f i l t e r i n g   //

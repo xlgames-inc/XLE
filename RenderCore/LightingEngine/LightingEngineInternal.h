@@ -36,9 +36,6 @@ namespace RenderCore { namespace LightingEngine
 
 		std::pair<const FrameBufferDesc*, unsigned> GetResolvedFrameBufferDesc(FragmentInterfaceRegistration) const;
 
-		std::vector<Techniques::PreregisteredAttachment> _workingAttachments;
-		FrameBufferProperties _fbProps;
-
 		std::shared_ptr<Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
 
 		const ::Assets::DependencyValidation& GetDependencyValidation() const { return _depVal; }
@@ -46,8 +43,7 @@ namespace RenderCore { namespace LightingEngine
 
 		CompiledLightingTechnique(
 			const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-			const FrameBufferProperties& fbProps,
-			IteratorRange<const Techniques::PreregisteredAttachment*> preregisteredAttachments);
+			Techniques::FragmentStitchingContext& stitchingContext);
 		~CompiledLightingTechnique();
 
 	private:
@@ -69,7 +65,7 @@ namespace RenderCore { namespace LightingEngine
 			std::function<StepFnSig> _function;
 		};
 		std::vector<Step> _steps;
-		std::vector<FrameBufferDesc> _fbDescs;
+		std::vector<Techniques::FragmentStitchingContext::StitchResult> _fbDescs;
 		
 		struct FragmentInterfaceMapping
 		{
@@ -78,6 +74,8 @@ namespace RenderCore { namespace LightingEngine
 		};
 		std::vector<FragmentInterfaceMapping> _fragmentInterfaceMappings;
 		FragmentInterfaceRegistration _nextFragmentInterfaceRegistration = 0;
+
+		Techniques::FragmentStitchingContext* _stitchingContext = nullptr;
 
 		friend class LightingTechniqueIterator;
 		friend class LightingTechniqueInstance;

@@ -457,18 +457,8 @@ namespace UnitTests
 		};
 
 		RenderCore::DescriptorSetSignature drawSet {
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-			{DescriptorType::SampledTexture},
-
-			{DescriptorType::UniformBuffer}
+			{DescriptorType::UniformBuffer},
+			{DescriptorType::SampledTexture}
 		};
 
 		RenderCore::DescriptorSetSignature numericSet {
@@ -528,13 +518,13 @@ namespace UnitTests
 
 		result->AppendEntry(
 			RegisterType::ShaderResource, RegisterQualifier::None,
-			Entry{0, 16, Hash64("Numeric"), 3, 0, 16});
+			Entry{0, 15, Hash64("Numeric"), 3, 0, 15});
 		result->AppendEntry(
 			RegisterType::ConstantBuffer, RegisterQualifier::None,
-			Entry{0, 4, Hash64("Numeric"), 3, 19, 23});
+			Entry{0, 4, Hash64("Numeric"), 3, 18, 22});
 		result->AppendEntry(
 			RegisterType::Sampler, RegisterQualifier::None,
-			Entry{16, 17, Hash64("Numeric"), 3, 23, 24});
+			Entry{16, 17, Hash64("Numeric"), 3, 22, 23});
 
 		result->AppendEntry(
 			RegisterType::ShaderResource, RegisterQualifier::None,
@@ -548,7 +538,10 @@ namespace UnitTests
 
 		result->AppendEntry(
 			RegisterType::ConstantBuffer, RegisterQualifier::None,
-			Entry{13, 14, Hash64("Draw"), 2, 10, 11});
+			Entry{13, 14, Hash64("Draw"), 2, 0, 1});
+		result->AppendEntry(
+			RegisterType::Sampler, RegisterQualifier::None,
+			Entry{8, 10, Hash64("Draw"), 2, 2, 4});
 		return result;
 	}
 }

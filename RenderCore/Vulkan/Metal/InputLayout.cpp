@@ -657,22 +657,23 @@ namespace RenderCore { namespace Metal_Vulkan
 		uint64_t initializerDescSetBindNames[pipelineLayoutDescSetCount];
 		for (unsigned c=0; c<pipelineLayoutDescSetCount; ++c)
 			initializerDescSetBindNames[c] = Hash64(pipelineLayoutInitializer.GetDescriptorSets()[c]._name);
-		
+
+		auto shaderStageMask = Internal::AsVkShaderStageFlags(ShaderStage::Vertex)|Internal::AsVkShaderStageFlags(ShaderStage::Pixel);
+	
 		for (unsigned c=0; c<pipelineLayoutDescSetCount; ++c) {
 			bool foundMapping = false;
 			for (signed gIdx=3; gIdx>=0 && !foundMapping; --gIdx) {
 				for (unsigned dIdx=0; dIdx<groups[gIdx]->_fixedDescriptorSetBindings.size() && !foundMapping; ++dIdx) {
 					auto bindName = groups[gIdx]->_fixedDescriptorSetBindings[dIdx];
 					if (initializerDescSetBindNames[c] == bindName) {
-						// todo -- we should check compatibility between the given descriptor set and the pipeline layout
-						helper._fixedDescriptorSets.insert({c, std::make_tuple(gIdx, dIdx, groups[gIdx]->GetDescriptorSetSignature(bindName))});
+						helper._group[gIdx]._fixedDescriptorSetRules.push_back(FixedDescriptorSetBindingRules{dIdx, c, shaderStageMask});
 						foundMapping = true;
 					}
 				}
 			}
 		}
 
-		helper.BindPipelineLayout(pipelineLayoutInitializer, Internal::AsVkShaderStageFlags(ShaderStage::Vertex)|Internal::AsVkShaderStageFlags(ShaderStage::Pixel));
+		helper.BindPipelineLayout(pipelineLayoutInitializer, shaderStageMask);
 
 		for (unsigned c=0; c<4; ++c) {
 			_group[c]._adaptiveSetRules = std::move(helper._group[c]._adaptiveSetRules);
@@ -703,6 +704,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				assert(!(bindingsWrittenTo & (1ull<<uint64_t(bind._descSetSlot))));
 				
 				auto& pkt = pkts[bind._inputUniformStreamIdx];
+				assert(!pkt.empty());
 				// We must either allocate some memory from a temporary pool, or 
 				// (or we could use push constants)
 				auto tempSpace = temporaryBufferSpace.AllocateBuffer(pkt);

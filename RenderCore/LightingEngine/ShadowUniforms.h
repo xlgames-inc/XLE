@@ -46,6 +46,22 @@ namespace RenderCore { namespace LightingEngine
 		CB_ShadowResolveParameters();
 	};
 
+	struct CB_ScreenToShadowProjection
+	{
+		Float4x4    _cameraToShadow[6];
+		Float4x4    _orthoCameraToShadow;
+		Float2      _xyScale;
+		Float2      _xyTrans;
+		Float4x4    _orthoNearCameraToShadow;
+	};
+
+	CB_ScreenToShadowProjection BuildScreenToShadowProjection(
+        unsigned frustumCount,
+        const CB_ArbitraryShadowProjection& arbitraryCB,
+        const CB_OrthoShadowProjection& orthoCB,
+        const Float4x4& cameraToWorld,
+        const Float4x4& cameraToProjection);
+
 	/// <summary>Contains the result of a shadow prepare operation</summary>
 	/// Typically shadows are prepared as one of the first steps of while rendering
 	/// a frame. (though, I guess, the prepare step could happen at any time).
@@ -80,8 +96,6 @@ namespace RenderCore { namespace LightingEngine
 	};
 
 	PreparedDMShadowFrustum SetupPreparedDMShadowFrustum(const ShadowProjectionDesc& frustum);
-
-	std::shared_ptr<Techniques::IShaderResourceDelegate> CreateShadowUniformsDelegate();
 
 }}
 

@@ -14,12 +14,25 @@
 #include "../Techniques/RenderStateResolver.h"
 #include "../Techniques/DrawableDelegates.h"
 #include "../Techniques/CommonBindings.h"
+#include "../Assets/PredefinedDescriptorSetLayout.h"
+#include "../IDevice.h"
+#include "../IThreadContext.h"
 #include "../../Assets/AssetFuture.h"
 #include <vector>
 
 namespace RenderCore { namespace LightingEngine
 {
-	class CompiledShadowPreparer : public ICompiledShadowPreparer
+	class PreparedShadowResult : public IPreparedShadowResult
+	{
+	public:
+		std::shared_ptr<IDescriptorSet> _descriptorSet;
+		virtual const std::shared_ptr<IDescriptorSet>& GetDescriptorSet() const override { return _descriptorSet; }
+		virtual ~PreparedShadowResult() {}
+	};
+
+	IPreparedShadowResult::~IPreparedShadowResult() {}
+
+	class DMShadowPreparer : public ICompiledShadowPreparer
 	{
 	public:
 		Techniques::RenderPassInstance Begin(
@@ -29,29 +42,35 @@ namespace RenderCore { namespace LightingEngine
 			Techniques::FrameBufferPool& shadowGenFrameBufferPool,
 			Techniques::AttachmentPool& shadowGenAttachmentPool) override;
 
-		PreparedShadowFrustum End(
+		void End(
 			IThreadContext& threadContext, 
 			Techniques::ParsingContext& parsingContext,
-			Techniques::RenderPassInstance& rpi) override;
+			Techniques::RenderPassInstance& rpi,
+			IPreparedShadowResult& res) override;
 
 		std::pair<std::shared_ptr<Techniques::SequencerConfig>, std::shared_ptr<Techniques::IShaderResourceDelegate>> GetSequencerConfig() override;
+		std::shared_ptr<IPreparedShadowResult> CreatePreparedShadowResult() override;
 
-		CompiledShadowPreparer(
+		DMShadowPreparer(
 			const ShadowGeneratorDesc& desc,
 			const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-			const std::shared_ptr<SharedTechniqueDelegateBox>& delegatesBox);
-		~CompiledShadowPreparer();
+			const std::shared_ptr<SharedTechniqueDelegateBox>& delegatesBox,
+			const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& descSetLayout);
+		~DMShadowPreparer();
 
 	private:
 		std::shared_ptr<Techniques::IPipelineAcceleratorPool> _pipelineAccelerators;
 
-		FrameBufferDesc _fbDesc;
+		Techniques::FragmentStitchingContext::StitchResult _fbDesc;
 		std::shared_ptr<Techniques::SequencerConfig> _sequencerConfigs;
 		std::shared_ptr<Techniques::IShaderResourceDelegate> _uniformDelegate;
 
 		Techniques::ProjectionDesc _savedProjectionDesc;
 
 		PreparedDMShadowFrustum _workingDMFrustum;
+
+		DescriptorSetSignature _descSetSig;
+		std::vector<DescriptorSetInitializer::BindTypeAndIdx> _descSetSlotBindings;
 
 		class UniformDelegate : public Techniques::IShaderResourceDelegate
 		{
@@ -85,19 +104,19 @@ namespace RenderCore { namespace LightingEngine
 				}
 			}
 		
-			UniformDelegate(CompiledShadowPreparer& preparer) : _preparer(&preparer)
+			UniformDelegate(DMShadowPreparer& preparer) : _preparer(&preparer)
 			{
 				_interface.BindImmediateData(0, Utility::Hash64("ArbitraryShadowProjection"), {});
 				_interface.BindImmediateData(1, Utility::Hash64("OrthogonalShadowProjection"), {});
 			}
 			UniformsStreamInterface _interface;
-			CompiledShadowPreparer* _preparer;
+			DMShadowPreparer* _preparer;
 		};
 	};
 
 	ICompiledShadowPreparer::~ICompiledShadowPreparer() {}
 
-	Techniques::RenderPassInstance CompiledShadowPreparer::Begin(
+	Techniques::RenderPassInstance DMShadowPreparer::Begin(
 		IThreadContext& threadContext, 
 		Techniques::ParsingContext& parsingContext,
 		const ShadowProjectionDesc& frustum,
@@ -106,22 +125,21 @@ namespace RenderCore { namespace LightingEngine
 	{
 		_workingDMFrustum = SetupPreparedDMShadowFrustum(frustum);
 		assert(_workingDMFrustum.IsReady());
-		assert(!_fbDesc.GetSubpasses().empty());
+		assert(!_fbDesc._fbDesc.GetSubpasses().empty());
 		_savedProjectionDesc = parsingContext.GetProjectionDesc();
 		parsingContext.GetProjectionDesc()._worldToProjection = frustum._worldToClip;
-		assert(0);
 		return Techniques::RenderPassInstance{
-			threadContext, _fbDesc, 
-			IteratorRange<const Techniques::PreregisteredAttachment*>{},
+			threadContext,
+			_fbDesc._fbDesc, _fbDesc._fullAttachmentDescriptions,
 			shadowGenFrameBufferPool, shadowGenAttachmentPool, {}};
 	}
 
-	PreparedShadowFrustum CompiledShadowPreparer::End(
+	void DMShadowPreparer::End(
 		IThreadContext& threadContext, 
 		Techniques::ParsingContext& parsingContext,
-		Techniques::RenderPassInstance& rpi)
+		Techniques::RenderPassInstance& rpi,
+		IPreparedShadowResult& res)
 	{
-		// todo -- create a uniform delegate and attach it to the parsing context
 		/*
 		if (lightingParserContext._preparedDMShadows.size() == Tweakable("ShadowGenDebugging", 0)) {
 			auto srvForDebugging = *rpi.GetRenderPassInstance().GetDepthStencilAttachmentSRV(TextureViewDesc{TextureViewDesc::Aspect::ColorLinear});
@@ -142,22 +160,51 @@ namespace RenderCore { namespace LightingEngine
 		}
 		*/
 
+		auto& device = *threadContext.GetDevice();
+		DescriptorSetInitializer descSetInit;
+		descSetInit._signature = &_descSetSig;
+		descSetInit._slotBindings = _descSetSlotBindings;
+		const IResourceView* srvs[] = { rpi.GetDepthStencilAttachmentSRV({}) };
+		IteratorRange<const void*> immediateData[3];
+		if (_workingDMFrustum._mode == ShadowProjectionMode::Arbitrary) {
+			immediateData[0] = MakeOpaqueIteratorRange(_workingDMFrustum._arbitraryCBSource);
+		} else {
+			immediateData[0] = MakeOpaqueIteratorRange(_workingDMFrustum._orthoCBSource);
+		}
+		immediateData[1] = MakeOpaqueIteratorRange(_workingDMFrustum._resolveParameters);
+		auto screenToShadow = BuildScreenToShadowProjection(
+			_workingDMFrustum._frustumCount,
+			_workingDMFrustum._arbitraryCBSource,
+			_workingDMFrustum._orthoCBSource,
+			_savedProjectionDesc._cameraToWorld,
+			_savedProjectionDesc._cameraToProjection);
+		immediateData[2] = MakeOpaqueIteratorRange(screenToShadow);
+		descSetInit._bindItems._resourceViews = MakeIteratorRange(srvs);
+		descSetInit._bindItems._immediateData = MakeIteratorRange(immediateData);
+		auto descSet = device.CreateDescriptorSet(descSetInit);
+		checked_cast<PreparedShadowResult*>(&res)->_descriptorSet = std::move(descSet);
+
 		parsingContext.GetProjectionDesc() = _savedProjectionDesc;
-		return std::move(_workingDMFrustum);
 	}
 
-	std::pair<std::shared_ptr<Techniques::SequencerConfig>, std::shared_ptr<Techniques::IShaderResourceDelegate>> CompiledShadowPreparer::GetSequencerConfig()
+	std::pair<std::shared_ptr<Techniques::SequencerConfig>, std::shared_ptr<Techniques::IShaderResourceDelegate>> DMShadowPreparer::GetSequencerConfig()
 	{
 		return std::make_pair(_sequencerConfigs, _uniformDelegate);
+	}
+
+	std::shared_ptr<IPreparedShadowResult> DMShadowPreparer::CreatePreparedShadowResult()
+	{
+		return std::make_shared<PreparedShadowResult>();
 	}
 
 	static const auto s_shadowCascadeModeString = "SHADOW_CASCADE_MODE";
     static const auto s_shadowEnableNearCascadeString = "SHADOW_ENABLE_NEAR_CASCADE";
 
-	CompiledShadowPreparer::CompiledShadowPreparer(
+	DMShadowPreparer::DMShadowPreparer(
 		const ShadowGeneratorDesc& desc,
 		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-		const std::shared_ptr<SharedTechniqueDelegateBox>& delegatesBox)
+		const std::shared_ptr<SharedTechniqueDelegateBox>& delegatesBox,
+		const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& descSetLayout)
 	: _pipelineAccelerators(pipelineAccelerators)
 	{
 		assert(desc._resolveType == ShadowResolveType::DepthTexture);
@@ -173,7 +220,7 @@ namespace RenderCore { namespace LightingEngine
 			auto output = fragment.DefineAttachment(
 				Techniques::AttachmentSemantics::ShadowDepthMap, 
 				desc._width, desc._height, desc._arrayCount,
-				AttachmentDesc{AsTypelessFormat(desc._format), 0, LoadStore::Clear, LoadStore::Retain});
+				AttachmentDesc{desc._format, 0, LoadStore::Clear, LoadStore::Retain, 0, BindFlag::ShaderResource});
 			
 			auto shadowGenDelegate = delegatesBox->GetShadowGenTechniqueDelegate(singleSidedBias, doubleSidedBias, desc._cullMode);
 
@@ -193,38 +240,57 @@ namespace RenderCore { namespace LightingEngine
 		
 		Techniques::FragmentStitchingContext stitchingContext;
 		stitchingContext._workingProps = FrameBufferProperties { desc._width, desc._height };
-		_fbDesc = stitchingContext.TryStitchFrameBufferDesc(fragment.GetFrameBufferDescFragment())._fbDesc;
+		_fbDesc = stitchingContext.TryStitchFrameBufferDesc(fragment.GetFrameBufferDescFragment());
 
 		_sequencerConfigs = pipelineAccelerators->CreateSequencerConfig(
 			fragment.GetSubpassAddendums()[0]._techniqueDelegate,
 			fragment.GetSubpassAddendums()[0]._sequencerSelectors,
-			_fbDesc,
+			_fbDesc._fbDesc,
 			0);
 		_uniformDelegate = std::make_shared<UniformDelegate>(*this);
+
+		if (descSetLayout) {
+			_descSetSig = descSetLayout->MakeDescriptorSetSignature();
+			_descSetSlotBindings.reserve(descSetLayout->_slots.size());
+			for (const auto& s:descSetLayout->_slots) {
+				if (s._name == "DMShadow") {
+					_descSetSlotBindings.push_back({DescriptorSetInitializer::BindType::ResourceView, 0});
+				} else if (s._name == "ShadowProjection") {
+					_descSetSlotBindings.push_back({DescriptorSetInitializer::BindType::ImmediateData, 0});
+				} else if (s._name == "ShadowResolveParameters") {
+					_descSetSlotBindings.push_back({DescriptorSetInitializer::BindType::ImmediateData, 1});
+				} else if (s._name == "ScreenToShadowProjection") {
+					_descSetSlotBindings.push_back({DescriptorSetInitializer::BindType::ImmediateData, 2});
+				} else 
+					_descSetSlotBindings.push_back({});
+			}
+		}
 	}
 
-	CompiledShadowPreparer::~CompiledShadowPreparer() {}
+	DMShadowPreparer::~DMShadowPreparer() {}
 
 	::Assets::FuturePtr<ICompiledShadowPreparer> CreateCompiledShadowPreparer(
 		const ShadowGeneratorDesc& desc, 
 		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-		const std::shared_ptr<SharedTechniqueDelegateBox>& delegatesBox)
+		const std::shared_ptr<SharedTechniqueDelegateBox>& delegatesBox,
+		const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& descSetLayout)
 	{
 		auto result = std::make_shared<::Assets::AssetFuture<ICompiledShadowPreparer>>();
-		result->SetAsset(std::make_shared<CompiledShadowPreparer>(desc, pipelineAccelerators, delegatesBox), nullptr);
+		result->SetAsset(std::make_shared<DMShadowPreparer>(desc, pipelineAccelerators, delegatesBox, descSetLayout), nullptr);
 		return result;
 	}
 
 	::Assets::FuturePtr<ShadowPreparationOperators> CreateShadowPreparationOperators(
 		IteratorRange<const ShadowGeneratorDesc*> shadowGenerators, 
 		const std::shared_ptr<Techniques::IPipelineAcceleratorPool>& pipelineAccelerators,
-		const std::shared_ptr<SharedTechniqueDelegateBox>& delegatesBox)
+		const std::shared_ptr<SharedTechniqueDelegateBox>& delegatesBox,
+		const std::shared_ptr<RenderCore::Assets::PredefinedDescriptorSetLayout>& descSetLayout)
 	{
 		using PreparerFuture = ::Assets::FuturePtr<ICompiledShadowPreparer>;
 		std::vector<PreparerFuture> futures;
 		futures.reserve(shadowGenerators.size());
 		for (const auto&desc:shadowGenerators)
-			futures.push_back(CreateCompiledShadowPreparer(desc, pipelineAccelerators, delegatesBox));
+			futures.push_back(CreateCompiledShadowPreparer(desc, pipelineAccelerators, delegatesBox, descSetLayout));
 
 		auto result = std::make_shared<::Assets::AssetFuture<ShadowPreparationOperators>>();
 		result->SetPollingFunction(

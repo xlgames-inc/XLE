@@ -6,6 +6,7 @@
 #include "DeferredLightingDelegate.h"
 #include "LightDesc.h"
 #include "LightUniforms.h"
+#include "ShadowPreparer.h"
 
 #include "../Techniques/CommonResources.h"
 #include "../Techniques/Techniques.h"
@@ -36,12 +37,6 @@ namespace RenderCore { namespace LightingEngine
 		{
 			GlobalTransform,
 			LightBuffer,
-			ShadowProj_Arbit,
-			ShadowParam,
-			ScreenToShadow,
-			ShadowProj_Ortho,
-			ShadowResolveParam,
-			ScreenToRTShadow,
 			Debugging,
 			Max
 		};
@@ -55,20 +50,16 @@ namespace RenderCore { namespace LightingEngine
 			GBuffer_Normals,
 			GBuffer_Parameters,
 			DepthTexture,
-			DMShadow,
-			RTShadow_ListHead,
-			RTShadow_LinkedLists,
-			RTShadow_Triangles,
 			Max
 		};
 	};
 
-	class ShadowParameters
+	class ShadowFilteringTable
 	{
 	public:
 		Float4      _filterKernel[32];
 
-		ShadowParameters()
+		ShadowFilteringTable()
 		{
 			_filterKernel[ 0] = Float4(-0.1924249f, -0.5685654f,0,0);
 			_filterKernel[ 1] = Float4(0.0002287195f, -0.830722f,0,0);
@@ -192,19 +183,28 @@ namespace RenderCore { namespace LightingEngine
 		auto result = std::make_shared<::Assets::AssetFuture<IDescriptorSet>>();
 		result->SetPollingFunction(
 			[device, descSetLayout=descSetLayout](::Assets::AssetFuture<IDescriptorSet>& future) {
-				
-				DescriptorSetInitializer::BindTypeAndIdx bindTypes[1];
+
+				SamplerDesc shadowComparisonSamplerDesc { FilterMode::ComparisonBilinear, AddressMode::Clamp, AddressMode::Clamp, CompareOp::LessEqual };
+				SamplerDesc shadowDepthSamplerDesc { FilterMode::Bilinear, AddressMode::Clamp, AddressMode::Clamp };
+				auto shadowComparisonSampler = device->CreateSampler(shadowComparisonSamplerDesc);
+				auto shadowDepthSampler = device->CreateSampler(shadowDepthSamplerDesc);
+
+				DescriptorSetInitializer::BindTypeAndIdx bindTypes[4];
 				bindTypes[0] = { DescriptorSetInitializer::BindType::ImmediateData, 0 };
-				ShadowParameters shdParam;
-				ImmediateDataStream immDatas { MakeOpaqueIteratorRange(shdParam) };
+				bindTypes[2] = { DescriptorSetInitializer::BindType::Sampler, 0 };
+				bindTypes[3] = { DescriptorSetInitializer::BindType::Sampler, 1 };
+				ShadowFilteringTable shdParam;
+				ImmediateDataStream immDatas { shdParam };
+				ISampler* samplers[2] { shadowComparisonSampler.get(), shadowDepthSampler.get() };
 				DescriptorSetInitializer inits;
 				inits._slotBindings = MakeIteratorRange(bindTypes);
 				inits._bindItems = immDatas;
+				inits._bindItems._samplers = MakeIteratorRange(samplers);
 				inits._signature = &descSetLayout;
 				auto descSet = device->CreateDescriptorSet(inits);
 				future.SetAsset(std::move(descSet), nullptr);
 
-				return false;	
+				return false;
 			});
 		return result;
 	}
@@ -234,10 +234,15 @@ namespace RenderCore { namespace LightingEngine
 		finalResult->_pipelineLayout = pipelineCollection.GetPipelineLayout();
 		finalResult->_debuggingOn = false;
 
-		assert(finalResult->_pipelineLayout->GetInitializer().GetDescriptorSets().size() >= 2);
-		auto fixedDescSetFuture = BuildFixedLightResolveDescriptorSet(
-			pipelineCollection.GetDevice(),
-			finalResult->_pipelineLayout->GetInitializer().GetDescriptorSets()[1]._signature);
+		const RenderCore::DescriptorSetSignature* sig = nullptr;
+		auto layoutInitializer = finalResult->_pipelineLayout->GetInitializer();
+		for (const auto& descSet:layoutInitializer.GetDescriptorSets())
+			if (descSet._name == "SharedDescriptors")
+				sig = &descSet._signature;
+		if (!sig)
+			Throw(std::runtime_error("No SharedDescriptors descriptor set in lighting operator pipeline layout"));
+
+		auto fixedDescSetFuture = BuildFixedLightResolveDescriptorSet(pipelineCollection.GetDevice(), *sig);
 
 		auto result = std::make_shared<::Assets::AssetFuture<LightResolveOperators>>("light-operators");
 		result->SetPollingFunction(
@@ -275,28 +280,21 @@ namespace RenderCore { namespace LightingEngine
 				for (auto& a:actualized)
 					finalResult->_operators.push_back({std::move(a), LightResolveOperatorDesc{}});
 
+				UniformsStreamInterface sharedUsi;
+				sharedUsi.BindFixedDescriptorSet(0, Utility::Hash64("SharedDescriptors"));
+
 				UniformsStreamInterface usi;
-				usi.BindFixedDescriptorSet(0, Utility::Hash64("SharedDescriptors"));
+				usi.BindFixedDescriptorSet(0, Utility::Hash64("ShadowTemplate"));
 				usi.BindImmediateData(CB::GlobalTransform, Utility::Hash64("GlobalTransform"));
 				usi.BindImmediateData(CB::LightBuffer, Utility::Hash64("LightBuffer"));
-				usi.BindImmediateData(CB::ShadowProj_Arbit, Utility::Hash64("ShadowProj_Arbit"));
-				usi.BindImmediateData(CB::ShadowParam, Utility::Hash64("ShadowParam"));
-				usi.BindImmediateData(CB::ScreenToShadow, Utility::Hash64("ScreenToShadow"));
-				usi.BindImmediateData(CB::ShadowProj_Ortho, Utility::Hash64("ShadowProj_Ortho"));
-				usi.BindImmediateData(CB::ShadowResolveParam, Utility::Hash64("ShadowResolveParam"));
-				usi.BindImmediateData(CB::ScreenToRTShadow, Utility::Hash64("ScreenToRTShadow"));
 				usi.BindImmediateData(CB::Debugging, Utility::Hash64("Debugging"));
 				usi.BindResourceView(SR::GBuffer_Diffuse, Utility::Hash64("GBuffer_Diffuse"));
 				usi.BindResourceView(SR::GBuffer_Normals, Utility::Hash64("GBuffer_Normals"));
 				usi.BindResourceView(SR::GBuffer_Parameters, Utility::Hash64("GBuffer_Parameters"));
 				usi.BindResourceView(SR::DepthTexture, Utility::Hash64("DepthTexture"));
-				// usi.BindResourceView(SR::DMShadow, Utility::Hash64("DMShadow"));
-				// usi.BindResourceView(SR::RTShadow_ListHead, Utility::Hash64("RTShadow_ListHead"));
-				// usi.BindResourceView(SR::RTShadow_LinkedLists, Utility::Hash64("RTShadow_LinkedLists"));
-				// usi.BindResourceView(SR::RTShadow_Triangles, Utility::Hash64("RTShadow_Triangles"));
 				finalResult->_boundUniforms = Metal::BoundUniforms {
 					*finalResult->_pipelineLayout,
-					usi};
+					usi, sharedUsi};
 
 				future.SetAsset(decltype(finalResult){finalResult}, nullptr);
 				return false;
@@ -311,13 +309,14 @@ namespace RenderCore { namespace LightingEngine
 		Techniques::ParsingContext& parsingContext,
 		Techniques::RenderPassInstance& rpi,
 		const SceneLightingDesc& sceneLightingDesc,
-		const LightResolveOperators& lightResolveOperators)
+		const LightResolveOperators& lightResolveOperators,
+		IteratorRange<const std::pair<LightId, std::shared_ptr<IPreparedShadowResult>>*> preparedShadows)
 	{
 		GPUAnnotation anno(threadContext, "Lights");
 
 		IteratorRange<const void*> cbvs[CB::Max];
 
-		const IResourceView* srvs[] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+		const IResourceView* srvs[] = { nullptr, nullptr, nullptr, nullptr };
 		static_assert(dimof(srvs)==SR::Max, "Shader resource array incorrect size");
 		
 		struct DebuggingGlobals
@@ -333,7 +332,6 @@ namespace RenderCore { namespace LightingEngine
 
 		auto globalTransformUniforms = Techniques::BuildGlobalTransformConstants(parsingContext.GetProjectionDesc());
 		cbvs[CB::GlobalTransform] = MakeOpaqueIteratorRange(globalTransformUniforms);
-
 		srvs[SR::GBuffer_Diffuse] = rpi.GetInputAttachmentSRV(0);
 		srvs[SR::GBuffer_Normals] = rpi.GetInputAttachmentSRV(1);
 		srvs[SR::GBuffer_Parameters] = rpi.GetInputAttachmentSRV(2);
@@ -341,22 +339,30 @@ namespace RenderCore { namespace LightingEngine
 
 			////////////////////////////////////////////////////////////////////////
 
-		// const bool allowOrthoShadowResolve = Tweakable("AllowOrthoShadowResolve", true);
-
 			//-------- do lights --------
 		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
 		auto encoder = metalContext.BeginGraphicsEncoder(lightResolveOperators._pipelineLayout);
 		auto& boundUniforms = lightResolveOperators._boundUniforms;
 
 		IDescriptorSet* fixedDescSets[] = { lightResolveOperators._fixedDescriptorSet.get() };
-		boundUniforms.ApplyDescriptorSets(metalContext, encoder, MakeIteratorRange(fixedDescSets));
+		boundUniforms.ApplyDescriptorSets(metalContext, encoder, MakeIteratorRange(fixedDescSets), 1);
 
 		auto lightCount = sceneLightingDesc._lights.size();
+		auto shadowIterator = preparedShadows.begin();
 		for (unsigned l=0; l<lightCount; ++l) {
 			const auto& i = sceneLightingDesc._lights[l];
 
 			auto lightUniforms = MakeLightUniforms(i);
 			cbvs[CB::LightBuffer] = MakeOpaqueIteratorRange(lightUniforms);
+			float debuggingDummy[4] = {};
+			cbvs[CB::Debugging] = MakeIteratorRange(debuggingDummy);
+
+			// while (shadowIterator != preparedShadows.end() && shadowIterator->first < l) ++shadowIterator;
+			if (shadowIterator != preparedShadows.end() && shadowIterator->first == l) {
+				IDescriptorSet* shadowDescSets[] = { shadowIterator->second->GetDescriptorSet().get() };
+				boundUniforms.ApplyDescriptorSets(metalContext, encoder, MakeIteratorRange(shadowDescSets));
+				++shadowIterator;
+			}
 
 			auto& op = lightResolveOperators._operators[0];
 			UniformsStream uniformsStream;

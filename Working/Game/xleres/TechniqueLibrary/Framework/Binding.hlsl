@@ -67,7 +67,6 @@
 #define BIND_NUMERIC_T12 : register(t12)
 #define BIND_NUMERIC_T13 : register(t13)
 #define BIND_NUMERIC_T14 : register(t14)
-#define BIND_NUMERIC_T15 : register(t15)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -88,6 +87,7 @@
 #define BIND_NUMERIC_B3 : register(b3)
 
 #define BIND_DRAW_B0 : register(b13)
+#define BIND_DRAW_T1 : register(t15)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -95,5 +95,21 @@
 #define BIND_NUMERIC_U1 : register(u1)
 #define BIND_NUMERIC_U2 : register(u2)
 #define BIND_NUMERIC_U3 : register(u3)
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define BIND_SHADOW_B0      BIND_MAT_B0
+#define BIND_SHADOW_B1      BIND_MAT_B1
+#define BIND_SHADOW_B2      BIND_MAT_B2
+
+#define BIND_SHADOW_T0      BIND_MAT_T3
+#define BIND_SHADOW_T1      BIND_MAT_T4
+#define BIND_SHADOW_T2      BIND_MAT_T5
+
+#define BIND_SHARED_LIGHTING_B0 BIND_DRAW_B0
+// #define BIND_SHARED_LIGHTING_T0 BIND_DRAW_T0
+
+#define BIND_SHARED_LIGHTING_S2 : register(s8)
+#define BIND_SHARED_LIGHTING_S3 : register(s9)
 
 #endif

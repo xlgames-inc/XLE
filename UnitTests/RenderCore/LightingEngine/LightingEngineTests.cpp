@@ -172,7 +172,7 @@ namespace UnitTests
 			auto& stitchingContext = parsingContext.GetFragmentStitchingContext();
 			auto lightingTechniqueFuture = LightingEngine::CreateDeferredLightingTechnique(
 				testHelper->_device,
-				testApparatus._pipelineAcceleratorPool, testApparatus._techDelBox, pipelineCollection,
+				testApparatus._pipelineAcceleratorPool, testApparatus._techDelBox, pipelineCollection, pipelineLayoutFile,
 				MakeIteratorRange(resolveOperators), MakeIteratorRange(shadowGenerator), 
 				stitchingContext.GetPreregisteredAttachments(), stitchingContext._workingProps);
 			auto lightingTechnique = StallAndRequireReady(*lightingTechniqueFuture);
