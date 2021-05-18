@@ -110,6 +110,7 @@ namespace RenderCore { namespace Techniques
 
 		for (auto d=drawablePkt._drawables.begin(); d!=drawablePkt._drawables.end(); ++d) {
 			const auto& drawable = *(Drawable*)d.get();
+			assert(drawable._pipeline);
 			auto* pipeline = pipelineAccelerators.TryGetPipeline(*drawable._pipeline, *sequencerTechnique._sequencerConfig);
 			if (!pipeline)
 				continue;
@@ -206,6 +207,7 @@ namespace RenderCore { namespace Techniques
 
 		for (auto d=drawablePkt._drawables.begin(); d!=drawablePkt._drawables.end(); ++d) {
 			const auto& drawable = *(Drawable*)d.get();
+			assert(drawable._pipeline);
 			auto pipelineFuture = pipelineAccelerators.GetPipeline(*drawable._pipeline, sequencerConfig);
 			if (pipelineFuture->GetAssetState() != ::Assets::AssetState::Ready) {
 				if (!result)

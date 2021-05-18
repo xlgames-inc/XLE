@@ -44,8 +44,9 @@ namespace UnitTests
 	{
 		RenderCore::LightingEngine::ShadowProjectionDesc result;
 		result._projections._normalProjCount = 1;
-		result._projections._fullProj[0]._projectionMatrix = OrthogonalProjection(-1.f, -1.f, 1.f, 1.f, 0.01f, 100.f, GeometricCoordinateSpace::LeftHanded, RenderCore::Techniques::GetDefaultClipSpaceType());
-		result._projections._fullProj[0]._viewMatrix = MakeCameraToWorld(Float3{0.f, -1.0f, 0.f}, Float3{0.f, 0.0f, 1.f}, Float3{0.f, 1.0f, 0.f}); 
+		result._projections._fullProj[0]._projectionMatrix = OrthogonalProjection(-2.f, -2.f, 2.f, 2.f, 0.01f, 100.f, RenderCore::Techniques::GetDefaultClipSpaceType());
+		auto camToWorld = MakeCameraToWorld(Float3{0.f, -1.0f, 0.f}, Float3{0.f, 0.0f, 1.f}, Float3{0.f, 10.0f, 0.f});
+		result._projections._fullProj[0]._viewMatrix = InvertOrthonormalTransform(camToWorld);
 		result._worldSpaceResolveBias = 0.f;
         result._tanBlurAngle = 0.00436f;
         result._minBlurSearch = 0.5f;
@@ -103,14 +104,16 @@ namespace UnitTests
 		auto threadContext = testHelper->_device->GetImmediateContext();
 		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
 
-		auto drawableWriter = CreateSphereDrawablesWriter(*testHelper, *testApparatus._pipelineAcceleratorPool);
+		// auto drawableWriter = CreateSphereDrawablesWriter(*testHelper, *testApparatus._pipelineAcceleratorPool);
+		auto drawableWriter = CreateShapeStackDrawableWriter(*testHelper, *testApparatus._pipelineAcceleratorPool);
 
 		RenderCore::LightingEngine::SceneLightingDesc lightingDesc;
 		lightingDesc._lights.push_back(CreateTestLight());
 		lightingDesc._shadowProjections.push_back(CreateTestShadowProjection());
 
 		RenderCore::Techniques::CameraDesc camera;
-		camera._cameraToWorld = MakeCameraToWorld(Float3{1.0f, 0.0f, 0.0f}, Float3{0.0f, 1.0f, 0.0f}, Float3{-3.33f, 0.f, 0.f});
+		// camera._cameraToWorld = MakeCameraToWorld(Float3{1.0f, 0.0f, 0.0f}, Float3{0.0f, 1.0f, 0.0f}, Float3{-3.33f, 0.f, 0.f});
+		camera._cameraToWorld = MakeCameraToWorld(-Normalize(Float3{-8.0f, 5.f, 0.f}), Float3{0.0f, 1.0f, 0.0f}, Float3{-8.0f, 5.f, 0.f});
 		
 		auto parsingContext = InitializeParsingContext(*testApparatus._techniqueContext, targetDesc, camera);
 		parsingContext.GetTechniqueContext()._attachmentPool->Bind(Techniques::AttachmentSemantics::ColorLDR, fbHelper.GetMainTarget());

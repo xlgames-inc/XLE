@@ -190,15 +190,11 @@ namespace RenderCore { namespace LightingEngine
 		IThreadContext& threadContext,
 		Techniques::ParsingContext& parsingContext,
 		Techniques::IPipelineAcceleratorPool& pipelineAcceleratorPool,
-		Techniques::AttachmentPool& attachmentPool,
-		Techniques::FrameBufferPool& frameBufferPool,
 		const CompiledLightingTechnique& compiledTechnique,
 		const SceneLightingDesc& sceneLightingDesc)
 	: _threadContext(&threadContext)
 	, _parsingContext(&parsingContext)
 	, _pipelineAcceleratorPool(&pipelineAcceleratorPool)
-	, _attachmentPool(&attachmentPool)
-	, _frameBufferPool(&frameBufferPool)
 	, _compiledTechnique(&compiledTechnique)
 	, _sceneLightingDesc(sceneLightingDesc)
 	{
@@ -288,8 +284,6 @@ namespace RenderCore { namespace LightingEngine
 	{
 		_iterator = std::make_unique<LightingTechniqueIterator>(
 			threadContext, parsingContext, pipelineAcceleratorPool,
-			*parsingContext.GetTechniqueContext()._attachmentPool,
-			*parsingContext.GetTechniqueContext()._frameBufferPool,
 			compiledTechnique, lightingDesc);
 	}
 

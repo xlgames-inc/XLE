@@ -537,6 +537,9 @@ namespace UnitTests
 			Entry{7, 8, Hash64("Material"), 1, 12, 13});
 
 		result->AppendEntry(
+			RegisterType::ShaderResource, RegisterQualifier::None,
+			Entry{15, 16, Hash64("Draw"), 2, 1, 2});
+		result->AppendEntry(
 			RegisterType::ConstantBuffer, RegisterQualifier::None,
 			Entry{13, 14, Hash64("Draw"), 2, 0, 1});
 		result->AppendEntry(

@@ -92,8 +92,6 @@ namespace RenderCore { namespace LightingEngine
 		IThreadContext* _threadContext = nullptr;
 		Techniques::ParsingContext* _parsingContext = nullptr;
 		Techniques::IPipelineAcceleratorPool* _pipelineAcceleratorPool = nullptr;
-		Techniques::AttachmentPool* _attachmentPool = nullptr;
-		Techniques::FrameBufferPool* _frameBufferPool = nullptr;
 		const CompiledLightingTechnique* _compiledTechnique = nullptr;
 		SceneLightingDesc _sceneLightingDesc;
 
@@ -104,8 +102,6 @@ namespace RenderCore { namespace LightingEngine
 			IThreadContext& threadContext,
 			Techniques::ParsingContext& parsingContext,
 			Techniques::IPipelineAcceleratorPool& pipelineAcceleratorPool,
-			Techniques::AttachmentPool& attachmentPool,
-			Techniques::FrameBufferPool& frameBufferPool,
 			const CompiledLightingTechnique& compiledTechnique,
 			const SceneLightingDesc& sceneLightingDesc);
 

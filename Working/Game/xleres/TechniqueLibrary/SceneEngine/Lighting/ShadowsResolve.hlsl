@@ -18,7 +18,7 @@
     //   I N P U T S
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 Texture2DArray 	ShadowTextures BIND_SHADOW_T0;
-Texture2D		NoiseTexture BIND_SEQ_T10;
+Texture2D		NoiseTexture BIND_SHARED_LIGHTING_T1;
 
 #if !defined(SHADOW_RESOLVE_MODEL)
     #define SHADOW_RESOLVE_MODEL 0

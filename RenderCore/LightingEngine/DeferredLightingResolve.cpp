@@ -13,12 +13,14 @@
 #include "../Techniques/RenderPass.h"
 #include "../Techniques/ParsingContext.h"
 #include "../Techniques/PipelineCollection.h"
+#include "../Techniques/DeferredShaderResource.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/ObjectFactory.h"
 #include "../Metal/InputLayout.h"
 #include "../IAnnotator.h"
 
 #include "../../Assets/AssetFuture.h"
+#include "../../Assets/Assets.h"
 #include "../../Utility/StringFormat.h"
 #include "../../xleres/FileList.h"
 
@@ -167,8 +169,7 @@ namespace RenderCore { namespace LightingEngine
 
 		AttachmentBlendDesc blends[] { Techniques::CommonResourceBox::s_abAdditive };
 		outputStates._attachmentBlend = MakeIteratorRange(blends);
-		outputStates._fbDesc = &fbDesc;
-		outputStates._subpassIdx = subpassIdx;
+		outputStates._fbTarget = {&fbDesc, subpassIdx};
 
 		return pipelineCollection.CreatePipeline(
 			vertexShader_viewFrustumVector, {},
@@ -180,10 +181,12 @@ namespace RenderCore { namespace LightingEngine
 		std::shared_ptr<IDevice> device,
 		const DescriptorSetSignature& descSetLayout)
 	{
-		auto result = std::make_shared<::Assets::AssetFuture<IDescriptorSet>>();
-		result->SetPollingFunction(
-			[device, descSetLayout=descSetLayout](::Assets::AssetFuture<IDescriptorSet>& future) {
+		auto balancedNoiseFuture = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT");
 
+		auto result = std::make_shared<::Assets::AssetFuture<IDescriptorSet>>();
+		::Assets::WhenAll(balancedNoiseFuture).ThenConstructToFuture<IDescriptorSet>(
+			*result,
+			[device, descSetLayout=descSetLayout](std::shared_ptr<RenderCore::Techniques::DeferredShaderResource> balancedNoise) {
 				SamplerDesc shadowComparisonSamplerDesc { FilterMode::ComparisonBilinear, AddressMode::Clamp, AddressMode::Clamp, CompareOp::LessEqual };
 				SamplerDesc shadowDepthSamplerDesc { FilterMode::Bilinear, AddressMode::Clamp, AddressMode::Clamp };
 				auto shadowComparisonSampler = device->CreateSampler(shadowComparisonSamplerDesc);
@@ -191,20 +194,20 @@ namespace RenderCore { namespace LightingEngine
 
 				DescriptorSetInitializer::BindTypeAndIdx bindTypes[4];
 				bindTypes[0] = { DescriptorSetInitializer::BindType::ImmediateData, 0 };
+				bindTypes[1] = { DescriptorSetInitializer::BindType::ResourceView, 0 };
 				bindTypes[2] = { DescriptorSetInitializer::BindType::Sampler, 0 };
 				bindTypes[3] = { DescriptorSetInitializer::BindType::Sampler, 1 };
 				ShadowFilteringTable shdParam;
 				ImmediateDataStream immDatas { shdParam };
+				IResourceView* srv[1] { balancedNoise->GetShaderResource().get() };
 				ISampler* samplers[2] { shadowComparisonSampler.get(), shadowDepthSampler.get() };
 				DescriptorSetInitializer inits;
 				inits._slotBindings = MakeIteratorRange(bindTypes);
 				inits._bindItems = immDatas;
+				inits._bindItems._resourceViews = MakeIteratorRange(srv);
 				inits._bindItems._samplers = MakeIteratorRange(samplers);
 				inits._signature = &descSetLayout;
-				auto descSet = device->CreateDescriptorSet(inits);
-				future.SetAsset(std::move(descSet), nullptr);
-
-				return false;
+				return device->CreateDescriptorSet(inits);
 			});
 		return result;
 	}

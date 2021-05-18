@@ -99,6 +99,10 @@ namespace RenderCore { namespace Assets
 				set = Numeric
 				setIndex = 3
 				mapping = 0..15
+			t15..16=~
+				set = Draw
+				setIndex = 2
+				mapping = 1..2
 			t16..23=~
 				set = Sequencer
 				setIndex = 0

@@ -34,3 +34,6 @@
 	#undef GEO_HAS_NORMAL
 	#define GEO_HAS_NORMAL 1
 #endif
+
+
+#define SHADOW_GEN_SHADER 1

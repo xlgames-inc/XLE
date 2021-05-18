@@ -14,7 +14,15 @@
 
 static const uint ShadowMaxSubProjections = 6;
 
-cbuffer ArbitraryShadowProjection BIND_SHADOW_B0
+#if defined(SHADOW_GEN_SHADER)
+	#define ArbitraryShadowProjectionBinding BIND_SEQ_B4
+	#define OrthogonalShadowProjectionBinding BIND_SEQ_B5
+#else
+	#define ArbitraryShadowProjectionBinding BIND_SHADOW_B0
+	#define OrthogonalShadowProjectionBinding BIND_SHADOW_B0
+#endif
+
+cbuffer ArbitraryShadowProjection ArbitraryShadowProjectionBinding
 {
         // note --
         //      I've used this order to try to reduce the
@@ -28,7 +36,7 @@ cbuffer ArbitraryShadowProjection BIND_SHADOW_B0
     row_major float4x4 ShadowWorldToProj[ShadowMaxSubProjections];
 }
 
-cbuffer OrthogonalShadowProjection BIND_SHADOW_B0
+cbuffer OrthogonalShadowProjection OrthogonalShadowProjectionBinding
 {
 	row_major float3x4 OrthoShadowWorldToProj;
     float4 OrthoShadowMinimalProjection;
