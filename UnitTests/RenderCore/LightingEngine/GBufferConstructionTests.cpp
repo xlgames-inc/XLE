@@ -19,10 +19,8 @@
 #include "../../../RenderCore/Techniques/DrawableDelegates.h"
 #include "../../../RenderCore/Techniques/CommonResources.h"
 #include "../../../RenderCore/Techniques/DeferredShaderResource.h"
+#include "../../../RenderCore/Techniques/PipelineOperators.h"
 #include "../../../RenderCore/Assets/PredefinedPipelineLayout.h"
-#include "../../../RenderCore/Metal/DeviceContext.h"
-#include "../../../RenderCore/Metal/InputLayout.h"
-#include "../../../RenderCore/Metal/Shader.h"
 #include "../../../RenderCore/IDevice.h"
 #include "../../../Math/Transformations.h"
 #include "../../../Math/ProjectionMath.h"
@@ -249,26 +247,15 @@ namespace UnitTests
 	static void RunSimpleFullscreen(
 		RenderCore::IThreadContext& threadContext,
 		const std::shared_ptr<RenderCore::ICompiledPipelineLayout>& pipelineLayout,
+		const RenderCore::Techniques::RenderPassInstance& rpi,
 		StringSection<> pixelShader,
 		RenderCore::UniformsStreamInterface& usi,
 		RenderCore::UniformsStream& us)
 	{
 		// Very simple stand-in tonemap -- just use a copy shader to write the HDR values directly to the LDR texture
-		using namespace RenderCore;
-		auto& copyShader = *::Assets::Actualize<Metal::ShaderProgram>(
-			pipelineLayout,
-			BASIC2D_VERTEX_HLSL ":fullscreen_viewfrustumvector",
-			pixelShader);
-		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
-		auto encoder = metalContext.BeginGraphicsEncoder_ProgressivePipeline(pipelineLayout);
-		Metal::BoundUniforms uniforms(copyShader, usi);
-		encoder.Bind(copyShader);
-		encoder.Bind(Techniques::CommonResourceBox::s_dsDisable);
-		AttachmentBlendDesc blends[] = { Techniques::CommonResourceBox::s_abOpaque, Techniques::CommonResourceBox::s_abOpaque };
-		encoder.Bind(MakeIteratorRange(blends));
-		uniforms.ApplyLooseUniforms(metalContext, encoder, us);
-		encoder.Bind({}, Topology::TriangleStrip);
-		encoder.Draw(4);
+		auto op = RenderCore::Techniques::CreateFullViewportOperator(pipelineLayout, rpi, pixelShader, usi);
+		op->StallWhilePending();
+		op->Actualize()->Draw(threadContext, us);
 	}
 
 	static void CalculateSimularity(IteratorRange<const Float4*> A, IteratorRange<const Float4*> B)
@@ -449,7 +436,7 @@ namespace UnitTests
 				auto globalTransform = BuildGlobalTransformConstants(parsingContext.GetProjectionDesc());
 				UniformsStream::ImmediateData immData[] = { MakeOpaqueIteratorRange(globalTransform) };
 				us._immediateData = MakeIteratorRange(immData);
-				RunSimpleFullscreen(*threadContext, testHelper->_pipelineLayout, "ut-data/reconstruct_from_gbuffer.pixel.hlsl:main", usi, us);
+				RunSimpleFullscreen(*threadContext, testHelper->_pipelineLayout, rpi, "ut-data/reconstruct_from_gbuffer.pixel.hlsl:main", usi, us);
 
 				attachmentReservation = rpi.GetAttachmentReservation();
 			}

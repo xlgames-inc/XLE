@@ -13,6 +13,7 @@ foreach (metal_macro metal_name IN ZIP_LISTS MetalSelectMacros MetalSelectName)
         ImmediateDrawables.cpp
         ParsingContext.cpp
         PipelineAccelerator.cpp
+        PipelineOperators.cpp
         RenderPass.cpp
         RenderPassUtils.cpp
         RenderStateResolver.cpp

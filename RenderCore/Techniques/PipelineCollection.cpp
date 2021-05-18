@@ -14,12 +14,17 @@
 
 namespace RenderCore { namespace Techniques
 {
-    uint64_t PixelOutputStates::GetHash() const
-	{
+    uint64_t FrameBufferTarget::GetHash() const 
+    {
 		assert(_fbDesc);
 		assert(_subpassIdx < _fbDesc->GetSubpasses().size());
-		assert(_attachmentBlend.size() == _fbDesc->GetSubpasses()[_subpassIdx].GetOutputs().size());
-		uint64_t renderPassRelevance = Metal::GraphicsPipelineBuilder::CalculateFrameBufferRelevance(*_fbDesc, _subpassIdx);
+        return RenderCore::Metal::GraphicsPipelineBuilder::CalculateFrameBufferRelevance(*_fbDesc, _subpassIdx); 
+    }
+
+    uint64_t PixelOutputStates::GetHash() const
+	{
+		assert(_attachmentBlend.size() == _fbTarget._fbDesc->GetSubpasses()[_fbTarget._subpassIdx].GetOutputs().size());
+		uint64_t renderPassRelevance = _fbTarget.GetHash();
 		auto result = HashCombine(_depthStencil.Hash(), renderPassRelevance);
 		result = HashCombine(_rasterization.Hash(), result);
 		for (const auto& a:_attachmentBlend)
@@ -103,7 +108,7 @@ namespace RenderCore { namespace Techniques
             depthStencil=outputStates._depthStencil,
             rasterization=outputStates._rasterization,
             inputAssembly=AsVector(inputStates._inputLayout), topology=inputStates._topology,
-            fbDesc=*outputStates._fbDesc, subpassIdx=outputStates._subpassIdx
+            fbDesc=*outputStates._fbTarget._fbDesc, subpassIdx=outputStates._fbTarget._subpassIdx
             ](std::shared_ptr<CompiledShaderByteCode> vsActual, std::shared_ptr<CompiledShaderByteCode> psActual) {
                 Metal::ShaderProgram shader(Metal::GetObjectFactory(), pipelineLayout, *vsActual, *psActual);
                 Metal::GraphicsPipelineBuilder builder;

@@ -14,10 +14,17 @@
 
 namespace RenderCore { namespace Techniques
 {
+	class FrameBufferTarget
+	{
+	public:
+		const RenderCore::FrameBufferDesc* _fbDesc;
+		unsigned _subpassIdx = ~0u;
+		uint64_t GetHash() const;
+	};
+
     struct PixelOutputStates
 	{
-		const FrameBufferDesc* _fbDesc;
-		unsigned _subpassIdx;
+		FrameBufferTarget _fbTarget;
 		DepthStencilDesc _depthStencil;
 		RasterizationDesc _rasterization;
 		IteratorRange<const AttachmentBlendDesc*> _attachmentBlend;
