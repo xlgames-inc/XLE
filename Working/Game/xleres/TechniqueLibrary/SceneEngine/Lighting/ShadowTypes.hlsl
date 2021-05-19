@@ -41,6 +41,18 @@ class ShadowResolver_Smooth : IShadowResolver
     }
 };
 
+class ShadowResolver_CubeMap : IShadowResolver
+{
+    float Resolve(CascadeAddress cascadeAddress, LightScreenDest screenDesc)
+    {
+        ShadowResolveConfig config = ShadowResolveConfig_Default();
+        return ResolveShadows_CubeMap(
+            cascadeAddress.frustumCoordinates.xyz, cascadeAddress.miniProjection,
+            screenDesc.pixelCoords, screenDesc.sampleIndex,
+            config);
+    }
+};
+
 class ShadowResolver_None : IShadowResolver
 {
     float Resolve(CascadeAddress cascadeAddress, LightScreenDest screenDesc)
@@ -98,6 +110,15 @@ class CascadeResolver_Arbitrary : ICascadeResolver
         } else {
             return ResolveCascade_CameraToShadowMethod(camXY, worldSpaceDepth, SHADOW_CASCADE_MODE_ARBITRARY, false);
         }
+    }
+};
+
+class CascadeResolver_CubeMap : ICascadeResolver
+{
+    CascadeAddress Resolve(float3 worldPosition, float2 camXY, float worldSpaceDepth)
+    {
+        float3 lightPosition = float3(0,1,0);
+        return CascadeAddress_CubeMap(worldPosition-lightPosition);
     }
 };
 

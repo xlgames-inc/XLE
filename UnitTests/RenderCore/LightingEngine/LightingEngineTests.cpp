@@ -55,6 +55,53 @@ namespace UnitTests
 		return result;
 	}
 
+	static RenderCore::LightingEngine::ShadowProjectionDesc CreateSphereShadowProjection(const RenderCore::LightingEngine::LightDesc& light)
+	{
+		RenderCore::LightingEngine::ShadowProjectionDesc result;
+		result._projections._normalProjCount = 6;
+		result._shadowGeneratorDesc._arrayCount = 6;
+		// Build 6 projection for the cube faces
+		// Using DirectX conventions for face order here:
+		//		+X, -X
+		//		+Y, -Y
+		//		+Z, -Z
+		Float3 faceForward[] {
+			Float3{1.f, 0.f, 0.f},
+			Float3{-1.f, 0.f, 0.f},
+			Float3{0.f, 1.f, 0.f},
+			Float3{0.f, -1.f, 0.f},
+			Float3{0.f, 0.f, 1.f},
+			Float3{0.f, 0.f, -1.f}
+		};
+		Float3 faceUp[] = {
+			Float3{0.f, 1.f, 0.f},
+			Float3{0.f, 1.f, 0.f},
+			Float3{0.f, 0.f, -1.f},
+			Float3{0.f, 0.f, 1.f},
+			Float3{0.f, 1.f, 0.f},
+			Float3{0.f, 1.f, 0.f}
+		};
+		for (unsigned c=0; c<6; ++c) {
+			result._projections._fullProj[c]._projectionMatrix = PerspectiveProjection(
+				gPI/2.0f, 1.0f, 0.01f, light._radii[0], 
+				GeometricCoordinateSpace::RightHanded,
+				RenderCore::Techniques::GetDefaultClipSpaceType());
+			auto camToWorld = MakeCameraToWorld(faceForward[c], faceUp[c], light._position);
+			result._projections._fullProj[c]._viewMatrix = InvertOrthonormalTransform(camToWorld);
+			result._projections._minimalProjection[c] = ExtractMinimalProjection(result._projections._fullProj[c]._projectionMatrix);
+		}
+		result._projections._mode = RenderCore::LightingEngine::ShadowProjectionMode::ArbitraryCubeMap;
+		result._shadowGeneratorDesc._projectionMode = RenderCore::LightingEngine::ShadowProjectionMode::ArbitraryCubeMap;
+		result._shadowGeneratorDesc._width = 256;
+		result._shadowGeneratorDesc._height = 256;
+		result._worldSpaceResolveBias = 0.f;
+        result._tanBlurAngle = 0.00436f;
+        result._minBlurSearch = 0.5f;
+        result._maxBlurSearch = 25.f;
+		result._lightId = 0;
+		return result;
+	}
+
 	static RenderCore::Techniques::ParsingContext InitializeParsingContext(
 		RenderCore::Techniques::TechniqueContext& techniqueContext,
 		const RenderCore::ResourceDesc& targetDesc,
@@ -89,6 +136,28 @@ namespace UnitTests
 		REQUIRE(future.GetAssetState() == ::Assets::AssetState::Ready);
 		return future.Actualize();
 	}
+
+	struct LightingOperatorsPipelineLayout
+	{
+		std::shared_ptr<RenderCore::Assets::PredefinedPipelineLayoutFile> _pipelineLayoutFile;
+		std::shared_ptr<RenderCore::ICompiledPipelineLayout> _pipelineLayout;
+		std::shared_ptr<RenderCore::Techniques::GraphicsPipelineCollection> _pipelineCollection;
+
+		LightingOperatorsPipelineLayout(const MetalTestHelper& testHelper)
+		{	
+			auto pipelineLayoutFileFuture = ::Assets::MakeAsset<RenderCore::Assets::PredefinedPipelineLayoutFile>(LIGHTING_OPERATOR_PIPELINE);
+			_pipelineLayoutFile = StallAndRequireReady(*pipelineLayoutFileFuture);
+
+			const std::string pipelineLayoutName = "LightingOperator";
+			auto i = _pipelineLayoutFile->_pipelineLayouts.find(pipelineLayoutName);
+			if (i == _pipelineLayoutFile->_pipelineLayouts.end())
+				Throw(std::runtime_error("Did not find pipeline layout with the name " + pipelineLayoutName + " in the given pipeline layout file"));
+			auto pipelineInit = i->second->MakePipelineLayoutInitializer(testHelper._shaderCompiler->GetShaderLanguage());
+			_pipelineLayout = testHelper._device->CreatePipelineLayout(pipelineInit);
+
+			_pipelineCollection = std::make_shared<RenderCore::Techniques::GraphicsPipelineCollection>(testHelper._device, _pipelineLayout);
+		}
+	};
 
 	TEST_CASE( "LightingEngine-ExecuteTechnique", "[rendercore_lighting_engine]" )
 	{
@@ -153,17 +222,7 @@ namespace UnitTests
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		SECTION("Deferred lighting")
 		{
-			auto pipelineLayoutFileFuture = ::Assets::MakeAsset<RenderCore::Assets::PredefinedPipelineLayoutFile>(LIGHTING_OPERATOR_PIPELINE);
-			auto pipelineLayoutFile = StallAndRequireReady(*pipelineLayoutFileFuture);
-
-			const std::string pipelineLayoutName = "LightingOperator";
-			auto i = pipelineLayoutFile->_pipelineLayouts.find(pipelineLayoutName);
-			if (i == pipelineLayoutFile->_pipelineLayouts.end())
-				Throw(std::runtime_error("Did not find pipeline layout with the name " + pipelineLayoutName + " in the given pipeline layout file"));
-			auto pipelineInit = i->second->MakePipelineLayoutInitializer(testHelper->_shaderCompiler->GetShaderLanguage());
-			auto lightingOperatorLayout = testHelper->_device->CreatePipelineLayout(pipelineInit);
-
-			auto pipelineCollection = std::make_shared<Techniques::GraphicsPipelineCollection>(testHelper->_device, lightingOperatorLayout);
+			LightingOperatorsPipelineLayout pipelineLayout(*testHelper);
 
 			LightingEngine::LightResolveOperatorDesc resolveOperators[] {
 				LightingEngine::LightResolveOperatorDesc{}
@@ -175,7 +234,7 @@ namespace UnitTests
 			auto& stitchingContext = parsingContext.GetFragmentStitchingContext();
 			auto lightingTechniqueFuture = LightingEngine::CreateDeferredLightingTechnique(
 				testHelper->_device,
-				testApparatus._pipelineAcceleratorPool, testApparatus._techDelBox, pipelineCollection, pipelineLayoutFile,
+				testApparatus._pipelineAcceleratorPool, testApparatus._techDelBox, pipelineLayout._pipelineCollection, pipelineLayout._pipelineLayoutFile,
 				MakeIteratorRange(resolveOperators), MakeIteratorRange(shadowGenerator), 
 				stitchingContext.GetPreregisteredAttachments(), stitchingContext._workingProps);
 			auto lightingTechnique = StallAndRequireReady(*lightingTechniqueFuture);
@@ -206,4 +265,84 @@ namespace UnitTests
 
 		testHelper->EndFrameCapture();
 	}
+
+	TEST_CASE( "LightingEngine-SphereLightShadows", "[rendercore_lighting_engine]" )
+	{
+		using namespace RenderCore;
+		LightingEngineTestApparatus testApparatus;
+		auto testHelper = testApparatus._metalTestHelper.get();
+
+		auto targetDesc = CreateDesc(
+			BindFlag::RenderTarget | BindFlag::TransferSrc, 0, GPUAccess::Write,
+			TextureDesc::Plain2D(2048, 2048, RenderCore::Format::R8G8B8A8_UNORM),
+			"temporary-out");
+		
+		auto threadContext = testHelper->_device->GetImmediateContext();
+		UnitTestFBHelper fbHelper(*testHelper->_device, *threadContext, targetDesc);
+
+		auto drawableWriter = CreateStonehengeDrawableWriter(*testHelper, *testApparatus._pipelineAcceleratorPool);
+
+		RenderCore::LightingEngine::SceneLightingDesc lightingDesc;
+		auto light = CreateTestLight();
+		light._shape = LightingEngine::LightSourceShape::Sphere;
+		light._diffuseColor *= 10.f;
+		lightingDesc._lights.push_back(light);
+		auto shadowProjection = CreateSphereShadowProjection(light);
+		lightingDesc._shadowProjections.push_back(shadowProjection);
+
+		RenderCore::Techniques::CameraDesc camera;
+		camera._cameraToWorld = MakeCameraToWorld(-Normalize(Float3{-8.0f, 5.f, 0.f}), Float3{0.0f, 1.0f, 0.0f}, Float3{-8.0f, 5.f, 0.f});
+		
+		auto parsingContext = InitializeParsingContext(*testApparatus._techniqueContext, targetDesc, camera);
+		parsingContext.GetTechniqueContext()._attachmentPool->Bind(Techniques::AttachmentSemantics::ColorLDR, fbHelper.GetMainTarget());
+
+		testHelper->BeginFrameCapture();
+
+		{
+			LightingOperatorsPipelineLayout pipelineLayout(*testHelper);
+
+			LightingEngine::LightResolveOperatorDesc resolveOperators[] {
+				LightingEngine::LightResolveOperatorDesc {
+					LightingEngine::LightSourceShape::Sphere
+				}
+			};
+			LightingEngine::ShadowGeneratorDesc shadowGenerator[] {
+				shadowProjection._shadowGeneratorDesc
+			};
+
+			auto& stitchingContext = parsingContext.GetFragmentStitchingContext();
+			auto lightingTechniqueFuture = LightingEngine::CreateDeferredLightingTechnique(
+				testHelper->_device,
+				testApparatus._pipelineAcceleratorPool, testApparatus._techDelBox, pipelineLayout._pipelineCollection, pipelineLayout._pipelineLayoutFile,
+				MakeIteratorRange(resolveOperators), MakeIteratorRange(shadowGenerator), 
+				stitchingContext.GetPreregisteredAttachments(), stitchingContext._workingProps);
+			auto lightingTechnique = StallAndRequireReady(*lightingTechniqueFuture);
+
+			testApparatus._bufferUploads->Update(*threadContext);
+			Threading::Sleep(16);
+			testApparatus._bufferUploads->Update(*threadContext);
+
+			// stall until all resources are ready
+			{
+				RenderCore::LightingEngine::LightingTechniqueInstance prepareLightingIterator(*testApparatus._pipelineAcceleratorPool, *lightingTechnique);
+				ParseScene(prepareLightingIterator, *drawableWriter);
+				auto prepareMarker = prepareLightingIterator.GetResourcePreparationMarker();
+				if (prepareMarker) {
+					prepareMarker->StallWhilePending();
+					REQUIRE(prepareMarker->GetAssetState() == ::Assets::AssetState::Ready);
+				}
+			}
+
+			{
+				RenderCore::LightingEngine::LightingTechniqueInstance lightingIterator(
+					*threadContext, parsingContext, *testApparatus._pipelineAcceleratorPool, lightingDesc, *lightingTechnique);
+				ParseScene(lightingIterator, *drawableWriter);
+			}
+
+			fbHelper.SaveImage(*threadContext, "sphere-light-shadows-output");
+		}
+
+		testHelper->EndFrameCapture();
+	}
+
 }

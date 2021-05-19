@@ -14,6 +14,7 @@
 #include "../Techniques/RenderStateResolver.h"
 #include "../Techniques/DrawableDelegates.h"
 #include "../Techniques/CommonBindings.h"
+#include "../Metal/DeviceContext.h"
 #include "../Assets/PredefinedDescriptorSetLayout.h"
 #include "../IDevice.h"
 #include "../IThreadContext.h"
@@ -166,7 +167,7 @@ namespace RenderCore { namespace LightingEngine
 		descSetInit._slotBindings = _descSetSlotBindings;
 		const IResourceView* srvs[] = { rpi.GetDepthStencilAttachmentSRV({}) };
 		IteratorRange<const void*> immediateData[3];
-		if (_workingDMFrustum._mode == ShadowProjectionMode::Arbitrary) {
+		if (_workingDMFrustum._mode == ShadowProjectionMode::Arbitrary || _workingDMFrustum._mode == ShadowProjectionMode::ArbitraryCubeMap) {
 			immediateData[0] = MakeOpaqueIteratorRange(_workingDMFrustum._arbitraryCBSource);
 		} else {
 			immediateData[0] = MakeOpaqueIteratorRange(_workingDMFrustum._orthoCBSource);
@@ -219,13 +220,20 @@ namespace RenderCore { namespace LightingEngine
 
 			auto output = fragment.DefineAttachment(
 				Techniques::AttachmentSemantics::ShadowDepthMap, 
-				desc._width, desc._height, desc._arrayCount,
-				AttachmentDesc{desc._format, 0, LoadStore::Clear, LoadStore::Retain, 0, BindFlag::ShaderResource});
+				desc._width, desc._height, desc._projectionMode == ShadowProjectionMode::ArbitraryCubeMap ? 0u : desc._arrayCount,
+				AttachmentDesc{desc._format, 0, LoadStore::Clear, LoadStore::Retain, 0, BindFlag::ShaderResource | BindFlag::DepthStencil});
 			
 			auto shadowGenDelegate = delegatesBox->GetShadowGenTechniqueDelegate(singleSidedBias, doubleSidedBias, desc._cullMode);
 
 			ParameterBox box;
-			box.SetParameter(s_shadowCascadeModeString, desc._projectionMode == ShadowProjectionMode::Ortho?2:1);
+			if (desc._projectionMode == ShadowProjectionMode::Ortho) {
+				box.SetParameter(s_shadowCascadeModeString, 2);
+			} else if (desc._projectionMode == ShadowProjectionMode::ArbitraryCubeMap) {
+				box.SetParameter(s_shadowCascadeModeString, 3);
+			} else {
+				assert(desc._projectionMode == ShadowProjectionMode::Arbitrary);
+				box.SetParameter(s_shadowCascadeModeString, 1);
+			}
 			box.SetParameter(s_shadowEnableNearCascadeString, desc._enableNearCascade?1:0);
 
 			SubpassDesc subpass;
@@ -239,6 +247,27 @@ namespace RenderCore { namespace LightingEngine
 		///////////////////////////////
 		
 		Techniques::FragmentStitchingContext stitchingContext;
+		
+		// Create a preregistered attachmentso we can specify a full resource desc
+		// for the shadow texture. This helps distinquish between drawing to a cubemap
+		// vs drawing to texture array
+		Techniques::PreregisteredAttachment pregAttach;
+		pregAttach._semantic = Techniques::AttachmentSemantics::ShadowDepthMap;
+		pregAttach._layoutFlags = BindFlag::ShaderResource | BindFlag::DepthStencil;
+		pregAttach._state = Techniques::PreregisteredAttachment::State::Uninitialized;
+		if (desc._projectionMode == ShadowProjectionMode::ArbitraryCubeMap) {
+			pregAttach._desc = CreateDesc(
+				BindFlag::ShaderResource | BindFlag::DepthStencil, 0, GPUAccess::Read|GPUAccess::Write, 
+				TextureDesc::PlainCube(desc._width, desc._height, desc._format),
+				"shadow-map-cube");
+		} else {
+			pregAttach._desc = CreateDesc(
+				BindFlag::ShaderResource | BindFlag::DepthStencil, 0, GPUAccess::Read|GPUAccess::Write, 
+				TextureDesc::Plain2D(desc._width, desc._height, desc._format, 1, desc._arrayCount),
+				"shadow-map");
+		}
+		stitchingContext.DefineAttachment(pregAttach);
+
 		stitchingContext._workingProps = FrameBufferProperties { desc._width, desc._height };
 		_fbDesc = stitchingContext.TryStitchFrameBufferDesc(fragment.GetFrameBufferDescFragment());
 

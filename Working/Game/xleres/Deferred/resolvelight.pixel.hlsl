@@ -67,6 +67,8 @@ cbuffer LightBuffer BIND_SEQ_B1
             #else
                 CascadeResolver_Orthogonal result;
             #endif
+        #elif SHADOW_CASCADE_MODE == SHADOW_CASCADE_MODE_CUBEMAP
+            CascadeResolver_CubeMap result;
         #else
             CascadeResolver_None result;
         #endif
@@ -77,6 +79,8 @@ cbuffer LightBuffer BIND_SEQ_B1
     {
         #if SHADOW_CASCADE_MODE == 0
             ShadowResolver_None result;
+        #elif SHADOW_CASCADE_MODE == SHADOW_CASCADE_MODE_CUBEMAP
+            ShadowResolver_CubeMap result;
         #elif SHADOW_RESOLVE_MODEL == 0
             ShadowResolver_PoissonDisc result;
         #else

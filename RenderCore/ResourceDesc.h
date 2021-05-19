@@ -150,6 +150,8 @@ namespace RenderCore
             uint8_t mipCount=1, uint16_t arrayCount=0, const TextureSamples& samples = TextureSamples::Create());
         static TextureDesc Plain3D(
             uint32_t width, uint32_t height, uint32_t depth, Format format, uint8_t mipCount=1);
+        static TextureDesc PlainCube(
+            uint32_t width, uint32_t height, Format format, uint8_t mipCount=1);
         static TextureDesc Empty();
 
         uint64_t CalculateHash() const;
@@ -328,6 +330,21 @@ namespace RenderCore
 		result._samples = TextureSamples::Create();
 		return result;
 	}
+
+    inline TextureDesc TextureDesc::PlainCube(
+        uint32_t width, uint32_t height, Format format, uint8_t mipCount)
+    {
+        TextureDesc result;
+		result._width = width;
+		result._height = height;
+		result._depth = 1;
+		result._format = format;
+		result._dimensionality = Dimensionality::CubeMap;
+		result._mipCount = mipCount;
+		result._arrayCount = 0;
+		result._samples = TextureSamples::Create();
+		return result;
+    }
 
 	inline TextureDesc TextureDesc::Empty()
 	{

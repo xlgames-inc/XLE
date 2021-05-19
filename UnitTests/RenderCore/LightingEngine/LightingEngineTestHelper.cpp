@@ -142,8 +142,6 @@ namespace UnitTests
 		return std::make_shared<SphereDrawableWriter>(testHelper, pipelineAcceleratorPool);
 	}
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 	class ShapeStackDrawableWriter : public IDrawablesWriter
 	{
 	public:
@@ -221,6 +219,95 @@ namespace UnitTests
 	std::shared_ptr<IDrawablesWriter> CreateShapeStackDrawableWriter(MetalTestHelper& testHelper, RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAcceleratorPool)
 	{
 		return std::make_shared<ShapeStackDrawableWriter>(testHelper, pipelineAcceleratorPool);
+	}
+
+	class StonehengeDrawableWriter : public IDrawablesWriter
+	{
+	public:
+		std::shared_ptr<RenderCore::Techniques::DrawableGeo> _geo;
+		std::shared_ptr<RenderCore::Techniques::PipelineAccelerator> _pipelineAccelerator;
+		std::shared_ptr<RenderCore::Techniques::DescriptorSetAccelerator> _descriptorSetAccelerator;
+		std::shared_ptr<RenderCore::UniformsStreamInterface> _usi;
+		size_t _vertexCount;
+
+		void WriteDrawables(RenderCore::Techniques::DrawablesPacket& pkt)
+		{
+			const unsigned stoneCount = 32;
+			
+			struct CustomDrawable : public RenderCore::Techniques::Drawable { unsigned _vertexCount; Float4x4 _localTransform; };
+			auto* drawables = pkt._drawables.Allocate<CustomDrawable>(stoneCount+1);
+
+			const float radius = 1.0f;
+			const float circumference = 2.0f * gPI * radius;
+			const float stoneWidth = circumference / 2.0f / stoneCount;
+			for (unsigned c=0; c<stoneCount; ++c) {
+				float theta = 2.f * gPI * c / stoneCount;
+
+				Float4x4 transform = Identity<Float4x4>();
+				Combine_IntoLHS(transform, ArbitraryScale{Float3{stoneWidth / 2.0f * 0.2f, 1.0f, stoneWidth / 2.0f}});
+				Combine_IntoLHS(transform, RotationY{gPI / 2.0f + theta});
+				Combine_IntoLHS(transform, Float3{std::sin(theta), 0.f, std::cos(theta)});
+
+				drawables[c]._pipeline = _pipelineAccelerator;
+				drawables[c]._descriptorSet = _descriptorSetAccelerator;
+				drawables[c]._geo = _geo;
+				drawables[c]._looseUniformsInterface = _usi;
+				drawables[c]._vertexCount = _vertexCount;
+				drawables[c]._localTransform = transform;
+				drawables[c]._drawFn = [](RenderCore::Techniques::ParsingContext& parsingContext, const RenderCore::Techniques::ExecuteDrawableContext& drawFnContext, const RenderCore::Techniques::Drawable& drawable)
+					{
+						auto localTransform = RenderCore::Techniques::MakeLocalTransform(((CustomDrawable&)drawable)._localTransform, ExtractTranslation(parsingContext.GetProjectionDesc()._cameraToWorld));
+						drawFnContext.ApplyLooseUniforms(RenderCore::ImmediateDataStream(localTransform));
+						drawFnContext.Draw(((CustomDrawable&)drawable)._vertexCount);
+					};
+			}
+
+			Float4x4 baseTransform = Identity<Float4x4>();
+			Combine_IntoLHS(baseTransform, ArbitraryScale{Float3{2.0f, 0.125f, 2.0f}});
+			Combine_IntoLHS(baseTransform, Float3{0.f, -0.125f, 0.f});
+
+			static unsigned count = 0;
+			if (count < 2) {
+				Combine_IntoLHS(baseTransform, ArbitraryScale{Float3{1e-3f, 1e-3f, 1e-3f}});
+			}
+			++count;
+
+			drawables[stoneCount]._pipeline = _pipelineAccelerator;
+			drawables[stoneCount]._descriptorSet = _descriptorSetAccelerator;
+			drawables[stoneCount]._geo = _geo;
+			drawables[stoneCount]._looseUniformsInterface = _usi;
+			drawables[stoneCount]._vertexCount = _vertexCount;
+			drawables[stoneCount]._localTransform = baseTransform;
+			drawables[stoneCount]._drawFn = [](RenderCore::Techniques::ParsingContext& parsingContext, const RenderCore::Techniques::ExecuteDrawableContext& drawFnContext, const RenderCore::Techniques::Drawable& drawable)
+				{
+					auto localTransform = RenderCore::Techniques::MakeLocalTransform(((CustomDrawable&)drawable)._localTransform, ExtractTranslation(parsingContext.GetProjectionDesc()._cameraToWorld));
+					drawFnContext.ApplyLooseUniforms(RenderCore::ImmediateDataStream(localTransform));
+					drawFnContext.Draw(((CustomDrawable&)drawable)._vertexCount);
+				};
+		}
+
+		StonehengeDrawableWriter(MetalTestHelper& testHelper, RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAcceleratorPool)
+		{
+			std::tie(_geo, _vertexCount) = CreateCubeGeo(testHelper);
+			_pipelineAccelerator = pipelineAcceleratorPool.CreatePipelineAccelerator(
+				nullptr,
+				ParameterBox {},
+				ToolsRig::Vertex3D_InputLayout,
+				RenderCore::Topology::TriangleList,
+				RenderCore::Assets::RenderStateSet{});
+
+			_descriptorSetAccelerator = pipelineAcceleratorPool.CreateDescriptorSetAccelerator(
+				nullptr,
+				{}, {}, {});
+
+			_usi = std::make_shared<RenderCore::UniformsStreamInterface>();
+			_usi->BindImmediateData(0, Hash64("LocalTransform"));
+		}
+	};
+
+	std::shared_ptr<IDrawablesWriter> CreateStonehengeDrawableWriter(MetalTestHelper& testHelper, RenderCore::Techniques::IPipelineAcceleratorPool& pipelineAcceleratorPool)
+	{
+		return std::make_shared<StonehengeDrawableWriter>(testHelper, pipelineAcceleratorPool);
 	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

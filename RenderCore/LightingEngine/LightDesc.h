@@ -38,7 +38,7 @@ namespace RenderCore { namespace LightingEngine
 
 		//////////////////////////////////////////////////////////////////
 
-	enum class ShadowProjectionMode { Arbitrary, Ortho };
+	enum class ShadowProjectionMode { Arbitrary, Ortho, ArbitraryCubeMap };
 	enum class ShadowResolveType { DepthTexture, RayTraced };
 
 	class ShadowGeneratorDesc

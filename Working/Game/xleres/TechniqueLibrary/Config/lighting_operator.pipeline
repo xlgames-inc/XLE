@@ -37,7 +37,7 @@ DescriptorSet PerLightDescriptors
 DescriptorSet SharedDescriptors
 {
 	UniformBuffer ShadowFilteringTable;		// 0
-	SampledTexture tex0;					// 1
+	SampledTexture NoiseTexture;			// 1
 	Sampler ShadowSampler;					// 2
 	Sampler ShadowDepthSampler;				// 3
 };

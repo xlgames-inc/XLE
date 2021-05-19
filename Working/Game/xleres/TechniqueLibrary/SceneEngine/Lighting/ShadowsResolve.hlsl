@@ -18,6 +18,7 @@
     //   I N P U T S
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 Texture2DArray 	ShadowTextures BIND_SHADOW_T0;
+TextureCube 	ShadowCube BIND_SHADOW_T0;
 Texture2D		NoiseTexture BIND_SHARED_LIGHTING_T1;
 
 #if !defined(SHADOW_RESOLVE_MODEL)
@@ -359,6 +360,33 @@ float ResolveShadows_Cascade(
     }
 
     return ResolveDMShadows(cascadeIndex, texCoords, miniProjection, comparisonDistance, randomizerValue, msaaSampleIndex, config);
+}
+
+float CubeMapComparisonDistance(float3 cubeMapSampleCoord, float4 miniProjection)
+{
+    float worldSpaceDepth;
+    float3 d = abs(cubeMapSampleCoord);
+    if (d.x > d.z) {
+        if (d.x > d.y) {
+            worldSpaceDepth = d.x;
+        } else {
+            worldSpaceDepth = d.y;
+        }
+    } else if (d.z > d.y) {
+        worldSpaceDepth = d.z;
+    } else {
+        worldSpaceDepth = d.y;
+    }
+    return WorldSpaceDepthToNDC_Perspective(worldSpaceDepth, AsMiniProjZW(miniProjection));
+}
+
+float ResolveShadows_CubeMap(
+    float3 cubeMapNormCoords, float4 miniProjection,
+    int2 randomizerValue, uint msaaSampleIndex,
+    ShadowResolveConfig config)
+{
+    float comparisonDistance = CubeMapComparisonDistance(cubeMapNormCoords, miniProjection);
+    return ShadowCube.SampleCmpLevelZero(ShadowSampler, cubeMapNormCoords, comparisonDistance);
 }
 
 #endif

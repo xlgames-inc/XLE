@@ -9,6 +9,7 @@
 
 #define SHADOW_CASCADE_MODE_ARBITRARY 1
 #define SHADOW_CASCADE_MODE_ORTHOGONAL 2
+#define SHADOW_CASCADE_MODE_CUBEMAP 3
 
 #include "../../Framework/Binding.hlsl"
 
@@ -62,7 +63,7 @@ cbuffer ScreenToShadowProjection BIND_SHADOW_B2
 
 uint GetShadowSubProjectionCount(uint cascadeMode)
 {
-	if (cascadeMode == SHADOW_CASCADE_MODE_ARBITRARY) 	return ShadowSubProjectionCount;
+	if (cascadeMode == SHADOW_CASCADE_MODE_ARBITRARY || cascadeMode==SHADOW_CASCADE_MODE_CUBEMAP) 	return ShadowSubProjectionCount;
 	if (cascadeMode == SHADOW_CASCADE_MODE_ORTHOGONAL) 	return OrthoShadowSubProjectionCount;
     return 0;
 }
@@ -77,7 +78,7 @@ float3 AdjustForOrthoCascade(float3 basePosition, uint cascadeIndex)
 
 float4 ShadowProjection_GetOutput(float3 position, uint cascadeIndex, uint cascadeMode)
 {
-	if (cascadeMode==SHADOW_CASCADE_MODE_ARBITRARY) {
+	if (cascadeMode==SHADOW_CASCADE_MODE_ARBITRARY || cascadeMode==SHADOW_CASCADE_MODE_CUBEMAP) {
         return mul(ShadowWorldToProj[cascadeIndex], float4(position,1));
     } else if (cascadeMode==SHADOW_CASCADE_MODE_ORTHOGONAL) {
         float3 a = AdjustForOrthoCascade(mul(OrthoShadowWorldToProj, float4(position, 1)), cascadeIndex);
@@ -89,7 +90,7 @@ float4 ShadowProjection_GetOutput(float3 position, uint cascadeIndex, uint casca
 
 float4 ShadowProjection_GetMiniProj_NotNear(uint cascadeIndex, uint cascadeMode)
 {
-	if (cascadeMode==SHADOW_CASCADE_MODE_ARBITRARY) {
+	if (cascadeMode==SHADOW_CASCADE_MODE_ARBITRARY || cascadeMode==SHADOW_CASCADE_MODE_CUBEMAP) {
 		return ShadowMinimalProjection[cascadeIndex];
 	} else if (cascadeMode==SHADOW_CASCADE_MODE_ORTHOGONAL) {
 		float4 result = OrthoShadowMinimalProjection;

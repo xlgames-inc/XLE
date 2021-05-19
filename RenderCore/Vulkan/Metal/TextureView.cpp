@@ -17,7 +17,7 @@ namespace RenderCore { namespace Metal_Vulkan
         case TextureDesc::Dimensionality::T1D:      return isArray?VK_IMAGE_VIEW_TYPE_1D_ARRAY:VK_IMAGE_VIEW_TYPE_1D;
         case TextureDesc::Dimensionality::T2D:      return isArray?VK_IMAGE_VIEW_TYPE_2D_ARRAY:VK_IMAGE_VIEW_TYPE_2D;
         case TextureDesc::Dimensionality::T3D:      return VK_IMAGE_VIEW_TYPE_3D;
-        case TextureDesc::Dimensionality::CubeMap:  return isArray?VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:VK_IMAGE_VIEW_TYPE_CUBE;
+        case TextureDesc::Dimensionality::CubeMap:  return VK_IMAGE_VIEW_TYPE_CUBE;             // VK_IMAGE_VIEW_TYPE_CUBE_ARRAY not supported currently
         default:                                    return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
         }
     }
@@ -53,8 +53,6 @@ namespace RenderCore { namespace Metal_Vulkan
         // an array texture with a single array slice (as opposed to 0, meaning no array at all).
         // Current single array slice views become non-array views... But we could make "1" mean
         // an array view.
-        isArray &= window._arrayLayerRange._count > 1;
-
         VkImageViewCreateInfo view_info = {};
         view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         view_info.pNext = nullptr;
@@ -69,6 +67,11 @@ namespace RenderCore { namespace Metal_Vulkan
         view_info.subresourceRange.levelCount = std::max(1u, (unsigned)window._mipRange._count);
         view_info.subresourceRange.baseArrayLayer = window._arrayLayerRange._min;
         view_info.subresourceRange.layerCount = std::max(1u, (unsigned)window._arrayLayerRange._count);
+
+        if (window._mipRange._count == TextureViewDesc::Unlimited)
+            view_info.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+        if (window._arrayLayerRange._count == TextureViewDesc::Unlimited)
+            view_info.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
         switch (window._format._aspect) {
         case TextureViewDesc::Depth:
@@ -120,6 +123,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         // We don't know anything about the "image" in this case. We need to rely on "image" containing all
         // of the relevant information.
+        bool isArray = (window._arrayLayerRange._count != TextureViewDesc::Unlimited) && (window._arrayLayerRange._count > 1u);       // akwardly, TextureViewDesc::Unlimited is ambiguous
         auto createInfo = MakeImageViewCreateInfo(window, image, true);
         _imageView = factory.CreateImageView(createInfo);
         static_assert(sizeof(_imageSubresourceRange) >= sizeof(VkImageSubresourceRange));
@@ -148,12 +152,15 @@ namespace RenderCore { namespace Metal_Vulkan
             adjWindow._format._explicitFormat = ResolveVkFormat(tDesc._format, adjWindow._format, formatUsage);
             if (adjWindow._dimensionality == TextureDesc::Dimensionality::Undefined)
                 adjWindow._dimensionality = tDesc._dimensionality;
-            if (adjWindow._mipRange._count == TextureViewDesc::Unlimited)
-                adjWindow._mipRange._count = tDesc._mipCount - adjWindow._mipRange._min;
-            if (adjWindow._arrayLayerRange._count == TextureViewDesc::Unlimited)
-                adjWindow._arrayLayerRange._count = tDesc._arrayCount - adjWindow._arrayLayerRange._min;
 
-            auto createInfo = MakeImageViewCreateInfo(adjWindow, res->GetImage(), true);
+            if (adjWindow._dimensionality == TextureDesc::Dimensionality::CubeMap) {
+                // The "array layer" range values are a bit awkward for cubemaps. Let's Support only 
+                // views of the entire cubemap resource for now
+                assert(adjWindow._arrayLayerRange._count == 6 || adjWindow._arrayLayerRange._count == 0 || adjWindow._arrayLayerRange._count == 1 || adjWindow._arrayLayerRange._count == TextureViewDesc::Unlimited);
+                assert(adjWindow._arrayLayerRange._min == 0);
+            }
+
+            auto createInfo = MakeImageViewCreateInfo(adjWindow, res->GetImage(), tDesc._arrayCount > 1u);
             _imageView = factory.CreateImageView(createInfo);
             static_assert(sizeof(_imageSubresourceRange) >= sizeof(VkImageSubresourceRange));
             ((VkImageSubresourceRange&)_imageSubresourceRange) = createInfo.subresourceRange;

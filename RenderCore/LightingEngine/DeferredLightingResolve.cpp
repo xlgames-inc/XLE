@@ -134,7 +134,12 @@ namespace RenderCore { namespace LightingEngine
 		// if (desc._msaaSamplers) definesTable << ";MSAA_SAMPLERS=1";
 
 		if (shadowing != Shadowing::NoShadows) {
-			definesTable << ";SHADOW_CASCADE_MODE=" << ((shadowing == Shadowing::OrthShadows || shadowing == Shadowing::OrthShadowsNearCascade || shadowing == Shadowing::OrthHybridShadows) ? 2u : 1u);
+			if (shadowing == Shadowing::OrthShadows || shadowing == Shadowing::OrthShadowsNearCascade || shadowing == Shadowing::OrthHybridShadows) {
+				definesTable << ";SHADOW_CASCADE_MODE=" << 2u;
+			} else if (shadowing == Shadowing::CubeMapShadows) {
+				definesTable << ";SHADOW_CASCADE_MODE=" << 3u;
+			} else
+				definesTable << ";SHADOW_CASCADE_MODE=" << 1u;
 			definesTable << ";SHADOW_ENABLE_NEAR_CASCADE=" << (shadowing == Shadowing::OrthShadowsNearCascade ? 1u : 0u);
 			definesTable << ";SHADOW_RESOLVE_MODEL=" << unsigned(shadowResolveModel);
 			definesTable << ";SHADOW_RT_HYBRID=" << unsigned(shadowing == Shadowing::OrthHybridShadows);

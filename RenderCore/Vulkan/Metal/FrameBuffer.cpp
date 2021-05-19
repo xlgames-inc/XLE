@@ -518,7 +518,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		assert(desc._type == ResourceDesc::Type::Texture);
 		result._width = std::max(result._width, desc._textureDesc._width);
 		result._height = std::max(result._height, desc._textureDesc._height);
-		result._layers = std::max(result._layers, (unsigned)desc._textureDesc._arrayCount);
+		if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
+			assert(desc._textureDesc._arrayCount == 0 || desc._textureDesc._arrayCount == 1);
+			result._layers = std::max(result._layers, 6u);
+		} else
+			result._layers = std::max(result._layers, (unsigned)desc._textureDesc._arrayCount);
 	}
 
 	static BindFlag::Enum AsBindFlag(Internal::AttachmentUsageType::BitField usageType)

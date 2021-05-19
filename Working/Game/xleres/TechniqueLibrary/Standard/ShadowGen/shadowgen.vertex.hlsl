@@ -37,7 +37,7 @@ VSShadowOutput BuildVSShadowOutput(
 
 	uint count = min(GetShadowSubProjectionCount(GetShadowCascadeMode()), VSOUT_HAS_SHADOW_PROJECTION_COUNT);
 
-	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
+	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY || SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_CUBEMAP
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 		result.position = float4(worldPosition.xyz, 1);

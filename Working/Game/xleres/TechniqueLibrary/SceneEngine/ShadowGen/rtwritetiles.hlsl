@@ -55,7 +55,7 @@ void vs_writetris(VSIN input, out RTS_VSOutput output)
         worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), VSIN_GetColor0(input));
     #endif
 
-    #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
+    #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY || SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_CUBEMAP
         output.position = ShadowProjection_GetOutput(worldPosition, 0);
     #elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
         float3 basePosition = mul(OrthoShadowWorldToProj, float4(worldPosition, 1));

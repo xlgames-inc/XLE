@@ -161,8 +161,9 @@ namespace RenderCore { namespace Metal_Vulkan
 				b.image = r.GetImage();
 				b.subresourceRange.aspectMask = AsImageAspectMask(desc._textureDesc._format);
 				b.subresourceRange.baseMipLevel = 0;
-				b.subresourceRange.levelCount = std::max(1u, (unsigned)desc._textureDesc._mipCount);
-				b.subresourceRange.layerCount = std::max(1u, (unsigned)desc._textureDesc._arrayCount);
+				b.subresourceRange.baseArrayLayer = 0;
+				b.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+				b.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
 				src_stages |= changes[c]._srcStages;
 				dest_stages |= changes[c]._dstStages;
@@ -446,8 +447,11 @@ namespace RenderCore { namespace Metal_Vulkan
 			image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 			image_create_info.flags = 0;
 
-			if (tDesc._dimensionality == TextureDesc::Dimensionality::CubeMap)
+			if (tDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
 				image_create_info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+				assert(image_create_info.arrayLayers == 1u);		// arrays of cubemaps not supported currently
+				image_create_info.arrayLayers = 6;
+			}
 
             // We don't need to use mutable formats in many cases in Vulkan. 
             // D32_ (etc) formats don't need to be cast to R32_ (etc). We should
@@ -826,8 +830,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		    auto dstAspectMask = AsImageAspectMask(dstDesc._textureDesc._format);
 		    auto srcAspectMask = AsImageAspectMask(srcDesc._textureDesc._format);
 
-		    auto arrayCount = std::max(1u, (unsigned)srcDesc._textureDesc._arrayCount);
-		    assert(arrayCount == std::max(1u, (unsigned)dstDesc._textureDesc._arrayCount));
+		    assert(std::max(1u, (unsigned)srcDesc._textureDesc._arrayCount) == std::max(1u, (unsigned)dstDesc._textureDesc._arrayCount));
 		
 		    auto mips = std::max(1u, (unsigned)std::min(srcDesc._textureDesc._mipCount, dstDesc._textureDesc._mipCount));
 		    assert(mips <= dimof(copyOps));
@@ -841,11 +844,11 @@ namespace RenderCore { namespace Metal_Vulkan
 			    c.srcSubresource.aspectMask = srcAspectMask;
 			    c.srcSubresource.mipLevel = m;
 			    c.srcSubresource.baseArrayLayer = 0;
-			    c.srcSubresource.layerCount = arrayCount;
+			    c.srcSubresource.layerCount = VK_REMAINING_ARRAY_LAYERS;
 			    c.dstSubresource.aspectMask = dstAspectMask;
 			    c.dstSubresource.mipLevel = m;
 			    c.dstSubresource.baseArrayLayer = 0;
-			    c.dstSubresource.layerCount = arrayCount;
+			    c.dstSubresource.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
 			    width = std::max(1u, width>>1);
 			    height = std::max(1u, height>>1);
@@ -968,6 +971,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
             VkBufferImageCopy copyOps[8];
 
+			assert(dstDesc._textureDesc._dimensionality != TextureDesc::Dimensionality::CubeMap);		// cubemap support may be a problem here, due to wierdness around the "arrayCount" variable
+
             auto arrayCount = std::max(1u, (unsigned)srcDesc._textureDesc._arrayCount);
 		    auto mips = std::max(1u, (unsigned)std::min(srcDesc._textureDesc._mipCount, dstDesc._textureDesc._mipCount));
             unsigned width = srcDesc._textureDesc._width, height = srcDesc._textureDesc._height, depth = srcDesc._textureDesc._depth;
@@ -1038,6 +1043,8 @@ namespace RenderCore { namespace Metal_Vulkan
         // the images. Otherwise, we will use a default arrangement of subresources.
         ResourceMap map(device, mem);
         unsigned bytesUploaded = 0;
+
+		assert(desc._dimensionality != TextureDesc::Dimensionality::CubeMap);		// cubemap support may be a problem here, due to wierdness around the "arrayCount" variable
 
 		auto mipCount = std::max(1u, unsigned(desc._mipCount));
 		auto arrayCount = std::max(1u, unsigned(desc._arrayCount));
@@ -1114,6 +1121,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		auto& resource = *checked_cast<Resource*>(&iresource);
 
 		auto desc = resource.GetDesc();
+		assert(desc._textureDesc._dimensionality != TextureDesc::Dimensionality::CubeMap);		// cubemap support may be a problem here, due to wierdness around the "arrayCount" variable
 		result.reserve(std::max(1u, (unsigned)desc._textureDesc._arrayCount) * std::max(1u, (unsigned)desc._textureDesc._mipCount));
 
 		auto* image = resource.GetImage();

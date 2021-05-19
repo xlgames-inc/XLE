@@ -22,7 +22,7 @@ namespace RenderCore { namespace LightingEngine
 		XlZeroMemory(arbitraryCBSource);   // unused array elements must be zeroed out
 		XlZeroMemory(orthoCBSource);       // unused array elements must be zeroed out
 
-		if (desc._mode == ShadowProjectionMode::Arbitrary) {
+		if (desc._mode == ShadowProjectionMode::Arbitrary || desc._mode == ShadowProjectionMode::ArbitraryCubeMap) {
 
 			arbitraryCBSource._projectionCount = frustumCount;
 			for (unsigned c=0; c<frustumCount; ++c) {
@@ -96,6 +96,8 @@ namespace RenderCore { namespace LightingEngine
 					Inverse(AsFloat4x4(orthoCBSource._worldToProj)), 
 					desc._specialNearProjection));
 			orthoCBSource._nearMinimalProjection = desc._specialNearMinimalProjection;
+		} else {
+			assert(0);
 		}
 	}
 

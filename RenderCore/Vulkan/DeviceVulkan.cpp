@@ -361,6 +361,7 @@ namespace RenderCore { namespace ImplVulkan
 		physicalDeviceFeatures.samplerAnisotropy = true;
 		// physicalDeviceFeatures.independentBlend = true;
 		// physicalDeviceFeatures.robustBufferAccess = true;
+		// physicalDeviceFeatures.multiViewport = true;
 
 		VkPhysicalDeviceTransformFeedbackFeaturesEXT transformFeedbackFeatures = {};
 		transformFeedbackFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;

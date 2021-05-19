@@ -146,4 +146,13 @@ CascadeAddress ResolveCascade_CameraToShadowMethod(float2 texCoord, float worldS
     return CascadeAddress_Invalid();
 }
 
+CascadeAddress CascadeAddress_CubeMap(float3 lightToSamplePoint)
+{
+    CascadeAddress result;
+    result.cascadeIndex = 0;
+    result.frustumCoordinates = float4(lightToSamplePoint, 1);
+    result.miniProjection = ShadowMinimalProjection[0];
+    return result;
+}
+
 #endif

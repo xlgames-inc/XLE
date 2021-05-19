@@ -367,7 +367,7 @@ namespace RenderCore { namespace LightingEngine
 				auto lightResolveOperators = BuildLightResolveOperators(
 					*pipelineCollection, resolveOperators,
 					*resolvedFB.first, resolvedFB.second+1,
-					false, 0, Shadowing::PerspectiveShadows, GBufferType::PositionNormalParameters);
+					false, 0, Shadowing::CubeMapShadows, GBufferType::PositionNormalParameters);
 
 				::Assets::WhenAll(lightResolveOperators).ThenConstructToFuture<CompiledLightingTechnique>(
 					thatFuture,
