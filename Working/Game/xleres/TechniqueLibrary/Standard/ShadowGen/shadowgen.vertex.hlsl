@@ -49,8 +49,6 @@ VSShadowOutput BuildVSShadowOutput(
 						right	= p.x >  p.w,
 						top		= p.y < -p.w,
 						bottom	= p.y >  p.w;
-
-				result.shadowPosition[c] = p;
 				result.shadowFrustumFlags |= (left | (right<<1) | (top<<2) | (bottom<<3)) << (c*4);
 			}
 		#endif
@@ -72,8 +70,6 @@ VSShadowOutput BuildVSShadowOutput(
 			result.shadowFrustumFlags |=
 				(left | (right<<1) | (top<<2) | (bottom<<3)) << (c*4);
 		}
-
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 	#endif
